@@ -178,6 +178,8 @@ details.more summary{cursor:pointer;font-weight:600;font-size:.92rem;margin-bott
 .linkbtn{border:none;background:none;padding:0;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink)}
 
 .vlive{background:var(--bg);border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:.98rem;min-height:2.6em}
+
+.aistat{margin:-4px 0 10px;font-size:.88rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -14038,13 +14040,14 @@ function answerPending(raw){
   if (still.length){ pending = {...p, need: still}; return say(t('gotIt', {list: joinList(list)}) + ' ' + askFor(pending)); }
   say(t('gotIt', {list: joinList(list)}) + next());
 }
-function doUndo(){
+function undoApply(){
   const snap = undoStack.pop(); pending = null; pendingQueue = [];
-  if (!snap) return say(t('nothingUndo'));
+  if (!snap) return false;
   snap.restore.forEach(b => putBox(b));
   (snap.remove || []).forEach(id => { if (view.boxId === id) view = {name: 'home'}; removeBox(id); });
-  updateCtx(); say(t('undone'));
+  updateCtx(); return true;
 }
+function doUndo(){ say(undoApply() ? t('undone') : t('nothingUndo')); }
 
 /* listening: keeps listening through pauses, splits what was said into separate commands */
 let recog = null, listening = false, heard = '', silenceTimer = null, listenStart = 0, finished = true, batching = false;
@@ -14153,6 +14156,10 @@ function splitCommands(text){
   return out;
 }
 function handleBatch(text){
+  if (aiReady() && !(pending && pending.type === 'offer')) return aiTurn(normalizeSpeech(text));
+  return ruleBatch(text);
+}
+function ruleBatch(text){
   const cmds = splitCommands(normalizeSpeech(text));
   if (cmds.length <= 1) return handle(cmds[0] || text);
   batching = true;
@@ -14191,6 +14198,7 @@ async function toggleRecord(){
 function voiceSheet(){
   openSheet(`<h3>Talk to Storrrage</h3>
     <p class="hint" id="vCtx"></p>
+    <p class="aistat" id="vAI"></p>
     <div class="vlog" id="vlog" aria-live="polite"></div>
     <div class="vlive" id="vLive" hidden></div>
     ${SR ? '<button class="mic" id="micBtn"></button>' : '<p class="hint">Speech recognition isn’t available in this browser. Use the microphone on your keyboard in the box below instead.</p>'}
@@ -14210,6 +14218,8 @@ function voiceSheet(){
     $('#vText').placeholder = vPlaceholder(); setMic('off'); drawLog();
   };
   drawLang(); updateCtx(); updRecBtn();
+  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? 'Simple commands. <button class="linkbtn" id="vAIset">Turn on AI</button>' : `AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : ' (offline, using simple commands)'}. <button class="linkbtn" id="vAIset">Settings</button>`; $('#vAIset').onclick = aiSheet; };
+  drawAI();
   if (SR) $('#micBtn').onclick = listen;
   const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()) handleBatch(x); };
   if (SR) $('#vPause').onclick = e => {
@@ -14241,6 +14251,284 @@ function updateStatus(){
   el.textContent = parts.join(' '); el.hidden = !parts.length;
 }
 window.addEventListener('online', updateStatus); window.addEventListener('offline', updateStatus);
+
+/* ---------- AI assistant: understands free speech, uses the conversation and the inventory ---------- */
+let ai = {provider: 'off', key: '', model: ''};
+let aiBusy = false;
+const aiReady = () => ai.provider !== 'off' && ai.key && navigator.onLine;
+const AI_LABEL = {gemini: 'Google Gemini', claude: 'Claude'};
+const CLAUDE_MODELS = [['claude-haiku-4-5-20251001', 'Claude Haiku 4.5 (fast, cheapest)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (smarter, costs more)']];
+
+function aiSystemPrompt(){
+  const lang = L() === 'sv' ? 'Swedish' : 'English';
+  return `You are the voice assistant inside Storrrage, a home storage inventory app shared by a household. The user talks to you while packing, unpacking or searching in a storage place (basement, attic, garage and so on). Their speech is transcribed by the phone and can contain mishearings, for example "books" for "box" or "låta" for "låda". Interpret generously and sensibly.
+
+Data model: storage places contain boxes (codes like B-007) and items that are "not in a box" (loose in the place). Items can have: name, owner, size, color, season, brand, model, serial, tags, spot (only for loose items: where exactly), category, notes, value (in SEK).
+
+Each turn, work out what the user wants using the conversation so far and the current state, then return what to say and the actions to perform.
+- Keep track of context. "It", "they", "those boxes", "the second one", "back to the watermelons" refer to things mentioned earlier in the conversation. If the user keeps talking about the same box or item, continue with it.
+- Ask a short follow-up question when crucial identifying details are missing and the user hasn't given them: clothes and shoes need size and whose; kids' things need size or age and which child; electronics and tools need brand and model; sports gear needs whose and size. Ask at most two things at once. If the user skips or says it doesn't matter, move on.
+- If it's unclear which box or place the user means, ask instead of guessing. If the user hasn't said where they are and it matters, ask which place.
+- Never invent items, owners or details the user didn't say. Reject absurd values (for example shoe size 4400) by asking again.
+- When the user asks where something is, answer from the inventory in "say" and add a search action so it shows on screen.
+- Owners are first names. Known household members: ${household.join(', ') || 'none yet'}. ${me ? `The person using this phone is ${me}, so "my" and "mine" mean ${me}.` : ''}
+
+Reply in ${lang}. Keep "say" short and natural for reading aloud, one or two sentences. Say box numbers as ${L() === 'sv' ? '"låda 7"' : '"box 7"'}.
+
+Return ONLY a JSON object, no other text:
+{"say": "...", "actions": [ ... ]}
+Action types (use only these):
+{"type":"create_place","name":"Vinden"}
+{"type":"set_place","place":"<place id or name>"}
+{"type":"create_box","code":"<next free code>","name":"Winter clothes","place":"<place id or name>","location":"optional, where in the place"}
+{"type":"open_box","box":"B-012"}
+{"type":"add_items","box":"B-012 or null","place":"<place id or name; required when box is null, the items then go in that place but not in a box>","items":[{"name":"Red ski jacket","owner":"Elsa","size":"128","color":"Red","tags":["warm"]}]}
+{"type":"update_item","item":"<item id>","set":{"name":"","owner":"","size":"","color":"","season":"","brand":"","model":"","serial":"","spot":"","category":"","notes":""},"add_tags":["big"]}  (include only the fields that change)
+{"type":"move_item","item":"<item id>","box":"B-003 or null","place":"<place when box is null>"}
+{"type":"remove_item","item":"<item id>"}
+{"type":"update_box","box":"B-003","set":{"name":"","location":""}}
+{"type":"search","query":"tent"}
+{"type":"undo"}
+Use the next free box codes in order when creating boxes. Colors must be one of: Black, White, Grey, Blue, Red, Green, Yellow, Pink, Purple, Brown, Beige, Multicolour. Sizes look like 38, 38.5, 128, S, M, L, XL. Seasons: Winter, Summer, Spring/autumn, All year. If the user only asks something, return an empty actions list.`;
+}
+function itemForAI(i){
+  const o = {id: i.id, name: i.name};
+  for (const k of ['owner','size','color','season','brand','model','serial','spot','category']) if (i[k]) o[k] = i[k];
+  if (i.tags && i.tags.length) o.tags = i.tags;
+  return o;
+}
+function aiState(){
+  const codes = []; let n = boxes.reduce((m, b) => Math.max(m, parseInt(String(b.code).replace(/\D/g, '')) || 0), 0);
+  for (let i = 1; i <= 5; i++) codes.push('B-' + String(n + i).padStart(3, '0'));
+  const cb = curBox();
+  return {
+    today: today(),
+    current_place: scopePlace() ? placeName(scopePlace()) : (places.length > 1 ? 'not known (showing all places)' : placeName(places[0].id)),
+    open_box: cb ? cb.code : null,
+    recently_created_boxes: recentBoxes.map(findBox).filter(Boolean).map(b => b.code),
+    recently_mentioned_items: resolveLast().map(([it, b]) => ({id: it.id, name: it.name, where: b.loose ? placeName(b.placeId) + ', not in a box' : b.code})),
+    next_free_box_codes: codes,
+    places: places.map(p => {
+      const l = looseOf(p.id);
+      return {id: p.id, name: p.name,
+        boxes: boxesIn(p.id).sort(byCode).map(b => ({code: b.code, name: b.name, location: b.location || undefined, items: (b.items || []).map(itemForAI)})),
+        not_in_a_box: (l ? (l.items || []) : []).map(itemForAI)};
+    }),
+  };
+}
+class AIError extends Error { constructor(status, body){ super('AI ' + status); this.status = status; this.body = body; } }
+async function callAI(system, user, opts = {}){
+  const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), opts.timeout || 30000);
+  try {
+    if (ai.provider === 'gemini'){
+      const model = ai.model || 'gemini-flash-latest';
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST', signal: ctrl.signal,
+        headers: {'Content-Type': 'application/json', 'x-goog-api-key': ai.key},
+        body: JSON.stringify({systemInstruction: {parts: [{text: system}]}, contents: [{role: 'user', parts: [{text: user}]}],
+          generationConfig: {responseMimeType: 'application/json', temperature: 0.2}}),
+      });
+      if (!r.ok) throw new AIError(r.status, await r.text());
+      const j = await r.json();
+      return ((j.candidates || [])[0]?.content?.parts || []).map(p => p.text || '').join('');
+    }
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', signal: ctrl.signal,
+      headers: {'content-type': 'application/json', 'x-api-key': ai.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'},
+      body: JSON.stringify({model: ai.model || CLAUDE_MODELS[0][0], max_tokens: 1500, system, messages: [{role: 'user', content: user}]}),
+    });
+    if (!r.ok) throw new AIError(r.status, await r.text());
+    const j = await r.json();
+    return (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  } finally { clearTimeout(to); }
+}
+function parsePlan(text){
+  const s = String(text || '').replace(/```(?:json)?/gi, '');
+  const i = s.indexOf('{'), j = s.lastIndexOf('}');
+  if (i < 0 || j < i) throw new Error('no json');
+  const p = JSON.parse(s.slice(i, j + 1));
+  return {say: String(p.say || ''), actions: Array.isArray(p.actions) ? p.actions : []};
+}
+function aiErrorText(e){
+  if (e.name === 'AbortError') return 'The AI took too long to answer.';
+  if (e.status === 429) return ai.provider === 'gemini' ? 'The free AI limit is used up for now. Try again in a minute, or pick another model in AI settings.' : 'Too many AI requests right now.';
+  if (e.status === 400 || e.status === 401 || e.status === 403) return 'The AI key wasn’t accepted. Check it in AI settings.';
+  if (e.status === 404) return 'That AI model isn’t available. Pick another one in AI settings.';
+  if (e.status) return `The AI service answered with an error (${e.status}).`;
+  return 'Couldn’t reach the AI service.';
+}
+
+/* apply what the AI decided, as one undo step */
+const COLOR_SET = COLORS.reduce((m, c) => (m[c.toLowerCase()] = c, m), {});
+function cleanItemFields(src, dst, isNew){
+  const s = src || {};
+  const str = v => (v === null || v === undefined) ? null : String(v).trim();
+  const set = (k, v) => { if (v === null) return; if (v === '') { if (!isNew) delete dst[k]; } else dst[k] = v; };
+  if (s.name !== undefined && str(s.name)) dst.name = cap(str(s.name));
+  if (s.owner !== undefined){ const o = str(s.owner); set('owner', o ? (o.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(o))) : ''); }
+  if (s.size !== undefined){ const z = str(s.size); if (!z) set('size', ''); else { const c = cleanSize(z); if (c.ok) dst.size = c.v; } }
+  if (s.color !== undefined){ const c = str(s.color); set('color', c ? (COLOR_SET[c.toLowerCase()] || findColor(c) || cap(c)) : ''); }
+  for (const k of ['season','brand','model','serial','spot','category','notes']) if (s[k] !== undefined) set(k, str(s[k]) || '');
+  if (s.value !== undefined && s.value !== null && s.value !== '' && !isNaN(+s.value)) dst.value = Math.max(0, +s.value);
+  if (Array.isArray(s.tags)) dst.tags = [...new Set([...(dst.tags || []), ...s.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean)])];
+  return dst;
+}
+function applyPlan(actions){
+  const before = new Map(), created = [], touched = [], codeMap = {};
+  const keep = id => { if (!before.has(id)){ const b = findBox(id); if (b) before.set(id, clone(b)); } };
+  const resolvePlace = v => { if (!v) return null; const s = String(v); return findPlace(s) || places.find(p => p.name.toLowerCase() === s.toLowerCase()) || (placeIn(s) || {}).place || fuzzyPlace(s); };
+  const getBox = v => {
+    if (!v) return null; const s = String(v).toLowerCase();
+    if (codeMap[s]) return findBox(codeMap[s]);
+    const b = realBoxes().find(x => x.code.toLowerCase() === s); if (b) return b;
+    const n = parseInt(s.replace(/\D/g, '')); return n ? boxByNum(n) : null;
+  };
+  const findItem = id => { for (const b of boxes){ const it = (b.items || []).find(i => i.id === id); if (it) return [it, b]; } return null; };
+  const hereId = () => { const c = curBox(); return (c && c.placeId) || scopePlace() || places[0].id; };
+  for (const a of actions){
+    try {
+      switch (a.type){
+        case 'create_place': { const p = addPlace(a.name); if (p) setPlace(p.id); break; }
+        case 'set_place': { const p = resolvePlace(a.place); if (p){ setPlace(p.id); if (view.name === 'box') view = {name: 'home'}; } break; }
+        case 'create_box': {
+          const p = resolvePlace(a.place) || findPlace(hereId());
+          const want = String(a.code || '').toUpperCase();
+          const code = /^B-\d+$/.test(want) && !realBoxes().some(x => x.code === want) ? want : nextCode();
+          const b = {id: newId(), code, name: cap(String(a.name || '').trim()) || (L() === 'sv' ? 'Ny låda' : 'New box'), location: String(a.location || '').trim(), notes: '', items: [], createdAt: new Date().toISOString(), placeId: p.id};
+          putBox(b); created.push(b.id); if (want) codeMap[want.toLowerCase()] = b.id;
+          recentBoxes = (created.length === 1 ? [] : recentBoxes).concat(b.id).filter(id => created.includes(id));
+          break;
+        }
+        case 'open_box': { const b = getBox(a.box); if (b) openBox(b.id); break; }
+        case 'add_items': {
+          let target = getBox(a.box);
+          if (!target){ const p = resolvePlace(a.place) || findPlace(hereId()); target = ensureLoose(p.id); created.includes(target.id) || before.has(target.id) || keep(target.id); }
+          else keep(target.id);
+          const nb = clone(findBox(target.id)), now = new Date().toISOString();
+          for (const x of (a.items || [])){
+            if (!x || !String(x.name || '').trim()) continue;
+            const it = cleanItemFields(x, {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: now, addedBy: me || ''}, true);
+            nb.items = (nb.items || []).concat(it); touched.push([it, nb]);
+          }
+          putBox(nb); break;
+        }
+        case 'update_item': {
+          const f = findItem(a.item); if (!f) break; keep(f[1].id);
+          const nb = clone(findBox(f[1].id)), x = nb.items.find(i => i.id === a.item);
+          cleanItemFields(a.set || {}, x, false);
+          if (Array.isArray(a.add_tags)) cleanItemFields({tags: a.add_tags}, x, false);
+          x.updatedAt = new Date().toISOString(); putBox(nb); touched.push([x, nb]); break;
+        }
+        case 'move_item': {
+          const f = findItem(a.item); if (!f) break;
+          let dest = getBox(a.box);
+          if (!dest){ const p = resolvePlace(a.place) || findPlace(f[1].placeId); dest = ensureLoose(p.id); }
+          if (dest.id === f[1].id) break;
+          keep(f[1].id); keep(dest.id);
+          const from = clone(findBox(f[1].id)); from.items = from.items.filter(i => i.id !== a.item); putBox(from);
+          const to = clone(findBox(dest.id)), moved = Object.assign(clone(f[0]), {updatedAt: new Date().toISOString()});
+          if (!to.loose) delete moved.spot;
+          to.items = (to.items || []).concat(moved); putBox(to); touched.push([moved, to]); break;
+        }
+        case 'remove_item': {
+          const f = findItem(a.item); if (!f) break; keep(f[1].id);
+          const nb = clone(findBox(f[1].id)); nb.items = nb.items.filter(i => i.id !== a.item); putBox(nb); break;
+        }
+        case 'update_box': {
+          const b = getBox(a.box); if (!b) break; keep(b.id);
+          const nb = clone(b); const s = a.set || {};
+          if (s.name) nb.name = cap(String(s.name).trim());
+          if (s.location !== undefined) nb.location = String(s.location || '').trim();
+          if (s.place){ const p = resolvePlace(s.place); if (p) nb.placeId = p.id; }
+          putBox(nb); break;
+        }
+        case 'search': { const q = String(a.query || '').trim(); if (q){ query = q; $('#search').value = q; render(); } break; }
+        case 'undo': { undoApply(); break; }
+      }
+    } catch (e) { console.warn('AI action failed', a, e); }
+  }
+  if (before.size || created.length) undoStack.push({restore: [...before.values()], remove: created});
+  if (undoStack.length > 20) undoStack.shift();
+  if (touched.length) rememberItems(touched);
+  updateCtx();
+}
+async function aiTurn(text){
+  if (aiBusy) return toast('Still thinking about the last thing you said.');
+  aiBusy = true;
+  const history = voiceLog.slice(-14).map(l => (l.who === 'you' ? 'User: ' : 'Assistant: ') + l.text).join('\n');
+  logLine('you', text);
+  showLive(L() === 'sv' ? 'Tänker…' : 'Thinking…');
+  try {
+    const user = `Conversation so far:\n${history || '(nothing yet)'}\n\nCurrent state (JSON):\n${JSON.stringify(aiState())}\n\nThe user now said: "${text}"`;
+    const plan = parsePlan(await callAI(aiSystemPrompt(), user));
+    applyPlan(plan.actions);
+    say(plan.say || (L() === 'sv' ? 'Klart.' : 'Done.'));
+  } catch (e){
+    voiceLog.pop(); drawLog();
+    logLine('app', aiErrorText(e) + (L() === 'sv' ? ' Använder enkla kommandon.' : ' Using simple commands instead.'));
+    ruleBatch(text);
+  } finally { aiBusy = false; showLive(''); }
+}
+
+/* settings */
+async function geminiModels(key){
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {headers: {'x-goog-api-key': key}});
+  if (!r.ok) throw new AIError(r.status, await r.text());
+  const j = await r.json();
+  const ver = n => (n.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1] * 1;
+  return (j.models || []).map(m => m.name.replace(/^models\//, ''))
+    .filter(n => /^gemini-[\d.]+-flash(?:-lite)?(?:-latest)?$|^gemini-flash(?:-lite)?-latest$/.test(n))
+    .sort((a, b) => ver(b) - ver(a) || (a.includes('lite') ? 1 : 0) - (b.includes('lite') ? 1 : 0));
+}
+function aiSheet(){
+  const draft = {...ai};
+  openSheet(`<h3>AI assistant</h3>
+    <p class="hint">With AI on, you can talk freely. Storrrage understands follow-ups like “it”, “those boxes” or “back to the watermelons”, and asks about details that matter. Without signal, or if the AI fails, it falls back to the simple commands.</p>
+    <div class="field"><span>Provider</span><div class="chips" id="aiProv">
+      <button type="button" class="chipbtn" data-p="off">Off</button>
+      <button type="button" class="chipbtn" data-p="gemini">Google Gemini (free, for testing)</button>
+      <button type="button" class="chipbtn" data-p="claude">Claude (paid)</button></div></div>
+    <div id="aiBody"></div>
+    <div class="sheet-foot"><button class="btn quiet" id="aiCancel">Cancel</button><button class="btn primary" id="aiSave">Save</button></div>`);
+  const draw = () => {
+    sheet.querySelectorAll('[data-p]').forEach(c => c.classList.toggle('on', c.dataset.p === draft.provider));
+    const body = $('#aiBody');
+    if (draft.provider === 'off'){ body.innerHTML = '<p class="hint">Simple commands only. Nothing is sent anywhere.</p>'; return; }
+    const g = draft.provider === 'gemini';
+    body.innerHTML = `
+      ${g ? `<div class="banner" style="margin:0 0 14px"><span><b>Use made-up test items only.</b> On Google’s free tier, what you send may be used to improve Google’s products and can be read by people. Don’t send your real inventory until you switch to a paid option.</span></div>` : ''}
+      <label class="field"><span>API key</span><input id="aiKey" type="password" autocomplete="off" value="${esc(draft.provider === ai.provider ? ai.key : '')}" placeholder="${g ? 'From aistudio.google.com' : 'From console.anthropic.com'}"></label>
+      <p class="proof">${g ? 'Get a free key: open aistudio.google.com, sign in with a Google account, and choose “Get API key”.' : 'Get a key: open console.anthropic.com, add a small prepaid amount under Billing, then create a key under API keys.'} The key is stored only on this phone and isn’t included in backups.</p>
+      <label class="field"><span>Model</span><select id="aiModel">${g ? (draft.model ? `<option>${esc(draft.model)}</option>` : '<option value="">Check the key to choose</option>') : CLAUDE_MODELS.map(([v, l]) => `<option value="${v}" ${v === (draft.model || CLAUDE_MODELS[0][0]) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <button class="btn quiet" id="aiCheck">Check the key</button> <span class="hint" id="aiMsg"></span>
+      <p class="proof" style="margin-top:14px">When you talk, Storrrage sends what you said, the last part of the conversation, and the names and details of your places, boxes and items. Photos and voice notes are never sent.</p>`;
+    $('#aiCheck').onclick = async () => {
+      const key = $('#aiKey').value.trim(); if (!key) return toast('Paste the key first.');
+      $('#aiMsg').textContent = 'Checking…';
+      try {
+        if (g){
+          const list = await geminiModels(key);
+          if (!list.length) throw new Error('none');
+          $('#aiModel').innerHTML = list.map(n => `<option ${n === draft.model ? 'selected' : ''}>${esc(n)}</option>`).join('');
+        }
+        const saved = {...ai}; ai = {provider: draft.provider, key, model: $('#aiModel').value};
+        try { parsePlan(await callAI('Reply with JSON only.', 'Return {"say":"ok","actions":[]}', {timeout: 20000})); } finally { ai = saved; }
+        $('#aiMsg').textContent = 'Works.';
+      } catch (e){ $('#aiMsg').textContent = aiErrorText(e); }
+    };
+  };
+  draw();
+  $('#aiProv').onclick = e => { const c = e.target.closest('[data-p]'); if (!c) return; draft.provider = c.dataset.p; if (draft.provider !== ai.provider) draft.model = ''; draw(); };
+  $('#aiCancel').onclick = closeSheet;
+  $('#aiSave').onclick = () => {
+    if (draft.provider === 'off') ai = {provider: 'off', key: '', model: ''};
+    else {
+      const key = $('#aiKey').value.trim(); if (!key) return toast('Paste the API key, or choose Off.');
+      ai = {provider: draft.provider, key, model: $('#aiModel').value || ''};
+    }
+    metaPut('ai', ai).catch(() => {}); closeSheet(); toast(ai.provider === 'off' ? 'AI is off.' : `AI is on: ${AI_LABEL[ai.provider]}.`);
+  };
+}
 
 /* ---------- files out ---------- */
 function deliver(filename, blob, title, onDone){
@@ -14348,6 +14636,7 @@ function menuSheet(){
   openSheet(`<h3>More</h3><div class="menu">
     <p class="hint">Everything is stored only on this phone. ${lastBackup ? `Last backup: ${esc(fmtDate(lastBackup))}.` : 'No backup made yet.'} <span id="usage"></span></p>
     <button class="btn quiet" data-m="backup">Back up now</button>
+    <button class="btn quiet" data-m="ai">AI assistant${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
     <button class="btn quiet" data-m="places">Storage places</button>
     <button class="btn quiet" data-m="people">People in the household</button>
     <button class="btn quiet" data-m="report">Make insurance report</button>
@@ -14366,6 +14655,7 @@ function menuSheet(){
     if (k === 'report') insuranceReport();
     if (k === 'labels') realBoxes().length ? labels(realBoxes()) : toast('Add some boxes first.');
     if (k === 'places') placesSheet();
+    if (k === 'ai') aiSheet();
   };
 }
 
@@ -14380,6 +14670,7 @@ async function init(){
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
     { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
+    ai = await metaGet('ai') || ai;
     notes = await noteAll();
     places = await metaGet('places') || [];
     if (!places.length){ places = [{id: newId(), name: (navigator.language || '').toLowerCase().startsWith('sv') ? 'Källaren' : 'Basement', createdAt: new Date().toISOString()}]; await metaPut('places', places); }
