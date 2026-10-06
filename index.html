@@ -176,6 +176,8 @@ details.more summary{cursor:pointer;font-weight:600;font-size:.92rem;margin-bott
 .item-right small{font-size:.75rem}
 .scope{margin:18px 0 0;color:var(--muted);font-size:.92rem}
 .linkbtn{border:none;background:none;padding:0;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink)}
+
+.vlive{background:var(--bg);border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:.98rem;min-height:2.6em}
 </style>
 </head>
 <body>
@@ -13478,8 +13480,8 @@ const VT = {
   },
 };
 const HELP = {
-  en: ['I’m in the garage','New box winter clothes','Open box 14','Add red ski jacket and two pairs of boots','Add Elsa’s winter boots size 32','Add bike without a box','What’s in here?','Where is the tent?','Where is the tent in the attic?','Do we have anything for camping?','Move the sleeping bag to box 3','Move the bike to the attic','Remove the drill','New place summer house','Undo'],
-  sv: ['Jag är i garaget','Ny låda vinterkläder','Öppna låda 14','Lägg till röd skidjacka och två par kängor','Lägg till Elsas vinterkängor storlek 32','Lägg till cykel utan låda','Vad finns i lådan?','Var är tältet?','Var är tältet på vinden?','Har vi något för camping?','Flytta sovsäcken till låda 3','Flytta cykeln till vinden','Ta bort borrmaskinen','Ny plats sommarstugan','Ångra'],
+  en: ['I’m in the garage','New box winter clothes','Open box 14','Add red ski jacket and two pairs of boots','Add Elsa’s winter boots size 32','Add bike without a box','What’s in here?','Where is the tent?','Where is the tent in the attic?','Do we have anything for camping?','Move the sleeping bag to box 3','Move the bike to the attic','Remove the drill','New place summer house','Open box 3, add tent and sleeping bag, then where is the bike?','Undo'],
+  sv: ['Jag är i garaget','Ny låda vinterkläder','Öppna låda 14','Lägg till röd skidjacka och två par kängor','Lägg till Elsas vinterkängor storlek 32','Lägg till cykel utan låda','Vad finns i lådan?','Var är tältet?','Var är tältet på vinden?','Har vi något för camping?','Flytta sovsäcken till låda 3','Flytta cykeln till vinden','Ta bort borrmaskinen','Ny plats sommarstugan','Öppna låda 3, lägg till tält och sovsäck, sen var är cykeln?','Ångra'],
 };
 const L = () => voiceLang.startsWith('sv') ? 'sv' : 'en';
 const t = (k, v = {}) => VT[L()][k].replace(/\{(\w+)\}/g, (_, x) => v[x] ?? '');
@@ -13574,7 +13576,7 @@ function say(text, action){
   text = cap(text);
   logLine('app', text, action);
   if (speakOn && window.speechSynthesis){
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = voiceLang; speechSynthesis.speak(u); } catch {}
+    try { const u = new SpeechSynthesisUtterance(text); u.lang = voiceLang; speechSynthesis.speak(u); } catch {}
   }
 }
 function updateCtx(){
@@ -13648,13 +13650,13 @@ function answerPlace(raw){
 }
 
 function handle(text){
-  const raw = text.trim().replace(/[.!?]+$/, ''); if (!raw) return;
+  const raw = normalizeSpeech(text.trim().replace(/[.!?]+$/, '')); if (!raw) return;
   const low = raw.toLowerCase();
   logLine('you', raw);
   if (CMD.undo.test(low)) return doUndo();
   if (pending && pending.type !== 'place' && !isCommand(low) && placeIn(raw) && raw.trim().split(/\s+/).length <= 3){ pending = null; pendingQueue = []; return goPlace(placeIn(raw).place.id); }
   if (pending && !isCommand(low)) return pending.type === 'place' ? answerPlace(raw) : answerPending(raw);
-  pending = null; pendingQueue = [];
+  pending = null; if (!batching) pendingQueue = [];
   let m;
   if ((m = raw.match(CMD.newPlace))) return doNewPlace(m[1]);
   if ((m = raw.match(CMD.newBox))) return doNewBox(m[1]);
@@ -13807,7 +13809,9 @@ function doAdd(text, forcedPid){
   snapshot([target.id]);
   const nb = clone(findBox(target.id)); nb.items = (nb.items || []).concat(created); putBox(nb);
   let reply = target.loose ? t('addedLoose', {list: joinList(created.map(i => i.name)), place: placeName(target.placeId)}) : t('added', {list: joinList(created.map(i => i.name)), box: boxSpoken(target)});
-  pendingQueue = created.map(it => ({boxId: target.id, itemId: it.id, name: it.name, need: needsFor(it)})).filter(p => p.need.length);
+  const asks = created.map(it => ({boxId: target.id, itemId: it.id, name: it.name, need: needsFor(it)})).filter(p => p.need.length);
+  if (batching){ pendingQueue = pendingQueue.concat(asks); return say(reply); }
+  pendingQueue = asks;
   pending = pendingQueue.shift() || null;
   if (pending) reply += ' ' + askFor(pending);
   say(reply);
@@ -13852,40 +13856,112 @@ function doUndo(){
   updateCtx(); say(t('undone'));
 }
 
-/* listening */
-let recog = null;
+/* listening: keeps listening through pauses, splits what was said into separate commands */
+let recog = null, listening = false, heard = '', silenceTimer = null, listenStart = 0, finished = true, batching = false;
+let silenceMs = 4000;
+const SILENCE_CHOICES = [[2000, '2 s'], [4000, '4 s'], [7000, '7 s'], [0, 'When I tap']];
 function setMic(state){
   const btn = $('#micBtn'); if (!btn) return;
   btn.classList.toggle('on', state === 'on');
-  btn.textContent = state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck för att stoppa' : 'Listening… tap to stop') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak');
+  btn.textContent = state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck när du är klar' : 'Listening… tap when you’re done') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak');
 }
-function stopListening(){ if (recog){ try { recog.abort(); } catch {} recog = null; } setMic('off'); }
+function showLive(text){ const el = $('#vLive'); if (!el) return; el.textContent = text; el.hidden = !text; }
+function stopListening(){
+  listening = false; finished = true; heard = ''; clearTimeout(silenceTimer);
+  if (recog){ try { recog.abort(); } catch {} recog = null; }
+  setMic('off'); showLive('');
+}
+function armSilence(first){
+  clearTimeout(silenceTimer);
+  if (!silenceMs) return;
+  silenceTimer = setTimeout(finishListening, first ? Math.max(silenceMs, 6000) : silenceMs);
+}
+// When the phone offers several guesses, prefer one that makes sense as a command ("box", not "books").
+function pickAlt(result){
+  const alts = Array.from(result).map(a => a.transcript);
+  const top = alts[0] || '';
+  const boxy = a => /(^|\s)(box|boxen|låda|lådan|kartong)(?![a-zåäö])/i.test(a);
+  if (!boxy(top) && /(^|\s)(books?|bocks|bucks|fox|låta|lada)(?![a-zåäö])/i.test(top)){ const alt = alts.find(boxy); if (alt) return alt; }
+  return top;
+}
 function listen(){
-  if (recog) return stopListening();
+  if (listening) return finishListening();
   if (rec) return toast('Stop the voice note first.');
   if (window.speechSynthesis) speechSynthesis.cancel();
+  listening = true; finished = false; heard = ''; listenStart = Date.now();
+  setMic('on'); showLive('…'); startRecog(); armSilence(true);
+}
+function startRecog(){
   const r = new SR(); recog = r;
-  r.lang = voiceLang; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
-  let finalText = '';
+  r.lang = voiceLang; r.interimResults = true; r.maxAlternatives = 5; r.continuous = false;
+  let seg = '';
   r.onresult = e => {
     let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++){ const x = e.results[i]; if (x.isFinal) finalText += x[0].transcript; else interim += x[0].transcript; }
-    const v = $('#vText'); if (v) v.placeholder = interim || finalText || '…';
+    for (let i = e.resultIndex; i < e.results.length; i++){ const x = e.results[i]; if (x.isFinal) seg += ' ' + pickAlt(x); else interim += x[0].transcript; }
+    showLive((heard + ' ' + seg + ' ' + interim).replace(/\s+/g, ' ').trim() || '…');
+    armSilence(false);
   };
   r.onerror = e => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return; // just a pause; we restart below
     const msg = {
       'network': 'Speech recognition needs signal right now. Type in the box below instead (your keyboard’s microphone can work offline), or record a voice note.',
       'not-allowed': 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
       'service-not-allowed': 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
-      'no-speech': L() === 'sv' ? 'Jag hörde ingenting. Tryck och försök igen.' : 'I didn’t hear anything. Tap and try again.',
       'language-not-supported': 'This language isn’t available for speech recognition on this phone.',
     }[e.error];
-    if (msg) logLine('app', msg);
+    if (msg){ logLine('app', msg); listening = false; }
   };
-  r.onend = () => { recog = null; setMic('off'); const v = $('#vText'); if (v) v.placeholder = vPlaceholder(); if (finalText.trim()) handle(finalText); };
-  try { r.start(); setMic('on'); } catch { recog = null; setMic('off'); }
+  r.onend = () => {
+    heard = (heard + ' ' + seg).replace(/\s+/g, ' ').trim(); recog = null;
+    if (listening && Date.now() - listenStart < 120000){ try { startRecog(); return; } catch {} }
+    listening = false; done();
+  };
+  try { r.start(); } catch { recog = null; listening = false; done(); }
+}
+function finishListening(){
+  clearTimeout(silenceTimer);
+  if (!listening) return;
+  listening = false; setMic('off');
+  if (recog){ try { recog.stop(); } catch { done(); } } else done();
+}
+function done(){
+  if (finished) return; finished = true;
+  clearTimeout(silenceTimer); setMic('off');
+  const text = heard.trim(); heard = ''; showLive('');
+  if (text) handleBatch(text);
+  else logLine('app', L() === 'sv' ? 'Jag hörde ingenting. Tryck och försök igen.' : 'I didn’t hear anything. Tap and try again.');
 }
 const vPlaceholder = () => L() === 'sv' ? 'Eller skriv, eller använd tangentbordets mikrofon' : 'Or type, or use your keyboard’s microphone';
+
+/* fix common mishearings: "books 3" → "box 3", "låta 3" → "låda 3", "new books" → "new box" */
+function normalizeSpeech(s){
+  const nums = Object.keys(NUMW).join('|');
+  const numAfter = `(?=\\s*-?\\s*(?:\\d|nummer|number|nr(?![a-zåäö])|(?:${nums})(?![a-zåäö])))`;
+  let x = ' ' + s + ' ';
+  x = x.replace(new RegExp(`(\\s)(?:books?|bocks|bucks|fox|box'?s|boxes|backs)\\s*${numAfter}`, 'gi'), '$1box ');
+  x = x.replace(new RegExp(`(\\s)(?:låta|lada|loda)\\s*${numAfter}`, 'gi'), '$1låda ');
+  x = x.replace(/^\s*(?:a\s+)?new\s+(?:books?|bocks|bucks|fox)(?![a-z])/i, ' new box');
+  x = x.replace(/^\s*(?:create|make|start)\s+(?:a\s+)?(?:new\s+)?(?:books?|bocks|bucks|fox)(?![a-z])/i, ' new box');
+  x = x.replace(/(\s(?:and|then)\s+)(?:a\s+)?new\s+(?:books?|bocks|fox)(?![a-z])/gi, '$1new box');
+  return x.replace(/\s+/g, ' ').trim();
+}
+/* split one long utterance into separate commands */
+const STARTERS = ['öppna','lägg till','lägg in','ny låda','nytt låda','ny kartong','ny plats','ny förvaringsplats','skapa','ta bort','ta ut','plocka ut','flytta','var är','var finns','var ligger','vad finns','vad innehåller','har vi','finns det','jag är i','jag är på','vi är i','gå till','byt till','ångra',
+  'open','add','put','new box','new place','create','remove','delete','take out','move','where is','where are',"where's",'where did',"what's in",'what is in','do we have',"i'm in",'i am in',"we're in",'go to','switch to','undo'];
+function splitCommands(text){
+  let parts = text.split(/\s*[.;!?]\s+|\s*,?\s+(?:och sen|och sedan|och så|sen|sedan|därefter|and then|then|after that)\s+/i);
+  const re = new RegExp(`\\s*,?\\s+(?:(?:och|and)\\s+)?(?=(?:${STARTERS.map(escRe).join('|')})(?![a-zåäö']))`, 'i');
+  parts = parts.flatMap(p => p.split(re));
+  return parts.map(s => s.trim().replace(/^(?:och|and)\s+/i, '').replace(/,$/, '').trim()).filter(Boolean);
+}
+function handleBatch(text){
+  const cmds = splitCommands(normalizeSpeech(text));
+  if (cmds.length <= 1) return handle(cmds[0] || text);
+  batching = true;
+  try { cmds.forEach(c => handle(c)); }
+  finally { batching = false; }
+  if (!pending && pendingQueue.length){ pending = pendingQueue.shift(); say(askFor(pending)); }
+}
 
 /* voice notes */
 let rec = null, recStart = 0, recTimer = null;
@@ -13918,6 +13994,7 @@ function voiceSheet(){
   openSheet(`<h3>Talk to Storrrage</h3>
     <p class="hint" id="vCtx"></p>
     <div class="vlog" id="vlog" aria-live="polite"></div>
+    <div class="vlive" id="vLive" hidden></div>
     ${SR ? '<button class="mic" id="micBtn"></button>' : '<p class="hint">Speech recognition isn’t available in this browser. Use the microphone on your keyboard in the box below instead.</p>'}
     <div class="vtype"><input id="vText" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend">Send</button></div>
     <div class="vrow">
@@ -13925,6 +14002,7 @@ function voiceSheet(){
       <span class="chips" style="margin:0"><button type="button" class="chipbtn" data-lang="sv-SE">Svenska</button><button type="button" class="chipbtn" data-lang="en-US">English</button></span>
     </div>
     <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> Read answers out loud</label>
+    ${SR ? `<div class="field"><span>Act on what I said after a pause of</span><div class="chips" id="vPause">${SILENCE_CHOICES.map(([ms, l]) => `<button type="button" class="chipbtn${ms === silenceMs ? ' on' : ''}" data-ms="${ms}">${l}</button>`).join('')}</div></div>` : ''}
     <details class="more"><summary>What can I say?</summary><ul class="help" id="vHelp"></ul></details>
     <details class="more"><summary>Using it without signal</summary><p class="hint">Chrome’s speech recognition usually needs signal. Without it, tap the text box and use the microphone on your keyboard instead. Gboard can recognise speech offline once you’ve downloaded the language: open Gboard’s settings, then Voice typing, and download Swedish and English for offline use (menu names vary a little between phones). Or record a voice note and deal with it later.</p></details>
     <div class="sheet-foot"><button class="btn" id="vClose">Close</button></div>`, () => { stopListening(); if (rec) rec.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); });
@@ -13935,7 +14013,12 @@ function voiceSheet(){
   };
   drawLang(); updateCtx(); updRecBtn();
   if (SR) $('#micBtn').onclick = listen;
-  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; handle(x); };
+  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()) handleBatch(x); };
+  if (SR) $('#vPause').onclick = e => {
+    const c = e.target.closest('[data-ms]'); if (!c) return;
+    silenceMs = +c.dataset.ms; metaPut('silenceMs', silenceMs).catch(() => {});
+    $('#vPause').querySelectorAll('[data-ms]').forEach(x => x.classList.toggle('on', +x.dataset.ms === silenceMs));
+  };
   $('#vSend').onclick = send;
   $('#vText').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
   $('#recBtn').onclick = toggleRecord;
@@ -14098,6 +14181,7 @@ async function init(){
     household = await metaGet('household') || [];
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
+    { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
     notes = await noteAll();
     places = await metaGet('places') || [];
     if (!places.length){ places = [{id: newId(), name: (navigator.language || '').toLowerCase().startsWith('sv') ? 'Källaren' : 'Basement', createdAt: new Date().toISOString()}]; await metaPut('places', places); }
