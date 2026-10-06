@@ -13445,6 +13445,10 @@ const VT = {
     moved: 'Moved {name} to {box}.', undone: 'Undone.', nothingUndo: 'There’s nothing to undo.',
     unknown: 'I didn’t get that. Try “add …”, “where is …” or “what’s in here”.',
     unknownAdd: 'Did you want to add “{text}” to {box}?', and: 'and', in: 'in', box: 'box {n}', size: 'size {v}',
+    boxesCreated: 'Created {n} boxes in {place}: {list}. {first} is open now.',
+    whichBox: 'Which box: {list}?', oddSize: 'Size {v} sounds unusual. What size is it?',
+    updated: '{name}: {list}.', renamed: 'Renamed {old} to {name}.', ok: 'Okay.',
+    confirmMany: 'Create {n} boxes? Say yes or no.',
     notInBox: 'not in a box', oneBox: '1 box', manyBoxes: '{n} boxes',
     addedLoose: 'Added {list} to {place}, not in a box.',
     askPlace: 'Which place: {list}?', didntGetPlace: 'Which place? Say one of {list}, or “new place” and a name.',
@@ -13469,6 +13473,10 @@ const VT = {
     moved: 'Flyttade {name} till {box}.', undone: 'Ångrat.', nothingUndo: 'Det finns inget att ångra.',
     unknown: 'Det förstod jag inte. Prova “lägg till …”, “var är …” eller “vad finns i lådan”.',
     unknownAdd: 'Ville du lägga till “{text}” i {box}?', and: 'och', in: 'i', box: 'låda {n}', size: 'storlek {v}',
+    boxesCreated: 'Skapade {n} lådor i {place}: {list}. {first} är öppen nu.',
+    whichBox: 'Vilken låda: {list}?', oddSize: 'Storlek {v} låter konstigt. Vilken storlek är det?',
+    updated: '{name}: {list}.', renamed: 'Bytte namn på {old} till {name}.', ok: 'Okej.',
+    confirmMany: 'Skapa {n} lådor? Säg ja eller nej.',
     notInBox: 'utan låda', oneBox: '1 låda', manyBoxes: '{n} lådor',
     addedLoose: 'La till {list} i {place}, utan låda.',
     askPlace: 'Vilken plats: {list}?', didntGetPlace: 'Vilken plats? Säg {list}, eller “ny plats” och ett namn.',
@@ -13522,8 +13530,8 @@ const SIZE_TOKEN = '([0-9]{1,3}(?:[.,]5)?|xxs|xs|s|m|l|xl|xxl)';
 function extract(text){
   let s = ' ' + text.trim() + ' ';
   const out = {};
-  const sm = s.match(new RegExp(`\\s(?:(?:in|i)\\s+)?(?:size|storlek|strl\\.?|stl\\.?)\\s*${SIZE_TOKEN}(?=[\\s,.]|$)`, 'i'));
-  if (sm){ out.size = sm[1].toUpperCase().replace(',', '.'); s = s.replace(sm[0], ' '); }
+  const sm = s.match(/\s(?:(?:in|i)\s+)?(?:size|storlek|strl\.?|stl\.?)\s*(\d[\d.,]*\d|\d|xxs|xs|s|m|l|xl|xxl)(?=\s|$|[,.](?!\d))/i);
+  if (sm){ const cs = cleanSize(sm[1]); if (cs.ok) out.size = cs.v; else out.sizeOdd = sm[1]; s = s.replace(sm[0], ' '); }
   out.owner = findOwner(s);
   if (!out.owner){
     // A name the app hasn't heard before: "… för Elsa" or "Elsa's …" (speech recognition capitalises names)
@@ -13590,6 +13598,9 @@ function updateCtx(){
 const CMD = {
   undo: /^(?:undo|ångra)\b/,
   newPlace: /^(?:new (?:storage )?place|add (?:a )?(?:new )?(?:storage )?place|create (?:a )?(?:new )?(?:storage )?place|ny (?:förvaringsplats|förvaring|plats)|lägg till (?:en )?(?:ny )?(?:förvaringsplats|plats)|skapa (?:en )?(?:ny )?(?:förvaringsplats|plats))\s+(.+)$/i,
+  newBoxes: /^(?:(?:add|create|make|start|lägg till|skapa|starta)\s+)?(\d+|[a-zåäö]+)\s+(?:new\s+|nya\s+)?(?:boxes|lådor|kartonger)(?![a-zåäö])\s*(.*)$/i,
+  rename: /^(?:rename|byt namn på|döp om)\s+(.+?)\s+(?:to|till)\s+(.+)$/i,
+  setAttr: /^(?:change|set|make|ändra|sätt)\s+(?:the\s+)?(size|colou?r|owner|storlek(?:en)?|färg(?:en)?|ägare(?:n)?)\s+(?:of|on|for|på|för)\s+(.+?)\s+(?:to|till)\s+(.+)$/i,
   newBox: /^(?:new box|create (?:a )?(?:new )?box|make (?:a )?(?:new )?box|start (?:a )?(?:new )?box|add (?:a )?new box|ny låda|ny kartong|nytt? låda|skapa (?:en )?(?:ny )?(?:låda|kartong)|lägg till (?:en )?ny (?:låda|kartong)|starta (?:en )?ny (?:låda|kartong))(?![a-zåäö])\s*(.*)$/i,
   goPlace: /^(?:go to|switch to|i'?m (?:in|at|on)|i am (?:in|at|on)|we'?re (?:in|at)|we are (?:in|at)|gå till|byt till|jag är (?:i|på|vid|nere i|uppe på|uppe i)|vi är (?:i|på|vid))\s+(.+)$/i,
   open: /^(?:open|öppna|go to|gå till|show|visa)\s+/i,
@@ -13644,9 +13655,144 @@ function askPlace(run){
   say(t('askPlace', {list: joinList(places.map(p => p.name))}));
 }
 function answerPlace(raw){
-  const pm = placeIn(raw);
+  const pm = placeIn(raw) || (fuzzyPlace(raw) ? {place: fuzzyPlace(raw)} : null);
   if (!pm) return say(t('didntGetPlace', {list: joinList(places.map(p => p.name))}));
   const run = pending.run; pending = null; run(pm.place.id);
+}
+
+/* ---------- conversation context, yes/no, several boxes, editing by voice ---------- */
+let recentBoxes = [], lastItems = [];
+const YES_RE = /^(?:yes|yeah|yep|sure|ok(?:ay)?|do it|ja|japp|jo|absolut|gör det|precis|correct|right)(?![a-zåäö])/i;
+const NO_RE = /^(?:no|nope|nah|cancel|stop|never mind|forget it|nej|nä+|avbryt|strunt i det|glöm det)(?![a-zåäö])/i;
+const PRONOUN_RE = /^(?:it|they|them|those|these|that|this|den|det|de|dom|dem|dessa|denna|detta|den där|det där)$/i;
+function rememberItems(list){ lastItems = list.map(([it, b]) => ({itemId: it.id, boxId: b.id})); }
+function resolveLast(){
+  return lastItems.map(r => { const b = findBox(r.boxId); const it = b && (b.items || []).find(i => i.id === r.itemId); return it ? [it, b] : null; }).filter(Boolean);
+}
+function lev(a, b){
+  const m = a.length, n = b.length, d = Array.from({length: m + 1}, (_, i) => [i]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[m][n];
+}
+// "Bass" → Basement: closest place name when an answer doesn't match exactly
+function fuzzyPlace(raw){
+  const w = raw.toLowerCase().replace(/[^a-zåäöé ]/g, '').replace(/^(?:the|in the|in|i|på)\s+/, '').trim();
+  if (w.length < 3) return null;
+  const namesOf = p => { const nm = p.name.toLowerCase(); const g = PLACE_SYN.find(x => x.includes(nm)); return [nm, ...(g || [])]; };
+  const pre = places.filter(p => namesOf(p).some(n => n.startsWith(w.slice(0, 3))));
+  if (pre.length === 1) return pre[0];
+  let best = null, bd = 99;
+  for (const p of places) for (const n of namesOf(p)){ const d = lev(w, n); if (d < bd){ bd = d; best = p; } }
+  return bd <= 2 ? best : null;
+}
+// sizes: 38, 38.5, 128, M, XL. Rejects odd values like 4,400.
+function cleanSize(s){
+  const v = String(s).trim().toLowerCase().replace(/^(?:size|storlek|strl\.?)\s*/, '');
+  if (/^(xxs|xs|s|m|l|xl|xxl|xxxl)$/.test(v)) return {ok: true, v: v.toUpperCase()};
+  if (/^\d{1,3}(?:[.,]5)?$/.test(v)){ const n = parseFloat(v.replace(',', '.')); if (n >= 1 && n <= 200) return {ok: true, v: String(n)}; }
+  return {ok: false, v};
+}
+function ownerFrom(p){
+  const known = findOwner(' ' + p + ' '); if (known) return known;
+  let m = p.match(/^(?:belongs? to|belonging to|owned by|for|tillhör|till|åt|för)\s+([A-Za-zÅÄÖåäöé]+)$/i);
+  if (m) return addPerson(cap(m[1].replace(/['’]?s$/i, m[1].length > 3 ? '' : 's')));
+  m = p.match(/^(?:it'?s|its|they'?re|theirs|det är|den är|de är)?\s*([A-Za-zÅÄÖåäöé]+)['’]s$/i) || p.match(/^([A-ZÅÄÖ][a-zåäöé]{2,})s$/);
+  if (m && !findColor(m[1])) return addPerson(cap(m[1]));
+  return '';
+}
+function parseAttrs(rest){
+  const out = {tags: []};
+  const pieces = (' ' + rest + ' ').split(/\s+(?:and|och|plus)\s+|,|\s+(?:they|it|de|den|det|dom)\s+(?:are|is|är|should be|ska vara)\s+/i).map(s => s.trim()).filter(Boolean);
+  for (let p of pieces){
+    p = p.replace(/^(?:they|it|de|den|det|dom)\s+(?:are|is|är|should be|ska vara)\s+/i, '').replace(/^(?:also|too|också|are|is|är|should be|ska vara|a|an)\s+/i, '').trim();
+    if (!p) continue;
+    const low = p.toLowerCase();
+    let m;
+    if ((m = low.match(/^(?:size|storlek|strl\.?)\s*(.+)$/))){ const s = cleanSize(m[1]); if (s.ok) out.size = s.v; else out.sizeOdd = m[1]; continue; }
+    const col = findColor(low); if (col && low.split(/\s+/).length <= 2){ out.color = col; continue; }
+    const own = ownerFrom(p); if (own){ out.owner = own; continue; }
+    if (p.split(/\s+/).length <= 4) out.tags.push(low);
+  }
+  return out;
+}
+const COLOR_SV = {Black:'svart',White:'vit',Grey:'grå',Blue:'blå',Red:'röd',Green:'grön',Yellow:'gul',Pink:'rosa',Purple:'lila',Brown:'brun',Beige:'beige',Multicolour:'flerfärgad'};
+const colorSpoken = c => c ? (L() === 'sv' ? (COLOR_SV[c] || c.toLowerCase()) : c.toLowerCase()) : '';
+function describeAttrs(a){
+  return [colorSpoken(a.color), a.size && t('size', {v: a.size}), a.owner, ...(a.tags || [])].filter(Boolean);
+}
+function resolveSubject(s){
+  s = s.trim().replace(/[,.]$/, '');
+  if (PRONOUN_RE.test(s)){ const r = resolveLast(); return r.length ? r : null; }
+  const q = cleanQ(s.replace(/^(?:the|de|dom)\s+/i, ''));
+  const cb = curBox(), pid = cb ? null : scopePlace();
+  let res = searchItems(q, cb ? {boxId: cb.id} : pid ? {placeId: pid} : {});
+  let list = res.exact.length ? res.exact : res.related;
+  if (!list.length && (cb || pid)){ res = searchItems(q); list = res.exact.length ? res.exact : res.related; }
+  if (list.length > 1){ const last = new Set(lastItems.map(x => x.itemId)); const pref = list.filter(([it]) => last.has(it.id)); if (pref.length) list = pref; }
+  return list.length ? list : null;
+}
+function doEdit(subject, rest){
+  const items = resolveSubject(subject); if (!items) return false;
+  const pronoun = PRONOUN_RE.test(subject.trim());
+  if (items.length > 1 && !pronoun){ askWhich({many: items}); return true; }
+  const r = boxRef(rest), pm = placeIn(rest);
+  if ((r || pm) && /^(?:in|i|on|på|at|vid)\s/i.test(rest.trim())){ doMove(subject, rest.replace(/^(?:in|i|on|på|at|vid)\s+/i, '')); return true; }
+  const a = parseAttrs(rest);
+  if (a.sizeOdd && !a.size){ say(t('oddSize', {v: a.sizeOdd})); return true; }
+  const parts = describeAttrs(a); if (!parts.length) return false;
+  snapshot(items.map(([, b]) => b.id));
+  const byBox = {};
+  for (const [it, b] of items){
+    const nb = byBox[b.id] || (byBox[b.id] = clone(findBox(b.id)));
+    const x = nb.items.find(i => i.id === it.id); if (!x) continue;
+    if (a.color) x.color = a.color; if (a.size) x.size = a.size; if (a.owner) x.owner = a.owner;
+    if (a.tags.length) x.tags = [...new Set([...(x.tags || []), ...a.tags])];
+    x.updatedAt = new Date().toISOString();
+  }
+  Object.values(byBox).forEach(putBox);
+  rememberItems(items);
+  say(t('updated', {name: joinList(items.map(([it]) => it.name)), list: joinList(parts)}));
+  return true;
+}
+function doRename(subject, name){
+  const items = resolveSubject(subject); if (!items) return say(t('notFound', {q: cleanQ(subject)}));
+  if (items.length > 1 && !PRONOUN_RE.test(subject.trim())) return askWhich({many: items});
+  const [it, b] = items[0];
+  snapshot([b.id]);
+  const nb = clone(b); const x = nb.items.find(i => i.id === it.id); const old = x.name; x.name = cap(name.trim()); x.updatedAt = new Date().toISOString(); putBox(nb);
+  rememberItems([[x, nb]]);
+  say(t('renamed', {old, name: x.name}));
+}
+function doNewBoxes(n, rest, forcedPid, confirmed){
+  if (n > 10 && !confirmed){ pending = {type: 'offer', run: () => doNewBoxes(n, rest, forcedPid, true)}; return say(t('confirmMany', {n})); }
+  let name = (rest || '').trim();
+  const pm = placeIn(name); if (pm) name = stripPlace(name, pm);
+  name = name.replace(/^(?:called|named|som heter|med namnet|för|for|till|med|with|:)\s*/i, '').trim();
+  const pid = forcedPid || (pm && pm.place.id) || curPlaceId();
+  if (!pid) return askPlace(id => doNewBoxes(n, name, id, true));
+  const made = [];
+  for (let i = 0; i < n; i++){
+    const b = {id: newId(), code: nextCode(), name: cap(name) || (L() === 'sv' ? 'Ny låda' : 'New box'), location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: pid};
+    putBox(b); made.push(b);
+  }
+  snapshot([], made.map(b => b.id));
+  recentBoxes = made.map(b => b.id);
+  openBox(made[0].id); updateCtx();
+  say(t('boxesCreated', {n, place: placeName(pid), list: joinList(made.map(b => b.code)), first: cap(boxSpoken(made[0]))}));
+}
+function askBox(options, run){
+  pending = {type: 'box', options, run};
+  say(t('whichBox', {list: joinList(options.map(id => findBox(id)).filter(Boolean).map(boxSpoken))}));
+}
+const ORD = {first: 0, second: 1, third: 2, fourth: 3, fifth: 4, första: 0, andra: 1, tredje: 2, fjärde: 3, femte: 4};
+function answerBox(raw){
+  const low = raw.toLowerCase(), opts = pending.options.map(findBox).filter(Boolean);
+  let b = null; const r = boxRef(low);
+  if (r) b = r.box;
+  if (!b){ const w = low.match(/(\d+|[a-zåäö]+)/g) || []; for (const x of w){ if (ORD[x] !== undefined){ b = opts[ORD[x]]; break; } const n = toNum(x); if (n){ b = boxByNum(n); break; } } }
+  if (!b) return say(t('whichBox', {list: joinList(opts.map(boxSpoken))}));
+  const run = pending.run; pending = null; run(b.id);
 }
 
 function handle(text){
@@ -13654,11 +13800,25 @@ function handle(text){
   const low = raw.toLowerCase();
   logLine('you', raw);
   if (CMD.undo.test(low)) return doUndo();
+  if (pending && pending.type === 'offer'){
+    const run = pending.run; pending = null;
+    if (YES_RE.test(low)) return run();
+    if (NO_RE.test(low)) return say(t('ok'));
+  }
+  if (pending && pending.type === 'box' && (!isCommand(low) || (boxRef(low) && raw.split(/\s+/).length <= 3))) return answerBox(raw);
+  if (!pending && (NO_RE.test(low) || YES_RE.test(low)) && raw.split(/\s+/).length <= 3) return say(t('ok'));
   if (pending && pending.type !== 'place' && !isCommand(low) && placeIn(raw) && raw.trim().split(/\s+/).length <= 3){ pending = null; pendingQueue = []; return goPlace(placeIn(raw).place.id); }
   if (pending && !isCommand(low)) return pending.type === 'place' ? answerPlace(raw) : answerPending(raw);
   pending = null; if (!batching) pendingQueue = [];
   let m;
   if ((m = raw.match(CMD.newPlace))) return doNewPlace(m[1]);
+  if ((m = raw.match(CMD.newBoxes)) && toNum(m[1].toLowerCase()) > 1) return doNewBoxes(toNum(m[1].toLowerCase()), m[2]);
+  if ((m = raw.match(CMD.rename))) return doRename(m[1], m[2]);
+  if ((m = raw.match(CMD.setAttr))){
+    const k = m[1].toLowerCase(), v = m[3];
+    const rest = /^(size|storlek)/.test(k) ? 'size ' + v : /^(owner|ägare)/.test(k) ? 'belongs to ' + v : v;
+    if (doEdit(m[2], rest) !== false) return;
+  }
   if ((m = raw.match(CMD.newBox))) return doNewBox(m[1]);
   if ((m = raw.match(CMD.goPlace)) && !boxRef(m[1])){
     const pm = placeIn(m[1]); if (pm) return goPlace(pm.place.id);
@@ -13686,8 +13846,22 @@ function handle(text){
   if ((m = raw.match(CMD.move))) return doMove(m[1], m[2]);
   if ((m = raw.match(CMD.remove))) return doRemove(m[1]);
   if ((m = raw.match(CMD.add))) return doAdd(m[1]);
+  // "back to the watermelons, they are big and brown" / "the watermelons are Rebecca's" / "it should be brown"
+  if ((m = raw.match(/^(?:back to|tillbaka till|about|angående|om)\s+(.+?)\s*[,:]?\s+(?:they|it|de|den|det|dom)\s+(?:are|is|är|should be|ska vara)\s+(.+)$/i))
+    || (m = raw.match(/^(?:(?:and|och)\s+)?(.+?)\s+(?:is|are|är|should be|ska vara|blir)\s+(.+)$/i))){
+    if (doEdit(m[1], m[2]) !== false) return;
+  }
+  // "size 40", "brown", "it's Mark's" right after talking about an item → update that item
+  if (lastItems.length && raw.split(/\s+/).length <= 6){
+    const at = parseAttrs(raw.replace(/^(?:it'?s|its|they'?re|they are|it is|den är|det är|de är)\s+/i, ''));
+    if (at.size || at.color || at.owner || at.sizeOdd){ if (doEdit('it', raw.replace(/^(?:it'?s|its|they'?re|they are|it is|den är|det är|de är)\s+(?=\S+['’]s$)/i, '')) !== false) return; }
+  }
   const b = curBox(), pid = b ? null : scopePlace();
-  if (b || pid) return say(t('unknownAdd', {text: raw, box: b ? boxSpoken(b) : placeName(pid)}), {label: L() === 'sv' ? 'Ja, lägg till' : 'Yes, add it', run: () => doAdd(raw)});
+  if ((b || pid) && raw.length > 2){
+    const run = () => doAdd(raw);
+    pending = {type: 'offer', run};
+    return say(t('unknownAdd', {text: raw, box: b ? boxSpoken(b) : placeName(pid)}), {label: L() === 'sv' ? 'Ja, lägg till' : 'Yes, add it', run: () => { pending = null; run(); }});
+  }
   say(t('unknown'));
 }
 function sayContents(b){
@@ -13722,7 +13896,7 @@ function doNewBox(rest, forcedPid){
   const pid = forcedPid || (pm && pm.place.id) || curPlaceId();
   if (!pid) return askPlace(id => doNewBox(name, id));
   const b = {id: newId(), code: nextCode(), name: cap(name) || (L() === 'sv' ? 'Ny låda' : 'New box'), location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: pid};
-  snapshot([], [b.id]); putBox(b); openBox(b.id); updateCtx();
+  snapshot([], [b.id]); putBox(b); recentBoxes = [b.id]; openBox(b.id); updateCtx();
   say(t('boxCreated', {box: boxSpoken(b), name: b.name, place: placeName(pid), code: b.code}));
 }
 function doFind(q){
@@ -13739,6 +13913,7 @@ function doFind(q){
   const {exact, related} = res;
   const pre = elsewhere ? t('elsewhere', {place: placeName(pid)}) + ' ' : '';
   const describe = ([it, b]) => `${it.name} ${t('in')} ${whereShort(b)}`;
+  rememberItems((exact.length ? exact : related).slice(0, 4));
   if (exact.length === 1){ const [it, b] = exact[0]; return say(pre + t('found1', {name: it.name, where: whereLong(it, b)})); }
   if (exact.length > 1 && exact.length <= 4) return say(pre + t('foundN', {n: exact.length, list: joinList(exact.map(describe))}));
   if (exact.length > 4) return say(pre + t('foundMany', {n: exact.length, list: joinList(exact.slice(0, 3).map(describe))}));
@@ -13755,7 +13930,8 @@ const askWhich = hit => say(t('which', {list: joinList(hit.many.slice(0, 4).map(
 function doRemove(q){
   const b = curBox(), pid = b ? null : scopePlace();
   const opts = b ? {boxId: b.id} : pid ? {placeId: pid} : {};
-  const hit = findIn(q, opts);
+  const lastR = PRONOUN_RE.test(cleanQ(q)) ? resolveLast() : [];
+  const hit = lastR.length === 1 ? lastR[0] : lastR.length > 1 ? {many: lastR} : findIn(q, opts);
   if (!hit) return say(b ? t('notInBox', {q: cleanQ(q), box: boxSpoken(b)}) : t('notFound', {q: cleanQ(q)}));
   if (hit.many) return askWhich(hit);
   const [it, from] = hit;
@@ -13774,17 +13950,28 @@ function doMove(q, target){
     else return say(t('unknown'));
   }
   const cb = curBox();
-  const hit = (cb && findIn(q, {boxId: cb.id})) || findIn(q); if (!hit) return say(t('notFound', {q: cleanQ(q)}));
+  const lastM = PRONOUN_RE.test(cleanQ(q)) ? resolveLast() : [];
+  const hit = lastM.length === 1 ? lastM[0] : (cb && findIn(q, {boxId: cb.id})) || findIn(q); if (!hit) return say(t('notFound', {q: cleanQ(q)}));
   if (hit.many) return askWhich(hit);
   const [it, from] = hit; if (from.id === dest.id) return say(t('moved', {name: it.name, box: whereShort(dest)}));
   snapshot([from.id, dest.id]);
   const a = clone(from); a.items = a.items.filter(i => i.id !== it.id); putBox(a);
   const d = clone(findBox(dest.id)); d.items = (d.items || []).concat(Object.assign(clone(it), {updatedAt: new Date().toISOString()})); putBox(d);
+  rememberItems([[it, findBox(dest.id)]]);
   say(t('moved', {name: it.name, box: whereShort(dest)}));
 }
-function doAdd(text, forcedPid){
-  let target = null, loose = false;
-  const tm = text.match(/\s(?:to|in|into|i|till|ner i|ned i)\s+((?:box|boxen|låda|lådan|kartong|kartongen)\s*\S+|b\s*-?\s*\d+)\s*$/i);
+function doAdd(text, forcedPid, forcedBoxId){
+  let target = forcedBoxId ? findBox(forcedBoxId) : null, loose = false;
+  const many = text.match(/\s(?:in|into|within|to|i|till|inuti)\s+(?:one of\s+|en av\s+)?(?:those|these|the|de|dom|dessa)\s+(?:\S+\s+){0,2}?(?:boxes|lådorna|lådor|kartongerna)(?=\s|$)/i);
+  if (!target && many){
+    text = text.replace(many[0], ' ').replace(/\s+/g, ' ').trim();
+    const opts = recentBoxes.filter(findBox);
+    if (opts.length > 1) return askBox(opts, id => doAdd(text, null, id));
+    if (opts.length === 1) target = findBox(opts[0]);
+  }
+  const one = text.match(/\s(?:in|into|within|to|i|till)\s+(?:it|this box|that box|this one|den|den här|lådan|denna)(?=\s|$)/i);
+  if (!target && one && curBox()){ target = curBox(); text = text.replace(one[0], ' ').trim(); }
+  const tm = target ? null : text.match(/\s(?:to|in|into|within|i|till|ner i|ned i)\s+((?:box|boxen|låda|lådan|kartong|kartongen)\s*\S+|b\s*-?\s*\d+)\s*$/i);
   if (tm){ const r = boxRef(tm[1]); if (r && !r.box) return say(t('noBox', {n: r.n})); if (r){ target = r.box; text = text.slice(0, tm.index); } }
   if (LOOSE_RE.test(' ' + text + ' ')){ loose = true; text = (' ' + text + ' ').replace(LOOSE_RE, ' ').trim(); }
   const pm = placeIn(text); if (pm) text = stripPlace(text, pm);
@@ -13809,6 +13996,7 @@ function doAdd(text, forcedPid){
   snapshot([target.id]);
   const nb = clone(findBox(target.id)); nb.items = (nb.items || []).concat(created); putBox(nb);
   let reply = target.loose ? t('addedLoose', {list: joinList(created.map(i => i.name)), place: placeName(target.placeId)}) : t('added', {list: joinList(created.map(i => i.name)), box: boxSpoken(target)});
+  rememberItems(created.map(it => [it, findBox(target.id)]));
   const asks = created.map(it => ({boxId: target.id, itemId: it.id, name: it.name, need: needsFor(it)})).filter(p => p.need.length);
   if (batching){ pendingQueue = pendingQueue.concat(asks); return say(reply); }
   pendingQueue = asks;
@@ -13825,11 +14013,13 @@ function answerPending(raw){
   if (/^(skip|no|nope|doesn'?t matter|don'?t know|not sure|hoppa över|hoppa|nej|spelar ingen roll|vet inte|ingen aning|strunt)/.test(low)) return say(t('skipped') + next());
   const a = extract(raw), got = {};
   if (p.need.includes('size')){
-    const sz = a.size || (low.match(new RegExp(`(?:^|\\s)${SIZE_TOKEN}(?=\\s|$|[,.])`, 'i')) || [])[1];
-    if (sz) got.size = sz.toUpperCase().replace(',', '.');
+    if (a.sizeOdd && !a.size) return say(t('oddSize', {v: a.sizeOdd}));
+    const cand = a.size || (low.match(/(?:^|\s)(?:size|storlek|strl\.?)?\s*(\d[\d.,]*|xxs|xs|s|m|l|xl|xxl)(?=\s|$|[,.](?:\s|$))/i) || [])[1];
+    if (cand){ const s = cleanSize(cand); if (s.ok) got.size = s.v; else return say(t('oddSize', {v: cand})); }
   }
   if (p.need.includes('owner')){
     let o = a.owner;
+    if (!o){ const pm2 = raw.match(/(?:it'?s|its|they'?re|they are|belongs? to|tillhör|det är|den är|de är)\s+([A-Za-zÅÄÖåäöé]+?)(?:['’]s|s)?\s*[.!]?$/i); if (pm2 && !findColor(pm2[1]) && pm2[1].length > 1) o = addPerson(cap(pm2[1])); }
     if (!o){
       let rest = ' ' + low + ' ';
       if (got.size) rest = rest.replace(new RegExp('\\s' + escRe(got.size.toLowerCase()) + '(?=[\\s,.])'), ' ');
@@ -13843,7 +14033,7 @@ function answerPending(raw){
   if (!Object.keys(got).length) return say(t('didntGet'));
   snapshot([b.id]);
   const nb = clone(b); Object.assign(nb.items.find(i => i.id === it.id), got, {updatedAt: new Date().toISOString()}); putBox(nb);
-  const list = [got.size && t('size', {v: got.size}), got.owner, got.color && got.color.toLowerCase()].filter(Boolean);
+  const list = [got.size && t('size', {v: got.size}), got.owner, colorSpoken(got.color)].filter(Boolean);
   const still = p.need.filter(n => !got[n]);
   if (still.length){ pending = {...p, need: still}; return say(t('gotIt', {list: joinList(list)}) + ' ' + askFor(pending)); }
   say(t('gotIt', {list: joinList(list)}) + next());
@@ -13874,7 +14064,7 @@ function stopListening(){
 function armSilence(first){
   clearTimeout(silenceTimer);
   if (!silenceMs) return;
-  silenceTimer = setTimeout(finishListening, first ? Math.max(silenceMs, 6000) : silenceMs);
+  silenceTimer = setTimeout(finishListening, first ? Math.max(silenceMs, 10000) : silenceMs);
 }
 // When the phone offers several guesses, prefer one that makes sense as a command ("box", not "books").
 function pickAlt(result){
@@ -13928,8 +14118,10 @@ function done(){
   if (finished) return; finished = true;
   clearTimeout(silenceTimer); setMic('off');
   const text = heard.trim(); heard = ''; showLive('');
-  if (text) handleBatch(text);
-  else logLine('app', L() === 'sv' ? 'Jag hörde ingenting. Tryck och försök igen.' : 'I didn’t hear anything. Tap and try again.');
+  if (text) return handleBatch(text);
+  // nothing heard: a quiet hint instead of a message in the conversation
+  showLive(L() === 'sv' ? 'Hörde inget. Tryck och prata igen.' : 'Didn’t catch anything. Tap and speak again.');
+  setTimeout(() => { if (!listening) showLive(''); }, 2500);
 }
 const vPlaceholder = () => L() === 'sv' ? 'Eller skriv, eller använd tangentbordets mikrofon' : 'Or type, or use your keyboard’s microphone';
 
@@ -13951,8 +14143,14 @@ const STARTERS = ['öppna','lägg till','lägg in','ny låda','nytt låda','ny k
 function splitCommands(text){
   let parts = text.split(/\s*[.;!?]\s+|\s*,?\s+(?:och sen|och sedan|och så|sen|sedan|därefter|and then|then|after that)\s+/i);
   const re = new RegExp(`\\s*,?\\s+(?:(?:och|and)\\s+)?(?=(?:${STARTERS.map(escRe).join('|')})(?![a-zåäö']))`, 'i');
-  parts = parts.flatMap(p => p.split(re));
-  return parts.map(s => s.trim().replace(/^(?:och|and)\s+/i, '').replace(/,$/, '').trim()).filter(Boolean);
+  parts = parts.flatMap(p => p.split(re)).map(s => s.trim().replace(/^(?:och|and)\s+/i, '').replace(/,$/, '').trim()).filter(Boolean);
+  // "within those boxes, add socks" → the place phrase belongs to the next command
+  const out = [];
+  for (let i = 0; i < parts.length; i++){
+    if (/^(?:in|into|within|inside|i|inuti|till|to)\s/i.test(parts[i]) && i + 1 < parts.length){ parts[i + 1] = parts[i + 1] + ' ' + parts[i]; continue; }
+    out.push(parts[i]);
+  }
+  return out;
 }
 function handleBatch(text){
   const cmds = splitCommands(normalizeSpeech(text));
