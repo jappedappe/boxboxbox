@@ -1,15 +1,30 @@
 {
-  "name": "Boxes",
-  "short_name": "Boxes",
-  "description": "What's in which box in your storage unit",
+  "name": "Storrrage",
+  "short_name": "Storrrage",
+  "description": "What's stored where: boxes, places and things",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#DADBD5",
   "theme_color": "#C79D63",
   "icons": [
-    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

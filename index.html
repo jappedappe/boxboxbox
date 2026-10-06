@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#C79D63">
-<title>Boxes</title>
+<title>Storrrage</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -125,23 +125,76 @@ video{width:100%;border-radius:10px;background:#000;aspect-ratio:4/3;object-fit:
 
 .banner{background:var(--surface);border-left:4px solid var(--tape);padding:10px 14px;border-radius:6px;margin:16px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .banner span{flex:1;min-width:200px;font-size:.92rem}
+
+.thumb.icon{font-size:1.9rem;line-height:1;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
+.namerow{display:flex;gap:10px;align-items:center}
+.namerow .thumb{width:46px;height:46px;font-size:1.6rem}
+.namerow input{flex:1}
+
+#viewer{width:100vw;height:100%;max-width:none;max-height:none;margin:0;padding:0;border-radius:0;background:#000;color:#fff}
+#viewer::backdrop{background:#000}
+.vwrap{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;touch-action:none}
+.vwrap img{max-width:100%;max-height:100%;transform-origin:center;user-select:none;-webkit-user-drag:none}
+.vclose{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:1.6rem;cursor:pointer}
+.vhint{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;margin:0;font-size:.85rem;opacity:.7}
+.ph img,.boxphoto{cursor:zoom-in}
+.wrap{padding-bottom:120px}
+.statusline{margin:8px 0 0;font-size:.85rem;color:var(--muted)}
+.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;border:none;border-radius:999px;padding:15px 22px;background:var(--ink);color:var(--bg);font-weight:700;font-size:1.05rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.chipbtn{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:.88rem;cursor:pointer}
+.chipbtn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chipbtn.add{border-style:dashed;color:var(--muted)}
+details.more{margin:2px 0 14px}
+details.more summary{cursor:pointer;font-weight:600;font-size:.92rem;margin-bottom:10px}
+.vlog{max-height:34vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:8px 0 12px}
+.vl{padding:8px 12px;border-radius:12px;max-width:88%;font-size:.95rem}
+.vl.you{align-self:flex-end;background:var(--ink);color:var(--bg)}
+.vl.app{align-self:flex-start;background:var(--bg)}
+.vl .btn{margin-top:6px;padding:6px 10px}
+.mic{display:block;width:100%;padding:22px;border-radius:14px;border:none;background:var(--kraft);color:var(--kraft-ink);font-weight:800;font-size:1.15rem;cursor:pointer;box-shadow:inset 0 -4px 0 var(--kraft-dark)}
+.mic.on{background:var(--tape);color:#1E1D1B}
+.vtype{display:flex;gap:8px;margin:12px 0}
+.vtype input{flex:1;min-width:0;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg)}
+.vrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.btn.rec{border-color:var(--danger);color:var(--danger)}
+.check{display:flex;gap:8px;align-items:center;font-size:.92rem;margin:4px 0 12px}
+.help{margin:0 0 4px;padding-left:18px;color:var(--muted);font-size:.92rem}
+.notes h3{font-size:1rem;margin:24px 0 8px}
+.note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.note audio{flex:1 1 220px;height:40px}
+.prow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.item-name,.item-sub{display:block}
+.placebar{display:flex;gap:6px;overflow-x:auto;padding:14px 0 2px;margin:0;scrollbar-width:none}
+.placebar::-webkit-scrollbar{display:none}
+.placebar .chipbtn{flex:none;font-weight:600}
+.placehead{font-size:1.15rem;margin:26px 0 10px;padding-top:12px;border-top:2px solid var(--ink)}
+.loosehead{display:flex;justify-content:space-between;align-items:center;margin:22px 0 6px}
+.loosehead h3{margin:0;font-size:1rem}
+.btn.small{padding:6px 11px;font-size:.88rem}
+.chip.loose{font-family:var(--ui);font-weight:700;font-size:.78rem;background:transparent;border:1.5px solid var(--kraft-dark);color:var(--ink)}
+.item-right small{font-size:.75rem}
+.scope{margin:18px 0 0;color:var(--muted);font-size:.92rem}
+.linkbtn{border:none;background:none;padding:0;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <div class="brandrow">
-      <h1 class="brand">Boxes</h1>
+      <h1 class="brand">Storrrage</h1>
       <button class="btn quiet" id="scanBtn">Scan label</button>
       <button class="btn primary" id="newBoxBtn">New box</button>
       <button class="iconbtn" id="menuBtn" aria-label="More options">•••</button>
     </div>
     <div class="searchrow">
-      <input class="search" id="search" type="search" placeholder="Find anything, e.g. tent, B-014, christmas" autocomplete="off">
+      <input class="search" id="search" type="search" placeholder="Find anything, e.g. tent, Elsa’s boots, verktyg" autocomplete="off">
     </div>
+    <p class="statusline" id="statusline" hidden></p>
   </header>
   <main id="app"></main>
 </div>
+<button class="fab" id="talkBtn">🎙 Talk</button>
 <dialog id="sheet"></dialog>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script>//---------------------------------------------------------------------
@@ -12556,14 +12609,17 @@ const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'
 const clone = o => JSON.parse(JSON.stringify(o));
 
 let boxes = [], ready = false, lastBackup = null;
+let household = [], me = '', notes = [];
+let places = [], currentPlace = 'all';
+let voiceLang = (navigator.language || '').toLowerCase().startsWith('sv') ? 'sv-SE' : 'en-US';
 let view = {name: 'home'}, query = '';
 
 /* ---------- IndexedDB ---------- */
 let idb;
 function openDB(){
   return new Promise((res, rej) => {
-    const r = indexedDB.open('boxes-app', 1);
-    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('boxes', {keyPath: 'id'}); d.createObjectStore('photos'); d.createObjectStore('meta'); };
+    const r = indexedDB.open('boxes-app', 2);
+    r.onupgradeneeded = () => { const d = r.result; for (const [n, o] of [['boxes', {keyPath: 'id'}], ['photos'], ['meta'], ['notes', {keyPath: 'id'}]]) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, o); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   });
 }
@@ -12582,6 +12638,9 @@ const phGet = k => tx('photos', 'readonly', s => s.get(k));
 const phDel = k => tx('photos', 'readwrite', s => s.delete(k));
 const metaGet = k => tx('meta', 'readonly', s => s.get(k));
 const metaPut = (k, v) => tx('meta', 'readwrite', s => s.put(v, k));
+const noteAll = () => tx('notes', 'readonly', s => s.getAll());
+const notePut = n => tx('notes', 'readwrite', s => s.put(n));
+const noteDel = id => tx('notes', 'readwrite', s => s.delete(id));
 
 /* ---------- helpers ---------- */
 let toastTimer;
@@ -12612,7 +12671,199 @@ function qrSvg(text, cell = 4){
 }
 const labelText = b => 'BOXES:' + b.code;
 const findBox = id => boxes.find(b => b.id === id);
-const saveErr = e => (e && e.name === 'QuotaExceededError') ? 'The phone is out of storage space for Boxes.' : 'Couldn’t save that change. Try again.';
+/* ---------- storage places: places hold boxes, and items can sit in a place without a box ---------- */
+const findPlace = id => places.find(p => p.id === id);
+const placeName = id => (findPlace(id) || {}).name || '';
+const realBoxes = () => boxes.filter(b => !b.loose);
+const boxesIn = pid => boxes.filter(b => !b.loose && (pid === 'all' || b.placeId === pid));
+const looseOf = pid => boxes.find(b => b.loose && b.placeId === pid);
+const byName = (a, c) => a.name.localeCompare(c.name, 'sv');
+function ensureLoose(pid){
+  let l = looseOf(pid);
+  if (!l){ l = {id: newId(), loose: true, placeId: pid, code: '—', name: 'Not in a box', items: [], createdAt: new Date().toISOString()}; putBox(l); }
+  return findBox(l.id);
+}
+function addPlace(name){
+  name = (name || '').trim(); if (!name) return null;
+  const hit = places.find(p => p.name.toLowerCase() === name.toLowerCase()); if (hit) return hit;
+  const p = {id: newId(), name: name[0].toUpperCase() + name.slice(1), createdAt: new Date().toISOString()};
+  places.push(p); metaPut('places', places).catch(() => {}); return p;
+}
+function setPlace(pid){
+  if (pid !== 'all' && !findPlace(pid)) return;
+  currentPlace = pid; metaPut('currentPlace', pid).catch(() => {});
+}
+const scopePlace = () => currentPlace !== 'all' ? currentPlace : (places.length === 1 ? places[0].id : null);
+const saveErr = e => (e && e.name === 'QuotaExceededError') ? 'The phone is out of storage space for Storrrage.' : 'Couldn’t save that change. Try again.';
+
+
+/* ---------- icon guessing for items without photos ---------- */
+// Most specific first. A leading "=" means the word must match on its own (avoids "car" in "scarf").
+const ICONS = [
+  ['🎄', ['christmas','xmas','advent','julpynt','juldekor','julgran','tomte','=jul','julbelysning']],
+  ['🎃', ['halloween','pumpkin','pumpa']],
+  ['🛏️', ['sleeping bag','sovsäck','duvet','täcke','pillow','kudde','bedding','sängkläder','mattress','madrass','lakan','=sheets']],
+  ['⛺', ['tent','tält']],
+  ['🥾', ['boot','känga','kängor','stövel','stövlar']],
+  ['👟', ['shoe','sneaker','=sko','=skor','gympaskor','sandal']],
+  ['🧥', ['jacket','coat','jacka','=rock','parka','overall','fleece','raincoat','regnkläder']],
+  ['👗', ['dress','klänning','skirt','kjol']],
+  ['🧣', ['scarf','halsduk','mitten','vante','vantar','glove','handske','mössa','beanie']],
+  ['🧢', ['=cap','=caps','keps','=hat','=hats','hatt']],
+  ['👕', ['shirt','tröja','tröjor','clothes','clothing','kläder','sweater','hoodie','byxor','trousers','=pants','jeans','sock','strumpor','underwear','pyjamas']],
+  ['🎿', ['=ski','=skis','skid','slalom','pjäx','snowboard']],
+  ['⛸️', ['skate','skridsko']],
+  ['🛷', ['sled','pulka','kälke','stjärtlapp']],
+  ['🚲', ['bike','bicycle','cykel','cykl']],
+  ['🛴', ['scooter','sparkcykel']],
+  ['🏒', ['hockey','innebandy','klubba']],
+  ['🎾', ['tennis','racket','badminton','padel']],
+  ['⚽', ['football','soccer','fotboll','=ball','=balls','=boll','bollar']],
+  ['🎣', ['fishing','fiske','=rod']],
+  ['🏋️', ['dumbbell','hantel','hantlar','vikter','kettlebell','=weights','yoga']],
+  ['👶', ['baby','bebis','barnvagn','stroller','=pram','spjälsäng','=crib','skötväska']],
+  ['🧸', ['toy','leksak','teddy','gosedjur','nalle','plush','=doll','=dolls','docka','dockor','lego','duplo','=brio']],
+  ['🎮', ['playstation','xbox','nintendo','console','konsol','video game','tv-spel']],
+  ['🎲', ['board game','brädspel','sällskapsspel','puzzle','pussel','=spel','=game','=games','dice','kortlek','playing cards']],
+  ['📚', ['book','=bok','böcker','novel','=roman','magazine','tidning','comic','serie']],
+  ['📁', ['document','dokument','binder','pärm','pärmar','papers','papper','folder','receipt','kvitto','deklaration']],
+  ['📷', ['camera','kamera','photo album','fotoalbum','=album','photograph','=foton']],
+  ['💿', ['=cd','=cds','=dvd','dvd:er','vinyl','=record','=records','=skiva','=skivor','blu-ray']],
+  ['🎸', ['guitar','gitarr','=bass','=bas','elbas']],
+  ['🎹', ['keyboard','piano','synth']],
+  ['🥁', ['drum','trumma','trummor']],
+  ['🎻', ['violin','fiol','instrument','ukulele','flute','flöjt']],
+  ['📺', ['=tv','television','tv-apparat','monitor','skärm','screen']],
+  ['💻', ['laptop','computer','dator','=pc','macbook','ipad','tablet','surfplatta']],
+  ['🖨️', ['printer','skrivare','scanner']],
+  ['📱', ['phone','telefon','=mobil','mobiltelefon','iphone']],
+  ['🎧', ['headphone','hörlur']],
+  ['🔊', ['speaker','högtalare','stereo','amplifier','förstärkare','radio']],
+  ['🔌', ['cable','kabel','sladd','charger','laddare','adapter','extension cord','grenuttag']],
+  ['🕯️', ['candle','stearinljus','värmeljus','ljusstake','candlestick']],
+  ['💡', ['lamp','lampa','lampor','=light','=lights','bulb','glödlampa','lantern','lykta','slinga']],
+  ['🔩', ['screw','skruv','=nail','=nails','=spik','bolt','=bult','=mutter','beslag']],
+  ['🛠️', ['tool','verktyg','drill','borrmaskin','skruvdragare','=saw','=såg','hammer','hammare','wrench','screwdriver','skruvmejsel','sander']],
+  ['🪜', ['ladder','stege']],
+  ['🧶', ['yarn','=garn','knitting','stickning','sewing','symaskin','fabric','=tyg']],
+  ['🎨', ['paint','målarfärg','brush','pensel','canvas','=art','craft','pyssel','easel']],
+  ['🛋️', ['sofa','soffa','couch','armchair','fåtölj']],
+  ['🪑', ['chair','=stol','=stolar','table','=bord','skrivbord','furniture','möbel','möbler','stool','=pall','shelf','hylla','hyllor','bench','bänk']],
+  ['🪞', ['mirror','spegel']],
+  ['🖼️', ['frame','=ram','=ramar','painting','tavla','tavlor','poster']],
+  ['🍽️', ['plate','tallrik','=dish','=dishes','servis','porslin','=china','cutlery','bestick','=glas','wine glass','vinglas','=bowl','=skål','skålar','=mug','=mugs','mugg','=kopp','koppar','=cup','=cups']],
+  ['🍳', ['=pan','stekpanna','=pot','=pots','kastrull','gryta','kitchen','=kök','köksgrej','blender','mixer','toaster','brödrost','våffeljärn','coffee maker','kaffebryggare']],
+  ['🧳', ['suitcase','resväska','luggage','=bag','=bags','väska','väskor','backpack','ryggsäck']],
+  ['🏕️', ['camping','=camp','friluft','outdoor','=stove','stormkök']],
+  ['🌱', ['garden','trädgård','=plant','=plants','växt','kruka','krukor','=hose','vattenslang','seeds','frön']],
+  ['🧹', ['vacuum','dammsugare','broom','kvast','=mop','mopp','cleaning','städ']],
+  ['🚗', ['=car','=bil','=tire','=tires','=tyre','=tyres','däck','roof box','takbox','car seat','bilbarnstol']],
+  ['🧴', ['shampoo','=soap','tvål','toiletries','hygien']],
+  ['🎁', ['gift','present','=paket','wrapping','presentpapper']],
+  ['🎈', ['party','kalas','=fest','balloon','ballong','birthday','födelsedag']],
+  ['🧺', ['basket','=korg','korgar','laundry','tvätt']],
+  ['⏰', ['clock','klocka','=watch']],
+  ['💍', ['jewelry','jewellery','smycke','smycken','=ring','=rings']],
+  ['🏆', ['trophy','pokal','medal','medalj']],
+  ['✉️', ['letter','=brev','=card','=cards','=kort','vykort','postcard']],
+];
+function matchIcon(text){
+  const t = ' ' + (text || '').toLowerCase() + ' ';
+  if (!t.trim()) return '';
+  const tokens = t.split(/[^a-zåäöéü0-9:-]+/).filter(Boolean);
+  for (const [icon, keys] of ICONS)
+    for (const k of keys)
+      if (k[0] === '=' ? tokens.includes(k.slice(1)) : t.includes(k)) return icon;
+  return '';
+}
+const guessIcon = it => matchIcon(it.name) || matchIcon(it.category) || '📦';
+
+/* ---------- search: synonyms, Swedish/English, related things ---------- */
+// Words that mean the same thing. A match on any of them counts as a direct match.
+const SYN = [
+  ['black','svart','svarta'],['white','vit','vita','vitt'],['grey','gray','grå','gråa','grått'],['blue','blå','blåa','blått'],
+  ['red','röd','röda','rött'],['green','grön','gröna','grönt'],['yellow','gul','gula','gult'],['pink','rosa'],['purple','lila'],
+  ['brown','brun','bruna','brunt'],['beige'],['orange'],['multicolour','multicolor','flerfärgad','randig','rutig','striped'],
+  ['winter','vinter'],['summer','sommar'],['spring/autumn','spring','autumn','fall','vår','höst'],['all year','året runt'],
+  ['shared','gemensam','gemensamt','gemensamma','delad'],['size','storlek','strl'],
+  ['jacket','jacka','coat','rock','parka'],['boot','boots','känga','kängor','stövel','stövlar'],['shoe','shoes','sko','skor'],
+  ['tent','tält'],['sleeping bag','sovsäck'],['bike','bicycle','cykel'],['book','books','bok','böcker'],['toy','toys','leksak','leksaker'],
+  ['lamp','lampa','lampor'],['drill','borrmaskin','borr','skruvdragare'],['tools','verktyg'],['plate','plates','tallrik','tallrikar'],
+  ['glass','glasses','glas'],['pillow','kudde','kuddar'],['duvet','täcke'],['blanket','filt','filtar'],['curtain','gardin','gardiner'],
+  ['rug','carpet','matta','mattor'],['helmet','hjälm'],['gloves','handskar','vantar'],['hat','mössa','hatt'],['trousers','pants','byxor'],
+  ['sweater','tröja','tröjor'],['dress','klänning'],['skates','skridskor'],['skis','skidor'],['sled','pulka','kälke'],
+  ['suitcase','resväska'],['backpack','ryggsäck'],['stroller','barnvagn'],['christmas','jul'],['decorations','pynt','dekorationer'],
+];
+// Collective words, e.g. "verktyg" finds anything that looks like a tool. These count as related matches.
+const GROUP_NAMES = [
+  [['clothes','clothing','kläder','klädd'], ['🧥','👗','🧣','🧢','👕','🥾','👟']],
+  [['shoes','footwear','skor','skodon'], ['🥾','👟']],
+  [['outerwear','ytterkläder'], ['🧥','🧣','🧢']],
+  [['toys','toy','leksaker','leksak'], ['🧸','🎲','🎮']],
+  [['games','spel'], ['🎲','🎮']],
+  [['kids','children','barn','barnsaker','bebis','baby'], ['👶','🧸']],
+  [['electronics','elektronik','tech','teknik'], ['📺','💻','🖨️','📱','🎧','🔊','🔌','📷','🎮']],
+  [['tools','tool','verktyg'], ['🛠️','🔩','🪜']],
+  [['kitchen','kök','köksgrejer','kitchenware','husgeråd'], ['🍽️','🍳']],
+  [['sports','sport','sportgrejer','träning','exercise'], ['🎿','⛸️','🛷','🚲','🛴','🏒','🎾','⚽','🎣','🏋️']],
+  [['winter','vinter','vintergrejer'], ['🎿','⛸️','🛷','🧣']],
+  [['camping','outdoor','friluftsliv','friluft','hiking','vandring'], ['⛺','🏕️','🛏️','🎣']],
+  [['furniture','möbler','möbel'], ['🛋️','🪑','🪞','🖼️']],
+  [['christmas','xmas','jul','julgrejer','julsaker'], ['🎄']],
+  [['music','musik','instrument','instruments'], ['🎸','🎹','🥁','🎻','💿']],
+  [['decorations','decor','dekoration','dekor','inredning','pynt'], ['🖼️','🪞','🕯️','💡','🎄','🎃']],
+  [['books','böcker','litteratur'], ['📚']],
+  [['papers','documents','dokument','papper'], ['📁']],
+  [['garden','trädgård'], ['🌱']],
+  [['car','bil','bilgrejer'], ['🚗']],
+  [['party','fest','kalas'], ['🎈','🎁']],
+  [['bags','väskor','luggage','bagage'], ['🧳']],
+  [['bedding','sängkläder','textiles','textil'], ['🛏️']],
+];
+const STOP = new Set(['the','a','an','my','our','any','some','for','of','in','to','with','and','is','are','we','do','have','has','got',
+  'anything','something','stuff','things','thing','where','och','min','mitt','mina','vår','vårt','våra','en','ett','till','för','med',
+  'i','på','något','nåt','någon','några','har','vi','det','den','de','är','var','finns','saker','sak','grejer','grej','prylar','alla']);
+function stems(tok){
+  const out = [tok];
+  if (tok.endsWith("'s")) out.push(tok.slice(0, -2));
+  for (const suf of ['arna','erna','orna','na','et','en','ar','er','or','es','s','n'])
+    if (tok.endsWith(suf) && tok.length - suf.length >= 4) out.push(tok.slice(0, -suf.length));
+  return [...new Set(out)];
+}
+function itemHay(it, b){
+  const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), it.owner, it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
+    it.color, it.season, it.brand, it.model, it.serial, b.loose ? '' : b.name, b.loose ? '' : b.code, b.location].filter(Boolean).join(' ').toLowerCase();
+  return {hay, toks: new Set(hay.split(/[^a-zåäöéü0-9.-]+/).filter(Boolean))};
+}
+function tokScore(tok, H, icon){
+  const ss = stems(tok);
+  const lit = w => w.length <= 3 ? H.toks.has(w) : H.hay.includes(w);
+  if (ss.some(lit)) return 2;
+  for (const g of SYN) if (ss.some(s => g.includes(s)) && g.some(lit)) return 2;
+  for (const [names, icons] of GROUP_NAMES) if (ss.some(s => names.includes(s)) && icons.includes(icon)) return 1;
+  const ti = ss.map(matchIcon).find(Boolean);
+  if (ti && ti === icon) return 1;
+  return 0;
+}
+function queryTokens(q){
+  return q.toLowerCase().replace(/['’]s(?=\s|$)/g, '').split(/[^a-zåäöéü0-9.-]+/).filter(t => t && !STOP.has(t));
+}
+function searchItems(q, opts = {}){
+  if (typeof opts === 'string') opts = {boxId: opts};
+  const toks = queryTokens(q), exact = [], related = [];
+  if (!toks.length) return {exact, related};
+  for (const b of boxes){
+    if (opts.boxId && b.id !== opts.boxId) continue;
+    if (opts.placeId && b.placeId !== opts.placeId) continue;
+    for (const it of (b.items || [])){
+      const H = itemHay(it, b), icon = guessIcon(it);
+      let min = 2;
+      for (const t of toks){ const s = tokScore(t, H, icon); if (s < min) min = s; if (!min) break; }
+      if (min === 2) exact.push([it, b]); else if (min === 1) related.push([it, b]);
+    }
+  }
+  return {exact, related};
+}
 
 /* ---------- persistence ---------- */
 function putBox(box){
@@ -12638,10 +12889,15 @@ async function shrink(file, max){
   if (bmp.close) bmp.close();
   return cv;
 }
-const toBlob = (cv, q) => new Promise(r => cv.toBlob(r, 'image/jpeg', q));
+const toBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
+// Photos: longest side 1600 px (sharp enough to read labels and serial numbers when zoomed),
+// saved as WebP, which is roughly a third smaller than JPEG at the same quality. JPEG if WebP isn't supported.
+const PHOTO_MAX = 1600, PHOTO_QUALITY = .78;
 async function storePhoto(file){
   const takenAt = new Date(file.lastModified || Date.now()).toISOString();
-  const blob = await toBlob(await shrink(file, 1600), .82);
+  const cv = await shrink(file, PHOTO_MAX);
+  let blob = await toBlob(cv, 'image/webp', PHOTO_QUALITY);
+  if (!blob || blob.type !== 'image/webp') blob = await toBlob(cv, 'image/jpeg', .8);
   const ref = newId();
   await phPut(ref, blob);
   return {ref, takenAt, addedAt: new Date().toISOString()};
@@ -12660,6 +12916,47 @@ function dropPhoto(ref){
   phDel(ref).catch(() => {});
   if (urls.has(ref)){ URL.revokeObjectURL(urls.get(ref)); urls.delete(ref); }
 }
+/* ---------- full-screen photo viewer with pinch and double-tap zoom ---------- */
+const viewer = document.createElement('dialog');
+viewer.id = 'viewer';
+viewer.innerHTML = '<div class="vwrap"><img id="vImg" alt=""></div><button class="vclose" aria-label="Close photo">×</button><p class="vhint">Pinch or double-tap to zoom</p>';
+document.body.appendChild(viewer);
+(() => {
+  const img = viewer.querySelector('#vImg'), wrap = viewer.querySelector('.vwrap');
+  let sc = 1, x = 0, y = 0, start = null, lastTap = 0, down = null;
+  const pts = new Map();
+  const apply = () => { img.style.transform = `translate(${x}px, ${y}px) scale(${sc})`; };
+  const reset = () => { sc = 1; x = 0; y = 0; apply(); };
+  const dist = () => { const [p, q] = [...pts.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
+  const begin = () => {
+    if (pts.size === 2) start = {d: dist(), sc};
+    else if (pts.size === 1){ const p = [...pts.values()][0]; start = {px: p.x, py: p.y, x, y}; }
+  };
+  wrap.addEventListener('pointerdown', e => {
+    wrap.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (pts.size === 1) down = {x: e.clientX, y: e.clientY, t: Date.now()};
+    begin();
+  });
+  wrap.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (pts.size === 2 && start && start.d){ sc = Math.min(6, Math.max(1, start.sc * dist() / start.d)); if (sc === 1){ x = 0; y = 0; } apply(); }
+    else if (pts.size === 1 && sc > 1 && start && start.px !== undefined){ x = start.x + e.clientX - start.px; y = start.y + e.clientY - start.py; apply(); }
+  });
+  const up = e => {
+    pts.delete(e.pointerId); begin();
+    if (pts.size === 0 && down && Date.now() - down.t < 250 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 10){
+      if (Date.now() - lastTap < 320){ if (sc > 1) reset(); else { sc = 2.5; apply(); } lastTap = 0; }
+      else lastTap = Date.now();
+    }
+  };
+  wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
+  viewer.querySelector('.vclose').onclick = () => viewer.close();
+  window.openViewer = async ref => {
+    const u = await photoURL(ref); if (!u) return;
+    img.src = u; reset(); pts.clear(); viewer.showModal();
+  };
+})();
 const imgTag = (ref, cls, alt = '') => `<img class="${cls}" data-ph="${esc(ref)}" alt="${esc(alt)}">`;
 
 /* ---------- rendering ---------- */
@@ -12668,11 +12965,11 @@ function render(){
   if (!ready){ app.innerHTML = '<p class="status">Opening your storage…</p>'; return; }
   if (view.name === 'box' && !query){
     const b = findBox(view.boxId);
-    if (b){ renderBox(b); return hydrate(app); }
+    if (b){ renderBox(b); hydrate(app); return hydrateNotes(app); }
     view = {name: 'home'};
   }
   query ? renderSearch() : renderHome();
-  hydrate(app);
+  hydrate(app); hydrateNotes(app);
 }
 function tile(b){
   const n = (b.items || []).length;
@@ -12692,35 +12989,67 @@ function backupBanner(){
   return `<div class="banner"><span>${lastBackup ? `Last backup was ${esc(fmtDate(lastBackup))}.` : 'You haven’t made a backup yet.'} Everything is stored only on this phone, so keep a copy somewhere else in case it’s lost.</span>
     <button class="btn primary" data-act="backup">Back up now</button></div>`;
 }
+function placeBar(){
+  const chips = (places.length > 1 ? [{id: 'all', name: 'All places'}] : []).concat(places);
+  return `<div class="placebar">${chips.map(p => `<button class="chipbtn${currentPlace === p.id || (places.length === 1) ? ' on' : ''}" data-place="${esc(p.id)}">${esc(p.name)}</button>`).join('')}<button class="chipbtn add" data-act="addplace">+ Place</button></div>`;
+}
+function placeSection(pid, heading){
+  const bx = boxesIn(pid).sort(byCode), loose = looseOf(pid), li = loose ? (loose.items || []) : [];
+  return `${heading ? `<h2 class="placehead">${esc(placeName(pid))}</h2>` : ''}
+    ${bx.length ? `<div class="grid">${bx.map(tile).join('')}</div>` : `<p class="hint">No boxes here yet.</p>`}
+    <div class="loosehead"><h3>Not in a box</h3><button class="btn quiet small" data-addloose="${esc(pid)}">Add item</button></div>
+    ${li.length ? `<ul class="items">${[...li].sort(byName).map(i => itemRow(i, loose)).join('')}</ul>` : `<p class="hint">For things stored without a box, like a bike or skis.</p>`}`;
+}
 function renderHome(){
-  if (!boxes.length){
-    app.innerHTML = `<div class="empty"><h2>No boxes yet</h2>
-      <p>Add your first box, then add what’s inside it with a photo of each thing. Every box gets a code and a label you can print and stick on it.</p>
-      <button class="btn primary" data-act="newbox">Add first box</button></div>`;
+  const pid = places.length === 1 ? places[0].id : currentPlace;
+  const inScope = b => pid === 'all' || b.placeId === pid;
+  const scoped = boxes.filter(inScope);
+  const nBoxes = scoped.filter(b => !b.loose).length;
+  const items = scoped.reduce((s, b) => s + (b.items || []).length, 0);
+  const total = scoped.reduce((s, b) => s + boxValue(b), 0);
+  if (!boxes.some(b => !b.loose || (b.items || []).length)){
+    app.innerHTML = `${placeBar()}<div class="empty"><h2>Nothing stored yet</h2>
+      <p>Add your first box, then add what’s inside it with a photo of each thing. Every box gets a code and a label you can print and stick on it. Things that don’t go in a box can be added on their own.</p>
+      <div class="actions" style="margin:0"><button class="btn primary" data-act="newbox">Add first box</button><button class="btn quiet" data-addloose="${esc(pid === 'all' ? places[0].id : pid)}">Add item without a box</button></div></div>`;
     return;
   }
-  const items = boxes.reduce((s, b) => s + (b.items || []).length, 0);
-  const total = boxes.reduce((s, b) => s + boxValue(b), 0);
-  app.innerHTML = `${backupBanner()}<p class="summary">${boxes.length} ${boxes.length === 1 ? 'box' : 'boxes'} and ${items} ${items === 1 ? 'item' : 'items'}${total ? `, about ${kr(total)} in estimated value` : ''}.</p>
-    <div class="grid">${[...boxes].sort(byCode).map(tile).join('')}</div>`;
+  app.innerHTML = `${backupBanner()}${placeBar()}<p class="summary">${nBoxes} ${nBoxes === 1 ? 'box' : 'boxes'} and ${items} ${items === 1 ? 'item' : 'items'}${total ? `, about ${kr(total)} in estimated value` : ''}.</p>
+    ${pid === 'all' ? places.map(p => placeSection(p.id, true)).join('') : placeSection(pid, false)}
+    ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), 'Voice notes not tied to a box')}`;
 }
 function itemRow(it, b, showBox){
   const p = (it.photos || [])[0];
-  const img = p ? imgTag(p.ref, 'thumb') : `<span class="thumb none">No photo</span>`;
-  const sub = [it.category, it.storedOn ? 'stored ' + age(it.storedOn) : ''].filter(Boolean).join(', ');
+  const img = p ? imgTag(p.ref, 'thumb') : `<span class="thumb none icon" aria-hidden="true">${guessIcon(it)}</span>`;
+  const sub = [it.spot, it.owner, it.size ? 'size ' + it.size : '', it.color, it.category, it.storedOn ? 'stored ' + age(it.storedOn) : ''].filter(Boolean).join(', ');
+  const where = b.loose ? `<span class="chip loose">${esc(placeName(b.placeId))}</span>` : `<span class="chip">${esc(b.code)}</span>${places.length > 1 ? `<br><small>${esc(placeName(b.placeId))}</small>` : ''}`;
   return `<li><button class="item" data-item="${esc(it.id)}" data-box="${esc(b.id)}">${img}
     <span class="item-main"><span class="item-name">${esc(it.name)}</span><span class="item-sub">${esc(sub)}</span></span>
-    <span class="item-right">${showBox ? `<span class="chip">${esc(b.code)}</span><br>` : ''}${esc(kr(it.value))}</span></button></li>`;
+    <span class="item-right">${showBox ? where + '<br>' : ''}${esc(kr(it.value))}</span></button></li>`;
+}
+function notesHTML(list, title){
+  if (!list.length) return '';
+  return `<section class="notes"><h3>${esc(title)}</h3>${list.map(n => `<div class="note">
+    <audio controls preload="none" data-note="${esc(n.id)}"></audio>
+    <span class="hint">${esc(fmtStamp(n.createdAt))}, ${n.duration} s${n.by ? `, ${esc(n.by)}` : ''}</span>
+    <button class="btn quiet" data-notedel="${esc(n.id)}">Delete</button></div>`).join('')}</section>`;
+}
+const noteUrls = new Map();
+function hydrateNotes(root){
+  root.querySelectorAll('audio[data-note]').forEach(a => {
+    const n = notes.find(x => x.id === a.dataset.note); if (!n || !n.blob) return;
+    if (!noteUrls.has(n.id)) noteUrls.set(n.id, URL.createObjectURL(n.blob));
+    a.src = noteUrls.get(n.id);
+  });
 }
 function renderBox(b){
   const items = b.items || [];
   const total = boxValue(b);
-  app.innerHTML = `<button class="iconbtn back" data-act="home">← All boxes</button>
+  app.innerHTML = `<button class="iconbtn back" data-act="home">← ${esc(placeName(b.placeId) || 'All boxes')}</button>
     <section class="boxhead">
       <div>
         <div class="code">${esc(b.code)}</div>
         <h2>${esc(b.name)}</h2>
-        ${b.location ? `<p>${esc(b.location)}</p>` : ''}
+        <p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}</p>
         <p>${items.length} ${items.length === 1 ? 'item' : 'items'}${total ? `, about ${kr(total)}` : ''}. Packed ${esc(fmtDate(b.createdAt))}.</p>
         ${b.notes ? `<p style="margin-top:6px">${esc(b.notes)}</p>` : ''}
       </div>
@@ -12733,31 +13062,73 @@ function renderBox(b){
       <button class="btn quiet" data-act="label">Get label</button>
     </div>
     ${items.length ? `<ul class="items">${[...items].sort((a,c) => a.name.localeCompare(c.name, 'sv')).map(i => itemRow(i, b)).join('')}</ul>`
-      : `<p class="hint">Nothing in this box yet. Add items one by one, with a photo of each, so you have proof of what’s stored.</p>`}`;
+      : `<p class="hint">Nothing in this box yet. Add items one by one, with a photo of each, so you have proof of what’s stored. Or tap Talk and say what you’re putting in.</p>`}
+    ${notesHTML(notes.filter(n => n.boxId === b.id), 'Voice notes for this box')}`;
 }
 function renderSearch(){
   const q = query.toLowerCase().trim();
-  const boxHits = boxes.filter(b => [b.code, b.name, b.location, b.notes].some(v => (v || '').toLowerCase().includes(q))).sort(byCode);
-  const itemHits = [];
-  boxes.forEach(b => (b.items || []).forEach(it => {
-    if ([it.name, it.category, it.notes].some(v => (v || '').toLowerCase().includes(q))) itemHits.push([it, b]);
-  }));
-  if (!boxHits.length && !itemHits.length){ app.innerHTML = `<p class="status">Nothing matches “${esc(query)}”. Try a shorter word or a box code like B-001.</p>`; return; }
-  app.innerHTML = `${itemHits.length ? `<p class="summary">${itemHits.length} matching ${itemHits.length === 1 ? 'item' : 'items'}</p>
-      <ul class="items">${itemHits.map(([it, b]) => itemRow(it, b, true)).join('')}</ul>` : ''}
+  const sp = places.length > 1 && currentPlace !== 'all' ? currentPlace : null;
+  const boxHits = realBoxes().filter(b => (!sp || b.placeId === sp) && [b.code, b.name, b.location, b.notes].some(v => (v || '').toLowerCase().includes(q))).sort(byCode);
+  const {exact, related} = searchItems(query, {placeId: sp});
+  const scopeLine = sp ? `<p class="scope">Searching in ${esc(placeName(sp))}. <button class="linkbtn" data-place="all">Search all places</button></p>` : '';
+  if (!boxHits.length && !exact.length && !related.length){ app.innerHTML = `${scopeLine}<p class="status">Nothing matches “${esc(query)}”${sp ? ' here' : ''}. Try another word or a box code like B-001.</p>`; return; }
+  if (!boxHits.length && !exact.length && !related.length){ app.innerHTML = `<p class="status">Nothing matches “${esc(query)}”. Try another word or a box code like B-001.</p>`; return; }
+  app.innerHTML = `${scopeLine}${exact.length ? `<p class="summary">${exact.length} matching ${exact.length === 1 ? 'item' : 'items'}</p>
+      <ul class="items">${exact.map(([it, b]) => itemRow(it, b, true)).join('')}</ul>` : ''}
+    ${related.length ? `<p class="summary">Related: ${related.length} ${related.length === 1 ? 'item' : 'items'} of the same kind</p>
+      <ul class="items">${related.map(([it, b]) => itemRow(it, b, true)).join('')}</ul>` : ''}
     ${boxHits.length ? `<p class="summary">${boxHits.length} matching ${boxHits.length === 1 ? 'box' : 'boxes'}</p>
       <div class="grid">${boxHits.map(tile).join('')}</div>` : ''}`;
 }
-function openBox(id){ view = {name: 'box', boxId: id}; query = ''; $('#search').value = ''; render(); window.scrollTo(0, 0); }
+
+function openBox(id){
+  const b = findBox(id); if (!b || b.loose) return;
+  if (currentPlace !== 'all' && b.placeId !== currentPlace) setPlace(b.placeId);
+  view = {name: 'box', boxId: id}; query = ''; $('#search').value = ''; render(); window.scrollTo(0, 0);
+}
+function placesSheet(){
+  openSheet(`<h3>Storage places</h3>
+    <p class="hint">For example the basement storage unit, the attic, the garage or the summer house. Only a name is stored, never an address.</p>
+    <div id="plList"></div>
+    <div class="vtype"><input id="plName" placeholder="Name, e.g. Vinden" autocapitalize="sentences"><button class="btn primary" id="plAdd">Add</button></div>
+    <div class="sheet-foot"><button class="btn primary" id="plClose">Done</button></div>`);
+  const draw = () => {
+    $('#plList').innerHTML = places.map(p => {
+      const n = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.loose ? 0 : 1) + (b.items || []).length, 0);
+      return `<div class="prow"><span>${esc(p.name)}</span><span><button class="iconbtn" data-plren="${esc(p.id)}">Rename</button>${places.length > 1 && !n ? `<button class="iconbtn" data-pldel="${esc(p.id)}">Remove</button>` : ''}</span></div>`;
+    }).join('');
+  };
+  draw();
+  const add = () => { const p = addPlace($('#plName').value); $('#plName').value = ''; if (p){ draw(); render(); } };
+  $('#plAdd').onclick = add;
+  $('#plName').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  $('#plList').onclick = e => {
+    const r = e.target.closest('[data-plren]'), d = e.target.closest('[data-pldel]');
+    if (r){ const p = findPlace(r.dataset.plren); const n = prompt('New name', p.name); if (n && n.trim()){ p.name = n.trim(); metaPut('places', places).catch(() => {}); draw(); render(); } }
+    if (d){ places = places.filter(p => p.id !== d.dataset.pldel); boxes.filter(b => b.loose && b.placeId === d.dataset.pldel).forEach(b => removeBox(b.id)); if (currentPlace === d.dataset.pldel) setPlace('all'); metaPut('places', places).catch(() => {}); draw(); render(); }
+  };
+  $('#plClose').onclick = closeSheet;
+}
+async function deleteNote(id){
+  if (!confirm('Delete this voice note?')) return;
+  notes = notes.filter(n => n.id !== id);
+  if (noteUrls.has(id)){ URL.revokeObjectURL(noteUrls.get(id)); noteUrls.delete(id); }
+  await noteDel(id).catch(e => toast(saveErr(e))); updateStatus(); render();
+}
 
 app.addEventListener('click', e => {
-  const t = e.target.closest('[data-open],[data-item],[data-act]'); if (!t) return;
+  const t = e.target.closest('[data-open],[data-item],[data-act],[data-notedel],[data-place],[data-addloose],img.boxphoto'); if (!t) return;
+  if (t.dataset.place){ setPlace(t.dataset.place); return render(); }
+  if (t.dataset.addloose) return itemSheet(ensureLoose(t.dataset.addloose).id);
+  if (t.dataset.notedel) return deleteNote(t.dataset.notedel);
+  if (t.matches('img.boxphoto')) return openViewer(t.dataset.ph);
   if (t.dataset.open) return openBox(t.dataset.open);
   if (t.dataset.item) return itemSheet(t.dataset.box, t.dataset.item);
   const b = findBox(view.boxId);
   switch (t.dataset.act){
     case 'home': view = {name: 'home'}; render(); break;
     case 'newbox': boxSheet(); break;
+    case 'addplace': { const p = addPlace(prompt('Name of the storage place, e.g. Vinden or Garaget')); if (p){ setPlace(p.id); render(); } break; }
     case 'additem': itemSheet(b.id); break;
     case 'editbox': boxSheet(b.id); break;
     case 'label': labels([b]); break;
@@ -12769,6 +13140,7 @@ $('#search').addEventListener('input', e => { clearTimeout(searchTimer); searchT
 $('#newBoxBtn').onclick = () => boxSheet();
 $('#scanBtn').onclick = () => scanSheet();
 $('#menuBtn').onclick = () => menuSheet();
+$('#talkBtn').onclick = () => voiceSheet();
 
 /* ---------- sheets ---------- */
 const sheet = $('#sheet');
@@ -12804,6 +13176,7 @@ function photoState(initial, multiple){
       st.busy = false; draw();
     });
     $('#phwrap').addEventListener('click', e => {
+      const im = e.target.closest('img[data-ph]'); if (im) return openViewer(im.dataset.ph);
       const rm = e.target.closest('[data-rm]'); if (!rm) return;
       const [p] = st.photos.splice(+rm.dataset.rm, 1);
       if (st.added.includes(p.ref)){ st.added = st.added.filter(r => r !== p.ref); dropPhoto(p.ref); } else st.removed.push(p.ref);
@@ -12817,12 +13190,13 @@ function photoState(initial, multiple){
 
 function boxSheet(id){
   const existing = id ? findBox(id) : null;
-  const b = existing ? clone(existing) : {id: newId(), code: nextCode(), name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString()};
+  const b = existing ? clone(existing) : {id: newId(), code: nextCode(), name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: scopePlace() || places[0].id};
   const ps = photoState(b.photo ? [b.photo] : [], false);
   let saved = false;
   openSheet(`<h3>${existing ? 'Edit box' : 'New box'} <span class="chip">${esc(b.code)}</span></h3>
     <label class="field"><span>Name</span><input id="bName" value="${esc(b.name)}" placeholder="Winter clothes"></label>
-    <label class="field"><span>Where in the storage unit</span><input id="bLoc" value="${esc(b.location)}" placeholder="Back wall, top shelf"></label>
+    <label class="field"><span>Storage place</span><select id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <label class="field"><span>Where in that place</span><input id="bLoc" value="${esc(b.location)}" placeholder="Back wall, top shelf"></label>
     <label class="field"><span>Notes</span><textarea id="bNotes">${esc(b.notes)}</textarea></label>
     <div class="field"><span>Photo of the box</span><div id="phwrap"></div></div>
     <div class="sheet-foot">
@@ -12835,7 +13209,7 @@ function boxSheet(id){
   $('#bSave').onclick = () => {
     if (ps.busy) return toast('Wait for the photo to finish saving.');
     const name = $('#bName').value.trim(); if (!name){ $('#bName').focus(); return toast('Give the box a name.'); }
-    b.name = name; b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim();
+    b.name = name; b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim(); b.placeId = $('#bPlace').value;
     b.photo = ps.photos[0] || null;
     ps.commit(); saved = true; putBox(b); closeSheet();
     if (!existing){ openBox(b.id); toast(`${b.code} added. Get its label from the box page.`); }
@@ -12850,26 +13224,79 @@ function boxSheet(id){
   };
 }
 
+/* ---------- item details: owner, size, colour and more, depending on what the item is ---------- */
+const KINDS = {
+  clothes: ['🧥','👗','🧣','🧢','👕'], shoes: ['🥾','👟'], kids: ['👶','🧸'],
+  sports: ['🎿','⛸️','🛷','🚲','🛴','🏒','🎾','⚽','🎣','🏋️'],
+  tech: ['📺','💻','🖨️','📱','🎧','🔊','🔌','📷','🎮'], tools: ['🛠️','🪜','🧹','🔩'], music: ['🎸','🎹','🥁','🎻'],
+};
+const KIND_FIELDS = {
+  clothes: ['owner','size','color','season'], shoes: ['owner','size','color','season'], kids: ['owner','size','color'],
+  sports: ['owner','size','brand'], tech: ['brand','model','serial'], tools: ['brand','model','serial'],
+  music: ['owner','brand','model','serial'], other: ['owner','color','brand'],
+};
+const ALL_FIELDS = ['owner','size','color','season','brand','model','serial'];
+const FIELD_LABEL = {owner: 'Whose is it', size: 'Size', color: 'Colour', season: 'Season', brand: 'Brand', model: 'Model', serial: 'Serial number'};
+const COLORS = ['Black','White','Grey','Blue','Red','Green','Yellow','Pink','Purple','Brown','Beige','Multicolour'];
+const SEASONS = ['Winter','Summer','Spring/autumn','All year'];
+function kindOf(it){ const ic = guessIcon(it); for (const k in KINDS) if (KINDS[k].includes(ic)) return k; return 'other'; }
+function recentValues(field, kind){
+  const out = [];
+  boxes.forEach(b => (b.items || []).forEach(i => { if (i[field] && (!kind || kindOf(i) === kind) && !out.includes(i[field])) out.push(i[field]); }));
+  return out.slice(-6);
+}
+function chipsFor(field, kind){
+  if (field === 'owner') return [...household, 'Shared'];
+  if (field === 'color') return COLORS;
+  if (field === 'season') return SEASONS;
+  if (field === 'size') return [...new Set([...recentValues('size', kind), ...(kind === 'clothes' ? ['XS','S','M','L','XL','XXL'] : [])])];
+  if (field === 'brand') return recentValues('brand');
+  return [];
+}
+function detailsHTML(attrs, kind, moreOpen){
+  const main = KIND_FIELDS[kind], rest = ALL_FIELDS.filter(f => !main.includes(f));
+  const field = k => {
+    const v = attrs[k] || '', chips = chipsFor(k, kind);
+    return `<div class="field" data-f="${k}"><span>${FIELD_LABEL[k]}</span>
+      <input data-attr="${k}" value="${esc(v)}" ${k === 'serial' ? 'autocapitalize="characters"' : ''} ${k === 'size' ? 'inputmode="text"' : ''}>
+      ${chips.length || k === 'owner' ? `<div class="chips">${chips.map(c => `<button type="button" class="chipbtn${v.toLowerCase() === c.toLowerCase() ? ' on' : ''}" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}${k === 'owner' ? '<button type="button" class="chipbtn add" data-addperson>+ Person</button>' : ''}</div>` : ''}
+    </div>`;
+  };
+  return main.map(field).join('') + `<details class="more" ${moreOpen ? 'open' : ''}><summary>More details</summary>${rest.map(field).join('')}</details>`;
+}
+function addPerson(name){
+  name = (name || '').trim(); if (!name) return '';
+  const hit = household.find(h => h.toLowerCase() === name.toLowerCase()); if (hit) return hit;
+  household.push(name); metaPut('household', household).catch(() => {}); return name;
+}
+
 function itemSheet(boxId, itemId){
   const box = findBox(boxId); if (!box) return;
   const existing = itemId ? (box.items || []).find(i => i.id === itemId) : null;
-  const it = existing ? clone(existing) : {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], addedAt: new Date().toISOString()};
+  const it = existing ? clone(existing) : {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
+  const attrs = {}; ALL_FIELDS.forEach(f => { attrs[f] = it[f] || ''; });
   const ps = photoState(it.photos || [], true);
   const cats = [...new Set(boxes.flatMap(b => (b.items || []).map(i => i.category)).filter(Boolean))].sort();
-  let saved = false;
+  let saved = false, kind = kindOf(it), moreOpen = false;
   openSheet(`<h3>${existing ? 'Edit item' : 'Add item'}</h3>
-    ${existing ? `<p class="proof">Registered ${esc(fmtStamp(it.addedAt))}${it.updatedAt ? `, last changed ${esc(fmtStamp(it.updatedAt))}` : ''}.</p>` : ''}
-    <label class="field"><span>What is it</span><input id="iName" value="${esc(it.name)}" placeholder="Tent, 3 person"></label>
+    ${existing ? `<p class="proof">Registered ${esc(fmtStamp(it.addedAt))}${it.addedBy ? ` by ${esc(it.addedBy)}` : ''}${it.updatedAt ? `, last changed ${esc(fmtStamp(it.updatedAt))}` : ''}.</p>` : ''}
+    <label class="field"><span>What is it</span><span class="namerow"><span class="thumb none icon" id="iIcon" aria-hidden="true">${guessIcon(it)}</span><input id="iName" value="${esc(it.name)}" placeholder="Tent, 3 person"></span></label>
+    <label class="field" id="spotField" ${box.loose ? '' : 'hidden'}><span>Where exactly</span><input id="iSpot" value="${esc(it.spot || '')}" placeholder="Hanging on the wall by the door"></label>
     <div class="field"><span>Photos</span><div id="phwrap"></div></div>
+    <div id="details"></div>
     <div class="row2">
-      <label class="field"><span>Box</span><select id="iBox">${[...boxes].sort(byCode).map(b => `<option value="${esc(b.id)}" ${b.id === box.id ? 'selected' : ''}>${esc(b.code)} ${esc(b.name)}</option>`).join('')}</select></label>
+      <label class="field"><span>Where</span><select id="iBox">${places.map(p => `<optgroup label="${esc(p.name)}">
+        <option value="loose:${esc(p.id)}" ${box.loose && box.placeId === p.id ? 'selected' : ''}>${esc(p.name)}, not in a box</option>
+        ${boxesIn(p.id).sort(byCode).map(b => `<option value="${esc(b.id)}" ${b.id === box.id ? 'selected' : ''}>${esc(b.code)} ${esc(b.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
       <label class="field"><span>Category</span><input id="iCat" list="cats" value="${esc(it.category)}" placeholder="Camping"><datalist id="cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
     </div>
     <div class="row2">
       <label class="field"><span>Estimated value (kr)</span><input id="iVal" type="number" inputmode="numeric" min="0" step="1" value="${esc(it.value)}"></label>
       <label class="field"><span>Stored since</span><input id="iDate" type="date" value="${esc(it.storedOn)}"></label>
     </div>
-    <label class="field"><span>Notes</span><textarea id="iNotes" placeholder="Brand, model, serial number, where the receipt is">${esc(it.notes)}</textarea></label>
+    <label class="field"><span>Tags</span><input id="iTags" value="${esc((it.tags || []).join(', '))}" placeholder="e.g. sommarstugan, hand-me-downs"></label>
+    <p class="proof">Search already understands Swedish and English words for most things. Tags are for your own words, separated by commas.</p>
+    <label class="field"><span>Notes</span><textarea id="iNotes" placeholder="Condition, where the receipt is, anything else">${esc(it.notes)}</textarea></label>
     <div class="sheet-foot">
       ${existing ? '<button class="btn danger" id="iDel">Delete item</button><span class="spacer"></span>' : ''}
       <button class="btn quiet" id="iCancel">Cancel</button>
@@ -12877,14 +13304,46 @@ function itemSheet(boxId, itemId){
       <button class="btn primary" id="iSave">${existing ? 'Save item' : 'Add item'}</button>
     </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
+  const det = $('#details');
+  const drawDetails = () => { det.innerHTML = detailsHTML(attrs, kind, moreOpen); };
+  drawDetails();
+  det.addEventListener('toggle', e => { if (e.target.matches('details.more')) moreOpen = e.target.open; }, true);
+  det.addEventListener('input', e => {
+    const k = e.target.dataset.attr; if (!k) return;
+    attrs[k] = e.target.value;
+    e.target.parentElement.querySelectorAll('[data-chip]').forEach(c => c.classList.toggle('on', c.dataset.chip.toLowerCase() === e.target.value.trim().toLowerCase()));
+  });
+  det.addEventListener('click', e => {
+    if (e.target.closest('[data-addperson]')){
+      const n = addPerson(prompt('Name of the person'));
+      if (n){ attrs.owner = n; drawDetails(); }
+      return;
+    }
+    const c = e.target.closest('[data-chip]'); if (!c) return;
+    const f = c.closest('[data-f]').dataset.f;
+    attrs[f] = attrs[f].toLowerCase() === c.dataset.chip.toLowerCase() ? '' : c.dataset.chip;
+    drawDetails();
+  });
+  const upd = () => {
+    const probe = {name: $('#iName').value, category: $('#iCat').value};
+    $('#iIcon').textContent = guessIcon(probe);
+    const k = kindOf(probe); if (k !== kind){ kind = k; drawDetails(); }
+  };
+  $('#iName').addEventListener('input', upd); $('#iCat').addEventListener('input', upd);
+  $('#iBox').addEventListener('change', e => { $('#spotField').hidden = !e.target.value.startsWith('loose:'); });
   $('#iCancel').onclick = closeSheet;
   const save = again => {
     if (ps.busy) return toast('Wait for the photos to finish saving.');
     const name = $('#iName').value.trim(); if (!name){ $('#iName').focus(); return toast('Give the item a name.'); }
     Object.assign(it, {name, category: $('#iCat').value.trim(), value: $('#iVal').value ? Math.max(0, +$('#iVal').value) : '',
-      storedOn: $('#iDate').value || today(), notes: $('#iNotes').value.trim(), photos: ps.photos});
+      storedOn: $('#iDate').value || today(), notes: $('#iNotes').value.trim(), photos: ps.photos,
+      tags: $('#iTags').value.split(',').map(s => s.trim()).filter(Boolean)});
+    ALL_FIELDS.forEach(f => { const v = (attrs[f] || '').trim(); if (v) it[f] = v; else delete it[f]; });
+    if (it.owner && it.owner !== 'Shared') addPerson(it.owner);
     if (existing) it.updatedAt = new Date().toISOString();
-    const targetId = $('#iBox').value;
+    const sel = $('#iBox').value;
+    if (sel.startsWith('loose:') && $('#iSpot').value.trim()) it.spot = $('#iSpot').value.trim(); else delete it.spot;
+    const targetId = sel.startsWith('loose:') ? ensureLoose(sel.slice(6)).id : sel;
     ps.commit(); saved = true;
     const from = clone(findBox(boxId));
     from.items = (from.items || []).filter(i => i.id !== it.id);
@@ -12900,6 +13359,32 @@ function itemSheet(boxId, itemId){
     saved = true; ps.discard(); (existing.photos || []).forEach(p => dropPhoto(p.ref));
     const b2 = clone(findBox(boxId)); b2.items = b2.items.filter(i => i.id !== existing.id); putBox(b2); closeSheet();
   };
+}
+
+/* ---------- people in the household ---------- */
+function peopleSheet(){
+  openSheet(`<h3>People in the household</h3>
+    <p class="hint">Used for “whose is it” on items, and in voice commands like “Elsa’s boots”.</p>
+    <div id="plist"></div>
+    <div class="vtype"><input id="pName" placeholder="Name" autocapitalize="words"><button class="btn primary" id="pAdd">Add</button></div>
+    <label class="field" style="margin-top:6px"><span>Who uses this phone?</span><select id="pMe"></select></label>
+    <p class="proof">Lets “my” and “mina” mean this person when you talk to Storrrage. It also records who registered each item.</p>
+    <div class="sheet-foot"><button class="btn primary" id="pClose">Done</button></div>`);
+  const draw = () => {
+    $('#plist').innerHTML = household.length ? household.map((n, i) => `<div class="prow"><span>${esc(n)}</span><button class="iconbtn" data-pdel="${i}">Remove</button></div>`).join('') : '<p class="hint">No one added yet.</p>';
+    $('#pMe').innerHTML = `<option value="">Not set</option>` + household.map(n => `<option ${n === me ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  };
+  draw();
+  const add = () => { const n = addPerson($('#pName').value); $('#pName').value = ''; if (n) draw(); };
+  $('#pAdd').onclick = add;
+  $('#pName').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  $('#plist').onclick = e => {
+    const d = e.target.closest('[data-pdel]'); if (!d) return;
+    const [n] = household.splice(+d.dataset.pdel, 1); if (n === me){ me = ''; metaPut('me', '').catch(() => {}); }
+    metaPut('household', household).catch(() => {}); draw();
+  };
+  $('#pMe').onchange = e => { me = e.target.value; metaPut('me', me).catch(() => {}); };
+  $('#pClose').onclick = closeSheet;
 }
 
 /* ---------- scanning ---------- */
@@ -12940,6 +13425,542 @@ function scanSheet(){
   }).catch(() => { video.hidden = true; $('#camMsg').textContent = 'Camera access was blocked. Type the code from the label instead, or allow the camera for this app in Chrome’s site settings.'; });
 }
 
+/* ---------- voice: commands that work without AI, plus voice notes ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const VT = {
+  en: {
+    needBox: 'Which box? Say “open box” and its number first.',
+    opened: '{box}, {name}. {things} in it.',
+    noBox: 'There’s no box {n}.',
+    added: 'Added {list} to {box}.',
+    askBoth: '{name}: what size, and whose is it?', askSize: '{name}: what size?', askOwner: '{name}: whose is it?',
+    gotIt: 'Got it: {list}.', skipped: 'OK, skipping that.', didntGet: 'I didn’t catch that. Say a size or a name, or “skip”.',
+    found1: '{name} is in {where}.', foundN: 'I found {n}: {list}.', foundMany: 'I found {n}. The first ones: {list}.',
+    relatedOnly: 'Nothing called that exactly, but similar things: {list}.',
+    notFound: 'I couldn’t find {q}.', contents: '{box} has {things}: {list}.', contentsMore: '{box} has {things}, including {list}.',
+    which: 'Which one: {list}?', one: '1 thing', many: '{n} things',
+    empty: '{box} is empty.', removed: 'Removed {name} from {box}.', notInBox: 'I can’t find {q} in {box}.',
+    moved: 'Moved {name} to {box}.', undone: 'Undone.', nothingUndo: 'There’s nothing to undo.',
+    unknown: 'I didn’t get that. Try “add …”, “where is …” or “what’s in here”.',
+    unknownAdd: 'Did you want to add “{text}” to {box}?', and: 'and', in: 'in', box: 'box {n}', size: 'size {v}',
+    notInBox: 'not in a box', oneBox: '1 box', manyBoxes: '{n} boxes',
+    addedLoose: 'Added {list} to {place}, not in a box.',
+    askPlace: 'Which place: {list}?', didntGetPlace: 'Which place? Say one of {list}, or “new place” and a name.',
+    placeSummary: '{place} has {boxes}.', boxList: 'They are {list}.', looseList: 'Not in a box: {list}.',
+    inPlace: 'You’re in {place}: {boxes}, and {things} not in a box.',
+    placeCreated: 'Added the storage place {place}. You’re there now.',
+    boxCreated: 'Created {box}, {name}, in {place}. It’s open, so tell me what goes in it. Mark the box {code}, or print its label later.',
+    elsewhere: 'Not in {place}, but elsewhere:',
+  },
+  sv: {
+    needBox: 'Vilken låda? Säg “öppna låda” och numret först.',
+    opened: '{box}, {name}. {things} i den.',
+    noBox: 'Det finns ingen låda {n}.',
+    added: 'La till {list} i {box}.',
+    askBoth: '{name}: vilken storlek, och vems är det?', askSize: '{name}: vilken storlek?', askOwner: '{name}: vems är det?',
+    gotIt: 'Okej: {list}.', skipped: 'Okej, hoppar över det.', didntGet: 'Det uppfattade jag inte. Säg en storlek eller ett namn, eller “hoppa över”.',
+    found1: '{name} ligger i {where}.', foundN: 'Jag hittade {n}: {list}.', foundMany: 'Jag hittade {n}. De första: {list}.',
+    relatedOnly: 'Inget som heter exakt så, men liknande saker: {list}.',
+    notFound: 'Jag hittade inte {q}.', contents: '{box} innehåller {things}: {list}.', contentsMore: '{box} innehåller {things}, bland annat {list}.',
+    which: 'Vilken av dem: {list}?', one: '1 sak', many: '{n} saker',
+    empty: '{box} är tom.', removed: 'Tog bort {name} från {box}.', notInBox: 'Jag hittar inte {q} i {box}.',
+    moved: 'Flyttade {name} till {box}.', undone: 'Ångrat.', nothingUndo: 'Det finns inget att ångra.',
+    unknown: 'Det förstod jag inte. Prova “lägg till …”, “var är …” eller “vad finns i lådan”.',
+    unknownAdd: 'Ville du lägga till “{text}” i {box}?', and: 'och', in: 'i', box: 'låda {n}', size: 'storlek {v}',
+    notInBox: 'utan låda', oneBox: '1 låda', manyBoxes: '{n} lådor',
+    addedLoose: 'La till {list} i {place}, utan låda.',
+    askPlace: 'Vilken plats: {list}?', didntGetPlace: 'Vilken plats? Säg {list}, eller “ny plats” och ett namn.',
+    placeSummary: '{place} har {boxes}.', boxList: 'Det är {list}.', looseList: 'Utan låda: {list}.',
+    inPlace: 'Du är i {place}: {boxes}, och {things} utan låda.',
+    placeCreated: 'La till förvaringsplatsen {place}. Du är där nu.',
+    boxCreated: 'Skapade {box}, {name}, i {place}. Den är öppen, så säg vad du lägger i den. Märk lådan {code}, eller skriv ut etiketten senare.',
+    elsewhere: 'Inte i {place}, men på ett annat ställe:',
+  },
+};
+const HELP = {
+  en: ['I’m in the garage','New box winter clothes','Open box 14','Add red ski jacket and two pairs of boots','Add Elsa’s winter boots size 32','Add bike without a box','What’s in here?','Where is the tent?','Where is the tent in the attic?','Do we have anything for camping?','Move the sleeping bag to box 3','Move the bike to the attic','Remove the drill','New place summer house','Undo'],
+  sv: ['Jag är i garaget','Ny låda vinterkläder','Öppna låda 14','Lägg till röd skidjacka och två par kängor','Lägg till Elsas vinterkängor storlek 32','Lägg till cykel utan låda','Vad finns i lådan?','Var är tältet?','Var är tältet på vinden?','Har vi något för camping?','Flytta sovsäcken till låda 3','Flytta cykeln till vinden','Ta bort borrmaskinen','Ny plats sommarstugan','Ångra'],
+};
+const L = () => voiceLang.startsWith('sv') ? 'sv' : 'en';
+const t = (k, v = {}) => VT[L()][k].replace(/\{(\w+)\}/g, (_, x) => v[x] ?? '');
+const things = n => n === 1 ? t('one') : t('many', {n});
+const joinList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + t('and') + ' ' + a[a.length - 1];
+const boxSpoken = b => t('box', {n: parseInt(b.code.slice(2))});
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const W = '[a-zåäöéü0-9]';
+const wordRe = (w, flags = 'i') => new RegExp(`(^|[^a-zåäöéü0-9])${escRe(w)}(?!${W})`, flags);
+
+const NUMW = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,
+  sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,ett:1,en:1,etta:1,ettan:1,två:2,tvåa:2,tvåan:2,tre:3,trea:3,trean:3,fyra:4,fyran:4,
+  fem:5,femma:5,femman:5,sex:6,sexa:6,sexan:6,sju:7,sjua:7,sjuan:7,åtta:8,åttan:8,nio:9,nia:9,nian:9,tio:10,tia:10,tian:10,elva:11,tolv:12,
+  tretton:13,fjorton:14,femton:15,sexton:16,sjutton:17,arton:18,nitton:19,tjugo:20};
+const toNum = s => /^\d+$/.test(s) ? +s : (NUMW[s] || null);
+const boxByNum = n => boxes.find(b => parseInt(b.code.slice(2)) === n);
+function boxRef(text){
+  const low = text.toLowerCase();
+  let m = low.match(/(?:^|[^a-zåäö])(?:box|boxen|låda|lådan|kartong|kartongen)\s*(?:nummer|number|nr\.?)?\s*-?\s*(\d+|[a-zåäö]+)(?![a-zåäö0-9])/);
+  if (!m) m = low.match(/(?:^|[^a-zåäö])b\s*-?\s*(\d+)(?![0-9])/);
+  if (!m) return null;
+  const n = toNum(m[1]); if (!n) return null;
+  return {n, box: boxByNum(n), match: m[0]};
+}
+const COLOR_WORDS = {Black:['black','svart','svarta'],White:['white','vit','vita','vitt'],Grey:['grey','gray','grå','gråa','grått'],
+  Blue:['blue','blå','blåa','blått'],Red:['red','röd','röda','rött'],Green:['green','grön','gröna','grönt'],Yellow:['yellow','gul','gula','gult'],
+  Pink:['pink','rosa'],Purple:['purple','lila'],Brown:['brown','brun','bruna','brunt'],Beige:['beige'],
+  Multicolour:['multicoloured','multicolored','flerfärgad','flerfärgade','randig','randiga','rutig','rutiga']};
+function findColor(text){ for (const [c, ws] of Object.entries(COLOR_WORDS)) if (ws.some(w => wordRe(w).test(text))) return c; return ''; }
+function findOwner(text){
+  for (const n of household) if (new RegExp(`(^|[^a-zåäöéü])${escRe(n.toLowerCase())}(?:['’]s|s)?(?!${W})`, 'i').test(text)) return n;
+  if (me && /(^|\s)(my|mine|min|mitt|mina)(?=\s|$|[,.])/i.test(text)) return me;
+  if (/(^|\s)(shared|gemensam|gemensamma|gemensamt|allas)(?=\s|$|[,.])/i.test(text)) return 'Shared';
+  return '';
+}
+const SIZE_TOKEN = '([0-9]{1,3}(?:[.,]5)?|xxs|xs|s|m|l|xl|xxl)';
+function extract(text){
+  let s = ' ' + text.trim() + ' ';
+  const out = {};
+  const sm = s.match(new RegExp(`\\s(?:(?:in|i)\\s+)?(?:size|storlek|strl\\.?|stl\\.?)\\s*${SIZE_TOKEN}(?=[\\s,.]|$)`, 'i'));
+  if (sm){ out.size = sm[1].toUpperCase().replace(',', '.'); s = s.replace(sm[0], ' '); }
+  out.owner = findOwner(s);
+  if (!out.owner){
+    // A name the app hasn't heard before: "… för Elsa" or "Elsa's …" (speech recognition capitalises names)
+    const nm = s.match(/\s(?:for|för|till|åt)\s+([A-ZÅÄÖ][a-zåäöé]+)\s*$/) || s.match(/(?:^|\s)([A-ZÅÄÖ][a-zåäöé]+)['’]s\s/);
+    if (nm) out.owner = addPerson(nm[1]);
+  }
+  if (out.owner && out.owner !== 'Shared'){
+    const n = escRe(out.owner);
+    s = s.replace(new RegExp(`\\s(?:for|för|till|åt|tillhör|belonging to)\\s+${n}(?=[\\s,.]|$)`, 'i'), ' ')
+         .replace(new RegExp(`\\s${n}(?:['’]s|s)?(?=[\\s,.]|$)`, 'i'), ' ');
+  }
+  s = s.replace(/\s(?:my|min|mitt|mina|our|vår|vårt|våra)(?=\s)/gi, ' ');
+  out.color = findColor(s);
+  out.name = cap(s.replace(/\s+/g, ' ').trim().replace(/^(?:the|a|an)\s+/i, ''));
+  return out;
+}
+function splitItems(text){
+  const parts = text.split(/\s*,\s*|\s+(?:and|och|samt|plus)\s+/i).filter(Boolean);
+  const out = [];
+  for (const p of parts){
+    if (out.length && /^\S+$/.test(p) && findColor(p)) out[out.length - 1] += ' ' + t('and') + ' ' + p; // "black and white shirt"
+    else if (out.length && findColor(out[out.length - 1].trim()) && /^\S+$/.test(out[out.length - 1].trim())) out[out.length - 1] += ' ' + t('and') + ' ' + p;
+    else out.push(p);
+  }
+  return out;
+}
+function needsFor(it){
+  const k = kindOf(it), need = [];
+  if (['clothes','shoes','kids'].includes(k)){ if (!it.size) need.push('size'); if (!it.owner) need.push('owner'); }
+  else if (k === 'sports' && !it.owner) need.push('owner');
+  return need;
+}
+
+let voiceLog = [], pending = null, pendingQueue = [];
+const undoStack = [];
+const curBox = () => view.name === 'box' ? findBox(view.boxId) : null;
+function snapshot(ids, created = []){ undoStack.push({restore: [...new Set(ids)].map(findBox).filter(Boolean).map(clone), remove: created}); if (undoStack.length > 20) undoStack.shift(); }
+function logLine(who, text, action){
+  voiceLog.push({who, text, action}); if (voiceLog.length > 40) voiceLog.shift();
+  drawLog();
+}
+function drawLog(){
+  const el = $('#vlog'); if (!el) return;
+  el.innerHTML = voiceLog.map((l, i) => `<div class="vl ${l.who}">${esc(l.text)}${l.action ? `<br><button class="btn quiet" data-vact="${i}">${esc(l.action.label)}</button>` : ''}</div>`).join('')
+    || `<p class="hint">${L() === 'sv' ? 'Tryck på knappen och säg vad du gör, till exempel “öppna låda 3”.' : 'Tap the button and say what you’re doing, for example “open box 3”.'}</p>`;
+  el.scrollTop = el.scrollHeight;
+}
+let speakOn = true;
+function say(text, action){
+  text = cap(text);
+  logLine('app', text, action);
+  if (speakOn && window.speechSynthesis){
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = voiceLang; speechSynthesis.speak(u); } catch {}
+  }
+}
+function updateCtx(){
+  const el = $('#vCtx'); if (!el) return;
+  const b = curBox(), pid = scopePlace();
+  el.textContent = b ? `Open box: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
+    : pid ? `In ${placeName(pid)}, no box open. Things you add go in as “not in a box”.`
+    : 'All places. Say where you are, for example “I’m in the garage”.';
+}
+
+const CMD = {
+  undo: /^(?:undo|ångra)\b/,
+  newPlace: /^(?:new (?:storage )?place|add (?:a )?(?:new )?(?:storage )?place|create (?:a )?(?:new )?(?:storage )?place|ny (?:förvaringsplats|förvaring|plats)|lägg till (?:en )?(?:ny )?(?:förvaringsplats|plats)|skapa (?:en )?(?:ny )?(?:förvaringsplats|plats))\s+(.+)$/i,
+  newBox: /^(?:new box|create (?:a )?(?:new )?box|make (?:a )?(?:new )?box|start (?:a )?(?:new )?box|add (?:a )?new box|ny låda|ny kartong|nytt? låda|skapa (?:en )?(?:ny )?(?:låda|kartong)|lägg till (?:en )?ny (?:låda|kartong)|starta (?:en )?ny (?:låda|kartong))(?![a-zåäö])\s*(.*)$/i,
+  goPlace: /^(?:go to|switch to|i'?m (?:in|at|on)|i am (?:in|at|on)|we'?re (?:in|at)|we are (?:in|at)|gå till|byt till|jag är (?:i|på|vid|nere i|uppe på|uppe i)|vi är (?:i|på|vid))\s+(.+)$/i,
+  open: /^(?:open|öppna|go to|gå till|show|visa)\s+/i,
+  bareBox: /^(?:box|låda|lådan|kartong)\s*\S+$/i,
+  contents: /^(?:what'?s|whats|what is|vad finns|vad är det|vad innehåller|vad ligger|list|lista|läs upp|read)\s*(.*)$/i,
+  where: /^(?:where(?:'s| is| are| did (?:i|we) put)?|wheres|var (?:är|finns|ligger|la (?:jag|vi)|lade (?:jag|vi)|har (?:jag|vi) lagt)|find|hitta|leta(?: efter| upp)?|search(?: for)?|sök(?: efter)?|do we have|have we got|har vi|finns det)\s+(.+)$/i,
+  move: /^(?:move|flytta)\s+(.+?)\s+(?:to|into|till|in i|out of|ut ur|ut i|ut)\s+(.+)$/i,
+  remove: /^(?:remove|delete|take out|ta bort|ta ut|plocka ut|radera)\s+(.+)$/i,
+  add: /^(?:add|put|lägg till|lägg in|lägg|stoppa in|in med|ny|nytt|new)\s+(.+)$/i,
+};
+const isCommand = low => Object.values(CMD).some(re => re.test(low));
+const cleanQ = q => q.replace(/^(?:the|my|our|a|an|any|anything|something|min|mitt|mina|vår|vårt|våra|något|nåt|några|någon)\s+/gi, '').replace(/^(?:for|till|för)\s+/i, '').trim();
+const LOOSE_RE = /\s(?:without (?:a )?box|not in a box|outside the box(?:es)?|loose|utan låda|utan kartong|löst|lösa|lös|inte i (?:en |någon )?låda|utanför lådorna)(?=[\s,.]|$)/i;
+
+// Places people commonly call by different names, in Swedish and English.
+const PLACE_SYN = [
+  ['basement','cellar','källare','källaren','källarförråd','källarförrådet'],
+  ['attic','loft','vind','vinden','vindsförråd','vindsförrådet'],
+  ['garage','garaget'],
+  ['summer house','summerhouse','cottage','sommarstuga','sommarstugan','landet'],
+  ['storage unit','storage room','förråd','förrådet','förrådsutrymme','förrådsutrymmet'],
+  ['shed','bod','boden','förrådsbod','förrådsboden','redskapsbod','redskapsboden'],
+  ['wardrobe','closet','garderob','garderoben','klädkammare','klädkammaren'],
+];
+function placeIn(text){
+  const low = ' ' + text.toLowerCase() + ' ';
+  for (const p of places){
+    const nm = p.name.toLowerCase();
+    let vars = [nm, nm + 'n', nm + 'en', nm + 'et', nm.replace(/(en|et|n)$/, '')];
+    for (const g of PLACE_SYN) if (vars.some(v => g.includes(v))) vars = vars.concat(g);
+    vars = [...new Set(vars)].filter(v => v.length >= 3).sort((x, y) => y.length - x.length);
+    for (const v of vars){
+      const m = low.match(new RegExp(`\\s(?:(?:in|on|at|to|i|på|vid|till|ut i|ner i|nere i|uppe på|uppe i)\\s+)?(?:the\\s+)?${escRe(v)}(?=[\\s,.?!])`));
+      if (m) return {place: p, match: m[0]};
+    }
+  }
+  return null;
+}
+const stripPlace = (text, pm) => pm ? (' ' + text + ' ').replace(new RegExp(escRe(pm.match.trim()), 'i'), ' ').replace(/\s+/g, ' ').trim() : text;
+const curPlaceId = () => (curBox() && curBox().placeId) || scopePlace();
+const countBoxes = n => n === 1 ? t('oneBox') : t('manyBoxes', {n});
+function whereShort(b){
+  if (b.loose) return `${placeName(b.placeId)} (${t('notInBox')})`;
+  return boxSpoken(b) + (places.length > 1 ? ` (${placeName(b.placeId)})` : '');
+}
+function whereLong(it, b){
+  if (b.loose) return [placeName(b.placeId), t('notInBox'), it.spot].filter(Boolean).join(', ');
+  return [boxSpoken(b), b.name].join(', ') + (places.length > 1 ? ` ${t('in')} ${placeName(b.placeId)}` : '') + (b.location ? ', ' + b.location : '');
+}
+function askPlace(run){
+  pending = {type: 'place', run};
+  say(t('askPlace', {list: joinList(places.map(p => p.name))}));
+}
+function answerPlace(raw){
+  const pm = placeIn(raw);
+  if (!pm) return say(t('didntGetPlace', {list: joinList(places.map(p => p.name))}));
+  const run = pending.run; pending = null; run(pm.place.id);
+}
+
+function handle(text){
+  const raw = text.trim().replace(/[.!?]+$/, ''); if (!raw) return;
+  const low = raw.toLowerCase();
+  logLine('you', raw);
+  if (CMD.undo.test(low)) return doUndo();
+  if (pending && pending.type !== 'place' && !isCommand(low) && placeIn(raw) && raw.trim().split(/\s+/).length <= 3){ pending = null; pendingQueue = []; return goPlace(placeIn(raw).place.id); }
+  if (pending && !isCommand(low)) return pending.type === 'place' ? answerPlace(raw) : answerPending(raw);
+  pending = null; pendingQueue = [];
+  let m;
+  if ((m = raw.match(CMD.newPlace))) return doNewPlace(m[1]);
+  if ((m = raw.match(CMD.newBox))) return doNewBox(m[1]);
+  if ((m = raw.match(CMD.goPlace)) && !boxRef(m[1])){
+    const pm = placeIn(m[1]); if (pm) return goPlace(pm.place.id);
+    return say(t('didntGetPlace', {list: joinList(places.map(p => p.name))}));
+  }
+  if (CMD.open.test(low) || CMD.bareBox.test(low)){
+    const r = boxRef(low);
+    if (r){ if (!r.box) return say(t('noBox', {n: r.n})); openBox(r.box.id); updateCtx(); return say(t('opened', {box: boxSpoken(r.box), name: r.box.name, things: things((r.box.items || []).length)})); }
+    const pm = placeIn(raw); if (pm) return goPlace(pm.place.id);
+  }
+  if ((m = raw.match(CMD.contents))){
+    const rest = m[1].trim(), rl = rest.toLowerCase();
+    const pm = placeIn(rest);
+    if (pm && !boxRef(rest)) return sayPlace(pm.place.id);
+    if (!rest || /(here|this|inside|in it|här|den här|denna|lådan|box|låda|kartong|^b\s*-?\d)/.test(rl)){
+      const r = boxRef(rest); if (r && !r.box) return say(t('noBox', {n: r.n}));
+      const b = r ? r.box : curBox();
+      if (!b){ const pid = scopePlace(); return pid ? sayPlace(pid) : askPlace(sayPlace); }
+      if (r){ openBox(b.id); updateCtx(); }
+      return sayContents(b);
+    }
+    return doFind(rest.replace(/^(?:in|i)\s+/i, ''));
+  }
+  if ((m = raw.match(CMD.where))) return doFind(m[1]);
+  if ((m = raw.match(CMD.move))) return doMove(m[1], m[2]);
+  if ((m = raw.match(CMD.remove))) return doRemove(m[1]);
+  if ((m = raw.match(CMD.add))) return doAdd(m[1]);
+  const b = curBox(), pid = b ? null : scopePlace();
+  if (b || pid) return say(t('unknownAdd', {text: raw, box: b ? boxSpoken(b) : placeName(pid)}), {label: L() === 'sv' ? 'Ja, lägg till' : 'Yes, add it', run: () => doAdd(raw)});
+  say(t('unknown'));
+}
+function sayContents(b){
+  const items = b.items || [];
+  if (!items.length) return say(t('empty', {box: boxSpoken(b)}));
+  const names = items.map(i => i.name);
+  if (names.length <= 8) return say(t('contents', {box: boxSpoken(b), things: things(names.length), list: joinList(names)}));
+  say(t('contentsMore', {box: boxSpoken(b), things: things(names.length), list: joinList(names.slice(0, 6))}));
+}
+function sayPlace(pid){
+  const bx = boxesIn(pid).sort(byCode), loose = looseOf(pid), li = loose ? (loose.items || []) : [];
+  let s = t('placeSummary', {place: placeName(pid), boxes: countBoxes(bx.length)});
+  if (bx.length) s += ' ' + t('boxList', {list: joinList(bx.slice(0, 8).map(b => `${boxSpoken(b)} ${b.name}`))});
+  if (li.length) s += ' ' + t('looseList', {things: things(li.length), list: joinList(li.slice(0, 6).map(i => i.name))});
+  say(s);
+}
+function goPlace(pid){
+  setPlace(pid); view = {name: 'home'}; query = ''; $('#search').value = ''; render(); updateCtx();
+  const loose = looseOf(pid);
+  say(t('inPlace', {place: placeName(pid), boxes: countBoxes(boxesIn(pid).length), things: things(loose ? (loose.items || []).length : 0)}));
+}
+function doNewPlace(name){
+  name = name.replace(/^(?:called|named|som heter|med namnet|:)\s*/i, '').trim();
+  const before = places.length, p = addPlace(name); if (!p) return say(t('unknown'));
+  setPlace(p.id); view = {name: 'home'}; render(); updateCtx();
+  say(t(places.length > before ? 'placeCreated' : 'inPlace', {place: p.name, boxes: countBoxes(boxesIn(p.id).length), things: things(0)}));
+}
+function doNewBox(rest, forcedPid){
+  let name = (rest || '').trim();
+  const pm = placeIn(name); if (pm) name = stripPlace(name, pm);
+  name = name.replace(/^(?:called|named|som heter|med namnet|för|for|till|med|with|:)\s*/i, '').trim();
+  const pid = forcedPid || (pm && pm.place.id) || curPlaceId();
+  if (!pid) return askPlace(id => doNewBox(name, id));
+  const b = {id: newId(), code: nextCode(), name: cap(name) || (L() === 'sv' ? 'Ny låda' : 'New box'), location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: pid};
+  snapshot([], [b.id]); putBox(b); openBox(b.id); updateCtx();
+  say(t('boxCreated', {box: boxSpoken(b), name: b.name, place: placeName(pid), code: b.code}));
+}
+function doFind(q){
+  q = q.replace(/\?+$/, '');
+  const pm = placeIn(q);
+  if (pm) q = stripPlace(q, pm);
+  q = cleanQ(q);
+  const here = places.length > 1 ? ((curBox() && curBox().placeId) || (currentPlace !== 'all' ? currentPlace : null)) : null;
+  const pid = pm ? pm.place.id : here;
+  let res = searchItems(q, {placeId: pid}), elsewhere = false;
+  if (!pm && pid && !res.exact.length && !res.related.length){ res = searchItems(q); elsewhere = res.exact.length + res.related.length > 0; }
+  if (pm) setPlace(pid); else if (elsewhere) setPlace('all');
+  query = q; $('#search').value = q; render();
+  const {exact, related} = res;
+  const pre = elsewhere ? t('elsewhere', {place: placeName(pid)}) + ' ' : '';
+  const describe = ([it, b]) => `${it.name} ${t('in')} ${whereShort(b)}`;
+  if (exact.length === 1){ const [it, b] = exact[0]; return say(pre + t('found1', {name: it.name, where: whereLong(it, b)})); }
+  if (exact.length > 1 && exact.length <= 4) return say(pre + t('foundN', {n: exact.length, list: joinList(exact.map(describe))}));
+  if (exact.length > 4) return say(pre + t('foundMany', {n: exact.length, list: joinList(exact.slice(0, 3).map(describe))}));
+  if (related.length) return say(pre + t('relatedOnly', {list: joinList(related.slice(0, 4).map(describe))}));
+  say(t('notFound', {q}) + (pid && !pm ? '' : ''));
+}
+function findIn(q, opts){
+  const {exact, related} = searchItems(cleanQ(q), opts || {});
+  const list = exact.length ? exact : related;
+  if (list.length > 1) return {many: list};
+  return list[0] || null;
+}
+const askWhich = hit => say(t('which', {list: joinList(hit.many.slice(0, 4).map(([it, b]) => `${it.name} ${t('in')} ${whereShort(b)}`))}));
+function doRemove(q){
+  const b = curBox(), pid = b ? null : scopePlace();
+  const opts = b ? {boxId: b.id} : pid ? {placeId: pid} : {};
+  const hit = findIn(q, opts);
+  if (!hit) return say(b ? t('notInBox', {q: cleanQ(q), box: boxSpoken(b)}) : t('notFound', {q: cleanQ(q)}));
+  if (hit.many) return askWhich(hit);
+  const [it, from] = hit;
+  snapshot([from.id]);
+  const nb = clone(from); nb.items = nb.items.filter(i => i.id !== it.id); putBox(nb);
+  say(t('removed', {name: it.name, box: whereShort(from)}));
+}
+function doMove(q, target){
+  const r = boxRef(target); let dest = null;
+  if (r){ if (!r.box) return say(t('noBox', {n: r.n})); dest = r.box; }
+  else {
+    const pm = placeIn(target);
+    const looseW = LOOSE_RE.test(' ' + target + ' ') || /^(?:the box|lådan|box|låda)$/i.test(target.trim());
+    if (pm) dest = ensureLoose(pm.place.id);
+    else if (looseW){ const pid = curPlaceId(); if (!pid) return say(t('unknown')); dest = ensureLoose(pid); }
+    else return say(t('unknown'));
+  }
+  const cb = curBox();
+  const hit = (cb && findIn(q, {boxId: cb.id})) || findIn(q); if (!hit) return say(t('notFound', {q: cleanQ(q)}));
+  if (hit.many) return askWhich(hit);
+  const [it, from] = hit; if (from.id === dest.id) return say(t('moved', {name: it.name, box: whereShort(dest)}));
+  snapshot([from.id, dest.id]);
+  const a = clone(from); a.items = a.items.filter(i => i.id !== it.id); putBox(a);
+  const d = clone(findBox(dest.id)); d.items = (d.items || []).concat(Object.assign(clone(it), {updatedAt: new Date().toISOString()})); putBox(d);
+  say(t('moved', {name: it.name, box: whereShort(dest)}));
+}
+function doAdd(text, forcedPid){
+  let target = null, loose = false;
+  const tm = text.match(/\s(?:to|in|into|i|till|ner i|ned i)\s+((?:box|boxen|låda|lådan|kartong|kartongen)\s*\S+|b\s*-?\s*\d+)\s*$/i);
+  if (tm){ const r = boxRef(tm[1]); if (r && !r.box) return say(t('noBox', {n: r.n})); if (r){ target = r.box; text = text.slice(0, tm.index); } }
+  if (LOOSE_RE.test(' ' + text + ' ')){ loose = true; text = (' ' + text + ' ').replace(LOOSE_RE, ' ').trim(); }
+  const pm = placeIn(text); if (pm) text = stripPlace(text, pm);
+  if (!target){
+    const cb = curBox();
+    if (cb && !loose && (!pm || pm.place.id === cb.placeId)) target = cb;
+    else {
+      const pid = forcedPid || (pm && pm.place.id) || (cb && cb.placeId) || scopePlace();
+      if (!pid) return askPlace(id => doAdd(text + (loose ? ' ' + (L() === 'sv' ? 'utan låda' : 'without a box') : ''), id));
+      target = ensureLoose(pid);
+    }
+  }
+  if (!target.loose && view.boxId !== target.id){ openBox(target.id); updateCtx(); }
+  const now = new Date().toISOString();
+  const created = splitItems(text).map(part => {
+    const a = extract(part);
+    const it = {id: newId(), name: a.name, category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: now, addedBy: me || ''};
+    if (a.size) it.size = a.size; if (a.owner) it.owner = a.owner; if (a.color) it.color = a.color;
+    return it;
+  }).filter(it => it.name);
+  if (!created.length) return say(t('unknown'));
+  snapshot([target.id]);
+  const nb = clone(findBox(target.id)); nb.items = (nb.items || []).concat(created); putBox(nb);
+  let reply = target.loose ? t('addedLoose', {list: joinList(created.map(i => i.name)), place: placeName(target.placeId)}) : t('added', {list: joinList(created.map(i => i.name)), box: boxSpoken(target)});
+  pendingQueue = created.map(it => ({boxId: target.id, itemId: it.id, name: it.name, need: needsFor(it)})).filter(p => p.need.length);
+  pending = pendingQueue.shift() || null;
+  if (pending) reply += ' ' + askFor(pending);
+  say(reply);
+}
+function askFor(p){ return t(p.need.length === 2 ? 'askBoth' : p.need[0] === 'size' ? 'askSize' : 'askOwner', {name: p.name}); }
+function answerPending(raw){
+  const p = pending, b = findBox(p.boxId), it = b && (b.items || []).find(i => i.id === p.itemId);
+  if (!it){ pending = null; return say(t('unknown')); }
+  const low = raw.toLowerCase();
+  const next = () => { pending = pendingQueue.shift() || null; return pending ? ' ' + askFor(pending) : ''; };
+  if (/^(skip|no|nope|doesn'?t matter|don'?t know|not sure|hoppa över|hoppa|nej|spelar ingen roll|vet inte|ingen aning|strunt)/.test(low)) return say(t('skipped') + next());
+  const a = extract(raw), got = {};
+  if (p.need.includes('size')){
+    const sz = a.size || (low.match(new RegExp(`(?:^|\\s)${SIZE_TOKEN}(?=\\s|$|[,.])`, 'i')) || [])[1];
+    if (sz) got.size = sz.toUpperCase().replace(',', '.');
+  }
+  if (p.need.includes('owner')){
+    let o = a.owner;
+    if (!o){
+      let rest = ' ' + low + ' ';
+      if (got.size) rest = rest.replace(new RegExp('\\s' + escRe(got.size.toLowerCase()) + '(?=[\\s,.])'), ' ');
+      rest = rest.replace(/\s(?:size|storlek|strl|it'?s|its|they'?re|they are|it is|den är|de är|det är|dom är|för|for|till|åt|and|och|is|är|belongs to|tillhör|hers|his)(?=[\s,.])/g, ' ').replace(/['’]s(?=\s)/g, ' ').replace(/[,.]/g, ' ').trim();
+      const words = rest.split(/\s+/).filter(w => w && !findColor(w));
+      if (words.length >= 1 && words.length <= 2 && !/\d/.test(rest)) o = addPerson(words.map(cap).join(' '));
+    }
+    if (o) got.owner = o;
+  }
+  if (a.color && !it.color) got.color = a.color;
+  if (!Object.keys(got).length) return say(t('didntGet'));
+  snapshot([b.id]);
+  const nb = clone(b); Object.assign(nb.items.find(i => i.id === it.id), got, {updatedAt: new Date().toISOString()}); putBox(nb);
+  const list = [got.size && t('size', {v: got.size}), got.owner, got.color && got.color.toLowerCase()].filter(Boolean);
+  const still = p.need.filter(n => !got[n]);
+  if (still.length){ pending = {...p, need: still}; return say(t('gotIt', {list: joinList(list)}) + ' ' + askFor(pending)); }
+  say(t('gotIt', {list: joinList(list)}) + next());
+}
+function doUndo(){
+  const snap = undoStack.pop(); pending = null; pendingQueue = [];
+  if (!snap) return say(t('nothingUndo'));
+  snap.restore.forEach(b => putBox(b));
+  (snap.remove || []).forEach(id => { if (view.boxId === id) view = {name: 'home'}; removeBox(id); });
+  updateCtx(); say(t('undone'));
+}
+
+/* listening */
+let recog = null;
+function setMic(state){
+  const btn = $('#micBtn'); if (!btn) return;
+  btn.classList.toggle('on', state === 'on');
+  btn.textContent = state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck för att stoppa' : 'Listening… tap to stop') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak');
+}
+function stopListening(){ if (recog){ try { recog.abort(); } catch {} recog = null; } setMic('off'); }
+function listen(){
+  if (recog) return stopListening();
+  if (rec) return toast('Stop the voice note first.');
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  const r = new SR(); recog = r;
+  r.lang = voiceLang; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
+  let finalText = '';
+  r.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++){ const x = e.results[i]; if (x.isFinal) finalText += x[0].transcript; else interim += x[0].transcript; }
+    const v = $('#vText'); if (v) v.placeholder = interim || finalText || '…';
+  };
+  r.onerror = e => {
+    const msg = {
+      'network': 'Speech recognition needs signal right now. Type in the box below instead (your keyboard’s microphone can work offline), or record a voice note.',
+      'not-allowed': 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
+      'service-not-allowed': 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
+      'no-speech': L() === 'sv' ? 'Jag hörde ingenting. Tryck och försök igen.' : 'I didn’t hear anything. Tap and try again.',
+      'language-not-supported': 'This language isn’t available for speech recognition on this phone.',
+    }[e.error];
+    if (msg) logLine('app', msg);
+  };
+  r.onend = () => { recog = null; setMic('off'); const v = $('#vText'); if (v) v.placeholder = vPlaceholder(); if (finalText.trim()) handle(finalText); };
+  try { r.start(); setMic('on'); } catch { recog = null; setMic('off'); }
+}
+const vPlaceholder = () => L() === 'sv' ? 'Eller skriv, eller använd tangentbordets mikrofon' : 'Or type, or use your keyboard’s microphone';
+
+/* voice notes */
+let rec = null, recStart = 0, recTimer = null;
+function updRecBtn(){
+  const btn = $('#recBtn'); if (!btn) return;
+  btn.classList.toggle('rec', !!rec);
+  btn.textContent = rec ? `Stop and save (${Math.round((Date.now() - recStart) / 1000)} s)` : 'Record a voice note';
+}
+async function toggleRecord(){
+  if (rec){ rec.stop(); return; }
+  if (recog) stopListening();
+  if (!navigator.mediaDevices || !window.MediaRecorder) return toast('Recording isn’t available in this browser.');
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({audio: true}); }
+  catch { return toast('Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.'); }
+  const chunks = [], boxId = curBox() ? curBox().id : null;
+  const r = new MediaRecorder(stream); rec = r;
+  r.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  r.onstop = async () => {
+    stream.getTracks().forEach(tr => tr.stop()); clearInterval(recTimer); rec = null; updRecBtn();
+    const blob = new Blob(chunks, {type: r.mimeType || 'audio/webm'});
+    const n = {id: newId(), boxId, createdAt: new Date().toISOString(), duration: Math.max(1, Math.round((Date.now() - recStart) / 1000)), blob, by: me || ''};
+    try { await notePut(n); notes.push(n); updateStatus(); render(); const b = boxId && findBox(boxId); logLine('app', `Voice note saved${b ? ' to ' + b.code : ''} (${n.duration} s).`); }
+    catch (e){ toast(saveErr(e)); }
+  };
+  r.start(); recStart = Date.now(); recTimer = setInterval(updRecBtn, 500); updRecBtn();
+}
+
+function voiceSheet(){
+  openSheet(`<h3>Talk to Storrrage</h3>
+    <p class="hint" id="vCtx"></p>
+    <div class="vlog" id="vlog" aria-live="polite"></div>
+    ${SR ? '<button class="mic" id="micBtn"></button>' : '<p class="hint">Speech recognition isn’t available in this browser. Use the microphone on your keyboard in the box below instead.</p>'}
+    <div class="vtype"><input id="vText" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend">Send</button></div>
+    <div class="vrow">
+      <button class="btn quiet" id="recBtn"></button>
+      <span class="chips" style="margin:0"><button type="button" class="chipbtn" data-lang="sv-SE">Svenska</button><button type="button" class="chipbtn" data-lang="en-US">English</button></span>
+    </div>
+    <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> Read answers out loud</label>
+    <details class="more"><summary>What can I say?</summary><ul class="help" id="vHelp"></ul></details>
+    <details class="more"><summary>Using it without signal</summary><p class="hint">Chrome’s speech recognition usually needs signal. Without it, tap the text box and use the microphone on your keyboard instead. Gboard can recognise speech offline once you’ve downloaded the language: open Gboard’s settings, then Voice typing, and download Swedish and English for offline use (menu names vary a little between phones). Or record a voice note and deal with it later.</p></details>
+    <div class="sheet-foot"><button class="btn" id="vClose">Close</button></div>`, () => { stopListening(); if (rec) rec.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); });
+  const drawLang = () => {
+    sheet.querySelectorAll('[data-lang]').forEach(c => c.classList.toggle('on', c.dataset.lang === voiceLang));
+    $('#vHelp').innerHTML = HELP[L()].map(h => `<li>“${esc(h)}”</li>`).join('');
+    $('#vText').placeholder = vPlaceholder(); setMic('off'); drawLog();
+  };
+  drawLang(); updateCtx(); updRecBtn();
+  if (SR) $('#micBtn').onclick = listen;
+  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; handle(x); };
+  $('#vSend').onclick = send;
+  $('#vText').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+  $('#recBtn').onclick = toggleRecord;
+  $('#vSpeak').onchange = e => { speakOn = e.target.checked; if (!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
+  sheet.querySelector('.vrow').addEventListener('click', e => {
+    const c = e.target.closest('[data-lang]'); if (!c) return;
+    voiceLang = c.dataset.lang; metaPut('voiceLang', voiceLang).catch(() => {}); stopListening(); drawLang();
+  });
+  $('#vlog').addEventListener('click', e => {
+    const b = e.target.closest('[data-vact]'); if (!b) return;
+    const l = voiceLog[+b.dataset.vact]; if (l && l.action){ const run = l.action.run; l.action = null; drawLog(); run(); }
+  });
+  $('#vClose').onclick = closeSheet;
+}
+
+/* status line: offline, voice notes waiting */
+function updateStatus(){
+  const el = $('#statusline'); if (!el) return;
+  const parts = [];
+  if (!navigator.onLine) parts.push('Offline. Everything you do is saved on this phone.');
+  if (notes.length) parts.push(`${notes.length} voice ${notes.length === 1 ? 'note' : 'notes'} waiting.`);
+  el.textContent = parts.join(' '); el.hidden = !parts.length;
+}
+window.addEventListener('online', updateStatus); window.addEventListener('offline', updateStatus);
+
 /* ---------- files out ---------- */
 function deliver(filename, blob, title, onDone){
   const file = new File([blob], filename, {type: blob.type});
@@ -12977,7 +13998,8 @@ async function thumbData(ref){
 async function insuranceReport(){
   if (!boxes.length) return toast('Add some boxes first.');
   toast('Building the report…');
-  const all = [...boxes].sort(byCode);
+  const pi = b => places.findIndex(p => p.id === b.placeId);
+  const all = [...boxes].filter(b => !b.loose || (b.items || []).length).sort((x, y) => pi(x) - pi(y) || (x.loose ? -1 : 0) - (y.loose ? -1 : 0) || byCode(x, y));
   const total = all.reduce((s, b) => s + boxValue(b), 0);
   let body = '';
   for (const b of all){
@@ -12989,7 +14011,7 @@ async function insuranceReport(){
         <td>${esc(kr(it.value))}</td><td>${esc(it.storedOn)}</td><td>${esc(fmtStamp(it.addedAt))}</td><td class="ph">${imgs.join('<br>')}</td></tr>`;
     }
     const bimg = b.photo ? await thumbData(b.photo.ref) : '';
-    body += `<section><h2>${esc(b.code)} ${esc(b.name)}</h2><p>${esc(b.location || '')}${b.location ? '. ' : ''}Packed ${esc(fmtDate(b.createdAt))}. ${(b.items || []).length} items, ${esc(kr(boxValue(b)) || '0 kr')}.</p>
+    body += `<section><h2>${b.loose ? `${esc(placeName(b.placeId))}: not in a box` : `${esc(b.code)} ${esc(b.name)}`}</h2><p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}. Packed ${esc(fmtDate(b.createdAt))}. ${(b.items || []).length} items, ${esc(kr(boxValue(b)) || '0 kr')}.</p>
       ${bimg ? `<img class="box" src="${bimg}" alt="">` : ''}
       ${rows ? `<table><tr><th>Item</th><th>Est. value</th><th>Stored since</th><th>Registered</th><th>Photos</th></tr>${rows}</table>` : '<p>Empty.</p>'}</section>`;
   }
@@ -12997,19 +14019,21 @@ async function insuranceReport(){
     body{font-family:Arial,sans-serif;margin:14mm;color:#111}h1{margin:0}table{border-collapse:collapse;width:100%;margin:8px 0 24px}
     th,td{border:1px solid #bbb;padding:6px;vertical-align:top;text-align:left;font-size:10pt}td.ph img{width:110px}img.box{width:200px}
     section{break-inside:avoid-page}small{color:#555}</style></head><body>
-    <h1>Storage unit inventory</h1><p>Generated ${esc(fmtStamp(new Date().toISOString()))}. ${all.length} boxes, ${all.reduce((s, b) => s + (b.items || []).length, 0)} items, estimated total value ${esc(kr(total) || '0 kr')}.</p>
+    <h1>Storage inventory</h1><p>Generated ${esc(fmtStamp(new Date().toISOString()))}. ${all.filter(b => !b.loose).length} boxes, ${all.reduce((s, b) => s + (b.items || []).length, 0)} items, estimated total value ${esc(kr(total) || '0 kr')}.</p>
     <p>"Registered" is when the item was entered in the inventory. Photo times come from the image file.</p>${body}</body></html>`;
   deliver(`storage-inventory-${today()}.html`, new Blob([html], {type: 'text/html'}), 'Insurance report ready');
 }
 const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 async function backup(){
-  if (!boxes.length) return toast('Nothing to back up yet.');
+  if (!boxes.length && !notes.length) return toast('Nothing to back up yet.');
   toast('Preparing backup…');
   const photos = {};
   const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.items || []).flatMap(i => (i.photos || []).map(p => p.ref))]).filter(Boolean);
   for (const ref of refs){ const b = await phGet(ref).catch(() => null); if (b) photos[ref] = await blobToDataURL(b); }
-  const json = JSON.stringify({app: 'boxes', version: 2, exportedAt: new Date().toISOString(), boxes, photos});
-  deliver(`boxes-backup-${today()}.json`, new Blob([json], {type: 'application/json'}), 'Backup ready', async () => {
+  const notesOut = [];
+  for (const n of notes) notesOut.push({...n, blob: undefined, audio: n.blob ? await blobToDataURL(n.blob) : ''});
+  const json = JSON.stringify({app: 'boxes', version: 3, exportedAt: new Date().toISOString(), boxes, photos, household, places, notes: notesOut});
+  deliver(`storrrage-backup-${today()}.json`, new Blob([json], {type: 'application/json'}), 'Backup ready', async () => {
     lastBackup = new Date().toISOString(); await metaPut('lastBackup', lastBackup).catch(() => {}); render();
   });
 }
@@ -13026,24 +14050,41 @@ $('#importFile').addEventListener('change', async e => {
       for (const r of refs){ const d = data.photos && data.photos[r]; if (d) await phPut(r, await (await fetch(d)).blob()); }
       putBox(b); n++;
     }
-    toast(n ? `Restored ${n} ${n === 1 ? 'box' : 'boxes'}.` : 'Everything in that backup is already here.');
-  } catch { toast('That file isn’t a Boxes backup.'); }
+    (data.household || []).forEach(addPerson);
+    (data.places || []).forEach(p => { if (p && p.id && !findPlace(p.id)){ places.push(p); } }); metaPut('places', places).catch(() => {});
+    boxes.forEach(b => { if (!b.placeId || !findPlace(b.placeId)){ b.placeId = places[0].id; dbPut(clone(b)).catch(() => {}); } });
+    let k = 0;
+    for (const x of (data.notes || [])){
+      if (!x || !x.id || notes.some(y => y.id === x.id) || !x.audio) continue;
+      const nn = {id: x.id, boxId: x.boxId || null, createdAt: x.createdAt, duration: x.duration || 0, by: x.by || '', blob: await (await fetch(x.audio)).blob()};
+      await notePut(nn); notes.push(nn); k++;
+    }
+    updateStatus(); render();
+    toast(n || k ? `Restored ${n} ${n === 1 ? 'box' : 'boxes'}${k ? ` and ${k} voice ${k === 1 ? 'note' : 'notes'}` : ''}.` : 'Everything in that backup is already here.');
+  } catch { toast('That file isn’t a Storrrage backup.'); }
 });
 function menuSheet(){
   openSheet(`<h3>More</h3><div class="menu">
-    <p class="hint">Everything is stored only on this phone. ${lastBackup ? `Last backup: ${esc(fmtDate(lastBackup))}.` : 'No backup made yet.'}</p>
+    <p class="hint">Everything is stored only on this phone. ${lastBackup ? `Last backup: ${esc(fmtDate(lastBackup))}.` : 'No backup made yet.'} <span id="usage"></span></p>
     <button class="btn quiet" data-m="backup">Back up now</button>
+    <button class="btn quiet" data-m="places">Storage places</button>
+    <button class="btn quiet" data-m="people">People in the household</button>
     <button class="btn quiet" data-m="report">Make insurance report</button>
     <button class="btn quiet" data-m="labels">Get labels for all boxes</button>
     <button class="btn quiet" data-m="import">Restore from backup</button>
     <button class="btn" data-m="close" style="margin-top:6px">Close</button></div>`);
+  if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => {
+    const el = $('#usage'); if (el && est.usage) el.textContent = `Storrrage is using about ${Math.max(1, Math.round(est.usage / 1048576))} MB.`;
+  }).catch(() => {});
   sheet.querySelector('.menu').onclick = e => {
     const m = e.target.closest('[data-m]'); if (!m) return; const k = m.dataset.m;
     if (k === 'close') return closeSheet();
     if (k === 'import'){ closeSheet(); return $('#importFile').click(); }
     if (k === 'backup') backup();
+    if (k === 'people') peopleSheet();
     if (k === 'report') insuranceReport();
-    if (k === 'labels') boxes.length ? labels(boxes) : toast('Add some boxes first.');
+    if (k === 'labels') realBoxes().length ? labels(realBoxes()) : toast('Add some boxes first.');
+    if (k === 'places') placesSheet();
   };
 }
 
@@ -13054,11 +14095,20 @@ async function init(){
     idb = await openDB();
     boxes = await dbAll();
     lastBackup = await metaGet('lastBackup') || null;
+    household = await metaGet('household') || [];
+    me = await metaGet('me') || '';
+    voiceLang = await metaGet('voiceLang') || voiceLang;
+    notes = await noteAll();
+    places = await metaGet('places') || [];
+    if (!places.length){ places = [{id: newId(), name: (navigator.language || '').toLowerCase().startsWith('sv') ? 'Källaren' : 'Basement', createdAt: new Date().toISOString()}]; await metaPut('places', places); }
+    for (const b of boxes) if (!b.placeId || !findPlace(b.placeId)){ b.placeId = places[0].id; await dbPut(clone(b)); }
+    currentPlace = await metaGet('currentPlace') || 'all';
+    if (currentPlace !== 'all' && !findPlace(currentPlace)) currentPlace = 'all';
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   } catch {
-    app.innerHTML = '<p class="status">This browser won’t let Boxes store data. Open it in Chrome, not in a private tab.</p>'; return;
+    app.innerHTML = '<p class="status">This browser won’t let Storrrage store data. Open it in Chrome, not in a private tab.</p>'; return;
   }
-  ready = true; render();
+  ready = true; updateStatus(); render();
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();

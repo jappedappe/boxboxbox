@@ -1,5 +1,5 @@
-// Boxes offline helper. Bump the version when you change the files.
-const CACHE = 'boxes-v1';
+// Storrrage offline helper. Bump the version when you change the files.
+const CACHE = 'storrrage-v2';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
