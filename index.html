@@ -3,206 +3,319 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#C79D63">
+<meta name="theme-color" content="#FFFFFF">
 <title>Storrrage</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&family=Big+Shoulders+Stencil+Display:wght@700;800&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#DADBD5; --surface:#F4F4F1; --ink:#1E1D1B; --muted:#5D5B55; --line:#BEBEB6;
-  --kraft:#C79D63; --kraft-dark:#A97F47; --kraft-ink:#2E2112; --tape:#E8B62E; --danger:#A3362A;
-  --ui:"Archivo", "Helvetica Neue", Arial, sans-serif;
-  --stencil:"Big Shoulders Stencil Display", "Archivo", Impact, sans-serif;
-  box-sizing:border-box;
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>:root{
+  --primary:#2F1160; --primary-2:#492F74; --accent:#6200FF; --lav:#A49CD6; --lav-2:#E1DFF2; --lav-3:#F5F4FB;
+  --dot:#F97F26; --black:#202020; --bg:#FFFFFF; --surface:#FFFFFF; --ink:#2F1160; --text:#202020; --muted:#7A7390; --line:#CFCBE3; --danger:#C0392B;
+  --tile:#2F1160; --tile-ink:#FFFFFF; --current:#202020; --field:#FFFFFF;
+  --ui:"Poppins", "Segoe UI", Roboto, Arial, sans-serif;
+  --caps:"Montserrat", "Poppins", Arial, sans-serif;
+  --tabh:62px;
+  box-sizing:border-box; color-scheme:light;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-  color-scheme:light;
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#1A1B19; --surface:#252623; --ink:#ECEBE5; --muted:#A3A199; --line:#3B3C38;
-    --kraft:#8E6A3E; --kraft-dark:#6F522E; --kraft-ink:#FBF0DF; --tape:#D8A726; --danger:#E0786A;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#1A1B19; --surface:#252623; --ink:#ECEBE5; --muted:#A3A199; --line:#3B3C38;
-  --kraft:#8E6A3E; --kraft-dark:#6F522E; --kraft-ink:#FBF0DF; --tape:#D8A726; --danger:#E0786A;
-  color-scheme:dark;
-}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#130A26; --surface:#1D1236; --ink:#E9E4FA; --text:#ECE9F5; --muted:#A79FC2; --line:#3B2C61; --lav-2:#2B1D4D; --lav-3:#1A1031;
+  --tile:#4A2A8F; --current:#000000; --field:#130A26; --primary:#5B34B0; color-scheme:dark; } }
+:root[data-theme="dark"]{ --bg:#130A26; --surface:#1D1236; --ink:#E9E4FA; --text:#ECE9F5; --muted:#A79FC2; --line:#3B2C61; --lav-2:#2B1D4D; --lav-3:#1A1031;
+  --tile:#4A2A8F; --current:#000000; --field:#130A26; --primary:#5B34B0; color-scheme:dark; }
 *,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
 button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+svg{width:1em;height:1em;fill:currentColor}
 
-.wrap{max-width:860px;margin:0 auto;padding:0 16px 64px}
-header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:14px 0 12px;border-bottom:1px solid var(--line)}
-.brandrow{display:flex;align-items:center;gap:10px}
-.brand{font-weight:800;font-stretch:125%;font-size:1.5rem;letter-spacing:-.01em;margin:0;flex:1}
-.searchrow{margin-top:10px}
-.search{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface)}
-.search::placeholder{color:var(--muted)}
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.logo{width:36px;height:36px;border:none;background:none;padding:0;display:block}
+.logo .logosvg,.logobig .logosvg{width:100%;height:100%;display:block}
+.logobig{width:132px;height:132px;margin:0 auto}
+.burger{border:none;background:none;padding:6px;color:var(--ink);display:grid;place-items:center}
+.burger svg{width:30px;height:30px}
+.statusline{margin:0 16px 4px;font-size:.8rem;color:var(--muted)}
+.wrap{max-width:560px;margin:0 auto;padding:6px 16px calc(var(--tabh) + 96px + env(safe-area-inset-bottom,0px))}
+body.onboarding .tabbar,body.onboarding .fab,body.onboarding .topbar{display:none}
 
-.btn{border:1.5px solid var(--ink);background:transparent;padding:9px 14px;border-radius:9px;font-weight:600;cursor:pointer;white-space:nowrap}
-.btn.primary{background:var(--ink);color:var(--bg)}
+/* headings */
+.crumbs{font-family:var(--caps);font-weight:700;font-size:.82rem;letter-spacing:.02em;color:var(--ink);text-transform:uppercase;margin:14px 0 2px;line-height:1.5;word-break:break-word}
+.crumbs button{border:none;background:none;padding:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;text-decoration:underline;text-decoration-color:var(--lav);text-underline-offset:3px}
+.crumbs .sep{color:var(--lav)}
+.tagline{font-family:var(--caps);font-weight:700;font-size:.68rem;letter-spacing:.04em;color:var(--lav);text-transform:uppercase;margin:0 0 18px}
+h2.section{font-family:var(--caps);font-weight:700;font-size:.72rem;letter-spacing:.05em;color:var(--lav);text-transform:uppercase;margin:26px 0 10px}
+.hint{color:var(--muted);font-size:.88rem}
+.proof{color:var(--muted);font-size:.78rem}
+.center{text-align:center}
+.status{margin-top:40px;color:var(--muted);text-align:center}
+
+/* tiles */
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px}
+@media (min-width:520px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile{position:relative;aspect-ratio:6/5;border-radius:4px;border:none;background:var(--tile);color:var(--tile-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;text-align:center;font-weight:700;font-size:.95rem;line-height:1.25;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;min-width:0}
+.tile .tname{overflow-wrap:anywhere}
+.tile .tcode{font-weight:500;font-size:.72rem;opacity:.75;margin-top:4px}
+.tile.current{background:var(--current)}
+.tile.add{background:transparent;border:2px solid var(--ink);color:var(--ink);font-size:1.4rem;font-weight:500}
+.tile:active,.itile:active{transform:scale(.97)}
+.dot{position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:var(--dot);border:2px solid var(--bg)}
+.dot.inline{position:relative;display:inline-block;top:-8px;right:auto;margin-left:2px;width:9px;height:9px;border:none}
+.igrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;margin-top:10px}
+.itile{position:relative;border:none;background:none;padding:0;text-align:center;color:var(--ink);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;min-width:0}
+.itile .timg{position:relative;display:grid;place-items:center;aspect-ratio:1;border-radius:6px;background:var(--lav-3);overflow:visible}
+.itile .timg img{width:100%;height:100%;object-fit:cover;border-radius:6px}
+.itile .ticon{font-size:2.2rem;line-height:1;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
+.itile .tname{display:block;font-weight:500;font-size:.8rem;line-height:1.25;margin-top:6px;overflow-wrap:anywhere}
+.itile .tcap{display:flex;gap:3px;justify-content:center;align-items:center;font-size:.68rem;color:var(--muted);margin-top:2px}
+.itile .tcap svg{width:11px;height:11px}
+.itile.add .timg{border:2px dashed var(--line);background:transparent;font-size:1.6rem;color:var(--ink)}
+
+/* box page bar */
+.boxbar{display:flex;align-items:center;gap:8px;margin:-6px 0 6px;flex-wrap:wrap}
+.qr{width:44px;height:44px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:4px}
+.qr svg{width:100%;height:100%;display:block;fill:initial}
+.bphoto{width:44px;height:44px;padding:0;border:none;border-radius:4px;overflow:hidden;margin-left:auto}
+.bphoto img{width:100%;height:100%;object-fit:cover}
+
+/* inputs */
+.input,.search{width:100%;padding:11px 14px;border:1.5px solid var(--ink);border-radius:9px;background:var(--field);color:var(--text)}
+.input::placeholder,.search::placeholder,.fl input::placeholder,.fl textarea::placeholder,.title::placeholder{color:var(--lav);font-style:italic}
+.search{margin:0 0 8px}
+.title{width:100%;border:none;border-bottom:1.5px solid var(--line);background:transparent;font-family:var(--caps);font-weight:700;font-size:1.15rem;color:var(--ink);padding:6px 0;margin:2px 0 14px;text-transform:uppercase;letter-spacing:.01em}
+.title:focus{outline:none;border-bottom-color:var(--accent)}
+.fl{position:relative;border:1.5px solid var(--ink);border-radius:9px;margin:10px 0;background:var(--field)}
+.fl input,.fl textarea,.fl select{width:100%;border:none;background:transparent;padding:11px 14px;color:var(--text);border-radius:9px;min-width:0}
+.fl textarea{min-height:68px;resize:vertical}
+.fl input:focus,.fl textarea:focus,.fl select:focus{outline:none}
+.fl:focus-within{border-color:var(--accent)}
+.fl > label{position:absolute;top:-9px;left:10px;padding:0 4px;background:var(--field);font-size:.68rem;color:var(--muted);pointer-events:none;transition:opacity .15s}
+.fl input:placeholder-shown ~ label,.fl textarea:placeholder-shown ~ label{opacity:0}
+.fl > label.always{opacity:1}
+.fl.two{display:flex;flex-wrap:wrap;align-items:center}
+.fl.two input{flex:1 1 140px}
+.fl.two select{flex:1 1 150px;color:var(--muted);font-size:.85rem}
+.notify{display:block;font-size:.8rem;color:var(--lav);padding:0 14px 10px;margin-top:-4px}
+.notify.due{color:var(--dot)}
+.notify .dot{top:-2px;right:auto;margin-left:4px;position:relative;display:inline-block;border:none}
+.fl.att{padding:16px 14px 10px}
+.attrow{display:flex;align-items:center;gap:8px;padding:4px 0;color:var(--ink)}
+.attrow span{flex:1;min-width:0;overflow-wrap:anywhere}
+.attrow button{border:none;background:none;color:var(--ink);padding:4px;display:grid;place-items:center}
+.attrow button svg{width:18px;height:18px}
+.addfile{display:inline-block;color:var(--accent);font-size:.85rem;font-weight:500;padding:4px 0;cursor:pointer}
+.locbox{position:relative;margin:16px 2px 10px}
+.locbox .lab{font-size:.68rem;color:var(--lav);font-weight:500}
+.locbox p{margin:0;color:var(--ink);padding-right:60px}
+.locbox .linkbtn{position:absolute;right:0;top:12px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.tag{border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:3px;padding:7px 12px;font-family:var(--caps);font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.tag.plus{background:var(--primary);border-color:var(--primary);color:#fff;font-size:.95rem;padding:3px 13px}
+.adddetail{color:var(--lav);font-style:italic;margin:4px 0 14px}
+.hero{position:relative;width:min(70%,280px);margin:0 auto 10px}
+.heroimg{display:block;width:100%;aspect-ratio:1;border:none;padding:0;background:var(--lav-2);border-radius:2px;overflow:hidden}
+.heroimg img{width:100%;height:100%;object-fit:contain;background:#fff}
+.heroimg.empty{display:grid;place-items:center}
+.heroimg .ticon{font-size:4rem;opacity:.6;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
+.cam{position:absolute;right:-16px;bottom:-14px;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(47,17,96,.35)}
+.cam svg{width:20px;height:20px}
+.thumbs{display:flex;gap:8px;overflow-x:auto;margin:18px 0 6px;padding:6px 2px}
+.th{position:relative;flex:none}
+.th > button:first-child{width:58px;height:58px;padding:0;border:none;border-radius:4px;overflow:hidden;display:block}
+.th img{width:100%;height:100%;object-fit:cover}
+.th .x,.attrow .x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:var(--black);color:#fff;font-size:.9rem;line-height:1;display:grid;place-items:center;padding:0}
+.attrow .x{position:static;background:none;color:var(--muted);font-size:1.1rem}
+
+/* lists (profile, settings) */
+.list{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.row{display:flex;align-items:center;gap:14px;width:100%;padding:11px 16px;border:1.5px solid var(--black);border-radius:3px;background:var(--surface);color:var(--text);text-align:left;font-size:1rem}
+.row svg{width:18px;height:18px;flex:none}
+.row span{flex:1;min-width:0}
+.row em{font-style:normal;color:var(--muted);font-size:.85rem}
+.row .count{background:var(--dot);color:#fff;border-radius:999px;font-size:.72rem;padding:1px 8px}
+.row.static{cursor:default}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.dues{display:flex;flex-direction:column;gap:14px;margin-top:12px}
+.due{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}
+.dueact{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+
+/* buttons */
+.btn{border:1.5px solid var(--black);background:var(--surface);color:var(--text);padding:10px 16px;border-radius:9px;font-weight:500;white-space:nowrap}
+.btn.primary{background:var(--black);border-color:var(--black);color:#fff}
 .btn.quiet{border-color:var(--line)}
-.btn.danger{border-color:var(--danger);color:var(--danger)}
-.btn:disabled{opacity:.5;cursor:default}
-.iconbtn{border:none;background:none;padding:8px;cursor:pointer;border-radius:8px;font-weight:600}
+.btn.danger{border-color:var(--danger);color:var(--danger);background:transparent}
+.btn.small{padding:6px 12px;font-size:.85rem}
+.btn.block{display:block;width:100%;margin-top:12px}
+.btn:disabled{opacity:.5}
+.btn.big{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;white-space:normal;flex:1;background:var(--primary);border-color:var(--primary);font-weight:600}
+.btn.big svg{width:28px;height:28px}
+.choice{display:flex;gap:12px;margin:8px 0 6px}
+.iconbtn,.linkbtn{border:none;background:none;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.banner{background:var(--lav-3);border-left:4px solid var(--dot);padding:10px 14px;border-radius:6px;margin:0 0 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner span{flex:1;min-width:180px;font-size:.88rem}
 
-.summary{margin:20px 0 14px;color:var(--muted)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+/* tab bar + talk button */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar button{position:relative;border:none;background:none;height:var(--tabh);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink);font-size:.78rem;font-weight:500}
+.tabbar button svg{width:22px;height:22px}
+.tabbar button.on{color:var(--accent)}
+.tabbar button.on::before{content:"";position:absolute;top:-2px;left:0;right:0;height:3px;background:var(--accent)}
+.tabbar .dot{top:10px;right:calc(50% - 16px);width:9px;height:9px}
+.fab{position:fixed;right:16px;bottom:calc(var(--tabh) + 16px + env(safe-area-inset-bottom,0px));z-index:6;width:58px;height:58px;border-radius:50%;border:none;background:var(--primary);color:#fff;display:grid;place-items:center;box-shadow:0 4px 16px rgba(47,17,96,.4)}
+.fab svg{width:26px;height:26px}
 
-/* The box tile: the one loud element. Kraft board, stencil code. */
-.tile{display:flex;gap:14px;align-items:stretch;text-align:left;width:100%;cursor:pointer;
-  background:var(--kraft);color:var(--kraft-ink);border:none;border-radius:4px;padding:14px 16px;
-  box-shadow:inset 0 -3px 0 var(--kraft-dark)}
-.tile:hover{filter:brightness(1.04)}
-.code{font-family:var(--stencil);font-weight:800;font-size:2.4rem;line-height:.9;letter-spacing:.01em;min-width:3.6ch}
-.tile-body{display:flex;flex-direction:column;justify-content:center;min-width:0}
-.tile-name{font-weight:700;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tile-meta{font-size:.88rem;opacity:.85}
+/* welcome */
+.welcome{max-width:340px;margin:0 auto;padding:40px 0 20px;text-align:center;display:flex;flex-direction:column;gap:12px}
+.welcome h1{font-size:1.9rem;color:var(--ink);margin:20px 0 0;font-weight:700}
+.welcome p{color:var(--ink);margin:0 0 18px}
 
-.empty{background:var(--surface);border:1.5px dashed var(--line);border-radius:12px;padding:28px 22px;margin-top:24px;max-width:56ch}
-.empty h2{margin:0 0 6px;font-size:1.15rem}
-.empty p{margin:0 0 16px;color:var(--muted)}
-
-.back{margin:16px 0 8px;padding-left:0}
-.boxhead{background:var(--kraft);color:var(--kraft-ink);border-radius:4px;padding:18px;display:grid;grid-template-columns:1fr auto;gap:16px;box-shadow:inset 0 -4px 0 var(--kraft-dark)}
-.boxhead .code{font-size:4rem}
-.boxhead h2{margin:6px 0 2px;font-size:1.35rem}
-.boxhead p{margin:0;font-size:.92rem;opacity:.9}
-.boxhead .qr{background:#fff;padding:8px;border-radius:4px;width:96px;height:96px;align-self:start;border:none;cursor:pointer}
-.boxhead .qr svg{width:100%;height:100%;display:block}
-.boxphoto{margin-top:12px;border-radius:4px;max-height:240px;object-fit:cover;width:100%}
-.actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}
-
-.items{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
-.item{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer;width:100%;background:none;border-left:none;border-right:none;border-top:none;text-align:left}
-.item:hover{background:var(--surface)}
-.thumb{width:56px;height:56px;border-radius:6px;object-fit:cover;flex:none;background:var(--surface);border:1px solid var(--line)}
-.thumb.none{display:grid;place-items:center;color:var(--muted);font-size:.75rem}
-.item-main{flex:1;min-width:0}
-.item-name{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item-sub{font-size:.86rem;color:var(--muted)}
-.item-right{text-align:right;font-size:.86rem;color:var(--muted);white-space:nowrap}
-.chip{display:inline-block;font-family:var(--stencil);font-weight:800;background:var(--kraft);color:var(--kraft-ink);padding:1px 7px;border-radius:3px;font-size:1rem;line-height:1.3}
-.hint{color:var(--muted);font-size:.9rem}
-.status{margin-top:40px;color:var(--muted)}
-
-/* Sheets */
-dialog{border:none;border-radius:14px;padding:0;background:var(--surface);color:var(--ink);width:min(560px,calc(100vw - 20px));max-height:calc(100% - 40px)}
-dialog::backdrop{background:rgba(10,10,8,.55)}
+/* sheets */
+dialog{border:none;border-radius:16px;padding:0;background:var(--surface);color:var(--text);width:min(520px,calc(100vw - 20px));max-height:calc(100% - 40px)}
+dialog::backdrop{background:rgba(20,8,40,.55)}
 .sheet{padding:20px}
-.sheet h3{margin:0 0 14px;font-size:1.2rem}
+.sheet h3{margin:0 0 14px;font-size:1.1rem;color:var(--ink);font-weight:700}
 .field{display:block;margin-bottom:14px}
-.field>span{display:block;font-size:.88rem;font-weight:600;margin-bottom:5px}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg)}
+.field>span{display:block;font-size:.8rem;font-weight:600;margin-bottom:5px;color:var(--ink)}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--ink);border-radius:9px;background:var(--field);color:var(--text)}
 .field textarea{min-height:70px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sheet-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
+.sheet-foot .spacer{flex:1}
+.menu{display:flex;flex-direction:column;gap:8px}
+.menu .btn{text-align:left}
+.chip{display:inline-block;font-weight:700;background:var(--primary);color:#fff;padding:1px 8px;border-radius:3px;font-size:.85rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.chipbtn{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:.85rem;color:var(--text)}
+.chipbtn.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.chipbtn.add{border-style:dashed;color:var(--muted)}
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .ph{position:relative;width:84px;height:84px}
 .ph img{width:100%;height:100%;object-fit:cover;border-radius:6px}
-.ph button{position:absolute;top:3px;right:3px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;cursor:pointer;line-height:1}
-.addph{width:84px;height:84px;border:1.5px dashed var(--line);border-radius:6px;display:grid;place-items:center;cursor:pointer;color:var(--muted);font-size:.82rem;text-align:center;padding:4px}
+.ph button{position:absolute;top:3px;right:3px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;line-height:1}
+.addph{width:84px;height:84px;border:1.5px dashed var(--line);border-radius:6px;display:grid;place-items:center;cursor:pointer;color:var(--muted);font-size:.8rem;text-align:center;padding:4px}
 .addph input{display:none}
-.sheet-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
-.sheet-foot .spacer{flex:1}
-.proof{font-size:.82rem;color:var(--muted);margin:-4px 0 14px}
-.menu{display:flex;flex-direction:column;gap:8px}
-.menu .btn{text-align:left}
-.menu p{margin:0 0 8px}
+details.more{margin:2px 0 14px}
+details.more summary{cursor:pointer;font-weight:600;font-size:.9rem;margin-bottom:10px;color:var(--ink)}
+.vlog{max-height:34vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:8px 0 12px}
+.vl{padding:8px 12px;border-radius:12px;max-width:88%;font-size:.93rem}
+.vl.you{align-self:flex-end;background:var(--primary);color:#fff}
+.vl.app{align-self:flex-start;background:var(--lav-3)}
+.vl .btn{margin-top:6px;padding:6px 10px}
+.vl .src{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-right:6px;vertical-align:1px}
+.vl .src.ai{background:var(--lav);color:#fff}
+.vl .src.simple{border:1px solid var(--line);color:var(--muted)}
+.vlive{background:var(--lav-3);border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;min-height:2.6em}
+.mic{display:block;width:100%;padding:20px;border-radius:14px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:1.05rem}
+.mic.on{background:var(--dot)}
+.vtype{display:flex;gap:8px;margin:12px 0}
+.vtype input{flex:1;min-width:0;padding:10px 12px;border:1.5px solid var(--ink);border-radius:9px;background:var(--field);color:var(--text)}
+.vrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.btn.rec{border-color:var(--danger);color:var(--danger)}
+.check{display:flex;gap:8px;align-items:center;font-size:.9rem;margin:4px 0 12px}
+.help{margin:0 0 4px;padding-left:18px;color:var(--muted);font-size:.9rem}
+.aistat{margin:-4px 0 10px;font-size:.85rem;color:var(--muted)}
+.notes{margin-top:8px}
+.note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.note audio{flex:1 1 220px;height:40px;min-width:0}
+.items{list-style:none;margin:0;padding:0}
+.item{display:flex;gap:12px;align-items:center;padding:8px 0;width:100%;background:none;border:none;border-bottom:1px solid var(--line);text-align:left;color:var(--text)}
+.thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;flex:none;background:var(--lav-3)}
+.thumb.icon{display:grid;place-items:center;font-size:1.6rem}
+.item-main{flex:1;min-width:0}
+.item-name,.item-sub{display:block}
+.item-sub{font-size:.82rem;color:var(--muted)}
 video{width:100%;border-radius:10px;background:#000;aspect-ratio:4/3;object-fit:cover}
-
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;max-width:min(92vw,520px);z-index:20;font-size:.92rem}
-@media (max-width:480px){.code{font-size:2.1rem}.boxhead .code{font-size:3.2rem}.boxhead .qr{width:76px;height:76px}.row2{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-
-.banner{background:var(--surface);border-left:4px solid var(--tape);padding:10px 14px;border-radius:6px;margin:16px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.banner span{flex:1;min-width:200px;font-size:.92rem}
-
-.thumb.icon{font-size:1.9rem;line-height:1;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
-.namerow{display:flex;gap:10px;align-items:center}
-.namerow .thumb{width:46px;height:46px;font-size:1.6rem}
-.namerow input{flex:1}
-
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabh) + 86px + env(safe-area-inset-bottom,0px));background:var(--black);color:#fff;padding:10px 16px;border-radius:10px;max-width:min(92vw,520px);z-index:20;font-size:.9rem}
 #viewer{width:100vw;height:100%;max-width:none;max-height:none;margin:0;padding:0;border-radius:0;background:#000;color:#fff}
 #viewer::backdrop{background:#000}
 .vwrap{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;touch-action:none}
 .vwrap img{max-width:100%;max-height:100%;transform-origin:center;user-select:none;-webkit-user-drag:none}
-.vclose{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:1.6rem;cursor:pointer}
+.vclose{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:1.6rem}
 .vhint{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;margin:0;font-size:.85rem;opacity:.7}
-.ph img,.boxphoto{cursor:zoom-in}
-.wrap{padding-bottom:120px}
-.statusline{margin:8px 0 0;font-size:.85rem;color:var(--muted)}
-.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;border:none;border-radius:999px;padding:15px 22px;background:var(--ink);color:var(--bg);font-weight:700;font-size:1.05rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-.chipbtn{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:.88rem;cursor:pointer}
-.chipbtn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.chipbtn.add{border-style:dashed;color:var(--muted)}
-details.more{margin:2px 0 14px}
-details.more summary{cursor:pointer;font-weight:600;font-size:.92rem;margin-bottom:10px}
-.vlog{max-height:34vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:8px 0 12px}
-.vl{padding:8px 12px;border-radius:12px;max-width:88%;font-size:.95rem}
-.vl.you{align-self:flex-end;background:var(--ink);color:var(--bg)}
-.vl.app{align-self:flex-start;background:var(--bg)}
-.vl .btn{margin-top:6px;padding:6px 10px}
-.mic{display:block;width:100%;padding:22px;border-radius:14px;border:none;background:var(--kraft);color:var(--kraft-ink);font-weight:800;font-size:1.15rem;cursor:pointer;box-shadow:inset 0 -4px 0 var(--kraft-dark)}
-.mic.on{background:var(--tape);color:#1E1D1B}
-.vtype{display:flex;gap:8px;margin:12px 0}
-.vtype input{flex:1;min-width:0;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg)}
-.vrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.btn.rec{border-color:var(--danger);color:var(--danger)}
-.check{display:flex;gap:8px;align-items:center;font-size:.92rem;margin:4px 0 12px}
-.help{margin:0 0 4px;padding-left:18px;color:var(--muted);font-size:.92rem}
-.notes h3{font-size:1rem;margin:24px 0 8px}
-.note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
-.note audio{flex:1 1 220px;height:40px}
-.prow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
-.item-name,.item-sub{display:block}
-.placebar{display:flex;gap:6px;overflow-x:auto;padding:14px 0 2px;margin:0;scrollbar-width:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* place switcher */
+.placebar{display:flex;gap:8px;overflow-x:auto;padding:12px 16px 4px;margin:0 -16px;scrollbar-width:none}
 .placebar::-webkit-scrollbar{display:none}
-.placebar .chipbtn{flex:none;font-weight:600}
-.placehead{font-size:1.15rem;margin:26px 0 10px;padding-top:12px;border-top:2px solid var(--ink)}
-.loosehead{display:flex;justify-content:space-between;align-items:center;margin:22px 0 6px}
-.loosehead h3{margin:0;font-size:1rem}
-.btn.small{padding:6px 11px;font-size:.88rem}
-.chip.loose{font-family:var(--ui);font-weight:700;font-size:.78rem;background:transparent;border:1.5px solid var(--kraft-dark);color:var(--ink)}
-.item-right small{font-size:.75rem}
-.scope{margin:18px 0 0;color:var(--muted);font-size:.92rem}
-.linkbtn{border:none;background:none;padding:0;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink)}
+.pchip{position:relative;flex:none;border:1.5px solid var(--ink);background:transparent;color:var(--ink);border-radius:4px;padding:8px 14px;font-weight:600;font-size:.88rem;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.pchip.on{background:var(--current);border-color:var(--current);color:#fff}
+.pchip.add{border-style:dashed;color:var(--muted);border-color:var(--line)}
+.pchip .dot{top:-4px;right:-4px;width:10px;height:10px}
+.placehead{margin:28px 0 4px;padding-top:14px;border-top:2px solid var(--ink)}
+.placehead button{border:none;background:none;padding:0;font-family:var(--caps);font-weight:700;font-size:.9rem;color:var(--ink);text-transform:uppercase;letter-spacing:.02em}
+/* search scope */
+.scope{margin:0 0 10px}
+.scope .lab{font-size:.68rem;color:var(--muted);font-weight:500}
+.scope .chips{margin-top:4px}
+.chipbtn.small{padding:4px 10px;font-size:.78rem}
+/* item page: done bar */
+.donebar{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px));z-index:6;display:flex;gap:10px;justify-content:flex-end;padding:10px 16px;background:var(--bg);border-top:1px solid var(--line)}
+.donebar .btn{flex:1;max-width:260px}
+.donebar .btn.primary{flex:1.3}
+body.itemview .fab{display:none}
+body.itemview .wrap{padding-bottom:calc(var(--tabh) + 120px + env(safe-area-inset-bottom,0px))}
 
-.vlive{background:var(--bg);border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:.98rem;min-height:2.6em}
+/* item page v2 */
+.title{margin:6px 0 10px;text-align:center}
+.fl.group{padding:16px 12px 10px}
+.fl.group .pair{display:flex;gap:8px;flex-wrap:wrap}
+.fl.group .pair input,.fl.group .pair select,.fl.group input.sub{flex:1 1 140px;border:1.5px solid var(--line);border-radius:7px;padding:9px 10px;background:var(--field);color:var(--text);min-width:0}
+.fl.group input.sub{width:100%;margin-top:8px}
+.adddet{margin:14px 0 6px}
+.adddet .lab,.tags .lab{display:block;width:100%;font-size:.68rem;color:var(--muted);font-weight:500;margin-bottom:2px}
+.adddet .chipbtn{border-style:dashed;color:var(--ink);font-size:.82rem;padding:5px 11px}
+.pagetitle{font-family:var(--caps);font-weight:700;font-size:1.05rem;color:var(--ink);margin:6px 0 4px;text-transform:uppercase}
+/* batch */
+.choice.col{flex-direction:column}
+.btn.big small{font-weight:400;font-size:.8rem;opacity:.85;line-height:1.3}
+label.btn{cursor:pointer;text-align:center}
+.brows{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+.brow{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center;padding:8px;border:1.5px solid var(--line);border-radius:10px}
+.brow.off{opacity:.45}
+.bthumb{width:72px;height:72px;padding:0;border:none;border-radius:6px;overflow:hidden;background:var(--lav-3)}
+.bthumb img{width:100%;height:100%;object-fit:cover}
+.bmain{min-width:0}
+.bmain .input{padding:8px 10px}
+.bdet{margin:4px 0 0;font-size:.78rem;color:var(--muted)}
+.binc{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.68rem;color:var(--muted)}
+.binc input{width:20px;height:20px;accent-color:var(--primary)}
+.morebtn{margin-bottom:12px}
+.donebar .btn:disabled{opacity:.45}
+/* language switch */
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:transparent;color:var(--ink);padding:7px 14px;font-weight:600;font-size:.88rem}
+.seg button.on{background:var(--primary);color:#fff}
+.langsw{display:flex;justify-content:flex-end;margin:-24px 0 4px}
 
-.aistat{margin:-4px 0 10px;font-size:.88rem;color:var(--muted)}
-
-.vl .src{display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-right:6px;vertical-align:1px}
-.vl .src.ai{background:var(--tape);color:#1E1D1B}
-.vl .src.simple{border:1px solid var(--line);color:var(--muted)}
+.aisug{display:flex;align-items:center;justify-content:center;gap:8px;margin:-2px 0 10px}
+.testtag{display:inline-block;font-family:var(--caps);font-size:.6rem;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--dot);border-radius:3px;padding:2px 6px;vertical-align:2px}
+.sugs{display:flex;flex-direction:column;gap:8px;margin:10px 0 14px}
+.sug{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1.5px solid var(--line);border-radius:9px}
+.sug input{width:20px;height:20px;margin-top:2px;accent-color:var(--primary);flex:none}
+.sug small{color:var(--muted)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="brandrow">
-      <h1 class="brand">Storrrage</h1>
-      <button class="btn quiet" id="scanBtn">Scan label</button>
-      <button class="btn primary" id="newBoxBtn">New box</button>
-      <button class="iconbtn" id="menuBtn" aria-label="More options">•••</button>
-    </div>
-    <div class="searchrow">
-      <input class="search" id="search" type="search" placeholder="Find anything, e.g. tent, Elsa’s boots, verktyg" autocomplete="off">
-    </div>
-    <p class="statusline" id="statusline" hidden></p>
-  </header>
-  <main id="app"></main>
-</div>
-<button class="fab" id="talkBtn">🎙 Talk</button>
+<header class="topbar">
+  <button class="logo" id="logoBtn" aria-label="Storrrage, go to your space"></button>
+  <button class="burger" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="2.6" rx="1.3"/><rect x="3" y="10.7" width="18" height="2.6" rx="1.3"/><rect x="3" y="16.4" width="18" height="2.6" rx="1.3"/></svg></button>
+</header>
+<p class="statusline" id="statusline" hidden></p>
+<main id="app" class="wrap"></main>
+<button class="fab" id="talkBtn" aria-label="Talk to Storrrage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0V6A3.5 3.5 0 0 1 12 2.5zM6 11.5h2a4 4 0 0 0 8 0h2a6 6 0 0 1-5 5.9V21h-2v-3.6a6 6 0 0 1-5-5.9z"/></svg></button>
+<nav class="tabbar" aria-label="Main">
+  <button data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg><span class="tl">Active</span></button>
+  <button data-tab="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span class="tl">Search</span></button>
+  <button data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5"/><path d="M3.5 21c.6-4.6 4.1-7.5 8.5-7.5s7.9 2.9 8.5 7.5z"/></svg><span class="tl">Profile</span><i class="dot" id="profileDot" hidden></i></button>
+</nav>
 <dialog id="sheet"></dialog>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script>//---------------------------------------------------------------------
@@ -12616,7 +12729,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-06.6';
+const APP_VERSION = '2026-10-08.7';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -12864,6 +12977,8 @@ function searchItems(q, opts = {}){
   for (const b of boxes){
     if (opts.boxId && b.id !== opts.boxId) continue;
     if (opts.placeId && b.placeId !== opts.placeId) continue;
+    if (opts.placeIds && opts.placeIds.size && !opts.placeIds.has(b.placeId)) continue;
+    if (opts.boxIds && opts.boxIds.size && !opts.boxIds.has(b.id)) continue;
     for (const it of (b.items || [])){
       const H = itemHay(it, b), icon = guessIcon(it);
       let min = 2;
@@ -12875,12 +12990,12 @@ function searchItems(q, opts = {}){
 }
 
 /* ---------- persistence ---------- */
-function putBox(box){
+function putBox(box, quiet){
   box.updatedAt = new Date().toISOString();
   const i = boxes.findIndex(b => b.id === box.id);
   if (i < 0) boxes.push(box); else boxes[i] = box;
   dbPut(clone(box)).catch(e => toast(saveErr(e)));
-  render();
+  if (!quiet) render();
 }
 function removeBox(id){
   boxes = boxes.filter(b => b.id !== id);
@@ -12920,10 +13035,16 @@ async function photoURL(ref){
 function hydrate(root = document){
   root.querySelectorAll('img[data-ph]:not([src])').forEach(async img => { const u = await photoURL(img.dataset.ph); if (u) img.src = u; });
 }
+function refInUse(ref){
+  return boxes.some(b => (b.photo && b.photo.ref === ref) || (b.items || []).some(i => (i.photos || []).some(p => p.ref === ref) || (i.files || []).some(f => f.ref === ref)));
+}
 function dropPhoto(ref){
   if (!ref) return;
-  phDel(ref).catch(() => {});
-  if (urls.has(ref)){ URL.revokeObjectURL(urls.get(ref)); urls.delete(ref); }
+  setTimeout(() => {
+    if (refInUse(ref) || (typeof batchRefs !== 'undefined' && batchRefs.has(ref))) return;
+    phDel(ref).catch(() => {});
+    if (urls.has(ref)){ URL.revokeObjectURL(urls.get(ref)); urls.delete(ref); }
+  }, 300);
 }
 /* ---------- full-screen photo viewer with pinch and double-tap zoom ---------- */
 const viewer = document.createElement('dialog');
@@ -12968,79 +13089,912 @@ document.body.appendChild(viewer);
 })();
 const imgTag = (ref, cls, alt = '') => `<img class="${cls}" data-ph="${esc(ref)}" alt="${esc(alt)}">`;
 
-/* ---------- rendering ---------- */
+/* ---------- language: Swedish or English for the whole app (item names never change) ---------- */
+let lang = (navigator.language || '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
+const STR = {
+  en: {
+    space: 'SPACE', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
+    box_n: n => `BOX ${n}`, allPlaces: 'All places', addPlace: '+ Place', notInBox: 'Not in a box', notInBoxShort: 'not in a box',
+    emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', item: 'item', items: 'items',
+    editBox: 'Edit box', label: 'Label', findStuff: 'FIND YOUR STUFF!', typeKeyword: 'Type keyword', searchIn: 'Search in', everywhere: 'Everywhere', allOf: p => `All of ${p}`,
+    boxesH: 'Boxes', similar: 'Similar things', noMatch: q => `Nothing matches “${q}”. Try another word, in Swedish or English.`, nothingHere: 'Nothing stored here yet.',
+    welcome: 'Keep track of what’s stored where: boxes, things, photos and receipts. Find anything by searching or just asking.', yourName: 'Your name', getStarted: 'Get started',
+    noAccount: 'No account needed for now. Everything stays on this phone.', writeName: 'Write your name first.',
+    storrrage: 'STORRRAGE', profile: 'Profile', settings: 'Settings', notifications: 'Notifications', premium: 'Premium', version: v => `Storrrage version ${v}`,
+    household: 'People in the household', addName: 'Add a name', add: 'Add', you: '(you)', remove: 'Remove', householdHint: 'Used for “whose is it” on items, and when talking to Storrrage (“Elsa’s boots”).', noOne: 'No one added yet.',
+    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Storage places', backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
+    labelsAll: 'Labels for all boxes', scanLabel: 'Scan a box label', language: 'Language', usage: mb => `Everything is stored only on this phone. Storrrage uses about ${mb} MB.`,
+    dueIntro: 'You haven’t used these for a while. Still worth keeping, or time to sell?', lastUsedOn: d => `Last used ${d}`, usedRecently: 'Used it recently', markSale: 'Mark for sale',
+    nothingDue: 'Nothing needs your attention. On an item, set “Remind me if unused” to get a nudge when you haven’t used it in a while.',
+    prem1: 'Share storage with your household', prem2: 'Sell on Blocket, Tradera and Vinted', prem3: 'Login and sync between phones', premLater: 'Coming later. Everything you use now is free.',
+    whatIsIt: 'What is it?', whereIs: 'Where it is', addDetail: 'Add details', lastUsed: 'Last time used', remind: 'Remind me if unused', noRemind: 'No reminder',
+    remindM: m => m === 12 ? 'After 1 year' : m === 24 ? 'After 2 years' : `After ${m} months`, notify: d => `notify ${d}`, attachments: 'Attachments', addAttach: '+ Add receipt, warranty or manual',
+    tags: 'Tags', registered: (d, by) => `Registered ${d}${by ? ` by ${by}` : ''}.`, storedSince: d => `Stored since ${d}.`, changed: d => `Last changed ${d}.`,
+    delItem: 'Delete item', done: 'Done', save: 'Save', saveAnother: 'Save + add another', saved: 'Saved.', savedNext: n => `${n} saved. Add the next one.`, nameFirst: 'Give it a name first.',
+    f_size: 'Size', f_brand: 'Brand', f_value: 'Price / value (kr)', f_model: 'Model', f_qty: 'Quantity', f_owner: 'Whose & status', f_color: 'Colour', f_season: 'Season', f_serial: 'Serial number',
+    f_category: 'Category', f_spot: 'Where exactly', f_notes: 'Notes', whose: 'Whose is it', status: 'Status', loanTo: 'Lent to whom', shared: 'Shared',
+    st_store: 'In storage', st_loan: 'On loan', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Given away',
+    addTo: p => `Add to ${p}`, boxStorage: 'Box / storage', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
+    moveX: n => `Move ${n}`, to: 'To', move: 'Move', movedTo: w => `Moved to ${w}.`, rename: 'Rename', del: 'Delete', edit: 'Edit', moveToPlace: 'Move to place', emptyFirst: 'Empty this place to delete it.',
+    delQ: n => `Delete “${n}”? This can’t be undone.`, delNoteQ: 'Delete this voice note?', rmPhotoQ: 'Remove this photo?', rmQ: n => `Remove “${n}”?`, rmTagQ: n => `Remove the tag “${n}”?`,
+    newPlace: 'New storage place', newPlaceHint: 'For example Basement, Vinden or Garaget', renameX: n => `Rename ${n}`, newTag: 'Add a tag', tagHint: 'For example hiking or winter',
+    backupBanner: d => d ? `Last backup was ${d}. Everything is stored only on this phone, so keep a copy somewhere else.` : 'You haven’t made a backup yet. Everything is stored only on this phone, so keep a copy somewhere else.',
+    voiceNotes: 'Voice notes', voiceNotesBox: 'Voice notes for this box', menu: 'Menu', allSettings: 'All settings', usedNoted: 'Noted. The reminder starts over.', markedSale: 'Marked for sale.',
+    placesHint: 'For example the basement storage unit, the attic, the garage or the summer house. Only a name is stored, never an address.', placeNameHint: 'Name, e.g. Vinden',
+    fileMissing: 'That file is missing.', savingPhoto: 'Saving photo…', unnamed: 'Unnamed',
+    batchTitle: 'Add several items', batchWhere: w => `They’ll go into ${w}.`, modeEach: 'One photo per item', modeEachHint: 'Take or pick a photo of each thing.',
+    modeMulti: 'Several items in one photo', modeMultiHint: 'Lay things out and take one photo. Each thing becomes its own item.',
+    batchAI: 'AI will suggest names and details from the photos. You check them before adding.', batchNoAI: 'Turn on the AI assistant to get names and details suggested automatically. Without it you name each item yourself.',
+    batchPrivacy: 'Photos are sent to the AI service to be recognised.', thinking: 'Recognising…', aiFailed: e => `Couldn’t recognise: ${e}`, addN: n => n === 1 ? 'Add 1 item' : `Add ${n} items`,
+    batchAdded: n => n === 1 ? 'Added 1 item.' : `Added ${n} items.`, namePh: 'Name', include: 'Include', morePhotos: '+ More photos', noneYet: 'No photos yet.', batchFound: n => n === 1 ? 'Found 1 thing.' : `Found ${n} things.`,
+  },
+  sv: {
+    space: 'FÖRVARING', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
+    box_n: n => `LÅDA ${n}`, allPlaces: 'Alla platser', addPlace: '+ Plats', notInBox: 'Utan låda', notInBoxShort: 'utan låda',
+    emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', item: 'sak', items: 'saker',
+    editBox: 'Ändra låda', label: 'Etikett', findStuff: 'HITTA DINA GREJER!', typeKeyword: 'Skriv ett sökord', searchIn: 'Sök i', everywhere: 'Överallt', allOf: p => `Hela ${p}`,
+    boxesH: 'Lådor', similar: 'Liknande saker', noMatch: q => `Inget matchar ”${q}”. Prova ett annat ord, på svenska eller engelska.`, nothingHere: 'Inget sparat här än.',
+    welcome: 'Håll koll på vad som förvaras var: lådor, saker, foton och kvitton. Hitta allt genom att söka eller bara fråga.', yourName: 'Ditt namn', getStarted: 'Kom igång',
+    noAccount: 'Inget konto behövs just nu. Allt stannar på den här telefonen.', writeName: 'Skriv ditt namn först.',
+    storrrage: 'STORRRAGE', profile: 'Profil', settings: 'Inställningar', notifications: 'Notiser', premium: 'Premium', version: v => `Storrrage version ${v}`,
+    household: 'Personer i hushållet', addName: 'Lägg till ett namn', add: 'Lägg till', you: '(du)', remove: 'Ta bort', householdHint: 'Används för ”vems är det” på saker, och när du pratar med Storrrage (”Elsas kängor”).', noOne: 'Ingen tillagd än.',
+    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Förvaringsplatser', backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
+    labelsAll: 'Etiketter för alla lådor', scanLabel: 'Skanna en etikett', language: 'Språk', usage: mb => `Allt sparas bara på den här telefonen. Storrrage använder ungefär ${mb} MB.`,
+    dueIntro: 'Du har inte använt de här på ett tag. Värda att behålla, eller dags att sälja?', lastUsedOn: d => `Senast använd ${d}`, usedRecently: 'Använt nyligen', markSale: 'Markera till salu',
+    nothingDue: 'Inget behöver din uppmärksamhet. Välj ”Påminn om oanvänd” på en sak för att få en knuff när du inte använt den på ett tag.',
+    prem1: 'Dela förvaring med hushållet', prem2: 'Sälj på Blocket, Tradera och Vinted', prem3: 'Inloggning och synk mellan telefoner', premLater: 'Kommer senare. Allt du använder nu är gratis.',
+    whatIsIt: 'Vad är det?', whereIs: 'Var den finns', addDetail: 'Lägg till detaljer', lastUsed: 'Senast använd', remind: 'Påminn om oanvänd', noRemind: 'Ingen påminnelse',
+    remindM: m => m === 12 ? 'Efter 1 år' : m === 24 ? 'Efter 2 år' : `Efter ${m} månader`, notify: d => `påminnelse ${d}`, attachments: 'Bilagor', addAttach: '+ Lägg till kvitto, garanti eller manual',
+    tags: 'Taggar', registered: (d, by) => `Registrerad ${d}${by ? ` av ${by}` : ''}.`, storedSince: d => `Förvaras sedan ${d}.`, changed: d => `Senast ändrad ${d}.`,
+    delItem: 'Ta bort sak', done: 'Klar', save: 'Spara', saveAnother: 'Spara + lägg till nästa', saved: 'Sparat.', savedNext: n => `${n} sparad. Lägg till nästa.`, nameFirst: 'Ge den ett namn först.',
+    f_size: 'Storlek', f_brand: 'Märke', f_value: 'Pris / värde (kr)', f_model: 'Modell', f_qty: 'Antal', f_owner: 'Vems & status', f_color: 'Färg', f_season: 'Säsong', f_serial: 'Serienummer',
+    f_category: 'Kategori', f_spot: 'Var exakt', f_notes: 'Anteckningar', whose: 'Vems är det', status: 'Status', loanTo: 'Utlånad till', shared: 'Gemensam',
+    st_store: 'I förrådet', st_loan: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Bortskänkt',
+    addTo: p => `Lägg till i ${p}`, boxStorage: 'Låda / förvaring', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
+    moveX: n => `Flytta ${n}`, to: 'Till', move: 'Flytta', movedTo: w => `Flyttad till ${w}.`, rename: 'Byt namn', del: 'Ta bort', edit: 'Ändra', moveToPlace: 'Flytta till plats', emptyFirst: 'Töm platsen för att kunna ta bort den.',
+    delQ: n => `Ta bort ”${n}”? Det går inte att ångra.`, delNoteQ: 'Ta bort röstanteckningen?', rmPhotoQ: 'Ta bort fotot?', rmQ: n => `Ta bort ”${n}”?`, rmTagQ: n => `Ta bort taggen ”${n}”?`,
+    newPlace: 'Ny förvaringsplats', newPlaceHint: 'Till exempel Källaren, Vinden eller Garaget', renameX: n => `Byt namn på ${n}`, newTag: 'Lägg till en tagg', tagHint: 'Till exempel vandring eller vinter',
+    backupBanner: d => d ? `Senaste säkerhetskopian gjordes ${d}. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.` : 'Du har inte gjort någon säkerhetskopia än. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.',
+    voiceNotes: 'Röstanteckningar', voiceNotesBox: 'Röstanteckningar för lådan', menu: 'Meny', allSettings: 'Alla inställningar', usedNoted: 'Noterat. Påminnelsen börjar om.', markedSale: 'Markerad till salu.',
+    placesHint: 'Till exempel källarförrådet, vinden, garaget eller sommarstugan. Bara ett namn sparas, aldrig en adress.', placeNameHint: 'Namn, t.ex. Vinden',
+    fileMissing: 'Filen saknas.', savingPhoto: 'Sparar foto…', unnamed: 'Namnlös',
+    batchTitle: 'Lägg till flera saker', batchWhere: w => `De hamnar i ${w}.`, modeEach: 'Ett foto per sak', modeEachHint: 'Ta eller välj ett foto av varje sak.',
+    modeMulti: 'Flera saker på ett foto', modeMultiHint: 'Lägg ut sakerna och ta ett foto. Varje sak blir en egen post.',
+    batchAI: 'AI föreslår namn och detaljer utifrån fotona. Du kollar dem innan de läggs till.', batchNoAI: 'Slå på AI-assistenten för att få namn och detaljer föreslagna automatiskt. Utan den namnger du varje sak själv.',
+    batchPrivacy: 'Fotona skickas till AI-tjänsten för att kännas igen.', thinking: 'Känner igen…', aiFailed: e => `Kunde inte känna igen: ${e}`, addN: n => n === 1 ? 'Lägg till 1 sak' : `Lägg till ${n} saker`,
+    batchAdded: n => n === 1 ? 'La till 1 sak.' : `La till ${n} saker.`, namePh: 'Namn', include: 'Ta med', morePhotos: '+ Fler foton', noneYet: 'Inga foton än.', batchFound: n => n === 1 ? 'Hittade 1 sak.' : `Hittade ${n} saker.`,
+  },
+};
+Object.assign(STR.en, {
+    aiSuggest: 'Suggest from photo', testTag: 'TEST', aiLooking: 'Looking at the photo…', aiNothing: 'The AI didn’t recognise anything in the photo.',
+    aiSuggestH: 'Suggestions from the photo', aiSuggestHint: 'Tick what you want to use. Ticked details replace what’s there now.', aiNow: v => `now: ${v}`, apply: 'Use selected', aiApplied: n => n === 1 ? 'Updated 1 detail.' : `Updated ${n} details.`, aiNeedPhoto: 'Add a photo first.',
+    rmPhoto: 'Remove photo',
+    addPhoto: 'Add photo',
+    editBoxH: 'Edit box',
+    newBox: 'New box',
+    name: 'Name',
+    boxNamePh: 'Winter clothes',
+    storagePlace: 'Storage place',
+    whereInPlace: 'Where in that place',
+    wherePh: 'Back wall, top shelf',
+    boxPhoto: 'Photo of the box',
+    delBox: 'Delete box',
+    saveBox: 'Save box',
+    addBox: 'Add box',
+    waitPhoto: 'Wait for the photo to finish saving.',
+    nameBox: 'Give the box a name.',
+    whoPhone: 'Who uses this phone?',
+    whoPhoneHint: 'Lets “my” and “mina” mean this person when you talk to Storrrage. It also records who registered each item.',
+    notSet: 'Not set',
+    scanH: 'Scan a box label',
+    pointCam: 'Point the camera at the QR code on the box.',
+    typeCode: 'Or type the box code',
+    openBox: 'Open box',
+    noCam: 'The camera isn’t available here. Type the code from the label instead.',
+    camBlocked: 'Camera access was blocked. Type the code from the label instead, or allow the camera for this app in Chrome’s site settings.',
+    offline: 'Offline. Everything you do is saved on this phone.',
+    shareTo: 'Share to Drive, email or another app',
+    saveToPhone: 'Save to phone (Downloads)',
+    savedDl: 'Saved to your Downloads folder.',
+    shareFail: 'Sharing didn’t work. Use Save to phone instead.',
+    labelsAllH: 'Labels for all boxes',
+    talkH: 'Talk to Storrrage',
+    send: 'Send',
+    pause: 'Act on what I said after a pause of',
+    whatSay: 'What can I say?',
+    noSignal: 'Using it without signal',
+    noSignalTxt: 'Chrome’s speech recognition usually needs signal. Without it, tap the text box and use the microphone on your keyboard instead. Your keyboard can recognise speech offline once you’ve downloaded the language in its voice input settings (menu names vary between phones). Or record a voice note and deal with it later.',
+    noSR: 'Speech recognition isn’t available in this browser. Use the microphone on your keyboard in the box below instead.',
+    readAloud: 'Read answers out loud',
+    aiIntro: 'With AI on, you can talk freely. Storrrage understands follow-ups like “it”, “those boxes” or “back to the watermelons”, and asks about details that matter. It can also recognise things in photos when you add several items. Without signal, or if the AI fails, it falls back to the simple commands.',
+    provider: 'Provider',
+    gemFree: 'Google Gemini (free, for testing)',
+    claudePaid: 'Claude (paid)',
+    simpleOnly: 'Simple commands only. Nothing is sent anywhere.',
+    testOnly: 'Use made-up test items only.',
+    freeTier: 'On Google’s free tier, what you send may be used to improve Google’s products and can be read by people. Don’t send your real inventory until you switch to a paid option.',
+    apiKey: 'API key',
+    checkKey: 'Check the key',
+    checkToChoose: 'Check the key to choose',
+    aiSends: 'When you talk, Storrrage sends what you said, the last part of the conversation, and the names and details of your places, boxes and items. When you add several items from photos, those photos are sent too. Voice notes are never sent.',
+    pasteKey: 'Paste the key first.',
+    checking: 'Checking…',
+    works: 'Works.',
+    pasteToTurnOn: 'Paste the API key to turn AI on.',
+    aiIsOff: 'AI is off.',
+    cantSave: 'Couldn’t save the setting on this phone.',
+    getGem: 'Get a free key: open aistudio.google.com, sign in with a Google account, and choose “Get API key”.',
+    getClaude: 'Get a key: open console.anthropic.com, add a small prepaid amount under Billing, then create a key under API keys.',
+    keyLocal: 'The key is stored only on this phone and isn’t included in backups.'
+});
+Object.assign(STR.sv, {
+    aiSuggest: 'Föreslå från foto', testTag: 'TEST', aiLooking: 'Tittar på fotot…', aiNothing: 'AI:n kände inte igen något på fotot.',
+    aiSuggestH: 'Förslag från fotot', aiSuggestHint: 'Bocka för det du vill använda. Ifyllda detaljer ersätter det som står nu.', aiNow: v => `nu: ${v}`, apply: 'Använd valda', aiApplied: n => n === 1 ? 'Uppdaterade 1 detalj.' : `Uppdaterade ${n} detaljer.`, aiNeedPhoto: 'Lägg till ett foto först.',
+    rmPhoto: 'Ta bort foto',
+    addPhoto: 'Lägg till foto',
+    editBoxH: 'Ändra låda',
+    newBox: 'Ny låda',
+    name: 'Namn',
+    boxNamePh: 'Vinterkläder',
+    storagePlace: 'Förvaringsplats',
+    whereInPlace: 'Var på platsen',
+    wherePh: 'Bakre väggen, översta hyllan',
+    boxPhoto: 'Foto av lådan',
+    delBox: 'Ta bort låda',
+    saveBox: 'Spara låda',
+    addBox: 'Lägg till låda',
+    waitPhoto: 'Vänta tills fotot har sparats.',
+    nameBox: 'Ge lådan ett namn.',
+    whoPhone: 'Vem använder den här telefonen?',
+    whoPhoneHint: 'Gör att ”min” och ”my” betyder den här personen när du pratar med Storrrage. Det visar också vem som registrerade varje sak.',
+    notSet: 'Inte vald',
+    scanH: 'Skanna en etikett',
+    pointCam: 'Rikta kameran mot QR-koden på lådan.',
+    typeCode: 'Eller skriv lådans kod',
+    openBox: 'Öppna låda',
+    noCam: 'Kameran är inte tillgänglig här. Skriv koden från etiketten i stället.',
+    camBlocked: 'Kameran blockerades. Skriv koden från etiketten i stället, eller tillåt kameran för appen i Chromes webbplatsinställningar.',
+    offline: 'Offline. Allt du gör sparas på den här telefonen.',
+    shareTo: 'Dela till Drive, e-post eller en annan app',
+    saveToPhone: 'Spara på telefonen (Hämtade filer)',
+    savedDl: 'Sparad i mappen Hämtade filer.',
+    shareFail: 'Delningen fungerade inte. Använd Spara på telefonen i stället.',
+    labelsAllH: 'Etiketter för alla lådor',
+    talkH: 'Prata med Storrrage',
+    send: 'Skicka',
+    pause: 'Agera på det jag sa efter en paus på',
+    whatSay: 'Vad kan jag säga?',
+    noSignal: 'Använda utan täckning',
+    noSignalTxt: 'Chromes taligenkänning behöver oftast täckning. Utan den, tryck i textrutan och använd mikrofonen på tangentbordet i stället. Tangentbordet kan känna igen tal offline när du har laddat ner språket i dess inställningar för röstinmatning (menyernas namn varierar mellan telefoner). Eller spela in en röstanteckning och ta hand om den senare.',
+    noSR: 'Taligenkänning finns inte i den här webbläsaren. Använd mikrofonen på tangentbordet i rutan nedan i stället.',
+    readAloud: 'Läs upp svaren',
+    aiIntro: 'Med AI på kan du prata fritt. Storrrage förstår uppföljningar som ”den”, ”de lådorna” eller ”tillbaka till vattenmelonerna”, och frågar om detaljer som spelar roll. Den kan också känna igen saker på foton när du lägger till flera. Utan täckning, eller om AI:n fallerar, används de enkla kommandona.',
+    provider: 'Leverantör',
+    gemFree: 'Google Gemini (gratis, för test)',
+    claudePaid: 'Claude (betald)',
+    simpleOnly: 'Bara enkla kommandon. Inget skickas någonstans.',
+    testOnly: 'Använd bara påhittade testsaker.',
+    freeTier: 'På Googles gratisnivå kan det du skickar användas för att förbättra Googles produkter och läsas av människor. Skicka inte din riktiga inventering förrän du bytt till ett betalt alternativ.',
+    apiKey: 'API-nyckel',
+    checkKey: 'Kontrollera nyckeln',
+    checkToChoose: 'Kontrollera nyckeln för att välja',
+    aiSends: 'När du pratar skickar Storrrage det du sa, den senaste delen av samtalet och namn och detaljer för dina platser, lådor och saker. När du lägger till flera saker från foton skickas de fotona också. Röstanteckningar skickas aldrig.',
+    pasteKey: 'Klistra in nyckeln först.',
+    checking: 'Kontrollerar…',
+    works: 'Fungerar.',
+    pasteToTurnOn: 'Klistra in API-nyckeln för att slå på AI.',
+    aiIsOff: 'AI är av.',
+    cantSave: 'Kunde inte spara inställningen på telefonen.',
+    getGem: 'Skaffa en gratis nyckel: öppna aistudio.google.com, logga in med ett Google-konto och välj ”Get API key”.',
+    getClaude: 'Skaffa en nyckel: öppna console.anthropic.com, fyll på ett litet belopp under Billing och skapa en nyckel under API keys.',
+    keyLocal: 'Nyckeln sparas bara på den här telefonen och ingår inte i säkerhetskopior.'
+});
+function tr(k, ...a){ const v = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : (v ?? k); }
+const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
+const STATUS_KEYS = {'In storage': 'st_store', 'On loan': 'st_loan', 'For sale': 'st_sale', 'Sold': 'st_sold', 'Given away': 'st_given'};
+const showColor = c => !c ? '' : lang === 'sv' ? cap(COLOR_SV[c] || c) : c;
+const showSeason = s => !s ? '' : lang === 'sv' ? (SEASON_SV[s] || s) : s;
+const showStatus = s => !s ? '' : STATUS_KEYS[s] ? tr(STATUS_KEYS[s]) : s;
+const showOwner = o => o === 'Shared' ? tr('shared') : (o || '');
+// map typed Swedish values back to the stored (English) value
+const fromColor = v => { if (!v) return ''; const s = v.trim().toLowerCase(); const en = Object.keys(COLOR_SV).find(k => k.toLowerCase() === s || COLOR_SV[k] === s); return en || findColor(s) || cap(v.trim()); };
+const fromSeason = v => { if (!v) return ''; const s = v.trim().toLowerCase(); return Object.keys(SEASON_SV).find(k => k.toLowerCase() === s || SEASON_SV[k].toLowerCase() === s) || cap(v.trim()); };
+/* ---------- small in-app dialogs ---------- */
+function askText(title, {placeholder = '', value = '', ok} = {}){
+  return new Promise(res => {
+    let done = false; const fin = v => { if (done) return; done = true; res(v); };
+    openSheet(`<h3>${esc(title)}</h3><input class="input" id="atIn" value="${esc(value)}" placeholder="${esc(placeholder)}" autocapitalize="sentences" enterkeyhint="done">
+      <div class="sheet-foot" style="margin-top:14px"><button class="btn quiet" id="atX">${tr('cancel')}</button><button class="btn primary" id="atOk">${esc(ok || tr('ok'))}</button></div>`, () => fin(null));
+    const go = () => { const v = $('#atIn').value.trim(); fin(v || null); closeSheet(); };
+    $('#atOk').onclick = go; $('#atX').onclick = () => { fin(null); closeSheet(); };
+    $('#atIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    setTimeout(() => { const el = $('#atIn'); if (el){ el.focus(); el.select(); } }, 60);
+  });
+}
+function askConfirm(text, ok){
+  ok = ok || tr('del');
+  return new Promise(res => {
+    let done = false; const fin = v => { if (done) return; done = true; res(v); };
+    openSheet(`<p style="margin:0 0 16px">${esc(text)}</p><div class="sheet-foot"><button class="btn quiet" id="acX">${tr('cancel')}</button><button class="btn danger" id="acOk">${esc(ok)}</button></div>`, () => fin(false));
+    $('#acOk').onclick = () => { fin(true); closeSheet(); }; $('#acX').onclick = () => { fin(false); closeSheet(); };
+  });
+}
+function logoSVG(){
+  return `<svg viewBox="0 0 512 512" aria-hidden="true" class="logosvg"><rect width="512" height="512" rx="96" fill="#2F1160"/><rect x="107" y="62" width="298" height="6" fill="#CFC8EA"/><rect x="107" y="139.2" width="298" height="6" fill="#CFC8EA"/><rect x="107" y="216.4" width="298" height="6" fill="#CFC8EA"/><rect x="107" y="293.6" width="298" height="6" fill="#CFC8EA"/><rect x="107" y="370.8" width="298" height="6" fill="#CFC8EA"/><rect x="107" y="448" width="298" height="6" fill="#CFC8EA"/><rect x="122" y="72" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M122 88.1V78a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V88.1z" fill="#E8B677"/><rect x="150.2" y="94.8" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="213.3" y="72" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M213.3 88.1V78a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V88.1z" fill="#E8B677"/><rect x="241.5" y="94.8" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="304.7" y="72" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M304.7 88.1V78a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V88.1z" fill="#E8B677"/><rect x="332.8" y="94.8" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="122" y="149.2" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M122 165.3V155.2a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V165.3z" fill="#E8B677"/><rect x="150.2" y="172" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="213.3" y="149.2" width="85.3" height="67.2" rx="6" fill="#3F2270"/><path d="M213.3 165.3V155.2a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V165.3z" fill="#472A7C"/><rect x="241.5" y="172" width="29" height="8.7" rx="4.4" fill="#2A0F55"/><rect x="304.7" y="149.2" width="85.3" height="67.2" rx="6" fill="#3F2270"/><path d="M304.7 165.3V155.2a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V165.3z" fill="#472A7C"/><rect x="332.8" y="172" width="29" height="8.7" rx="4.4" fill="#2A0F55"/><rect x="122" y="226.4" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M122 242.5V232.4a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V242.5z" fill="#E8B677"/><rect x="150.2" y="249.2" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="213.3" y="226.4" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M213.3 242.5V232.4a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V242.5z" fill="#E8B677"/><rect x="241.5" y="249.2" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="304.7" y="226.4" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M304.7 242.5V232.4a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V242.5z" fill="#E8B677"/><rect x="332.8" y="249.2" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="122" y="303.6" width="85.3" height="67.2" rx="6" fill="#3F2270"/><path d="M122 319.7V309.6a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V319.7z" fill="#472A7C"/><rect x="150.2" y="326.4" width="29" height="8.7" rx="4.4" fill="#2A0F55"/><rect x="213.3" y="303.6" width="85.3" height="67.2" rx="6" fill="#3F2270"/><path d="M213.3 319.7V309.6a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V319.7z" fill="#472A7C"/><rect x="241.5" y="326.4" width="29" height="8.7" rx="4.4" fill="#2A0F55"/><rect x="304.7" y="303.6" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M304.7 319.7V309.6a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V319.7z" fill="#E8B677"/><rect x="332.8" y="326.4" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="122" y="380.8" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M122 396.9V386.8a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V396.9z" fill="#E8B677"/><rect x="150.2" y="403.6" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="213.3" y="380.8" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M213.3 396.9V386.8a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V396.9z" fill="#E8B677"/><rect x="241.5" y="403.6" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="304.7" y="380.8" width="85.3" height="67.2" rx="6" fill="#D49A55"/><path d="M304.7 396.9V386.8a6 6 0 0 1 6-6h73.3a6 6 0 0 1 6 6V396.9z" fill="#E8B677"/><rect x="332.8" y="403.6" width="29" height="8.7" rx="4.4" fill="#7A4E22"/><rect x="104" y="56" width="12" height="412" rx="3" fill="#F2F0FA"/><rect x="108.2" y="65" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="77" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="89" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="101" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="113" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="125" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="137" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="149" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="161" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="173" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="185" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="197" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="209" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="221" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="233" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="245" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="257" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="269" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="281" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="293" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="305" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="317" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="329" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="341" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="353" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="365" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="377" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="389" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="401" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="413" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="425" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="437" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="108.2" y="449" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="396" y="56" width="12" height="412" rx="3" fill="#F2F0FA"/><rect x="400.2" y="65" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="77" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="89" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="101" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="113" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="125" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="137" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="149" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="161" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="173" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="185" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="197" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="209" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="221" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="233" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="245" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="257" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="269" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="281" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="293" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="305" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="317" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="329" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="341" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="353" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="365" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="377" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="389" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="401" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="413" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="425" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="437" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/><rect x="400.2" y="449" width="3.6" height="6" rx="1.5" fill="#B9B1DC"/></svg>`;
+}
 const app = $('#app');
+const ICON = {
+  home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>',
+  user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5"/><path d="M3.5 21c.6-4.6 4.1-7.5 8.5-7.5s7.9 2.9 8.5 7.5z"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-7 0V6A3.5 3.5 0 0 1 12 2.5zM6 11.5h2a4 4 0 0 0 8 0h2a6 6 0 0 1-5 5.9V21h-2v-3.6a6 6 0 0 1-5-5.9z"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.6 2.5H20a1.5 1.5 0 0 1 1.5 1.5v10.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>',
+  box: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4.5 9v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V9M9.5 13h5"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c5 0 8.7 4.2 10 7-1.3 2.8-5 7-10 7S3.3 14.8 2 12c1.3-2.8 5-7 10-7zm0 3.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13.7 2 .5 2.6 1.6.7 2.2-1.5 2.2 2.2-1.5 2.2.7 1.6 2.6.5v3.2l-2.6.5-.7 1.6 1.5 2.2-2.2 2.2-2.2-1.5-1.6.7-.5 2.6h-3.2l-.5-2.6-1.6-.7-2.2 1.5-2.2-2.2 1.5-2.2-.7-1.6L2 13.6v-3.2l2.6-.5.7-1.6-1.5-2.2 2.2-2.2 2.2 1.5 1.6-.7.5-2.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a6.5 6.5 0 0 1 6.5 6.5v4.5l2 3.5h-17l2-3.5V9A6.5 6.5 0 0 1 12 2.5zM9.5 19h5a2.5 2.5 0 0 1-5 0z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.2l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>',
+};
+
+/* reminders: "haven't used this in a while" */
+function addMonths(dateStr, m){ const d = new Date(dateStr); d.setMonth(d.getMonth() + m); return d.toISOString().slice(0, 10); }
+function notifyAt(it){ const m = +it.remindMonths || 0; if (!m) return ''; return addMonths(it.lastUsed || it.storedOn || today(), m); }
+const isDue = it => { const n = notifyAt(it); return !!n && n <= today(); };
+const dueItems = (filter = () => true) => boxes.filter(filter).flatMap(b => (b.items || []).filter(isDue).map(it => [it, b]));
+const dueCount = filter => dueItems(filter).length;
+const dot = on => on ? '<i class="dot" aria-hidden="true"></i>' : '';
+
+/* navigation with the phone's back button */
+function navigate(v, replace){
+  leaveItemPage();
+  view = v; if (v.name !== 'search') query = '';
+  try { history[replace ? 'replaceState' : 'pushState']({v}, ''); } catch {}
+  render(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', e => { leaveItemPage(); view = (e.state && e.state.v) || {name: 'home'}; if (view.name === 'home' && view.place) setPlace(view.place); render(); });
+function goHome(pid){ setPlace(pid || 'all'); navigate({name: 'home', place: pid || 'all'}); }
+function openBox(id){
+  const b = findBox(id); if (!b || b.loose) return;
+  if (currentPlace !== b.placeId) setPlace(b.placeId);
+  navigate({name: 'box', boxId: id});
+}
+function showSearch(q){ query = q || ''; if (view.name !== 'search') navigate({name: 'search'}); else render(); const s = $('#q'); if (s && s.value !== query) s.value = query; }
+
+const possessive = () => {
+  if (!me) return lang === 'sv' ? 'MIN' : 'MY';
+  const n = me.toUpperCase();
+  return lang === 'sv' ? (/[SXZ]$/.test(n) ? n : n + 'S') : (n.endsWith('S') ? n + '’' : n + '’S');
+};
+function crumbs(parts, sub){
+  return `<nav class="crumbs" aria-label="Where you are">${parts.map(p => p.nav ? `<button data-nav='${esc(JSON.stringify(p.nav))}'>${esc(p.label)}</button>` : `<span>${esc(p.label)}</span>`).join('<span class="sep"> - </span>')}</nav>${sub ? `<p class="tagline">${sub}</p>` : ''}`;
+}
+const crumbSpace = () => ({label: possessive(), nav: {name: 'home', place: 'all'}});
+const crumbPlace = pid => ({label: placeName(pid).toUpperCase(), nav: {name: 'home', place: pid}});
+const boxLabel = b => tr('box_n', parseInt(b.code.slice(2)));
+const counts = (...a) => a.filter(Boolean).join(' - ');
+
 function render(){
-  if (!ready){ app.innerHTML = '<p class="status">Opening your storage…</p>'; return; }
-  if (view.name === 'box' && !query){
-    const b = findBox(view.boxId);
-    if (b){ renderBox(b); hydrate(app); return hydrateNotes(app); }
-    view = {name: 'home'};
-  }
-  query ? renderSearch() : renderHome();
+  if (!ready){ app.innerHTML = '<p class="status">…</p>'; return; }
+  document.documentElement.lang = lang;
+  document.body.classList.toggle('onboarding', view.name === 'welcome');
+  document.body.classList.toggle('itemview', view.name === 'item' || view.name === 'batch');
+  if (view.name === 'welcome') return renderWelcome();
+  if ((view.name === 'box' || view.name === 'batch') && !findBox(view.boxId)) view = {name: 'home'};
+  if (view.name === 'item' && !(findBox(view.boxId) && (findBox(view.boxId).items || []).some(i => i.id === view.itemId))) view = {name: 'home'};
+  if (view.name === 'box') renderBox(findBox(view.boxId));
+  else if (view.name === 'item') renderItem();
+  else if (view.name === 'batch') renderBatch();
+  else if (view.name === 'search') renderSearch();
+  else if (view.name === 'profile') renderProfile();
+  else if (currentPlace !== 'all' && findPlace(currentPlace)) renderPlace(currentPlace);
+  else renderSpace();
+  const tab = view.name === 'search' ? 'search' : view.name === 'profile' ? 'profile' : 'home';
+  document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr(b.dataset.tab === 'home' ? (lang === 'sv' ? 'tab_home' : 'tab_home') : b.dataset.tab === 'search' ? 'tab_search' : 'tab_profile'); });
+  const pdot = $('#profileDot'); if (pdot) pdot.hidden = !dueCount();
   hydrate(app); hydrateNotes(app);
 }
-function tile(b){
+STR.en.tab_home = 'Active'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Profile';
+STR.sv.tab_home = 'Aktiv'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
+
+/* tiles */
+const addTile = (act, label, extra = '') => `<button class="tile add" data-act="${act}" ${extra} aria-label="${esc(label)}">+</button>`;
+function boxTile(b){
   const n = (b.items || []).length;
-  return `<button class="tile" data-open="${esc(b.id)}">
-    <span class="code">${esc(b.code)}</span>
-    <span class="tile-body">
-      <span class="tile-name">${esc(b.name)}</span>
-      ${b.location ? `<span class="tile-meta">${esc(b.location)}</span>` : ''}
-      <span class="tile-meta">${n} ${n === 1 ? 'item' : 'items'}</span>
-    </span></button>`;
+  return `<button class="tile solid" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}"><span class="tname">${esc(b.name)}</span><span class="tcode">${esc(b.code)} · ${n} ${n === 1 ? tr('item') : tr('items')}</span>${dot(dueCount(x => x.id === b.id))}</button>`;
 }
+function itemTile(it, b, caption){
+  const p = (it.photos || [])[0];
+  return `<button class="itile" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
+    <span class="timg">${p ? imgTag(p.ref, '') : `<span class="ticon">${guessIcon(it)}</span>`}${dot(isDue(it))}</span>
+    <span class="tname">${esc(it.name || tr('unnamed'))}</span>${caption ? `<span class="tcap">${caption}</span>` : ''}</button>`;
+}
+const whereCaption = b => b.loose ? `${esc(placeName(b.placeId))}` : `${ICON.box}${esc(b.code)} · ${esc(placeName(b.placeId))}`;
+function placeBar(){
+  const sel = places.length === 1 ? places[0].id : currentPlace;
+  return `<div class="placebar" aria-label="${esc(tr('storagePlaces'))}">${places.length > 1 ? `<button class="pchip${sel === 'all' ? ' on' : ''}" data-goplace="all">${tr('allPlaces')}</button>` : ''}${places.map(p => `<button class="pchip${sel === p.id ? ' on' : ''}" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}">${esc(p.name)}${dot(dueCount(b => b.placeId === p.id))}</button>`).join('')}<button class="pchip add" data-act="addplace">${tr('addPlace')}</button></div>`;
+}
+function placeContent(pid, heading){
+  const bx = boxesIn(pid).sort(byCode), loose = looseOf(pid), li = loose ? [...(loose.items || [])].sort(byName) : [];
+  return `${heading ? `<h2 class="placehead"><button data-goplace="${esc(pid)}">${esc(placeName(pid))}</button></h2>` : ''}
+    <div class="grid">${bx.map(boxTile).join('')}${addTile('addhere', tr('addTo', placeName(pid)), `data-pid="${esc(pid)}"`)}</div>
+    ${li.length ? `<h2 class="section">${tr('notInBox')}</h2><div class="igrid">${li.map(it => itemTile(it, loose, it.spot ? esc(it.spot) : '')).join('')}</div>` : ''}
+    ${!bx.length && !li.length && !heading ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}`;
+}
+function renderSpace(){
+  const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
+  app.innerHTML = `${placeBar()}${crumbs([{label: possessive() + ' ' + tr('space')}], counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI)))}
+    ${backupBanner()}
+    ${places.map(p => placeContent(p.id, places.length > 1)).join('')}
+    ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}`;
+}
+function renderPlace(pid){
+  const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
+  app.innerHTML = `${placeBar()}${crumbs([crumbSpace(), {label: placeName(pid).toUpperCase()}], counts(tr('boxes_n', nB), tr('items_n', nI)))}
+    ${backupBanner()}
+    ${placeContent(pid, false)}
+    ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}`;
+}
+function renderBox(b){
+  const items = [...(b.items || [])].sort(byName);
+  app.innerHTML = `${crumbs([crumbSpace(), crumbPlace(b.placeId), {label: boxLabel(b)}], counts(esc(b.name.toUpperCase()), b.location ? esc(b.location.toUpperCase()) : '', tr('items_n', items.length)))}
+    <div class="boxbar">
+      <button class="qr" data-act="label" aria-label="${esc(tr('label'))} ${esc(b.code)}">${qrSvg(labelText(b), 2)}</button>
+      <button class="btn quiet small" data-act="editbox">${tr('editBox')}</button>
+      <button class="btn quiet small" data-act="label">${tr('label')}</button>
+      ${b.photo ? `<button class="bphoto" data-act="boxphoto">${imgTag(b.photo.ref, '')}</button>` : ''}
+    </div>
+    <div class="igrid">${items.map(it => itemTile(it, b)).join('')}
+      <button class="itile add" data-act="additem"><span class="timg">+</span><span class="tname">${tr('addItem')}</span></button>
+      <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="tname">${tr('addSeveral')}</span></button></div>
+    ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}`;
+}
+const searchScope = {places: new Set(), boxes: new Set()};
+function scopeChips(){
+  if (places.length < 2 && realBoxes().length < 2) return '';
+  const P = searchScope.places, B = searchScope.boxes;
+  const one = P.size === 1 ? [...P][0] : (places.length === 1 ? places[0].id : null);
+  return `<div class="scope"><span class="lab">${tr('searchIn')}</span><div class="chips">
+    ${places.length > 1 ? `<button class="chipbtn${!P.size ? ' on' : ''}" data-scope="all">${tr('everywhere')}</button>${places.map(p => `<button class="chipbtn${P.has(p.id) ? ' on' : ''}" data-scope="p:${esc(p.id)}">${esc(p.name)}</button>`).join('')}` : ''}
+    </div>${one && boxesIn(one).length > 1 ? `<div class="chips"><button class="chipbtn small${!B.size ? ' on' : ''}" data-scope="allboxes">${esc(tr('allOf', placeName(one)))}</button>${boxesIn(one).sort(byCode).map(b => `<button class="chipbtn small${B.has(b.id) ? ' on' : ''}" data-scope="b:${esc(b.id)}">${esc(b.code)} ${esc(b.name)}</button>`).join('')}</div>` : ''}</div>`;
+}
+function renderSearch(){
+  const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
+  const q = query.trim(), P = searchScope.places, B = searchScope.boxes;
+  const inScope = b => (!P.size || P.has(b.placeId)) && (!B.size || B.has(b.id));
+  let body = '';
+  if (!q && (P.size || B.size)){
+    const all = boxes.filter(inScope).flatMap(b => (b.items || []).map(it => [it, b])).sort((x, y) => byName(x[0], y[0]));
+    body = all.length ? `<div class="igrid">${all.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : `<p class="hint center">${tr('nothingHere')}</p>`;
+  }
+  if (q){
+    const {exact, related} = searchItems(q, {placeIds: P, boxIds: B});
+    const boxHits = realBoxes().filter(b => inScope(b) && [b.code, b.name, b.location, b.notes].some(v => (v || '').toLowerCase().includes(q.toLowerCase()))).sort(byCode);
+    body = `${exact.length ? `<div class="igrid">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
+      ${boxHits.length ? `<h2 class="section">${tr('boxesH')}</h2><div class="grid">${boxHits.map(boxTile).join('')}</div>` : ''}
+      ${related.length ? `<h2 class="section">${tr('similar')}</h2><div class="igrid">${related.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
+      ${!exact.length && !related.length && !boxHits.length ? `<p class="hint center">${esc(tr('noMatch', q))}</p>` : ''}`;
+  }
+  const had = $('#q'), focused = had && document.activeElement === had, pos = had ? had.selectionStart : 0;
+  app.innerHTML = `${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}
+    <input class="input search" id="q" type="search" placeholder="${esc(tr('typeKeyword'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">
+    ${scopeChips()}
+    <div id="results">${body}</div>`;
+  const s = $('#q');
+  if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
+  let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
+  app.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
+    const v = c.dataset.scope;
+    if (v === 'all'){ P.clear(); B.clear(); }
+    else if (v === 'allboxes') B.clear();
+    else if (v.startsWith('p:')){ const id = v.slice(2); P.has(id) ? P.delete(id) : P.add(id); B.clear(); }
+    else if (v.startsWith('b:')){ const id = v.slice(2); B.has(id) ? B.delete(id) : B.add(id); }
+    render();
+  });
+}
+function renderWelcome(){
+  app.innerHTML = `<div class="welcome">
+    <div class="langsw">${langSwitch()}</div>
+    <div class="logobig">${logoSVG()}</div>
+    <h1>Storrrage</h1>
+    <p>${tr('welcome')}</p>
+    <input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name">
+    <button class="btn primary block" id="wGo">${tr('getStarted')}</button>
+    <p class="hint center">${tr('noAccount')}</p></div>`;
+  const go = () => {
+    const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
+    me = addPerson(n); metaPut('me', me).catch(() => {}); metaPut('onboarded', true).catch(() => {});
+    navigate({name: 'home', place: 'all'}, true);
+  };
+  $('#wGo').onclick = go; $('#wName').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+}
+const langSwitch = () => `<div class="seg" role="group" aria-label="Language / Språk"><button class="${lang === 'sv' ? 'on' : ''}" data-lang-ui="sv">Svenska</button><button class="${lang === 'en' ? 'on' : ''}" data-lang-ui="en">English</button></div>`;
+function setLang(l){
+  lang = l; metaPut('lang', l).catch(() => {});
+  voiceLang = l === 'sv' ? 'sv-SE' : 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
+  render();
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-lang-ui]'); if (b){ setLang(b.dataset.langUi); if (sheet.open && sheet.querySelector('[data-lang-ui]')) menuSheet(); } });
+
+function renderProfile(){
+  const sub = view.sub || '', due = dueItems();
+  if (!sub){
+    app.innerHTML = `${crumbs([{label: possessive() + ' ' + tr('storrrage')}])}
+      <div class="list">
+        <button class="row" data-sub="profile">${ICON.user}<span>${tr('profile')}</span></button>
+        <button class="row" data-sub="settings">${ICON.gear}<span>${tr('settings')}</span></button>
+        <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}${due.length ? '<i class="dot inline"></i>' : ''}</span>${due.length ? `<b class="count">${due.length}</b>` : ''}</button>
+        <button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>
+      </div>
+      <div class="field"><span>${tr('language')}</span>${langSwitch()}</div>
+      <p class="proof center">${tr('version', APP_VERSION)}</p>`;
+    return;
+  }
+  const back = [{label: possessive() + ' ' + tr('storrrage'), nav: {name: 'profile'}}];
+  if (sub === 'profile'){
+    app.innerHTML = `${crumbs([...back, {label: tr('profile').toUpperCase()}])}
+      <div class="fl"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
+      <h2 class="section">${tr('household')}</h2>
+      <div id="plist2"></div>
+      <div class="vtype"><input class="input" id="pName2" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn primary" id="pAdd2">${tr('add')}</button></div>
+      <p class="proof">${tr('householdHint')}</p>`;
+    const draw = () => { $('#plist2').innerHTML = household.length ? household.map((n, i) => `<div class="prow"><span>${esc(n)}${n === me ? ' ' + tr('you') : ''}</span>${n === me ? '' : `<button class="linkbtn" data-pdel="${i}">${tr('remove')}</button>`}</div>`).join('') : `<p class="hint">${tr('noOne')}</p>`; };
+    draw();
+    $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); draw(); });
+    const add = () => { const n = addPerson($('#pName2').value); $('#pName2').value = ''; if (n) draw(); };
+    $('#pAdd2').onclick = add; $('#pName2').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+    $('#plist2').onclick = e => { const d = e.target.closest('[data-pdel]'); if (!d) return; household.splice(+d.dataset.pdel, 1); metaPut('household', household).catch(() => {}); draw(); };
+    return;
+  }
+  if (sub === 'settings'){
+    app.innerHTML = `${crumbs([...back, {label: tr('settings').toUpperCase()}])}
+      <div class="field" style="margin-top:14px"><span>${tr('language')}</span>${langSwitch()}</div>
+      <div class="list">
+        <button class="row" data-m="ai"><span>${tr('aiAssistant')}</span><em>${ai.provider === 'off' ? tr('off') : esc(AI_LABEL[ai.provider])}</em></button>
+        <button class="row" data-m="places"><span>${tr('storagePlaces')}</span><em>${places.length}</em></button>
+        <button class="row" data-m="backup"><span>${tr('backupNow')}</span><em>${lastBackup ? esc(fmtDate(lastBackup)) : tr('never')}</em></button>
+        <button class="row" data-m="import"><span>${tr('restore')}</span></button>
+        <button class="row" data-m="report"><span>${tr('insurance')}</span></button>
+        <button class="row" data-m="labels"><span>${tr('labelsAll')}</span></button>
+        <button class="row" data-m="scan"><span>${tr('scanLabel')}</span></button>
+      </div>
+      <p class="proof center" id="usage"></p>`;
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr('usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
+    return;
+  }
+  if (sub === 'notifications'){
+    app.innerHTML = `${crumbs([...back, {label: tr('notifications').toUpperCase()}])}
+      ${backupBanner()}
+      ${due.length ? `<p class="hint">${tr('dueIntro')}</p>
+        <div class="dues">${due.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
+          <div class="dueact"><span class="hint">${esc(tr('lastUsedOn', it.lastUsed || it.storedOn || ''))}</span>
+          <button class="btn quiet small" data-used="${esc(b.id)}:${esc(it.id)}">${tr('usedRecently')}</button>
+          <button class="btn quiet small" data-sell="${esc(b.id)}:${esc(it.id)}">${tr('markSale')}</button></div></div>`).join('')}</div>`
+      : `<p class="hint">${tr('nothingDue')}</p>`}`;
+    return;
+  }
+  if (sub === 'premium'){
+    app.innerHTML = `${crumbs([...back, {label: tr('premium').toUpperCase()}])}
+      <div class="list"><div class="row static">${ICON.star}<span>${tr('prem1')}</span></div>
+      <div class="row static">${ICON.star}<span>${tr('prem2')}</span></div>
+      <div class="row static">${ICON.star}<span>${tr('prem3')}</span></div></div>
+      <p class="hint center">${tr('premLater')}</p>`;
+  }
+}
+/* ---------- item page: name under the photo, place as a field, optional details ---------- */
+let itemDraft = null, flushItem = null, shownOpt = new Set(), shownFor = null;
+function leaveItemPage(){
+  const v = view;
+  if (v.name === 'item' && flushItem){ try { flushItem(); } catch {} }
+  flushItem = null;
+  if (v.name !== 'item' || itemDraft !== v.itemId) return;
+  const b = findBox(v.boxId), it = b && (b.items || []).find(i => i.id === v.itemId);
+  if (it && !it.name && !(it.photos || []).length){ const nb = clone(b); nb.items = nb.items.filter(i => i.id !== it.id); putBox(nb, true); }
+  itemDraft = null;
+}
+function newItem(boxId, replace){
+  const b = findBox(boxId); if (!b) return;
+  const it = {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
+  const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
+  leaveItemPage();
+  itemDraft = it.id;
+  view = {name: 'item', boxId, itemId: it.id};
+  try { history[replace ? 'replaceState' : 'pushState']({v: view}, ''); } catch {}
+  render(); window.scrollTo(0, 0);
+  setTimeout(() => { const n = $('#fName'); if (n) n.focus(); }, 80);
+}
+function itemSheet(boxId, itemId){ if (itemId) navigate({name: 'item', boxId, itemId}); else newItem(boxId); }
+const OPT = ['size', 'brand', 'value', 'model', 'qty', 'owner', 'color', 'season', 'serial', 'category', 'spot', 'notes'];
+const STATUSES = Object.keys(STATUS_KEYS);
+function curItem(){ const b = findBox(view.boxId); const it = b && (b.items || []).find(i => i.id === view.itemId); return it ? [it, b] : [null, null]; }
+function saveItem(mut, rerender){
+  const [it, b] = curItem(); if (!it) return;
+  const nb = clone(b), x = nb.items.find(i => i.id === it.id);
+  mut(x); x.updatedAt = new Date().toISOString();
+  if (x.name && itemDraft === x.id) itemDraft = null;
+  putBox(nb, !rerender);
+}
+function hasVal(it, k){ return k === 'owner' ? !!(it.owner || it.status || it.loanTo) : (it[k] !== undefined && it[k] !== null && String(it[k]).trim() !== ''); }
+function finishItem(again){
+  if (flushItem) flushItem();
+  const [it, b] = curItem(); if (!it) return;
+  if (!it.name && !(it.photos || []).length){ const nm = $('#fName'); if (nm) nm.focus(); return toast(tr('nameFirst')); }
+  itemDraft = null;
+  toast(again ? tr('savedNext', it.name) : tr('saved'));
+  if (again) return newItem(b.id, true);
+  if (history.state && history.state.v && history.length > 1) history.back(); else navigate(b.loose ? {name: 'home', place: b.placeId} : {name: 'box', boxId: b.id});
+}
+function moveItemTo(boxId, itemId, sel){
+  const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return null;
+  const destId = sel.startsWith('loose:') ? ensureLoose(sel.slice(6)).id : sel;
+  if (destId === b.id) return b;
+  snapshot([b.id, destId]);
+  const from = clone(findBox(b.id)); from.items = from.items.filter(i => i.id !== itemId); putBox(from, true);
+  const to = clone(findBox(destId)), moved = Object.assign(clone(it), {updatedAt: new Date().toISOString()}); if (!to.loose) delete moved.spot;
+  to.items = (to.items || []).concat(moved); putBox(to, true);
+  if (view.name === 'item' && view.itemId === itemId){ view = {name: 'item', boxId: destId, itemId}; try { history.replaceState({v: view}, ''); } catch {} }
+  toast(tr('movedTo', to.loose ? placeName(to.placeId) : to.code));
+  return to;
+}
+function moveTargetsHTML(cur){
+  return places.map(p => `<optgroup label="${esc(p.name)}"><option value="loose:${esc(p.id)}" ${cur.loose && cur.placeId === p.id ? 'selected' : ''}>${esc(p.name)}, ${tr('notInBoxShort')}</option>
+    ${boxesIn(p.id).sort(byCode).map(x => `<option value="${esc(x.id)}" ${x.id === cur.id ? 'selected' : ''}>${esc(placeName(p.id))} · ${esc(x.code)} ${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
+}
+function renderItem(){
+  const [it, b] = curItem();
+  if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; }
+  const isNew = itemDraft === it.id;
+  const show = k => hasVal(it, k) || shownOpt.has(k);
+  const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
+  const input = (k, opts = {}) => `<div class="fl"><input data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}><label>${esc(tr('f_' + k))}</label></div>`;
+  let status = it.status || '', loanTo = it.loanTo || '';
+  const legacy = /^On loan \((.+)\)$/.exec(status); if (legacy){ status = 'On loan'; loanTo = loanTo || legacy[1]; }
+  const field = k => {
+    if (!show(k)) return '';
+    if (k === 'value' || k === 'qty') return input(k, {attrs: `type="number" inputmode="numeric" min="${k === 'qty' ? 1 : 0}"`});
+    if (k === 'brand') return input(k, {attrs: 'list="brands"'});
+    if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
+    if (k === 'season') return input(k, {value: showSeason(it.season), attrs: 'list="seasons"'});
+    if (k === 'serial') return input(k, {attrs: 'autocapitalize="characters"'});
+    if (k === 'spot') return b.loose ? input(k) : '';
+    if (k === 'notes') return `<div class="fl"><textarea data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea><label>${tr('f_notes')}</label></div>`;
+    if (k === 'owner') return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
+      <div class="pair"><input data-f="owner" value="${esc(showOwner(it.owner))}" placeholder="${esc(tr('whose'))}" list="people" autocapitalize="words">
+      <select data-f="status" aria-label="${esc(tr('status'))}"><option value="">${tr('status')}…</option>${STATUSES.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${status && !STATUS_KEYS[status] ? `<option value="${esc(status)}" selected>${esc(status)}</option>` : ''}</select></div>
+      ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">` : ''}</div>`;
+    return input(k);
+  };
+  const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
+  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
+  app.innerHTML = `${crumbs(crumbParts)}
+    <div class="hero">
+      ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<div class="heroimg empty"><span class="ticon">${guessIcon(it)}</span></div>`}
+      <label class="cam" aria-label="Photo">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
+    </div>
+    ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
+    <input class="title" id="fName" value="${esc(it.name)}" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences">
+    ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
+    <div class="fl"><select data-where aria-label="${esc(tr('whereIs'))}">${moveTargetsHTML(b)}</select><label class="always">${tr('whereIs')}</label></div>
+    ${OPT.map(field).join('')}
+    ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="chips">${addable.map(k => `<button class="chipbtn" data-addopt="${k}">+ ${esc(tr('f_' + k))}</button>`).join('')}</div></div>` : ''}
+    <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
+    <div class="fl"><select data-f="remindMonths" aria-label="${esc(tr('remind'))}">${[0, 6, 12, 24].map(v => `<option value="${v}" ${+(it.remindMonths || 0) === v ? 'selected' : ''}>${v ? tr('remindM', v) : tr('noRemind')}</option>`).join('')}</select><label class="always">${tr('remind')}</label>
+      ${n ? `<span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span>` : ''}</div>
+    <div class="fl att"><label class="always">${tr('attachments')}</label>
+      ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
+      <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/*,application/pdf" id="fFile" hidden></label></div></div>
+    <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<button class="tag" data-rmtag="${i}">${esc(t)}</button>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
+    <p class="proof">${esc(tr('registered', fmtStamp(it.addedAt), it.addedBy))} ${esc(tr('storedSince', it.storedOn || fmtDate(it.addedAt)))}${it.updatedAt ? ' ' + esc(tr('changed', fmtStamp(it.updatedAt))) : ''}</p>
+    <button class="btn danger block" data-act="delitem">${tr('delItem')}</button>
+    <div class="donebar">${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${isNew ? tr('save') : tr('done')}</button></div>
+    <datalist id="people">${household.map(p => `<option value="${esc(p)}">`).join('')}<option value="${esc(tr('shared'))}"></datalist>
+    <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
+    <datalist id="seasons">${SEASONS.map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
+    <datalist id="brands">${recentValues('brand').map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
+  const timers = {};
+  const conv = (k, v) => {
+    v = typeof v === 'string' ? v.trim() : v;
+    if (k === 'owner' && v) return v.toLowerCase() === tr('shared').toLowerCase() || v.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(v));
+    if (k === 'loanTo' && v) return addPerson(cap(v));
+    if (k === 'color') return fromColor(v);
+    if (k === 'season') return fromSeason(v);
+    if (k === 'size' && v){ const c = cleanSize(v); return c.ok ? c.v : v; }
+    return v;
+  };
+  const commit = (k, v) => saveItem(x => {
+    if (k === 'name'){ v = (v || '').trim(); if (v) x.name = cap(v); return; }
+    if (k === 'value' || k === 'qty'){ if (v === '' || isNaN(+v)) delete x[k]; else x[k] = Math.max(0, +v); return; }
+    if (k === 'remindMonths'){ if (+v) x.remindMonths = +v; else delete x.remindMonths; return; }
+    v = conv(k, v);
+    if (k === 'status' && v !== 'On loan') delete x.loanTo;
+    if (v === '' || v == null) delete x[k]; else x[k] = v;
+  }, false);
+  const RERENDER = ['remindMonths', 'lastUsed', 'status'];
+  flushItem = () => {
+    Object.keys(timers).forEach(k => clearTimeout(timers[k]));
+    const [x] = curItem(); if (!x) return;
+    const nm2 = $('#fName'); if (nm2 && nm2.value.trim() && nm2.value.trim() !== x.name) commit('name', nm2.value);
+    app.querySelectorAll('[data-f]').forEach(el => {
+      const k = el.dataset.f, [y] = curItem(); if (!y) return;
+      const cur = k === 'color' ? showColor(y.color) : k === 'season' ? showSeason(y.season) : k === 'owner' ? showOwner(y.owner) : String(y[k] ?? (k === 'remindMonths' ? 0 : ''));
+      if (String(el.value) !== cur) commit(k, el.value);
+    });
+  };
+  app.querySelectorAll('[data-f]').forEach(el => {
+    const k = el.dataset.f;
+    el.addEventListener('input', () => { if (el.tagName === 'SELECT') return; clearTimeout(timers[k]); timers[k] = setTimeout(() => commit(k, el.value), 700); });
+    el.addEventListener('change', () => { clearTimeout(timers[k]); if (RERENDER.includes(k)){ flushItem(); render(); } else commit(k, el.value); });
+  });
+  const nm = $('#fName');
+  nm.addEventListener('input', () => { clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
+  nm.addEventListener('change', () => { clearTimeout(timers.name); commit('name', nm.value); });
+  app.querySelector('[data-where]').addEventListener('change', e => { if (flushItem) flushItem(); moveItemTo(view.boxId, view.itemId, e.target.value); render(); });
+  $('#fPhoto').addEventListener('change', async e => {
+    const files = [...e.target.files]; if (!files.length) return; toast(tr('savingPhoto'));
+    const added = [];
+    for (const f of files){ try { added.push(await storePhoto(f)); } catch (err){ toast(saveErr(err)); } }
+    if (flushItem) flushItem();
+    if (added.length) saveItem(x => { x.photos = (x.photos || []).concat(added); }, true);
+  });
+  $('#fFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      let blob = f;
+      if (f.type.startsWith('image/')){ const cv = await shrink(f, PHOTO_MAX); blob = await toBlob(cv, 'image/webp', PHOTO_QUALITY) || await toBlob(cv, 'image/jpeg', .8); }
+      const ref = newId(); await phPut(ref, blob);
+      if (flushItem) flushItem();
+      saveItem(x => { x.files = (x.files || []).concat({ref, name: f.name.replace(/\.[^.]+$/, '') || tr('attachments'), type: blob.type || f.type, addedAt: new Date().toISOString()}); }, true);
+    } catch (err){ toast(saveErr(err)); }
+  });
+}
+async function openFile(f){
+  const blob = await phGet(f.ref).catch(() => null); if (!blob) return toast(tr('fileMissing'));
+  if ((f.type || blob.type || '').startsWith('image/')) return openViewer(f.ref);
+  const u = URL.createObjectURL(blob); const w = window.open(u, '_blank'); if (!w) location.href = u; setTimeout(() => URL.revokeObjectURL(u), 60000);
+}
+/* ---------- batch: several items from photos, with AI recognition when it's on ---------- */
+let batch = null;
+const batchRefs = new Set();
+function openBatch(boxId){
+  batch = {boxId, mode: null, rows: [], busy: 0};
+  navigate({name: 'batch', boxId});
+}
+const blobToB64 = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); });
+function visionPrompt(mode){
+  const l = lang === 'sv' ? 'Swedish' : 'English';
+  return `You look at a photo of things someone is putting into storage, for a home inventory app.
+${mode === 'multi' ? 'The photo shows SEVERAL separate things. Return each separate thing as its own item, max 20. Group many identical small things into one item (for example "Batteries, about 20").' : 'The photo shows ONE main thing. Return exactly one item for it.'}
+Return ONLY JSON: {"items":[{"name":"","category":"","color":"","brand":"","model":"","size":"","text_seen":"","condition":"","value_sek":null,"box_2d":[ymin,xmin,ymax,xmax]}]}
+- name: short and specific, in ${l}, for example "${lang === 'sv' ? 'Röd skidjacka' : 'Red ski jacket'}".
+- category: one or two words in ${l}.
+- color: one of Black, White, Grey, Blue, Red, Green, Yellow, Pink, Purple, Brown, Beige, Multicolour, or "".
+- brand, model, size: only if clearly visible on a logo, tag or label, otherwise "".
+- text_seen: other useful printed text such as a serial number or a book title, otherwise "".
+- condition: in ${l}, a few words, or "".
+- value_sek: a rough second-hand value in Swedish kronor, or null if unsure.
+- box_2d: the item's position, with coordinates normalised to 0-1000.`;
+}
+async function recogniseRow(rows, ref, mode){
+  const blob = await phGet(ref);
+  const cv = await shrink(blob, 1024), small = await toBlob(cv, 'image/jpeg', .8);
+  const text = await callAI(visionPrompt(mode), mode === 'multi' ? 'List the separate things in this photo.' : 'What is this?', {images: [{mime: 'image/jpeg', data: await blobToB64(small)}], timeout: 60000});
+  const s = String(text || '').replace(/```(?:json)?/gi, ''), i = s.indexOf('{'), j = s.lastIndexOf('}');
+  const out = JSON.parse(s.slice(i, j + 1)); return Array.isArray(out.items) ? out.items : [];
+}
+async function cropRef(ref, box){
+  if (!Array.isArray(box) || box.length !== 4) return null;
+  const blob = await phGet(ref), bmp = await createImageBitmap(blob);
+  let [y0, x0, y1, x1] = box.map(v => Math.max(0, Math.min(1000, +v || 0)) / 1000);
+  if (y1 <= y0 || x1 <= x0) { bmp.close && bmp.close(); return null; }
+  const pw = (x1 - x0) * .08, ph = (y1 - y0) * .08;
+  x0 = Math.max(0, x0 - pw); y0 = Math.max(0, y0 - ph); x1 = Math.min(1, x1 + pw); y1 = Math.min(1, y1 + ph);
+  const sx = x0 * bmp.width, sy = y0 * bmp.height, sw = (x1 - x0) * bmp.width, sh = (y1 - y0) * bmp.height;
+  if (sw < 24 || sh < 24) { bmp.close && bmp.close(); return null; }
+  const cv = document.createElement('canvas'); cv.width = Math.round(sw); cv.height = Math.round(sh);
+  cv.getContext('2d').drawImage(bmp, sx, sy, sw, sh, 0, 0, cv.width, cv.height); bmp.close && bmp.close();
+  const out = await toBlob(cv, 'image/webp', PHOTO_QUALITY) || await toBlob(cv, 'image/jpeg', .8);
+  const r = newId(); await phPut(r, out); batchRefs.add(r); return r;
+}
+function fieldsFromAI(x){
+  const f = {};
+  if (x.category) f.category = String(x.category).trim();
+  if (x.color){ const c = fromColor(String(x.color)); if (COLORS.includes(c)) f.color = c; }
+  if (x.brand) f.brand = String(x.brand).trim();
+  if (x.model) f.model = String(x.model).trim();
+  if (x.size){ const c = cleanSize(String(x.size)); if (c.ok) f.size = c.v; }
+  const notes = [x.text_seen, x.condition].map(v => String(v || '').trim()).filter(Boolean);
+  if (notes.length) f.notes = notes.join('. ');
+  if (x.value_sek !== null && x.value_sek !== undefined && !isNaN(+x.value_sek) && +x.value_sek > 0) f.value = Math.round(+x.value_sek);
+  return f;
+}
+async function addBatchFiles(files, mode){
+  if (!batch) return;
+  batch.mode = mode;
+  const useAI = aiReady();
+  for (const file of files){
+    let p; try { p = await storePhoto(file); } catch (e){ toast(saveErr(e)); continue; }
+    batchRefs.add(p.ref);
+    const row = {id: newId(), name: '', photos: [p], fields: {}, include: true, status: useAI ? 'thinking' : 'ready', src: p.ref};
+    batch.rows.push(row); render();
+    if (!useAI) continue;
+    batch.busy++;
+    try {
+      const found = await recogniseRow(batch.rows, p.ref, mode);
+      if (mode === 'multi' && found.length > 1){
+        const at = batch.rows.indexOf(row), made = [];
+        for (const x of found){
+          const c = await cropRef(p.ref, x.box_2d);
+          made.push({id: newId(), name: cap(String(x.name || '').trim()), photos: c ? [{ref: c, takenAt: p.takenAt, addedAt: p.addedAt}, p] : [p], fields: fieldsFromAI(x), include: true, status: 'ready', src: p.ref});
+        }
+        batch.rows.splice(at, 1, ...made);
+        toast(tr('batchFound', made.length));
+      } else if (found.length){
+        row.name = cap(String(found[0].name || '').trim()); row.fields = fieldsFromAI(found[0]); row.status = 'ready';
+      } else row.status = 'ready';
+    } catch (e){ row.status = 'failed'; row.err = aiErrorText(e); }
+    batch.busy--; if (view.name === 'batch') render();
+  }
+}
+function renderBatch(){
+  if (!batch || batch.boxId !== view.boxId) batch = {boxId: view.boxId, mode: null, rows: [], busy: 0};
+  const b = findBox(batch.boxId);
+  const where = b.loose ? `${placeName(b.placeId)}, ${tr('notInBoxShort')}` : `${b.code} ${b.name}`;
+  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
+  const rows = batch.rows, n = rows.filter(r => r.include && r.status !== 'thinking').length;
+  const detail = f => [showColor(f.color), f.brand, f.size && (lang === 'sv' ? 'stl ' : 'size ') + f.size, f.value && kr(f.value), f.category].filter(Boolean).map(esc).join(' · ');
+  app.innerHTML = `${crumbs(crumbParts)}
+    <h2 class="pagetitle">${tr('batchTitle')}</h2>
+    <p class="hint">${esc(tr('batchWhere', where))}</p>
+    <p class="hint">${aiReady() ? tr('batchAI') + (ai.provider === 'gemini' ? ' ' + tr('batchPrivacy') : '') : tr('batchNoAI')}</p>
+    ${!rows.length ? `<div class="choice col">
+      <label class="btn primary big">${ICON.camera}<span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small><input type="file" accept="image/*" multiple hidden data-batchmode="each"></label>
+      <label class="btn primary big">${ICON.box}<span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small><input type="file" accept="image/*" multiple hidden data-batchmode="multi"></label></div>`
+    : `<div class="brows">${rows.map((r, i) => `<div class="brow${r.include ? '' : ' off'}">
+        <button class="bthumb" data-viewph="${esc(r.photos[0].ref)}">${imgTag(r.photos[0].ref, '')}</button>
+        <div class="bmain">${r.status === 'thinking' ? `<p class="hint">${tr('thinking')}</p>` : `<input class="input" data-bname="${i}" value="${esc(r.name)}" placeholder="${esc(tr('namePh'))}" autocapitalize="sentences">
+          ${detail(r.fields) ? `<p class="bdet">${detail(r.fields)}</p>` : ''}${r.status === 'failed' ? `<p class="hint">${esc(tr('aiFailed', r.err || ''))}</p>` : ''}`}</div>
+        <label class="binc"><input type="checkbox" data-binc="${i}" ${r.include ? 'checked' : ''}><span>${tr('include')}</span></label></div>`).join('')}</div>
+      <label class="btn quiet block morebtn">${tr('morePhotos')}<input type="file" accept="image/*" multiple hidden data-batchmode="${batch.mode || 'each'}"></label>`}
+    <div class="donebar"><button class="btn quiet" data-act="batchcancel">${tr('cancel')}</button><button class="btn primary" data-act="batchadd" ${n && !batch.busy ? '' : 'disabled'}>${tr('addN', n)}</button></div>`;
+  app.querySelectorAll('[data-batchmode]').forEach(inp => inp.addEventListener('change', e => { const f = [...e.target.files]; if (f.length) addBatchFiles(f, inp.dataset.batchmode); }));
+  app.querySelectorAll('[data-bname]').forEach(inp => inp.addEventListener('input', () => { const r = batch.rows[+inp.dataset.bname]; if (r) r.name = inp.value; }));
+  app.querySelectorAll('[data-binc]').forEach(c => c.addEventListener('change', () => { const r = batch.rows[+c.dataset.binc]; if (r){ r.include = c.checked; render(); } }));
+}
+function finishBatch(add){
+  if (!batch) return;
+  const b = findBox(batch.boxId), used = new Set();
+  let count = 0;
+  if (add && b){
+    const nb = clone(b), now = new Date().toISOString();
+    batch.rows.forEach((r, i) => {
+      if (!r.include || r.status === 'thinking') return;
+      const it = Object.assign({id: newId(), name: cap((r.name || '').trim()) || `${tr('unnamed')} ${i + 1}`, category: '', value: '', storedOn: today(), notes: '', photos: r.photos, tags: [], addedAt: now, addedBy: me || ''}, r.fields);
+      nb.items = (nb.items || []).concat(it); r.photos.forEach(p => used.add(p.ref)); count++;
+    });
+    snapshot([b.id]); putBox(nb, true);
+  }
+  const refs = [...batchRefs]; batchRefs.clear();
+  refs.forEach(r => { if (!used.has(r)) dropPhoto(r); });
+  batch = null;
+  if (count) toast(tr('batchAdded', count));
+  if (history.state && history.state.v && history.length > 1) history.back(); else navigate(b && !b.loose ? {name: 'box', boxId: b.id} : {name: 'home'});
+}
+
+/* ---------- test: recognise a single item from its photo ---------- */
+async function suggestFromPhoto(){
+  if (flushItem) flushItem();
+  const [it] = curItem(); if (!it) return;
+  const p = (it.photos || [])[0]; if (!p) return toast(tr('aiNeedPhoto'));
+  if (!aiReady()) return aiSheet();
+  const btn = app.querySelector('[data-act=aisuggest]'); if (btn){ btn.disabled = true; btn.textContent = tr('aiLooking'); }
+  let found;
+  try { found = (await recogniseRow(null, p.ref, 'single'))[0]; }
+  catch (e){ toast(aiErrorText(e)); render(); return; }
+  if (!found){ toast(tr('aiNothing')); render(); return; }
+  const sug = Object.assign({name: cap(String(found.name || '').trim())}, fieldsFromAI(found));
+  const shown = k => k === 'color' ? showColor(sug[k]) : k === 'value' ? kr(sug[k]) : sug[k];
+  const cur = k => k === 'color' ? showColor(it[k]) : k === 'value' ? (it[k] ? kr(it[k]) : '') : (it[k] || '');
+  const keys = ['name', 'category', 'color', 'brand', 'model', 'size', 'value', 'notes'].filter(k => sug[k] !== undefined && sug[k] !== '' && String(sug[k]) !== String(it[k] ?? ''));
+  if (!keys.length){ toast(tr('aiNothing')); render(); return; }
+  const label = k => k === 'name' ? tr('namePh') : tr('f_' + k);
+  openSheet(`<h3>✨ ${tr('aiSuggestH')} <span class="testtag">${tr('testTag')}</span></h3>
+    <p class="hint">${tr('aiSuggestHint')}</p>
+    <div class="sugs">${keys.map(k => `<label class="sug"><input type="checkbox" data-sk="${k}" ${cur(k) ? '' : 'checked'}>
+      <span><b>${esc(label(k))}</b><br>${esc(shown(k))}${cur(k) ? `<br><small>${esc(tr('aiNow', cur(k)))}</small>` : ''}</span></label>`).join('')}</div>
+    <div class="sheet-foot"><button class="btn quiet" id="sgX">${tr('cancel')}</button><button class="btn primary" id="sgOk">${tr('apply')}</button></div>`, () => render());
+  $('#sgX').onclick = closeSheet;
+  $('#sgOk').onclick = () => {
+    const pick = [...sheet.querySelectorAll('[data-sk]:checked')].map(c => c.dataset.sk);
+    if (pick.length) saveItem(x => { pick.forEach(k => { x[k] = sug[k]; }); if (pick.some(k => !['name', 'notes', 'value'].includes(k))) shownOpt = new Set([...shownOpt, ...pick]); });
+    toast(tr('aiApplied', pick.length)); closeSheet();
+  };
+}
+
+/* ---------- sheets: add, move, long press ---------- */
+function addHereSheet(pid){
+  openSheet(`<h3>${esc(tr('addTo', placeName(pid)))}</h3>
+    <div class="choice"><button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button></div>
+    <button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>
+    <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
+  $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid); };
+  $('#adItem').onclick = () => { closeSheet(); newItem(ensureLoose(pid).id); };
+  $('#adBatch').onclick = () => { closeSheet(); openBatch(ensureLoose(pid).id); };
+  $('#adX').onclick = closeSheet;
+}
+function moveItemSheet(boxId, itemId){
+  const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
+  openSheet(`<h3>${esc(tr('moveX', it.name || tr('unnamed')))}</h3><label class="field"><span>${tr('to')}</span><select id="mvTo">${moveTargetsHTML(b)}</select></label>
+    <div class="sheet-foot"><button class="btn quiet" id="mvX">${tr('cancel')}</button><button class="btn primary" id="mvGo">${tr('move')}</button></div>`);
+  $('#mvX').onclick = closeSheet;
+  $('#mvGo').onclick = () => { moveItemTo(boxId, itemId, $('#mvTo').value); closeSheet(); render(); };
+}
+async function deleteItem(boxId, itemId){
+  const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
+  if (!(await askConfirm(tr('delQ', it.name || tr('unnamed'))))) return;
+  const cur = findBox(boxId); const nb = clone(cur); nb.items = nb.items.filter(i => i.id !== itemId); putBox(nb, true);
+  (it.photos || []).forEach(p => dropPhoto(p.ref)); (it.files || []).forEach(f => dropPhoto(f.ref));
+  if (view.name === 'item'){ flushItem = null; itemDraft = null; history.back(); } else render();
+}
+function lpMenu(key){
+  const [kind, a, c] = key.split(':');
+  if (kind === 'place'){
+    const p = findPlace(a); if (!p) return;
+    const n = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.loose ? 0 : 1) + (b.items || []).length, 0);
+    openSheet(`<h3>${esc(p.name)}</h3><div class="menu">
+      <button class="btn quiet" id="lpRen">${tr('rename')}</button>
+      ${places.length > 1 && !n ? `<button class="btn danger" id="lpDel">${tr('del')}</button>` : `<p class="hint">${n ? tr('emptyFirst') : ''}</p>`}
+      <button class="btn" id="lpX">${tr('close')}</button></div>`);
+    $('#lpRen').onclick = async () => { const nn = await askText(tr('renameX', p.name), {value: p.name, ok: tr('save')}); if (nn){ p.name = nn; metaPut('places', places).catch(() => {}); } render(); };
+    if ($('#lpDel')) $('#lpDel').onclick = () => { places = places.filter(x => x.id !== p.id); boxes.filter(b => b.loose && b.placeId === p.id).forEach(b => removeBox(b.id)); if (currentPlace === p.id) setPlace('all'); metaPut('places', places).catch(() => {}); closeSheet(); render(); };
+  } else if (kind === 'box'){
+    const b = findBox(a); if (!b) return;
+    openSheet(`<h3>${esc(b.code)} ${esc(b.name)}</h3><div class="menu">
+      <button class="btn quiet" id="lpEdit">${tr('edit')}</button>
+      <label class="field"><span>${tr('moveToPlace')}</span><select id="lpMove">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+      <button class="btn danger" id="lpDel">${tr('del')}</button><button class="btn" id="lpX">${tr('close')}</button></div>`);
+    $('#lpEdit').onclick = () => { closeSheet(); boxSheet(b.id); };
+    $('#lpMove').onchange = e => { snapshot([b.id]); const nb = clone(b); nb.placeId = e.target.value; putBox(nb); toast(tr('movedTo', placeName(nb.placeId))); closeSheet(); };
+    $('#lpDel').onclick = () => { closeSheet(); boxSheet(b.id); setTimeout(() => { const d = $('#bDel'); if (d) d.click(); }, 30); };
+  } else if (kind === 'item'){
+    const b = findBox(a), it = b && (b.items || []).find(i => i.id === c); if (!it) return;
+    openSheet(`<h3>${esc(it.name || tr('unnamed'))}</h3><div class="menu">
+      <button class="btn quiet" id="lpEdit">${tr('edit')}</button><button class="btn quiet" id="lpMove">${tr('move')}</button>
+      <button class="btn danger" id="lpDel">${tr('del')}</button><button class="btn" id="lpX">${tr('close')}</button></div>`);
+    $('#lpEdit').onclick = () => { closeSheet(); navigate({name: 'item', boxId: b.id, itemId: it.id}); };
+    $('#lpMove').onclick = () => moveItemSheet(b.id, it.id);
+    $('#lpDel').onclick = () => { closeSheet(); deleteItem(b.id, it.id); };
+  }
+  if ($('#lpX')) $('#lpX').onclick = closeSheet;
+}
+let lpTimer = null, lpFired = false, lpStart = null;
+app.addEventListener('pointerdown', e => {
+  lpFired = false;
+  const t = e.target.closest('[data-lp]'); if (!t) return;
+  lpStart = {x: e.clientX, y: e.clientY};
+  clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; setTimeout(() => { lpFired = false; }, 800); if (navigator.vibrate) navigator.vibrate(15); lpMenu(t.dataset.lp); }, 550);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => app.addEventListener(ev, () => clearTimeout(lpTimer)));
+app.addEventListener('pointermove', e => { if (lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) clearTimeout(lpTimer); });
+app.addEventListener('contextmenu', e => { if (e.target.closest('[data-lp]')) e.preventDefault(); });
+
 function backupBanner(){
   const items = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   if (!items) return '';
   const days = lastBackup ? (Date.now() - new Date(lastBackup)) / 864e5 : Infinity;
   if (days < 30) return '';
-  return `<div class="banner"><span>${lastBackup ? `Last backup was ${esc(fmtDate(lastBackup))}.` : 'You haven’t made a backup yet.'} Everything is stored only on this phone, so keep a copy somewhere else in case it’s lost.</span>
-    <button class="btn primary" data-act="backup">Back up now</button></div>`;
+  return `<div class="banner"><span>${esc(tr('backupBanner', lastBackup ? fmtDate(lastBackup) : ''))}</span><button class="btn primary small" data-act="backup">${tr('backupNow')}</button></div>`;
 }
-function placeBar(){
-  const chips = (places.length > 1 ? [{id: 'all', name: 'All places'}] : []).concat(places);
-  return `<div class="placebar">${chips.map(p => `<button class="chipbtn${currentPlace === p.id || (places.length === 1) ? ' on' : ''}" data-place="${esc(p.id)}">${esc(p.name)}</button>`).join('')}<button class="chipbtn add" data-act="addplace">+ Place</button></div>`;
-}
-function placeSection(pid, heading){
-  const bx = boxesIn(pid).sort(byCode), loose = looseOf(pid), li = loose ? (loose.items || []) : [];
-  return `${heading ? `<h2 class="placehead">${esc(placeName(pid))}</h2>` : ''}
-    ${bx.length ? `<div class="grid">${bx.map(tile).join('')}</div>` : `<p class="hint">No boxes here yet.</p>`}
-    <div class="loosehead"><h3>Not in a box</h3><button class="btn quiet small" data-addloose="${esc(pid)}">Add item</button></div>
-    ${li.length ? `<ul class="items">${[...li].sort(byName).map(i => itemRow(i, loose)).join('')}</ul>` : `<p class="hint">For things stored without a box, like a bike or skis.</p>`}`;
-}
-function renderHome(){
-  const pid = places.length === 1 ? places[0].id : currentPlace;
-  const inScope = b => pid === 'all' || b.placeId === pid;
-  const scoped = boxes.filter(inScope);
-  const nBoxes = scoped.filter(b => !b.loose).length;
-  const items = scoped.reduce((s, b) => s + (b.items || []).length, 0);
-  const total = scoped.reduce((s, b) => s + boxValue(b), 0);
-  if (!boxes.some(b => !b.loose || (b.items || []).length)){
-    app.innerHTML = `${placeBar()}<div class="empty"><h2>Nothing stored yet</h2>
-      <p>Add your first box, then add what’s inside it with a photo of each thing. Every box gets a code and a label you can print and stick on it. Things that don’t go in a box can be added on their own.</p>
-      <div class="actions" style="margin:0"><button class="btn primary" data-act="newbox">Add first box</button><button class="btn quiet" data-addloose="${esc(pid === 'all' ? places[0].id : pid)}">Add item without a box</button></div></div>`;
-    return;
-  }
-  app.innerHTML = `${backupBanner()}${placeBar()}<p class="summary">${nBoxes} ${nBoxes === 1 ? 'box' : 'boxes'} and ${items} ${items === 1 ? 'item' : 'items'}${total ? `, about ${kr(total)} in estimated value` : ''}.</p>
-    ${pid === 'all' ? places.map(p => placeSection(p.id, true)).join('') : placeSection(pid, false)}
-    ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), 'Voice notes not tied to a box')}`;
-}
-function itemRow(it, b, showBox){
+function itemRow(it, b){
   const p = (it.photos || [])[0];
   const img = p ? imgTag(p.ref, 'thumb') : `<span class="thumb none icon" aria-hidden="true">${guessIcon(it)}</span>`;
-  const sub = [it.spot, it.owner, it.size ? 'size ' + it.size : '', it.color, it.category, it.storedOn ? 'stored ' + age(it.storedOn) : ''].filter(Boolean).join(', ');
-  const where = b.loose ? `<span class="chip loose">${esc(placeName(b.placeId))}</span>` : `<span class="chip">${esc(b.code)}</span>${places.length > 1 ? `<br><small>${esc(placeName(b.placeId))}</small>` : ''}`;
-  return `<li><button class="item" data-item="${esc(it.id)}" data-box="${esc(b.id)}">${img}
-    <span class="item-main"><span class="item-name">${esc(it.name)}</span><span class="item-sub">${esc(sub)}</span></span>
-    <span class="item-right">${showBox ? where + '<br>' : ''}${esc(kr(it.value))}</span></button></li>`;
+  const sub = [showOwner(it.owner), it.size, showColor(it.color), it.category].filter(Boolean).join(', ');
+  return `<li><button class="item" data-item="${esc(it.id)}" data-box="${esc(b.id)}">${img}<span class="item-main"><span class="item-name">${esc(it.name)}</span><span class="item-sub">${esc(sub)}</span></span></button></li>`;
 }
 function notesHTML(list, title){
   if (!list.length) return '';
-  return `<section class="notes"><h3>${esc(title)}</h3>${list.map(n => `<div class="note">
+  return `<section class="notes"><h2 class="section">${esc(title)}</h2>${list.map(n => `<div class="note">
     <audio controls preload="none" data-note="${esc(n.id)}"></audio>
     <span class="hint">${esc(fmtStamp(n.createdAt))}, ${n.duration} s${n.by ? `, ${esc(n.by)}` : ''}</span>
-    <button class="btn quiet" data-notedel="${esc(n.id)}">Delete</button></div>`).join('')}</section>`;
+    <button class="linkbtn" data-notedel="${esc(n.id)}">${tr('del')}</button></div>`).join('')}</section>`;
 }
 const noteUrls = new Map();
 function hydrateNotes(root){
@@ -13050,61 +14004,16 @@ function hydrateNotes(root){
     a.src = noteUrls.get(n.id);
   });
 }
-function renderBox(b){
-  const items = b.items || [];
-  const total = boxValue(b);
-  app.innerHTML = `<button class="iconbtn back" data-act="home">← ${esc(placeName(b.placeId) || 'All boxes')}</button>
-    <section class="boxhead">
-      <div>
-        <div class="code">${esc(b.code)}</div>
-        <h2>${esc(b.name)}</h2>
-        <p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}</p>
-        <p>${items.length} ${items.length === 1 ? 'item' : 'items'}${total ? `, about ${kr(total)}` : ''}. Packed ${esc(fmtDate(b.createdAt))}.</p>
-        ${b.notes ? `<p style="margin-top:6px">${esc(b.notes)}</p>` : ''}
-      </div>
-      <button class="qr" data-act="label" aria-label="Get label for ${esc(b.code)}">${qrSvg(labelText(b), 3)}</button>
-    </section>
-    ${b.photo ? imgTag(b.photo.ref, 'boxphoto', 'Photo of box ' + b.code) : ''}
-    <div class="actions">
-      <button class="btn primary" data-act="additem">Add item</button>
-      <button class="btn quiet" data-act="editbox">Edit box</button>
-      <button class="btn quiet" data-act="label">Get label</button>
-    </div>
-    ${items.length ? `<ul class="items">${[...items].sort((a,c) => a.name.localeCompare(c.name, 'sv')).map(i => itemRow(i, b)).join('')}</ul>`
-      : `<p class="hint">Nothing in this box yet. Add items one by one, with a photo of each, so you have proof of what’s stored. Or tap Talk and say what you’re putting in.</p>`}
-    ${notesHTML(notes.filter(n => n.boxId === b.id), 'Voice notes for this box')}`;
-}
-function renderSearch(){
-  const q = query.toLowerCase().trim();
-  const sp = places.length > 1 && currentPlace !== 'all' ? currentPlace : null;
-  const boxHits = realBoxes().filter(b => (!sp || b.placeId === sp) && [b.code, b.name, b.location, b.notes].some(v => (v || '').toLowerCase().includes(q))).sort(byCode);
-  const {exact, related} = searchItems(query, {placeId: sp});
-  const scopeLine = sp ? `<p class="scope">Searching in ${esc(placeName(sp))}. <button class="linkbtn" data-place="all">Search all places</button></p>` : '';
-  if (!boxHits.length && !exact.length && !related.length){ app.innerHTML = `${scopeLine}<p class="status">Nothing matches “${esc(query)}”${sp ? ' here' : ''}. Try another word or a box code like B-001.</p>`; return; }
-  if (!boxHits.length && !exact.length && !related.length){ app.innerHTML = `<p class="status">Nothing matches “${esc(query)}”. Try another word or a box code like B-001.</p>`; return; }
-  app.innerHTML = `${scopeLine}${exact.length ? `<p class="summary">${exact.length} matching ${exact.length === 1 ? 'item' : 'items'}</p>
-      <ul class="items">${exact.map(([it, b]) => itemRow(it, b, true)).join('')}</ul>` : ''}
-    ${related.length ? `<p class="summary">Related: ${related.length} ${related.length === 1 ? 'item' : 'items'} of the same kind</p>
-      <ul class="items">${related.map(([it, b]) => itemRow(it, b, true)).join('')}</ul>` : ''}
-    ${boxHits.length ? `<p class="summary">${boxHits.length} matching ${boxHits.length === 1 ? 'box' : 'boxes'}</p>
-      <div class="grid">${boxHits.map(tile).join('')}</div>` : ''}`;
-}
-
-function openBox(id){
-  const b = findBox(id); if (!b || b.loose) return;
-  if (currentPlace !== 'all' && b.placeId !== currentPlace) setPlace(b.placeId);
-  view = {name: 'box', boxId: id}; query = ''; $('#search').value = ''; render(); window.scrollTo(0, 0);
-}
 function placesSheet(){
-  openSheet(`<h3>Storage places</h3>
-    <p class="hint">For example the basement storage unit, the attic, the garage or the summer house. Only a name is stored, never an address.</p>
+  openSheet(`<h3>${tr('storagePlaces')}</h3>
+    <p class="hint">${tr('placesHint')}</p>
     <div id="plList"></div>
-    <div class="vtype"><input id="plName" placeholder="Name, e.g. Vinden" autocapitalize="sentences"><button class="btn primary" id="plAdd">Add</button></div>
-    <div class="sheet-foot"><button class="btn primary" id="plClose">Done</button></div>`);
+    <div class="vtype"><input class="input" id="plName" placeholder="${esc(tr('placeNameHint'))}" autocapitalize="sentences"><button class="btn primary" id="plAdd">${tr('add')}</button></div>
+    <div class="sheet-foot"><button class="btn primary" id="plClose">${tr('done')}</button></div>`);
   const draw = () => {
     $('#plList').innerHTML = places.map(p => {
       const n = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.loose ? 0 : 1) + (b.items || []).length, 0);
-      return `<div class="prow"><span>${esc(p.name)}</span><span><button class="iconbtn" data-plren="${esc(p.id)}">Rename</button>${places.length > 1 && !n ? `<button class="iconbtn" data-pldel="${esc(p.id)}">Remove</button>` : ''}</span></div>`;
+      return `<div class="prow"><span>${esc(p.name)}</span><span><button class="linkbtn" data-plren="${esc(p.id)}">${tr('rename')}</button>${places.length > 1 && !n ? ` <button class="linkbtn" data-pldel="${esc(p.id)}">${tr('remove')}</button>` : ''}</span></div>`;
     }).join('');
   };
   draw();
@@ -13113,41 +14022,80 @@ function placesSheet(){
   $('#plName').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
   $('#plList').onclick = e => {
     const r = e.target.closest('[data-plren]'), d = e.target.closest('[data-pldel]');
-    if (r){ const p = findPlace(r.dataset.plren); const n = prompt('New name', p.name); if (n && n.trim()){ p.name = n.trim(); metaPut('places', places).catch(() => {}); draw(); render(); } }
+    if (r){ const p = findPlace(r.dataset.plren); askText(tr('renameX', p.name), {value: p.name, ok: tr('save')}).then(n => { if (n){ p.name = n; metaPut('places', places).catch(() => {}); } render(); placesSheet(); }); }
     if (d){ places = places.filter(p => p.id !== d.dataset.pldel); boxes.filter(b => b.loose && b.placeId === d.dataset.pldel).forEach(b => removeBox(b.id)); if (currentPlace === d.dataset.pldel) setPlace('all'); metaPut('places', places).catch(() => {}); draw(); render(); }
   };
   $('#plClose').onclick = closeSheet;
 }
 async function deleteNote(id){
-  if (!confirm('Delete this voice note?')) return;
+  if (!(await askConfirm(tr('delNoteQ')))) return;
   notes = notes.filter(n => n.id !== id);
   if (noteUrls.has(id)){ URL.revokeObjectURL(noteUrls.get(id)); noteUrls.delete(id); }
   await noteDel(id).catch(e => toast(saveErr(e))); updateStatus(); render();
 }
+function settingsAction(k){
+  if (k === 'import') return $('#importFile').click();
+  if (k === 'backup') return backup();
+  if (k === 'people') return peopleSheet();
+  if (k === 'report') return insuranceReport();
+  if (k === 'labels') return realBoxes().length ? labels(realBoxes()) : toast(lang === 'sv' ? 'Lägg till några lådor först.' : 'Add some boxes first.');
+  if (k === 'places') return placesSheet();
+  if (k === 'ai') return aiSheet();
+  if (k === 'scan') return scanSheet();
+}
 
 app.addEventListener('click', e => {
-  const t = e.target.closest('[data-open],[data-item],[data-act],[data-notedel],[data-place],[data-addloose],img.boxphoto'); if (!t) return;
-  if (t.dataset.place){ setPlace(t.dataset.place); return render(); }
-  if (t.dataset.addloose) return itemSheet(ensureLoose(t.dataset.addloose).id);
-  if (t.dataset.notedel) return deleteNote(t.dataset.notedel);
-  if (t.matches('img.boxphoto')) return openViewer(t.dataset.ph);
-  if (t.dataset.open) return openBox(t.dataset.open);
-  if (t.dataset.item) return itemSheet(t.dataset.box, t.dataset.item);
+  if (lpFired){ lpFired = false; e.preventDefault(); return; }
+  const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt]'); if (!t) return;
+  const d = t.dataset;
+  if (d.nav){ const v = JSON.parse(d.nav); if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
+  if (d.goplace) return goHome(d.goplace === 'all' ? null : d.goplace);
+  if (d.open) return openBox(d.open);
+  if (d.item) return navigate({name: 'item', boxId: d.box, itemId: d.item});
+  if (d.notedel) return deleteNote(d.notedel);
+  if (d.sub) return navigate({name: 'profile', sub: d.sub});
+  if (d.m) return settingsAction(d.m);
+  if (d.viewph) return openViewer(d.viewph);
+  if (d.addopt){ if (flushItem) flushItem(); shownOpt.add(d.addopt); render(); setTimeout(() => { const el = app.querySelector(`[data-f="${d.addopt}"]`); if (el) el.focus(); }, 50); return; }
+  if (d.rmph !== undefined){ const [it] = curItem(); const p = it.photos[+d.rmph]; askConfirm(tr('rmPhotoQ'), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.photos = x.photos.filter(q => q.ref !== p.ref); }, true); dropPhoto(p.ref); }); return; }
+  if (d.viewfile !== undefined){ const [it] = curItem(); return openFile(it.files[+d.viewfile]); }
+  if (d.rmfile !== undefined){ const [it] = curItem(); const f = it.files[+d.rmfile]; askConfirm(tr('rmQ', f.name), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.files = x.files.filter(q => q.ref !== f.ref); }, true); dropPhoto(f.ref); }); return; }
+  if (d.rmtag !== undefined){ const [it] = curItem(); const tg = it.tags[+d.rmtag]; askConfirm(tr('rmTagQ', tg), tr('remove')).then(y => { if (y) saveItem(x => { x.tags = x.tags.filter(q => q !== tg); }, true); }); return; }
+  if (d.used || d.sell){
+    const [bid, iid] = (d.used || d.sell).split(':'); const b = findBox(bid); if (!b) return;
+    const nb = clone(b), x = nb.items.find(i => i.id === iid); if (!x) return;
+    if (d.used) x.lastUsed = today(); else x.status = 'For sale';
+    x.updatedAt = new Date().toISOString(); putBox(nb); toast(d.used ? tr('usedNoted') : tr('markedSale'));
+    return;
+  }
   const b = findBox(view.boxId);
-  switch (t.dataset.act){
-    case 'home': view = {name: 'home'}; render(); break;
-    case 'newbox': boxSheet(); break;
-    case 'addplace': { const p = addPlace(prompt('Name of the storage place, e.g. Vinden or Garaget')); if (p){ setPlace(p.id); render(); } break; }
-    case 'additem': itemSheet(b.id); break;
+  switch (d.act){
+    case 'addplace': askText(tr('newPlace'), {placeholder: tr('newPlaceHint'), ok: tr('add')}).then(n => { const p = n && addPlace(n); if (p) goHome(p.id); }); break;
+    case 'addhere': addHereSheet(d.pid || scopePlace() || places[0].id); break;
+    case 'additem': newItem(b.id); break;
+    case 'batch': openBatch(b.id); break;
+    case 'batchcancel': finishBatch(false); break;
+    case 'batchadd': finishBatch(true); break;
     case 'editbox': boxSheet(b.id); break;
     case 'label': labels([b]); break;
+    case 'boxphoto': openViewer(b.photo.ref); break;
     case 'backup': backup(); break;
+    case 'moveitem': moveItemSheet(view.boxId, view.itemId); break;
+    case 'delitem': deleteItem(view.boxId, view.itemId); break;
+    case 'aisuggest': suggestFromPhoto(); break;
+    case 'done': finishItem(false); break;
+    case 'saveagain': finishItem(true); break;
+    case 'addtag': if (flushItem) flushItem(); askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { if (tg) saveItem(x => { x.tags = [...new Set([...(x.tags || []), tg.toLowerCase()])]; }, true); }); break;
   }
 });
-let searchTimer;
-$('#search').addEventListener('input', e => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { query = e.target.value; render(); }, 120); });
-$('#newBoxBtn').onclick = () => boxSheet();
-$('#scanBtn').onclick = () => scanSheet();
+document.querySelector('.tabbar').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  if (b.dataset.tab === 'home') return goHome(currentPlace !== 'all' ? currentPlace : null);
+  if (b.dataset.tab === 'search'){ navigate({name: 'search'}); setTimeout(() => { const s = $('#q'); if (s) s.focus(); }, 50); return; }
+  navigate({name: 'profile'});
+});
+$('#logoBtn').innerHTML = logoSVG();
+$('#logoBtn').onclick = () => goHome(null);
 $('#menuBtn').onclick = () => menuSheet();
 $('#talkBtn').onclick = () => voiceSheet();
 
@@ -13168,8 +14116,8 @@ function photoState(initial, multiple){
   const st = {photos: clone(initial), added: [], removed: [], busy: false};
   const draw = () => {
     const w = $('#phwrap');
-    w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="Remove photo">×</button></div>`).join('')}
-      ${multiple || !st.photos.length ? `<label class="addph">Add photo<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
+    w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="${tr('rmPhoto')}">×</button></div>`).join('')}
+      ${multiple || !st.photos.length ? `<label class="addph">${tr('addPhoto')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
     hydrate(w);
   };
   st.mount = () => {
@@ -13177,7 +14125,7 @@ function photoState(initial, multiple){
     $('#phwrap').addEventListener('change', async e => {
       if (!e.target.files) return;
       const files = [...e.target.files]; st.busy = true;
-      $('#phwrap').insertAdjacentHTML('beforeend', '<p class="hint">Saving photo…</p>');
+      $('#phwrap').insertAdjacentHTML('beforeend', `<p class="hint">${tr('savingPhoto')}</p>`);
       for (const f of files){
         try { const p = await storePhoto(f); st.photos.push(p); st.added.push(p.ref); }
         catch (err) { toast(saveErr(err)); }
@@ -13197,39 +14145,39 @@ function photoState(initial, multiple){
   return st;
 }
 
-function boxSheet(id){
+function boxSheet(id, presetPid){
   const existing = id ? findBox(id) : null;
-  const b = existing ? clone(existing) : {id: newId(), code: nextCode(), name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: scopePlace() || places[0].id};
+  const b = existing ? clone(existing) : {id: newId(), code: nextCode(), name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: presetPid || scopePlace() || places[0].id};
   const ps = photoState(b.photo ? [b.photo] : [], false);
   let saved = false;
-  openSheet(`<h3>${existing ? 'Edit box' : 'New box'} <span class="chip">${esc(b.code)}</span></h3>
-    <label class="field"><span>Name</span><input id="bName" value="${esc(b.name)}" placeholder="Winter clothes"></label>
-    <label class="field"><span>Storage place</span><select id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-    <label class="field"><span>Where in that place</span><input id="bLoc" value="${esc(b.location)}" placeholder="Back wall, top shelf"></label>
+  openSheet(`<h3>${existing ? tr('editBoxH') : tr('newBox')} <span class="chip">${esc(b.code)}</span></h3>
+    <label class="field"><span>${tr('name')}</span><input id="bName" value="${esc(b.name)}" placeholder="${esc(tr('boxNamePh'))}"></label>
+    <label class="field"><span>${tr('storagePlace')}</span><select id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <label class="field"><span>${tr('whereInPlace')}</span><input id="bLoc" value="${esc(b.location)}" placeholder="${esc(tr('wherePh'))}"></label>
     <label class="field"><span>Notes</span><textarea id="bNotes">${esc(b.notes)}</textarea></label>
-    <div class="field"><span>Photo of the box</span><div id="phwrap"></div></div>
+    <div class="field"><span>${tr('boxPhoto')}</span><div id="phwrap"></div></div>
     <div class="sheet-foot">
-      ${existing ? '<button class="btn danger" id="bDel">Delete box</button><span class="spacer"></span>' : ''}
-      <button class="btn quiet" id="bCancel">Cancel</button>
-      <button class="btn primary" id="bSave">${existing ? 'Save box' : 'Add box'}</button>
+      ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button><span class="spacer"></span>` : ''}
+      <button class="btn quiet" id="bCancel">${tr('cancel')}</button>
+      <button class="btn primary" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
     </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
   $('#bCancel').onclick = closeSheet;
   $('#bSave').onclick = () => {
-    if (ps.busy) return toast('Wait for the photo to finish saving.');
-    const name = $('#bName').value.trim(); if (!name){ $('#bName').focus(); return toast('Give the box a name.'); }
+    if (ps.busy) return toast(tr('waitPhoto'));
+    const name = $('#bName').value.trim(); if (!name){ $('#bName').focus(); return toast(tr('nameBox')); }
     b.name = name; b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim(); b.placeId = $('#bPlace').value;
     b.photo = ps.photos[0] || null;
     ps.commit(); saved = true; putBox(b); closeSheet();
-    if (!existing){ openBox(b.id); toast(`${b.code} added. Get its label from the box page.`); }
+    if (!existing){ openBox(b.id); toast(`${b.code} ✓`); }
   };
-  if (existing) $('#bDel').onclick = () => {
+  if (existing) $('#bDel').onclick = async () => {
     const n = (existing.items || []).length;
-    if (!confirm(`Delete ${existing.code} “${existing.name}”${n ? ` and its ${n} ${n === 1 ? 'item' : 'items'}` : ''}? This can’t be undone.`)) return;
+    if (!(await askConfirm(tr('delQ', `${existing.code} ${existing.name}${n ? ` (${n} ${n === 1 ? tr('item') : tr('items')})` : ''}`)))) return boxSheet(existing.id);
     saved = true; ps.discard();
     if (existing.photo) dropPhoto(existing.photo.ref);
     (existing.items || []).forEach(i => (i.photos || []).forEach(p => dropPhoto(p.ref)));
-    view = {name: 'home'}; removeBox(existing.id); closeSheet(); toast(`${existing.code} deleted.`);
+    view = {name: 'home'}; removeBox(existing.id); closeSheet(); toast(`${existing.code} ✕`);
   };
 }
 
@@ -13279,109 +14227,18 @@ function addPerson(name){
   household.push(name); metaPut('household', household).catch(() => {}); return name;
 }
 
-function itemSheet(boxId, itemId){
-  const box = findBox(boxId); if (!box) return;
-  const existing = itemId ? (box.items || []).find(i => i.id === itemId) : null;
-  const it = existing ? clone(existing) : {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
-  const attrs = {}; ALL_FIELDS.forEach(f => { attrs[f] = it[f] || ''; });
-  const ps = photoState(it.photos || [], true);
-  const cats = [...new Set(boxes.flatMap(b => (b.items || []).map(i => i.category)).filter(Boolean))].sort();
-  let saved = false, kind = kindOf(it), moreOpen = false;
-  openSheet(`<h3>${existing ? 'Edit item' : 'Add item'}</h3>
-    ${existing ? `<p class="proof">Registered ${esc(fmtStamp(it.addedAt))}${it.addedBy ? ` by ${esc(it.addedBy)}` : ''}${it.updatedAt ? `, last changed ${esc(fmtStamp(it.updatedAt))}` : ''}.</p>` : ''}
-    <label class="field"><span>What is it</span><span class="namerow"><span class="thumb none icon" id="iIcon" aria-hidden="true">${guessIcon(it)}</span><input id="iName" value="${esc(it.name)}" placeholder="Tent, 3 person"></span></label>
-    <label class="field" id="spotField" ${box.loose ? '' : 'hidden'}><span>Where exactly</span><input id="iSpot" value="${esc(it.spot || '')}" placeholder="Hanging on the wall by the door"></label>
-    <div class="field"><span>Photos</span><div id="phwrap"></div></div>
-    <div id="details"></div>
-    <div class="row2">
-      <label class="field"><span>Where</span><select id="iBox">${places.map(p => `<optgroup label="${esc(p.name)}">
-        <option value="loose:${esc(p.id)}" ${box.loose && box.placeId === p.id ? 'selected' : ''}>${esc(p.name)}, not in a box</option>
-        ${boxesIn(p.id).sort(byCode).map(b => `<option value="${esc(b.id)}" ${b.id === box.id ? 'selected' : ''}>${esc(b.code)} ${esc(b.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
-      <label class="field"><span>Category</span><input id="iCat" list="cats" value="${esc(it.category)}" placeholder="Camping"><datalist id="cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
-    </div>
-    <div class="row2">
-      <label class="field"><span>Estimated value (kr)</span><input id="iVal" type="number" inputmode="numeric" min="0" step="1" value="${esc(it.value)}"></label>
-      <label class="field"><span>Stored since</span><input id="iDate" type="date" value="${esc(it.storedOn)}"></label>
-    </div>
-    <label class="field"><span>Tags</span><input id="iTags" value="${esc((it.tags || []).join(', '))}" placeholder="e.g. sommarstugan, hand-me-downs"></label>
-    <p class="proof">Search already understands Swedish and English words for most things. Tags are for your own words, separated by commas.</p>
-    <label class="field"><span>Notes</span><textarea id="iNotes" placeholder="Condition, where the receipt is, anything else">${esc(it.notes)}</textarea></label>
-    <div class="sheet-foot">
-      ${existing ? '<button class="btn danger" id="iDel">Delete item</button><span class="spacer"></span>' : ''}
-      <button class="btn quiet" id="iCancel">Cancel</button>
-      ${existing ? '' : '<button class="btn quiet" id="iSaveMore">Add and add another</button>'}
-      <button class="btn primary" id="iSave">${existing ? 'Save item' : 'Add item'}</button>
-    </div>`, () => { if (!saved) ps.discard(); });
-  ps.mount();
-  const det = $('#details');
-  const drawDetails = () => { det.innerHTML = detailsHTML(attrs, kind, moreOpen); };
-  drawDetails();
-  det.addEventListener('toggle', e => { if (e.target.matches('details.more')) moreOpen = e.target.open; }, true);
-  det.addEventListener('input', e => {
-    const k = e.target.dataset.attr; if (!k) return;
-    attrs[k] = e.target.value;
-    e.target.parentElement.querySelectorAll('[data-chip]').forEach(c => c.classList.toggle('on', c.dataset.chip.toLowerCase() === e.target.value.trim().toLowerCase()));
-  });
-  det.addEventListener('click', e => {
-    if (e.target.closest('[data-addperson]')){
-      const n = addPerson(prompt('Name of the person'));
-      if (n){ attrs.owner = n; drawDetails(); }
-      return;
-    }
-    const c = e.target.closest('[data-chip]'); if (!c) return;
-    const f = c.closest('[data-f]').dataset.f;
-    attrs[f] = attrs[f].toLowerCase() === c.dataset.chip.toLowerCase() ? '' : c.dataset.chip;
-    drawDetails();
-  });
-  const upd = () => {
-    const probe = {name: $('#iName').value, category: $('#iCat').value};
-    $('#iIcon').textContent = guessIcon(probe);
-    const k = kindOf(probe); if (k !== kind){ kind = k; drawDetails(); }
-  };
-  $('#iName').addEventListener('input', upd); $('#iCat').addEventListener('input', upd);
-  $('#iBox').addEventListener('change', e => { $('#spotField').hidden = !e.target.value.startsWith('loose:'); });
-  $('#iCancel').onclick = closeSheet;
-  const save = again => {
-    if (ps.busy) return toast('Wait for the photos to finish saving.');
-    const name = $('#iName').value.trim(); if (!name){ $('#iName').focus(); return toast('Give the item a name.'); }
-    Object.assign(it, {name, category: $('#iCat').value.trim(), value: $('#iVal').value ? Math.max(0, +$('#iVal').value) : '',
-      storedOn: $('#iDate').value || today(), notes: $('#iNotes').value.trim(), photos: ps.photos,
-      tags: $('#iTags').value.split(',').map(s => s.trim()).filter(Boolean)});
-    ALL_FIELDS.forEach(f => { const v = (attrs[f] || '').trim(); if (v) it[f] = v; else delete it[f]; });
-    if (it.owner && it.owner !== 'Shared') addPerson(it.owner);
-    if (existing) it.updatedAt = new Date().toISOString();
-    const sel = $('#iBox').value;
-    if (sel.startsWith('loose:') && $('#iSpot').value.trim()) it.spot = $('#iSpot').value.trim(); else delete it.spot;
-    const targetId = sel.startsWith('loose:') ? ensureLoose(sel.slice(6)).id : sel;
-    ps.commit(); saved = true;
-    const from = clone(findBox(boxId));
-    from.items = (from.items || []).filter(i => i.id !== it.id);
-    if (targetId === boxId){ from.items.push(it); putBox(from); }
-    else { putBox(from); const t = clone(findBox(targetId)); t.items = (t.items || []).concat(it); putBox(t); toast(`Moved to ${t.code}.`); }
-    closeSheet();
-    if (again) setTimeout(() => { itemSheet(targetId); toast(`${name} added.`); }, 0);
-  };
-  $('#iSave').onclick = () => save(false);
-  if (!existing) $('#iSaveMore').onclick = () => save(true);
-  if (existing) $('#iDel').onclick = () => {
-    if (!confirm(`Delete “${existing.name}”? This can’t be undone.`)) return;
-    saved = true; ps.discard(); (existing.photos || []).forEach(p => dropPhoto(p.ref));
-    const b2 = clone(findBox(boxId)); b2.items = b2.items.filter(i => i.id !== existing.id); putBox(b2); closeSheet();
-  };
-}
-
 /* ---------- people in the household ---------- */
 function peopleSheet(){
-  openSheet(`<h3>People in the household</h3>
-    <p class="hint">Used for “whose is it” on items, and in voice commands like “Elsa’s boots”.</p>
+  openSheet(`<h3>${tr('household')}</h3>
+    <p class="hint">${tr('householdHint')}</p>
     <div id="plist"></div>
     <div class="vtype"><input id="pName" placeholder="Name" autocapitalize="words"><button class="btn primary" id="pAdd">Add</button></div>
-    <label class="field" style="margin-top:6px"><span>Who uses this phone?</span><select id="pMe"></select></label>
-    <p class="proof">Lets “my” and “mina” mean this person when you talk to Storrrage. It also records who registered each item.</p>
+    <label class="field" style="margin-top:6px"><span>${tr('whoPhone')}</span><select id="pMe"></select></label>
+    <p class="proof">${tr('whoPhoneHint')}</p>
     <div class="sheet-foot"><button class="btn primary" id="pClose">Done</button></div>`);
   const draw = () => {
-    $('#plist').innerHTML = household.length ? household.map((n, i) => `<div class="prow"><span>${esc(n)}</span><button class="iconbtn" data-pdel="${i}">Remove</button></div>`).join('') : '<p class="hint">No one added yet.</p>';
-    $('#pMe').innerHTML = `<option value="">Not set</option>` + household.map(n => `<option ${n === me ? 'selected' : ''}>${esc(n)}</option>`).join('');
+    $('#plist').innerHTML = household.length ? household.map((n, i) => `<div class="prow"><span>${esc(n)}</span><button class="iconbtn" data-pdel="${i}">${tr('remove')}</button></div>`).join('') : `<p class="hint">${tr('noOne')}</p>`;
+    $('#pMe').innerHTML = `<option value="">${tr('notSet')}</option>` + household.map(n => `<option ${n === me ? 'selected' : ''}>${esc(n)}</option>`).join('');
   };
   draw();
   const add = () => { const n = addPerson($('#pName').value); $('#pName').value = ''; if (n) draw(); };
@@ -13400,11 +14257,11 @@ function peopleSheet(){
 function scanSheet(){
   let stream = null, raf = 0, done = false;
   const stop = () => { done = true; cancelAnimationFrame(raf); if (stream) stream.getTracks().forEach(t => t.stop()); };
-  openSheet(`<h3>Scan a box label</h3>
+  openSheet(`<h3>${tr('scanH')}</h3>
     <video id="cam" playsinline muted></video>
-    <p class="hint" id="camMsg">Point the camera at the QR code on the box.</p>
-    <label class="field"><span>Or type the box code</span><input id="codeIn" placeholder="B-014" autocapitalize="characters"></label>
-    <div class="sheet-foot"><button class="btn quiet" id="sClose">Close</button><button class="btn primary" id="sGo">Open box</button></div>`, stop);
+    <p class="hint" id="camMsg">${tr('pointCam')}</p>
+    <label class="field"><span>${tr('typeCode')}</span><input id="codeIn" placeholder="B-014" autocapitalize="characters"></label>
+    <div class="sheet-foot"><button class="btn quiet" id="sClose">${tr('close')}</button><button class="btn primary" id="sGo">${tr('openBox')}</button></div>`, stop);
   $('#sClose').onclick = closeSheet;
   const go = raw => {
     const m = String(raw).toUpperCase().match(/B-?\s*(\d+)/);
@@ -13415,7 +14272,7 @@ function scanSheet(){
   $('#sGo').onclick = () => go($('#codeIn').value);
   $('#codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(e.target.value); });
   const video = $('#cam');
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ video.hidden = true; $('#camMsg').textContent = 'The camera isn’t available here. Type the code from the label instead.'; return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ video.hidden = true; $('#camMsg').textContent = tr('noCam'); return; }
   navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(s => {
     if (done){ s.getTracks().forEach(t => t.stop()); return; }
     stream = s; video.srcObject = s; video.play();
@@ -13431,7 +14288,7 @@ function scanSheet(){
       raf = requestAnimationFrame(tick);
     };
     tick();
-  }).catch(() => { video.hidden = true; $('#camMsg').textContent = 'Camera access was blocked. Type the code from the label instead, or allow the camera for this app in Chrome’s site settings.'; });
+  }).catch(() => { video.hidden = true; $('#camMsg').textContent = tr('camBlocked'); });
 }
 
 /* ---------- voice: commands that work without AI, plus voice notes ---------- */
@@ -13574,7 +14431,7 @@ function needsFor(it){
 
 let voiceLog = [], pending = null, pendingQueue = [];
 const undoStack = [];
-const curBox = () => view.name === 'box' ? findBox(view.boxId) : null;
+const curBox = () => (view.name === 'box' || view.name === 'item') ? (b => b && !b.loose ? b : null)(findBox(view.boxId)) : null;
 function snapshot(ids, created = []){ undoStack.push({restore: [...new Set(ids)].map(findBox).filter(Boolean).map(clone), remove: created}); if (undoStack.length > 20) undoStack.shift(); }
 let replySource = 'simple';
 function logLine(who, text, action){
@@ -13598,9 +14455,10 @@ function say(text, action){
 function updateCtx(){
   const el = $('#vCtx'); if (!el) return;
   const b = curBox(), pid = scopePlace();
-  el.textContent = b ? `Open box: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
-    : pid ? `In ${placeName(pid)}, no box open. Things you add go in as “not in a box”.`
-    : 'All places. Say where you are, for example “I’m in the garage”.';
+  const sv = lang === 'sv';
+  el.textContent = b ? `${sv ? 'Öppen låda' : 'Open box'}: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
+    : pid ? (sv ? `I ${placeName(pid)}, ingen låda öppen. Det du lägger till hamnar utan låda.` : `In ${placeName(pid)}, no box open. Things you add go in as “not in a box”.`)
+    : (sv ? 'Alla platser. Säg var du är, till exempel ”jag är i garaget”.' : 'All places. Say where you are, for example “I’m in the garage”.');
 }
 
 const CMD = {
@@ -13887,14 +14745,14 @@ function sayPlace(pid){
   say(s);
 }
 function goPlace(pid){
-  setPlace(pid); view = {name: 'home'}; query = ''; $('#search').value = ''; render(); updateCtx();
+  setPlace(pid); navigate({name: 'home', place: pid}); updateCtx();
   const loose = looseOf(pid);
   say(t('inPlace', {place: placeName(pid), boxes: countBoxes(boxesIn(pid).length), things: things(loose ? (loose.items || []).length : 0)}));
 }
 function doNewPlace(name){
   name = name.replace(/^(?:called|named|som heter|med namnet|:)\s*/i, '').trim();
   const before = places.length, p = addPlace(name); if (!p) return say(t('unknown'));
-  setPlace(p.id); view = {name: 'home'}; render(); updateCtx();
+  setPlace(p.id); navigate({name: 'home', place: p.id}); updateCtx();
   say(t(places.length > before ? 'placeCreated' : 'inPlace', {place: p.name, boxes: countBoxes(boxesIn(p.id).length), things: things(0)}));
 }
 function doNewBox(rest, forcedPid){
@@ -13917,7 +14775,7 @@ function doFind(q){
   let res = searchItems(q, {placeId: pid}), elsewhere = false;
   if (!pm && pid && !res.exact.length && !res.related.length){ res = searchItems(q); elsewhere = res.exact.length + res.related.length > 0; }
   if (pm) setPlace(pid); else if (elsewhere) setPlace('all');
-  query = q; $('#search').value = q; render();
+  showSearch(q);
   const {exact, related} = res;
   const pre = elsewhere ? t('elsewhere', {place: placeName(pid)}) + ' ' : '';
   const describe = ([it, b]) => `${it.name} ${t('in')} ${whereShort(b)}`;
@@ -14202,29 +15060,29 @@ async function toggleRecord(){
 }
 
 function voiceSheet(){
-  openSheet(`<h3>Talk to Storrrage</h3>
+  openSheet(`<h3>${tr('talkH')}</h3>
     <p class="hint" id="vCtx"></p>
     <p class="aistat" id="vAI"></p>
     <div class="vlog" id="vlog" aria-live="polite"></div>
     <div class="vlive" id="vLive" hidden></div>
-    ${SR ? '<button class="mic" id="micBtn"></button>' : '<p class="hint">Speech recognition isn’t available in this browser. Use the microphone on your keyboard in the box below instead.</p>'}
-    <div class="vtype"><input id="vText" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend">Send</button></div>
+    ${SR ? '<button class="mic" id="micBtn"></button>' : `<p class="hint">${tr('noSR')}</p>`}
+    <div class="vtype"><input id="vText" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend">${tr('send')}</button></div>
     <div class="vrow">
       <button class="btn quiet" id="recBtn"></button>
       <span class="chips" style="margin:0"><button type="button" class="chipbtn" data-lang="sv-SE">Svenska</button><button type="button" class="chipbtn" data-lang="en-US">English</button></span>
     </div>
-    <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> Read answers out loud</label>
-    ${SR ? `<div class="field"><span>Act on what I said after a pause of</span><div class="chips" id="vPause">${SILENCE_CHOICES.map(([ms, l]) => `<button type="button" class="chipbtn${ms === silenceMs ? ' on' : ''}" data-ms="${ms}">${l}</button>`).join('')}</div></div>` : ''}
-    <details class="more"><summary>What can I say?</summary><ul class="help" id="vHelp"></ul></details>
-    <details class="more"><summary>Using it without signal</summary><p class="hint">Chrome’s speech recognition usually needs signal. Without it, tap the text box and use the microphone on your keyboard instead. Gboard can recognise speech offline once you’ve downloaded the language: open Gboard’s settings, then Voice typing, and download Swedish and English for offline use (menu names vary a little between phones). Or record a voice note and deal with it later.</p></details>
-    <div class="sheet-foot"><button class="btn" id="vClose">Close</button></div>`, () => { stopListening(); if (rec) rec.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); });
+    <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> ${tr('readAloud')}</label>
+    ${SR ? `<div class="field"><span>${tr('pause')}</span><div class="chips" id="vPause">${SILENCE_CHOICES.map(([ms, l]) => `<button type="button" class="chipbtn${ms === silenceMs ? ' on' : ''}" data-ms="${ms}">${l}</button>`).join('')}</div></div>` : ''}
+    <details class="more"><summary>${tr('whatSay')}</summary><ul class="help" id="vHelp"></ul></details>
+    <details class="more"><summary>${tr('noSignal')}</summary><p class="hint">${tr('noSignalTxt')}</p></details>
+    <div class="sheet-foot"><button class="btn" id="vClose">${tr('close')}</button></div>`, () => { stopListening(); if (rec) rec.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); });
   const drawLang = () => {
     sheet.querySelectorAll('[data-lang]').forEach(c => c.classList.toggle('on', c.dataset.lang === voiceLang));
     $('#vHelp').innerHTML = HELP[L()].map(h => `<li>“${esc(h)}”</li>`).join('');
     $('#vText').placeholder = vPlaceholder(); setMic('off'); drawLog();
   };
   drawLang(); updateCtx(); updRecBtn();
-  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? 'Simple commands. <button class="linkbtn" id="vAIset">Turn on AI</button>' : `AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : ' (offline, using simple commands)'}. <button class="linkbtn" id="vAIset">Settings</button>`; $('#vAIset').onclick = aiSheet; };
+  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? `${lang === 'sv' ? 'Enkla kommandon.' : 'Simple commands.'} <button class="linkbtn" id="vAIset">${lang === 'sv' ? 'Slå på AI' : 'Turn on AI'}</button>` : `AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : (lang === 'sv' ? ' (offline, enkla kommandon)' : ' (offline, using simple commands)')}. <button class="linkbtn" id="vAIset">${tr('settings')}</button>`; $('#vAIset').onclick = aiSheet; };
   drawAI();
   if (SR) $('#micBtn').onclick = listen;
   const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()) handleBatch(x); };
@@ -14252,7 +15110,7 @@ function voiceSheet(){
 function updateStatus(){
   const el = $('#statusline'); if (!el) return;
   const parts = [];
-  if (!navigator.onLine) parts.push('Offline. Everything you do is saved on this phone.');
+  if (!navigator.onLine) parts.push(tr('offline'));
   if (notes.length) parts.push(`${notes.length} voice ${notes.length === 1 ? 'note' : 'notes'} waiting.`);
   el.textContent = parts.join(' '); el.hidden = !parts.length;
 }
@@ -14331,7 +15189,7 @@ async function callAI(system, user, opts = {}){
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST', signal: ctrl.signal,
         headers: {'Content-Type': 'application/json', 'x-goog-api-key': ai.key},
-        body: JSON.stringify({systemInstruction: {parts: [{text: system}]}, contents: [{role: 'user', parts: [{text: user}]}],
+        body: JSON.stringify({systemInstruction: {parts: [{text: system}]}, contents: [{role: 'user', parts: [...(opts.images || []).map(im => ({inline_data: {mime_type: im.mime, data: im.data}})), {text: user}]}],
           generationConfig: {responseMimeType: 'application/json', temperature: 0.2}}),
       });
       if (!r.ok) throw new AIError(r.status, await r.text());
@@ -14341,7 +15199,7 @@ async function callAI(system, user, opts = {}){
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', signal: ctrl.signal,
       headers: {'content-type': 'application/json', 'x-api-key': ai.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'},
-      body: JSON.stringify({model: ai.model || CLAUDE_MODELS[0][0], max_tokens: 1500, system, messages: [{role: 'user', content: user}]}),
+      body: JSON.stringify({model: ai.model || CLAUDE_MODELS[0][0], max_tokens: 2000, system, messages: [{role: 'user', content: (opts.images || []).length ? [...opts.images.map(im => ({type: 'image', source: {type: 'base64', media_type: im.mime, data: im.data}})), {type: 'text', text: user}] : user}]}),
     });
     if (!r.ok) throw new AIError(r.status, await r.text());
     const j = await r.json();
@@ -14448,7 +15306,7 @@ function applyPlan(actions){
           if (s.place){ const p = resolvePlace(s.place); if (p) nb.placeId = p.id; }
           putBox(nb); break;
         }
-        case 'search': { const q = String(a.query || '').trim(); if (q){ query = q; $('#search').value = q; render(); } break; }
+        case 'search': { const q = String(a.query || '').trim(); if (q) showSearch(q); break; }
         case 'undo': { undoApply(); break; }
       }
     } catch (e) { console.warn('AI action failed', a, e); }
@@ -14489,42 +15347,42 @@ async function geminiModels(key){
 }
 function aiSheet(){
   const draft = {...ai};
-  openSheet(`<h3>AI assistant</h3>
-    <p class="hint">With AI on, you can talk freely. Storrrage understands follow-ups like “it”, “those boxes” or “back to the watermelons”, and asks about details that matter. Without signal, or if the AI fails, it falls back to the simple commands.</p>
-    <div class="field"><span>Provider</span><div class="chips" id="aiProv">
-      <button type="button" class="chipbtn" data-p="off">Off</button>
-      <button type="button" class="chipbtn" data-p="gemini">Google Gemini (free, for testing)</button>
-      <button type="button" class="chipbtn" data-p="claude">Claude (paid)</button></div></div>
+  openSheet(`<h3>${tr('aiAssistant')}</h3>
+    <p class="hint">${tr('aiIntro')}</p>
+    <div class="field"><span>${tr('provider')}</span><div class="chips" id="aiProv">
+      <button type="button" class="chipbtn" data-p="off">${tr('off')}</button>
+      <button type="button" class="chipbtn" data-p="gemini">${tr('gemFree')}</button>
+      <button type="button" class="chipbtn" data-p="claude">${tr('claudePaid')}</button></div></div>
     <div id="aiBody"></div>
     <p class="proof" id="aiSaved"></p>
-    <div class="sheet-foot"><button class="btn primary" id="aiDone">Done</button></div>`);
+    <div class="sheet-foot"><button class="btn primary" id="aiDone">${tr('done')}</button></div>`);
   const persist = () => {
     const keyEl = $('#aiKey'), modelEl = $('#aiModel');
     if (draft.provider === 'off') ai = {provider: 'off', key: '', model: ''};
     else {
       const key = keyEl ? keyEl.value.trim() : '';
-      if (!key){ $('#aiSaved').textContent = 'Paste the API key to turn AI on.'; return; }
+      if (!key){ $('#aiSaved').textContent = tr('pasteToTurnOn'); return; }
       ai = {provider: draft.provider, key, model: (modelEl && modelEl.value) || draft.model || ''};
       draft.model = ai.model;
     }
-    metaPut('ai', ai).then(() => { $('#aiSaved').textContent = ai.provider === 'off' ? 'AI is off.' : `Saved. AI is on: ${AI_LABEL[ai.provider]}${ai.model ? ' (' + ai.model + ')' : ''}.`; })
-      .catch(() => { $('#aiSaved').textContent = 'Couldn’t save the setting on this phone.'; });
+    metaPut('ai', ai).then(() => { $('#aiSaved').textContent = ai.provider === 'off' ? tr('aiIsOff') : `${tr('saved')} ${AI_LABEL[ai.provider]}${ai.model ? ' (' + ai.model + ')' : ''}.`; })
+      .catch(() => { $('#aiSaved').textContent = tr('cantSave'); });
   };
   const draw = () => {
     sheet.querySelectorAll('[data-p]').forEach(c => c.classList.toggle('on', c.dataset.p === draft.provider));
     const body = $('#aiBody');
-    if (draft.provider === 'off'){ body.innerHTML = '<p class="hint">Simple commands only. Nothing is sent anywhere.</p>'; return; }
+    if (draft.provider === 'off'){ body.innerHTML = `<p class="hint">${tr('simpleOnly')}</p>`; return; }
     const g = draft.provider === 'gemini';
     body.innerHTML = `
-      ${g ? `<div class="banner" style="margin:0 0 14px"><span><b>Use made-up test items only.</b> On Google’s free tier, what you send may be used to improve Google’s products and can be read by people. Don’t send your real inventory until you switch to a paid option.</span></div>` : ''}
-      <label class="field"><span>API key</span><input id="aiKey" type="password" autocomplete="off" value="${esc(draft.provider === ai.provider ? ai.key : '')}" placeholder="${g ? 'From aistudio.google.com' : 'From console.anthropic.com'}"></label>
-      <p class="proof">${g ? 'Get a free key: open aistudio.google.com, sign in with a Google account, and choose “Get API key”.' : 'Get a key: open console.anthropic.com, add a small prepaid amount under Billing, then create a key under API keys.'} The key is stored only on this phone and isn’t included in backups.</p>
-      <label class="field"><span>Model</span><select id="aiModel">${g ? (draft.model ? `<option>${esc(draft.model)}</option>` : '<option value="">Check the key to choose</option>') : CLAUDE_MODELS.map(([v, l]) => `<option value="${v}" ${v === (draft.model || CLAUDE_MODELS[0][0]) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      <button class="btn quiet" id="aiCheck">Check the key</button> <span class="hint" id="aiMsg"></span>
-      <p class="proof" style="margin-top:14px">When you talk, Storrrage sends what you said, the last part of the conversation, and the names and details of your places, boxes and items. Photos and voice notes are never sent.</p>`;
+      ${g ? `<div class="banner" style="margin:0 0 14px"><span><b>${tr('testOnly')}</b> ${tr('freeTier')}</span></div>` : ''}
+      <label class="field"><span>${tr('apiKey')}</span><input id="aiKey" type="password" autocomplete="off" value="${esc(draft.provider === ai.provider ? ai.key : '')}" placeholder="${g ? 'From aistudio.google.com' : 'From console.anthropic.com'}"></label>
+      <p class="proof">${g ? tr('getGem') : tr('getClaude')} ${tr('keyLocal')}</p>
+      <label class="field"><span>Model</span><select id="aiModel">${g ? (draft.model ? `<option>${esc(draft.model)}</option>` : `<option value="">${tr('checkToChoose')}</option>`) : CLAUDE_MODELS.map(([v, l]) => `<option value="${v}" ${v === (draft.model || CLAUDE_MODELS[0][0]) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <button class="btn quiet" id="aiCheck">${tr('checkKey')}</button> <span class="hint" id="aiMsg"></span>
+      <p class="proof" style="margin-top:14px">${tr('aiSends')}</p>`;
     $('#aiCheck').onclick = async () => {
-      const key = $('#aiKey').value.trim(); if (!key) return toast('Paste the key first.');
-      $('#aiMsg').textContent = 'Checking…';
+      const key = $('#aiKey').value.trim(); if (!key) return toast(tr('pasteKey'));
+      $('#aiMsg').textContent = tr('checking');
       try {
         if (g){
           const list = await geminiModels(key);
@@ -14533,7 +15391,7 @@ function aiSheet(){
         }
         const saved = {...ai}; ai = {provider: draft.provider, key, model: $('#aiModel').value};
         try { parsePlan(await callAI('Reply with JSON only.', 'Return {"say":"ok","actions":[]}', {timeout: 20000})); } finally { ai = saved; }
-        $('#aiMsg').textContent = 'Works.';
+        $('#aiMsg').textContent = tr('works');
         persist();
       } catch (e){ $('#aiMsg').textContent = aiErrorText(e); }
     };
@@ -14556,19 +15414,19 @@ function deliver(filename, blob, title, onDone){
   const canShare = !!(navigator.canShare && navigator.canShare({files: [file]}));
   openSheet(`<h3>${esc(title)}</h3><p class="hint">${esc(filename)}, ${(blob.size / 1048576).toFixed(1)} MB</p>
     <div class="menu" style="margin-top:12px">
-      ${canShare ? '<button class="btn primary" id="fShare">Share to Drive, email or another app</button>' : ''}
-      <button class="btn ${canShare ? 'quiet' : 'primary'}" id="fSave">Save to phone (Downloads)</button>
+      ${canShare ? `<button class="btn primary" id="fShare">${tr('shareTo')}</button>` : ''}
+      <button class="btn ${canShare ? 'quiet' : 'primary'}" id="fSave">${tr('saveToPhone')}</button>
       <button class="btn quiet" id="fClose">Close</button></div>`);
   $('#fClose').onclick = closeSheet;
   $('#fSave').onclick = () => {
     const u = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 60000);
-    closeSheet(); toast('Saved to your Downloads folder.'); if (onDone) onDone();
+    closeSheet(); toast(tr('savedDl')); if (onDone) onDone();
   };
   if (canShare) $('#fShare').onclick = async () => {
     try { await navigator.share({files: [file], title: filename}); closeSheet(); if (onDone) onDone(); }
-    catch (e){ if (e.name !== 'AbortError') toast('Sharing didn’t work. Use Save to phone instead.'); }
+    catch (e){ if (e.name !== 'AbortError') toast(tr('shareFail')); }
   };
 }
 function labels(list){
@@ -14578,7 +15436,7 @@ function labels(list){
     .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
     .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.c{font:900 30pt/1 Impact,Arial Black,sans-serif}.n{font-size:12pt;margin-top:2mm}
     p{color:#555}@media print{p{display:none}}</style></head><body><p>Print this page, cut out the labels and tape them to the boxes.</p><div class="g">${ls}</div></body></html>`;
-  deliver(list.length === 1 ? `label-${list[0].code}.html` : 'box-labels.html', new Blob([html], {type: 'text/html'}), list.length === 1 ? `Label for ${list[0].code}` : 'Labels for all boxes');
+  deliver(list.length === 1 ? `label-${list[0].code}.html` : 'box-labels.html', new Blob([html], {type: 'text/html'}), list.length === 1 ? `${tr('label')} ${list[0].code}` : tr('labelsAllH'));
 }
 async function thumbData(ref){
   try { const b = await phGet(ref); if (!b) return ''; return (await shrink(b, 360)).toDataURL('image/jpeg', .72); }
@@ -14653,30 +15511,20 @@ $('#importFile').addEventListener('change', async e => {
   } catch { toast('That file isn’t a Storrrage backup.'); }
 });
 function menuSheet(){
-  openSheet(`<h3>More</h3><div class="menu">
-    <p class="hint">Everything is stored only on this phone. ${lastBackup ? `Last backup: ${esc(fmtDate(lastBackup))}.` : 'No backup made yet.'} <span id="usage"></span></p>
-    <button class="btn quiet" data-m="backup">Back up now</button>
-    <button class="btn quiet" data-m="ai">AI assistant${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
-    <button class="btn quiet" data-m="places">Storage places</button>
-    <button class="btn quiet" data-m="people">People in the household</button>
-    <button class="btn quiet" data-m="report">Make insurance report</button>
-    <button class="btn quiet" data-m="labels">Get labels for all boxes</button>
-    <button class="btn quiet" data-m="import">Restore from backup</button>
-    <button class="btn" data-m="close" style="margin-top:6px">Close</button>
-    <p class="proof" style="margin:8px 0 0;text-align:center">Storrrage version ${APP_VERSION}</p></div>`);
-  if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => {
-    const el = $('#usage'); if (el && est.usage) el.textContent = `Storrrage is using about ${Math.max(1, Math.round(est.usage / 1048576))} MB.`;
-  }).catch(() => {});
+  openSheet(`<h3>${tr('menu')}</h3><div class="menu">
+    <div class="field" style="margin:0 0 6px"><span>${tr('language')}</span>${langSwitch()}</div>
+    <button class="btn quiet" data-m="scan">${tr('scanLabel')}</button>
+    <button class="btn quiet" data-m="backup">${tr('backupNow')}</button>
+    <button class="btn quiet" data-m="ai">${tr('aiAssistant')}${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
+    <button class="btn quiet" data-m="settings">${tr('allSettings')}</button>
+    <button class="btn" data-m="close">${tr('close')}</button>
+    <p class="proof center" style="margin:8px 0 0">${tr('version', APP_VERSION)}</p></div>`);
   sheet.querySelector('.menu').onclick = e => {
     const m = e.target.closest('[data-m]'); if (!m) return; const k = m.dataset.m;
     if (k === 'close') return closeSheet();
-    if (k === 'import'){ closeSheet(); return $('#importFile').click(); }
-    if (k === 'backup') backup();
-    if (k === 'people') peopleSheet();
-    if (k === 'report') insuranceReport();
-    if (k === 'labels') realBoxes().length ? labels(realBoxes()) : toast('Add some boxes first.');
-    if (k === 'places') placesSheet();
-    if (k === 'ai') aiSheet();
+    if (k === 'settings'){ closeSheet(); return navigate({name: 'profile', sub: 'settings'}); }
+    if (k === 'import') closeSheet();
+    settingsAction(k);
   };
 }
 
@@ -14690,6 +15538,7 @@ async function init(){
     household = await metaGet('household') || [];
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
+    lang = await metaGet('lang') || (voiceLang.startsWith('sv') ? 'sv' : lang);
     { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
     ai = await metaGet('ai') || ai;
     notes = await noteAll();
@@ -14702,7 +15551,12 @@ async function init(){
   } catch {
     app.innerHTML = '<p class="status">This browser won’t let Storrrage store data. Open it in Chrome, not in a private tab.</p>'; return;
   }
-  ready = true; updateStatus(); render();
+  ready = true; updateStatus();
+  const hasStuff = boxes.some(b => !b.loose || (b.items || []).length);
+  if (!me && !hasStuff && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
+  else view = {name: 'home', place: currentPlace};
+  try { history.replaceState({v: view}, ''); } catch {}
+  render();
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
