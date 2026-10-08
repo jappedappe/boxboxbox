@@ -1,5 +1,5 @@
 // Storrrage offline helper. Bump the version when you change the files.
-const CACHE = 'storrrage-v2';
+const CACHE = 'storrrage-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -16,7 +16,8 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   // The app page: try the network first so updates arrive, fall back to the saved copy offline.
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(res => {
+    // Always ask GitHub for the newest version when online (skip the browser's cache), use the saved copy offline.
+    e.respondWith(fetch(req.url, {cache: 'no-cache', credentials: 'same-origin'}).then(res => {
       const copy = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); return res;
     }).catch(() => caches.match('./index.html')));
     return;

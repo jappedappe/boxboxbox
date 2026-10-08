@@ -180,6 +180,10 @@ details.more summary{cursor:pointer;font-weight:600;font-size:.92rem;margin-bott
 .vlive{background:var(--bg);border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:.98rem;min-height:2.6em}
 
 .aistat{margin:-4px 0 10px;font-size:.88rem;color:var(--muted)}
+
+.vl .src{display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-right:6px;vertical-align:1px}
+.vl .src.ai{background:var(--tape);color:#1E1D1B}
+.vl .src.simple{border:1px solid var(--line);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -12612,6 +12616,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
+const APP_VERSION = '2026-10-06.6';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13571,13 +13576,14 @@ let voiceLog = [], pending = null, pendingQueue = [];
 const undoStack = [];
 const curBox = () => view.name === 'box' ? findBox(view.boxId) : null;
 function snapshot(ids, created = []){ undoStack.push({restore: [...new Set(ids)].map(findBox).filter(Boolean).map(clone), remove: created}); if (undoStack.length > 20) undoStack.shift(); }
+let replySource = 'simple';
 function logLine(who, text, action){
-  voiceLog.push({who, text, action}); if (voiceLog.length > 40) voiceLog.shift();
+  voiceLog.push({who, text, action, src: who === 'app' ? replySource : ''}); if (voiceLog.length > 40) voiceLog.shift();
   drawLog();
 }
 function drawLog(){
   const el = $('#vlog'); if (!el) return;
-  el.innerHTML = voiceLog.map((l, i) => `<div class="vl ${l.who}">${esc(l.text)}${l.action ? `<br><button class="btn quiet" data-vact="${i}">${esc(l.action.label)}</button>` : ''}</div>`).join('')
+  el.innerHTML = voiceLog.map((l, i) => `<div class="vl ${l.who}">${l.src ? `<span class="src ${l.src}">${l.src === 'ai' ? 'AI' : 'Simple'}</span>` : ''}${esc(l.text)}${l.action ? `<br><button class="btn quiet" data-vact="${i}">${esc(l.action.label)}</button>` : ''}</div>`).join('')
     || `<p class="hint">${L() === 'sv' ? 'Tryck på knappen och säg vad du gör, till exempel “öppna låda 3”.' : 'Tap the button and say what you’re doing, for example “open box 3”.'}</p>`;
   el.scrollTop = el.scrollHeight;
 }
@@ -14462,7 +14468,8 @@ async function aiTurn(text){
     const user = `Conversation so far:\n${history || '(nothing yet)'}\n\nCurrent state (JSON):\n${JSON.stringify(aiState())}\n\nThe user now said: "${text}"`;
     const plan = parsePlan(await callAI(aiSystemPrompt(), user));
     applyPlan(plan.actions);
-    say(plan.say || (L() === 'sv' ? 'Klart.' : 'Done.'));
+    replySource = 'ai';
+    try { say(plan.say || (L() === 'sv' ? 'Klart.' : 'Done.')); } finally { replySource = 'simple'; }
   } catch (e){
     voiceLog.pop(); drawLog();
     logLine('app', aiErrorText(e) + (L() === 'sv' ? ' Använder enkla kommandon.' : ' Using simple commands instead.'));
@@ -14489,7 +14496,20 @@ function aiSheet(){
       <button type="button" class="chipbtn" data-p="gemini">Google Gemini (free, for testing)</button>
       <button type="button" class="chipbtn" data-p="claude">Claude (paid)</button></div></div>
     <div id="aiBody"></div>
-    <div class="sheet-foot"><button class="btn quiet" id="aiCancel">Cancel</button><button class="btn primary" id="aiSave">Save</button></div>`);
+    <p class="proof" id="aiSaved"></p>
+    <div class="sheet-foot"><button class="btn primary" id="aiDone">Done</button></div>`);
+  const persist = () => {
+    const keyEl = $('#aiKey'), modelEl = $('#aiModel');
+    if (draft.provider === 'off') ai = {provider: 'off', key: '', model: ''};
+    else {
+      const key = keyEl ? keyEl.value.trim() : '';
+      if (!key){ $('#aiSaved').textContent = 'Paste the API key to turn AI on.'; return; }
+      ai = {provider: draft.provider, key, model: (modelEl && modelEl.value) || draft.model || ''};
+      draft.model = ai.model;
+    }
+    metaPut('ai', ai).then(() => { $('#aiSaved').textContent = ai.provider === 'off' ? 'AI is off.' : `Saved. AI is on: ${AI_LABEL[ai.provider]}${ai.model ? ' (' + ai.model + ')' : ''}.`; })
+      .catch(() => { $('#aiSaved').textContent = 'Couldn’t save the setting on this phone.'; });
+  };
   const draw = () => {
     sheet.querySelectorAll('[data-p]').forEach(c => c.classList.toggle('on', c.dataset.p === draft.provider));
     const body = $('#aiBody');
@@ -14514,20 +14534,20 @@ function aiSheet(){
         const saved = {...ai}; ai = {provider: draft.provider, key, model: $('#aiModel').value};
         try { parsePlan(await callAI('Reply with JSON only.', 'Return {"say":"ok","actions":[]}', {timeout: 20000})); } finally { ai = saved; }
         $('#aiMsg').textContent = 'Works.';
+        persist();
       } catch (e){ $('#aiMsg').textContent = aiErrorText(e); }
     };
+    $('#aiKey').addEventListener('input', persist);
+    $('#aiModel').addEventListener('change', persist);
+    if ($('#aiKey').value) persist();
   };
   draw();
-  $('#aiProv').onclick = e => { const c = e.target.closest('[data-p]'); if (!c) return; draft.provider = c.dataset.p; if (draft.provider !== ai.provider) draft.model = ''; draw(); };
-  $('#aiCancel').onclick = closeSheet;
-  $('#aiSave').onclick = () => {
-    if (draft.provider === 'off') ai = {provider: 'off', key: '', model: ''};
-    else {
-      const key = $('#aiKey').value.trim(); if (!key) return toast('Paste the API key, or choose Off.');
-      ai = {provider: draft.provider, key, model: $('#aiModel').value || ''};
-    }
-    metaPut('ai', ai).catch(() => {}); closeSheet(); toast(ai.provider === 'off' ? 'AI is off.' : `AI is on: ${AI_LABEL[ai.provider]}.`);
+  $('#aiProv').onclick = e => {
+    const c = e.target.closest('[data-p]'); if (!c) return;
+    draft.provider = c.dataset.p; if (draft.provider !== ai.provider) draft.model = '';
+    draw(); if (draft.provider === 'off') persist(); else $('#aiSaved').textContent = '';
   };
+  $('#aiDone').onclick = closeSheet;
 }
 
 /* ---------- files out ---------- */
@@ -14642,7 +14662,8 @@ function menuSheet(){
     <button class="btn quiet" data-m="report">Make insurance report</button>
     <button class="btn quiet" data-m="labels">Get labels for all boxes</button>
     <button class="btn quiet" data-m="import">Restore from backup</button>
-    <button class="btn" data-m="close" style="margin-top:6px">Close</button></div>`);
+    <button class="btn" data-m="close" style="margin-top:6px">Close</button>
+    <p class="proof" style="margin:8px 0 0;text-align:center">Storrrage version ${APP_VERSION}</p></div>`);
   if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => {
     const el = $('#usage'); if (el && est.usage) el.textContent = `Storrrage is using about ${Math.max(1, Math.round(est.usage / 1048576))} MB.`;
   }).catch(() => {});
