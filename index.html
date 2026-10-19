@@ -563,6 +563,182 @@ body.dragging-item .map .zone{outline:1.5px dashed var(--lav);outline-offset:-2p
 .shelf.list .stile,.kids.list .stile{min-height:42px;padding:7px 12px}
 .shelf.list,.kids.list{gap:5px}
 .phead .tagline{white-space:nowrap}
+
+/* found it: hint row and highlight */
+.findhint{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:rgba(249,127,38,.12);border:1.5px solid var(--dot);border-radius:12px;padding:8px 10px;margin:10px 0 4px;font-size:.88rem;color:var(--ink)}
+.findhint .fhbtns{display:flex;gap:6px}
+@keyframes hlpulse{0%,100%{box-shadow:0 0 0 0 rgba(249,127,38,.7)}50%{box-shadow:0 0 0 7px rgba(249,127,38,0)}}
+.crate.hl{background:var(--dot);color:#1E1D1B;animation:hlpulse 1.4s ease-in-out infinite;z-index:2}
+.crate.hl .ccount{background:rgba(0,0,0,.18)}
+.mtoken.hl .lcirc{background:var(--dot);animation:hlpulse 1.4s ease-in-out infinite}
+.itile.hl .timg{outline:3px solid var(--dot);outline-offset:2px;animation:hlpulse 1.4s ease-in-out 3}
+/* collections */
+.colls{margin:4px 0 10px}
+.colls .lab,.selrow{font-size:.68rem;color:var(--muted);font-weight:500}
+.chipbtn.coll small{color:var(--muted);margin-left:2px}
+.selrow{display:flex;justify-content:flex-end;margin:-2px 0 6px}
+.cgroup{margin:12px 0 4px}
+.cghead{display:flex;align-items:center;gap:10px;width:100%;border:none;background:var(--lav-3);border-radius:10px;padding:8px 10px;margin-bottom:8px;text-align:left;color:var(--ink)}
+.cgcode{font-family:var(--caps);font-weight:800;font-size:1.05rem;background:var(--tile);color:#fff;border-radius:5px;padding:4px 7px;min-width:2.6em;text-align:center;flex:none}
+.cgtext{flex:1;min-width:0;display:flex;flex-direction:column}
+.cgtext small{color:var(--muted);font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cghead .chev{color:var(--muted);font-size:1.3rem}
+/* tags on the item page: tap to open the collection, × to remove */
+.tags .tag{display:inline-flex;align-items:center;padding:0;overflow:hidden}
+.tag .tagopen{border:none;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;padding:7px 4px 7px 12px}
+.tag .tagx{border:none;background:none;color:var(--muted);font-size:.95rem;padding:4px 9px 4px 4px;line-height:1}
+
+/* grouped list (OurGroceries style) */
+.lgroup{margin:0 -16px 6px}
+.lgroup-h{display:flex;align-items:stretch;background:var(--primary);color:#fff}
+.lgroup-h.loose{background:var(--primary-2)}
+.lgroup-h.outh{background:var(--dot)}
+.lgh-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:none;background:none;color:inherit;padding:10px 16px;text-align:left}
+.lgh-main.static{cursor:default}
+.lgh-code{font-family:var(--caps);font-weight:800;font-size:.95rem;flex:none}
+.lgh-name{flex:1;min-width:0;font-weight:700;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lgh-count{font-size:.75rem;opacity:.8;flex:none}
+.lgh-add{flex:none;width:48px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:1.4rem}
+.lrows{display:flex;flex-direction:column}
+.lrow-wrap{position:relative;overflow:hidden;background:transparent}
+.lrow-wrap.swiping{background:var(--danger)}
+.lrow-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#fff;font-weight:700;font-size:.85rem;opacity:0}
+.lrow-wrap.swiping .lrow-bg{opacity:1}
+.lrow-wrap.swiping.sw-right{background:var(--dot)}
+.lrow-wrap.sw-right .swr,.lrow-wrap.sw-left .swl{visibility:hidden}
+.lrow-wrap.armed .lrow-bg{font-size:.95rem}
+.lrow{position:relative;display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 6px 6px 16px;background:var(--bg);border-bottom:1px solid var(--line);touch-action:pan-y;-webkit-user-select:none;user-select:none;cursor:pointer;will-change:transform}
+.lthumb{position:relative;flex:none;width:40px;height:40px;border-radius:8px;background:var(--lav-3);overflow:hidden;display:grid;place-items:center}
+.lthumb img{width:100%;height:100%;object-fit:cover}
+.lthumb .ticon{font-size:1.25rem}
+.ltext{flex:1;min-width:0;display:flex;flex-direction:column}
+.lt{font-size:1rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ls{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lmore{flex:none;border:none;background:none;color:var(--accent);font-weight:800;font-size:1.05rem;letter-spacing:1px;padding:10px 12px}
+.lfav{color:var(--dot);flex:none}
+.lrow .dot{position:static;flex:none;border:none}
+.outtag{flex:none;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--dot);border:1.5px solid var(--dot);border-radius:999px;padding:1px 7px}
+.lrow.out .lt{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--dot)}
+.lrow.out .lthumb{opacity:.5}
+.lrow.late .outtag{background:var(--dot);color:#fff}
+.lrow.hl{background:rgba(249,127,38,.12)}
+.lempty{margin:0;padding:10px 16px;color:var(--muted);font-size:.85rem;border-bottom:1px solid var(--line)}
+.qadd{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--lav-3)}
+.qadd .input{flex:1;min-width:0;padding:9px 12px}
+.lgroup-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.swipehint{text-align:center;font-size:.72rem;color:var(--muted);margin:6px 0 10px}
+.boxbar ~ .lrows,.bhead ~ .lrows{margin:0 -16px}
+.cgroup .lrows{margin:0 -16px}
+#results > .lrows{margin:0 -16px}
+/* out: tiles and map markers dimmed, place kept */
+.itile.out .timg{opacity:.45;outline:2px dashed var(--dot);outline-offset:-2px}
+.itile.out .tname{text-decoration:line-through;text-decoration-color:var(--dot);color:var(--muted)}
+.mtoken.out .lcirc{opacity:.5;border-style:dashed}
+.outhint{background:rgba(249,127,38,.10)}
+/* undo toast */
+.toast.act{display:flex;align-items:center;gap:14px}
+.toast.act .linkbtn{color:var(--dot);text-decoration:none;font-weight:800;flex:none}
+/* ad slots (test) */
+.adslot{position:relative;border:1.5px dashed var(--line);border-radius:12px;padding:10px 12px;margin:18px 0 6px;background:var(--lav-3)}
+.adtag{position:absolute;top:-9px;left:12px;background:var(--bg);padding:0 6px;font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.admain{display:flex;align-items:center;gap:12px}
+.adlogo{width:40px;height:40px;flex:none}
+.adlogo .logosvg{width:100%;height:100%}
+.adtext{flex:1;min-width:0;display:flex;flex-direction:column}
+.adtext b{color:var(--ink);font-size:.9rem}
+.adtext small{color:var(--muted);font-size:.78rem}
+.seg.small button{padding:5px 10px}
+
+.adslot .adlogo{flex:0 0 40px;width:40px;height:40px}
+.adslot .adlogo .logosvg{width:40px;height:40px}
+.adslot .adtext{flex:1 1 auto}
+.adslot .btn{flex:0 0 auto}
+
+/* the box look: same everywhere */
+.sico{display:inline-grid;place-items:center;opacity:.8;margin-right:4px;vertical-align:-1px}
+.sico svg{width:.75em;height:.75em}
+.stile .scode{display:flex;align-items:center}
+.stile .sico svg{width:14px;height:14px}
+.shelf.small .stile .sico svg{width:10px;height:10px}
+.crate .ccode{display:flex;align-items:center}
+.crate .sico svg{width:10px;height:10px}
+.lgh-code{display:flex;align-items:center}
+.lgh-code .sico svg{width:14px;height:14px}
+.cgcode{display:inline-flex;align-items:center;justify-content:center}
+.cgcode .sico svg{width:12px;height:12px}
+.cgcode.loose{background:var(--lav-2);width:2.6em;height:1.9em}
+/* items in the "not in a box" strip look like items everywhere else */
+.lstrip .itile{flex:0 0 80px;width:80px}
+.lstrip .itile .tname{font-size:.72rem}
+.lstrip .itile .tcap{font-size:.62rem}
+/* adding is a quiet row once a box has things in it */
+.addrow{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+.addrow .btn{display:inline-flex;align-items:center;gap:4px}
+.addrow .btn svg{width:14px;height:14px}
+/* each place is its own card on the all-places overview */
+.spacesec.card{border:1.5px solid var(--line);border-radius:14px;padding:4px 12px 12px;background:var(--lav-3);margin:14px 0}
+.spacesec.card .spacehead{border-bottom:1.5px solid var(--line);margin:0 -12px 10px;padding:10px 12px;width:calc(100% + 24px)}
+.spacesec.card .lcarousel{margin-bottom:0}
+.spacesec.card .lstrip{margin:0 -12px;padding-left:12px;padding-right:12px}
+/* search: recent */
+.recentq{margin:6px 0 4px}
+.rqhead{display:flex;justify-content:space-between;align-items:center}
+.rqhead .lab{font-size:.68rem;color:var(--muted);font-weight:500}
+.rqhead .linkbtn{font-size:.78rem}
+/* pick your own icon */
+button.heroimg.empty{position:relative;cursor:pointer}
+.iconedit{position:absolute;left:8px;bottom:8px;font-size:.7rem;font-weight:600;color:var(--ink);background:var(--bg);border-radius:999px;padding:2px 9px;opacity:.9}
+.iconpick.big{margin-top:12px;max-height:46vh;overflow-y:auto}
+.iconpick.big button{width:46px;height:46px;font-size:1.4rem}
+
+/* freshness: green when checked or updated recently, fading to grey over a year */
+.fresh{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;vertical-align:1px;background:transparent;border:1.5px solid #8C88A3}
+.fresh.f4{background:#2FBF71;border-color:#2FBF71}
+.fresh.f3{background:#9BCB5A;border-color:#9BCB5A}
+.fresh.f2{background:#E2B93B;border-color:#E2B93B}
+.fresh.f1{background:#8C88A3;border-color:#8C88A3}
+.stile > .fresh{position:absolute;left:6px;bottom:6px}
+.shelf.list .stile > .fresh{position:static;margin-right:-4px}
+.shelf.small .stile > .fresh{width:6px;height:6px;left:4px;bottom:4px}
+.stile .sname{padding-left:0}
+.shelf:not(.list) .stile .sname{padding-left:12px}
+.bfresh{margin:2px 0 0;font-size:.74rem;color:var(--muted)}
+.freshsum{margin:14px 0 0;text-align:center;font-size:.78rem;color:var(--muted)}
+/* whole box out: faded, dashed, its place kept */
+.stile.out,.crate.out{opacity:.55;background:transparent!important;border:2px dashed var(--lav);color:var(--ink);box-shadow:none}
+.stile.out .scount,.crate.out .ccount{background:var(--lav-2)}
+.boxouttag{position:absolute;right:6px;bottom:5px;font-size:.55rem;font-weight:800;text-transform:uppercase;color:var(--dot)}
+.shelf.list .boxouttag{position:static}
+.outsum{color:var(--dot);font-weight:700}
+/* ask after a search, check bar, nudges */
+.askout,.checkbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-radius:12px;padding:8px 10px;margin:10px 0 4px;font-size:.88rem;color:var(--ink)}
+.askout{background:var(--lav-2);border:1.5px solid var(--lav)}
+.checkbar{background:rgba(47,191,113,.10);border:1.5px solid rgba(47,191,113,.6)}
+.nudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1.5px solid var(--lav);background:var(--lav-3);border-radius:12px;padding:8px 10px;margin:10px 0}
+.nudge .nico{font-size:1.4rem;flex:none}
+.nudge .ntext{flex:1;min-width:150px;font-size:.88rem;color:var(--ink)}
+.nudge .nbtns{display:flex;gap:6px;margin-left:auto}
+.spacesec.card > .nudge{margin:10px 0 2px}
+
+/* tidy the box tile: number + box icon top-left, Out tag top-right, count bottom-right, freshness bottom-left */
+.shelf:not(.list) .stile .scount,.kids:not(.list) .stile .scount,.strip .stile .scount{top:auto;bottom:5px;right:6px}
+.shelf:not(.list) .stile .sname,.kids:not(.list) .stile .sname,.strip .stile .sname{padding-right:18px}
+.stile .boxouttag{top:6px;bottom:auto;right:6px}
+.shelf.list .stile .boxouttag{position:static}
+/* place header wraps instead of overflowing */
+.phead{flex-wrap:wrap;row-gap:6px}
+.phead > div:first-child{flex:1 1 auto}
+.phead .seg{margin-left:auto}
+
+/* box tile, final: number on top, name in the middle at full width, bottom row = freshness · Out · count */
+.shelf:not(.list) .stile .sname,.kids:not(.list) .stile .sname,.strip .stile .sname{padding:0;margin-bottom:13px}
+.shelf:not(.list) .stile > .fresh,.kids:not(.list) .stile > .fresh,.strip .stile > .fresh{left:7px;bottom:7px}
+.shelf:not(.list) .stile .boxouttag,.kids:not(.list) .stile .boxouttag,.strip .stile .boxouttag{top:auto;bottom:5px;right:auto;left:50%;transform:translateX(-50%);white-space:nowrap}
+.shelf.small .stile .sname{margin-bottom:9px}
+.shelf.small .stile .boxouttag{display:none}
+
+.shelf:not(.list) .stile .boxouttag .otext,.kids:not(.list) .stile .boxouttag .otext,.strip .stile .boxouttag .otext{display:none}
+.shelf:not(.list) .stile .boxouttag,.kids:not(.list) .stile .boxouttag,.strip .stile .boxouttag{font-size:.8rem;left:22px;transform:none}
 </style>
 </head>
 <body>
@@ -12994,7 +13170,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-16.8';
+const APP_VERSION = '2026-10-19.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13175,7 +13351,8 @@ function matchIcon(text){
       if (k[0] === '=' ? tokens.includes(k.slice(1)) : t.includes(k)) return icon;
   return '';
 }
-const guessIcon = it => matchIcon(it.name) || matchIcon(it.category) || '📦';
+const DEFAULT_ITEM_ICON = '🏷️';
+const guessIcon = it => (it && it.icon) || matchIcon(it.name) || matchIcon(it.category) || DEFAULT_ITEM_ICON;
 
 /* ---------- search: synonyms, Swedish/English, related things ---------- */
 // Words that mean the same thing. A match on any of them counts as a direct match.
@@ -13225,7 +13402,7 @@ const STOP = new Set(['the','a','an','my','our','any','some','for','of','in','to
 function stems(tok){
   const out = [tok];
   if (tok.endsWith("'s")) out.push(tok.slice(0, -2));
-  for (const suf of ['arna','erna','orna','na','et','en','ar','er','or','es','s','n'])
+  for (const suf of ['arna','erna','orna','na','et','en','ar','er','or','es','s','n','e','a'])
     if (tok.endsWith(suf) && tok.length - suf.length >= 4) out.push(tok.slice(0, -suf.length));
   return [...new Set(out)];
 }
@@ -13242,7 +13419,8 @@ function nearWord(s, words){
 }
 function tokScore(tok, H, icon){
   const ss = stems(tok);
-  const lit = w => w.length <= 3 ? H.toks.has(w) : H.hay.includes(w);
+  // short words match whole words or the start of a word ("jul" finds "Julkulor"), longer words match anywhere
+  const lit = w => w.length <= 3 ? (H.toks.has(w) || [...H.toks].some(t => t.startsWith(w))) : H.hay.includes(w);
   if (ss.some(lit)) return 2;
   for (const g of SYN) if (ss.some(s => g.includes(s)) && g.some(lit)) return 2;
   // small typing mistakes: "tält" ~ "tålt", "skidjaka" ~ "skidjacka"
@@ -13631,6 +13809,44 @@ Object.assign(STR.en, {dragHint: 'Hold a box or a round marker and drag it onto 
 Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra den till en stapel eller zon.', back: 'Tillbaka', switchSpace: 'Välj plats', shelf: 'Hylla', map: 'Karta', door: 'Dörren', farIn: 'Längst in', noZone: 'Utan zon', placement: 'Placering',
   placementHint: 'Var lådan står: zonen (till exempel ”Vid dörren”, ”Hylla 2”, ”Längst in”) och vilken stapel den står i.', zone: 'Zon', zoneHint: 'Till exempel Vid dörren, Hylla 2, Längst in',
   stack: 'Stapel', newStack: 'En ny stapel', level: 'Nivå', onTop: 'Överst', atBottom: 'Längst ner', stackOf: (n, codes) => codes ? `Stapel ${n}: ovanpå ${codes}` : `Stapel ${n}`, closerDoor: 'Flytta upp', furtherIn: 'Flytta ner'});
+Object.assign(STR.en, {collections: 'Collections', collection: 'Collection', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
+  toCollection: 'Collection', collHint: 'Things with the same tag form a collection, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
+  isHere: 'is here', openItem: 'Open item', foundIn: 'Found in'});
+Object.assign(STR.sv, {collections: 'Samlingar', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 ställe' : `på ${n} ställen`, showOnMap: 'Visa på kartan', insideBox: 'inuti',
+  toCollection: 'Samling', collHint: 'Saker med samma tagg blir en samling, även om de ligger i olika lådor.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
+  isHere: 'ligger här', openItem: 'Öppna saken', foundIn: 'Hittad i'});
+Object.assign(STR.en, {list: 'List', takeOut: 'Take out', putBack: 'Put back', outTag: 'Out', outSince: d => `out since ${d}`, backBy: d => `back by ${d}`, outSection: 'Out of storage right now',
+  outUntil: 'Out until (optional)', tookOut: (n, w) => `${n} taken out of ${w}. Its place is kept.`, putBackDone: (n, w) => `${n} is back in ${w}.`, deletedX: n => `${n} deleted.`, undo: 'Undo', more: 'More',
+  quickAddPh: w => `Add to ${w}…`, boxEmpty: 'Nothing here yet.', backQ: 'Is this back in storage?', stillOut: 'Still out', isBack: 'It’s back',
+  adLabel: 'Ad · test slot', adTitle: 'Storrrage without ads', adText: 'Premium removes ads and lets your household share storage.', readMore: 'Read more', adsSetting: 'Show ad slots (test)', swipeHint: 'Swipe right to take out or put back, left to delete.'});
+Object.assign(STR.sv, {list: 'Lista', takeOut: 'Ta ut', putBack: 'Ställ tillbaka', outTag: 'Framme', outSince: d => `framme sedan ${d}`, backBy: d => `tillbaka ${d}`, outSection: 'Framme just nu',
+  outUntil: 'Framme till (valfritt)', tookOut: (n, w) => `${n} är framme från ${w}. Platsen sparas.`, putBackDone: (n, w) => `${n} är tillbaka i ${w}.`, deletedX: n => `${n} borttagen.`, undo: 'Ångra', more: 'Mer',
+  quickAddPh: w => `Lägg till i ${w}…`, boxEmpty: 'Inget här än.', backQ: 'Är den tillbaka i förrådet?', stillOut: 'Fortfarande framme', isBack: 'Den är tillbaka',
+  adLabel: 'Annons · testplats', adTitle: 'Storrrage utan reklam', adText: 'Premium tar bort reklam och låter hushållet dela förvaring.', readMore: 'Läs mer', adsSetting: 'Visa annonsplatser (test)', swipeHint: 'Svep höger för att ta ut eller ställa tillbaka, vänster för att ta bort.'});
+Object.assign(STR.en, {addShort: 'Item', severalShort: 'Several', subShort: 'Box inside', recentSearches: 'Recent searches', clear: 'Clear', pickIcon: 'Change icon', pickIconHint: 'Used when the item has no photo. Automatic picks one from the name.', autoIcon: 'Automatic'});
+Object.assign(STR.sv, {addShort: 'Sak', severalShort: 'Flera', subShort: 'Låda inuti', recentSearches: 'Senaste sökningar', clear: 'Rensa', pickIcon: 'Byt ikon', pickIconHint: 'Visas när saken inte har något foto. Automatisk väljer efter namnet.', autoIcon: 'Automatisk'});
+Object.assign(STR.en, {
+  askOut: n => `Taking ${n} out?`, yesTemp: 'Yes, for a while', yesGone: 'Yes, for good', no: 'No',
+  allOutAlready: 'Everything is already out.', allBackAlready: 'Everything is already back.', tookOutN: (n, w) => `Took out ${n} from ${w}. Their places are kept.`, putBackN: (n, w) => `Put back ${n} in ${w}.`,
+  boxOutDone: c => `${c} is out. Its place on the map is kept.`, boxBackDone: c => `${c} is back in place.`, takeOutBox: 'Take out the whole box', putBackBox: 'Put the box back', boxIsOut: 'The whole box is out',
+  outOfN: (o, n) => `${o} of ${n} out`, takeOutAll: 'Take out all', putBackAll: 'Put all back',
+  today: 'today', yesterday: 'yesterday', daysAgo: n => `${n} days ago`, weeksAgo: n => n === 1 ? '1 week ago' : `${n} weeks ago`, monthsAgo: n => n === 1 ? '1 month ago' : `${n} months ago`, yearsAgo: n => n === 1 ? '1 year ago' : `${n} years ago`,
+  checked: 'checked', neverChecked: 'never checked', openedApp: 'opened in the app', changedAgo: 'changed',
+  checkQ: 'Is everything in this box still right?', checkYes: '✓ Yes, all correct', checkNo: 'Something changed', checkedThanks: 'Thanks! Marked as checked today.', checkFix: 'Update what changed below, then mark it as checked.',
+  checkedYear: (c, n) => `${c} of ${n} boxes checked or updated this year`,
+  nudgeCollOut: c => `It’s that time of year. Taking out ${c}?`, nudgeCollBack: c => `Is ${c} back in storage?`, nudgePattern: (n, d) => `You usually take out ${n} about every ${d} days. Taking it out now?`, nudgeYearly: n => `You took out ${n} around this time last year. Again?`,
+  notNow: 'Not now', suggestions: 'Suggestions'});
+Object.assign(STR.sv, {
+  askOut: n => `Tar du ut ${n}?`, yesTemp: 'Ja, tillfälligt', yesGone: 'Ja, för gott', no: 'Nej',
+  allOutAlready: 'Allt är redan framme.', allBackAlready: 'Allt är redan tillbaka.', tookOutN: (n, w) => `Tog ut ${n} från ${w}. Platserna sparas.`, putBackN: (n, w) => `Ställde tillbaka ${n} i ${w}.`,
+  boxOutDone: c => `${c} är framme. Platsen på kartan sparas.`, boxBackDone: c => `${c} är tillbaka på sin plats.`, takeOutBox: 'Ta ut hela lådan', putBackBox: 'Ställ tillbaka lådan', boxIsOut: 'Hela lådan är framme',
+  outOfN: (o, n) => `${o} av ${n} framme`, takeOutAll: 'Ta ut alla', putBackAll: 'Ställ tillbaka alla',
+  today: 'i dag', yesterday: 'i går', daysAgo: n => `för ${n} dagar sedan`, weeksAgo: n => n === 1 ? 'för 1 vecka sedan' : `för ${n} veckor sedan`, monthsAgo: n => n === 1 ? 'för 1 månad sedan' : `för ${n} månader sedan`, yearsAgo: n => n === 1 ? 'för 1 år sedan' : `för ${n} år sedan`,
+  checked: 'kontrollerad', neverChecked: 'aldrig kontrollerad', openedApp: 'öppnad i appen', changedAgo: 'ändrad',
+  checkQ: 'Stämmer allt i lådan fortfarande?', checkYes: '✓ Ja, allt stämmer', checkNo: 'Något har ändrats', checkedThanks: 'Tack! Markerad som kontrollerad i dag.', checkFix: 'Uppdatera det som ändrats nedan, och markera sedan som kontrollerad.',
+  checkedYear: (c, n) => `${c} av ${n} lådor kontrollerade eller uppdaterade i år`,
+  nudgeCollOut: c => `Det är den tiden på året. Tar du ut ${c}?`, nudgeCollBack: c => `Är ${c} tillbaka i förrådet?`, nudgePattern: (n, d) => `Du brukar ta ut ${n} ungefär var ${d}:e dag. Tar du ut den nu?`, nudgeYearly: n => `Du tog ut ${n} runt den här tiden förra året. Igen?`,
+  notNow: 'Inte nu', suggestions: 'Förslag'});
 function tr(k, ...a){ const v = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : (v ?? k); }
 const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
 const STATUS_KEYS = {'In storage': 'st_store', 'On loan': 'st_loan', 'For sale': 'st_sale', 'Sold': 'st_sold', 'Given away': 'st_given'};
@@ -13693,6 +13909,8 @@ function parentView(v){
   v = v || view;
   if (v.name === 'item' || v.name === 'batch'){ const b = findBox(v.boxId); if (!b) return {name: 'home', place: currentPlace}; return b.loose ? {name: 'home', place: b.placeId} : {name: 'box', boxId: b.id}; }
   if (v.name === 'box'){ const b = findBox(v.boxId); if (!b) return {name: 'home', place: currentPlace}; if (!b.loose && b.parentId && findBox(b.parentId)) return {name: 'box', boxId: b.parentId}; return {name: 'home', place: b.placeId}; }
+  if (v.name === 'mapfocus') return v.back || {name: 'home', place: v.place};
+  if (v.name === 'collection') return {name: 'search'};
   if (v.name === 'profile' && v.sub) return {name: 'profile'};
   if (v.name === 'search' || v.name === 'profile') return {name: 'home', place: currentPlace};
   if (v.name === 'home' && places.length > 1 && (v.place || currentPlace) !== 'all') return {name: 'home', place: 'all'};
@@ -13702,14 +13920,15 @@ let armed = false;
 function arm(){ if (armed || !parentView()) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
 function go(v){
   leaveItemPage();
-  if (selecting && !(v.name === 'box' && v.boxId === view.boxId)) selecting = null;
-  if (v.name === 'home' && v.place) setPlace(v.place);
+  quickAddFor = null;
+  if (selecting && !(v.name === view.name && v.boxId === view.boxId && v.tag === view.tag)) selecting = null;
+  if ((v.name === 'home' || v.name === 'mapfocus') && v.place) setPlace(v.place);
   view = v; if (v.name !== 'search') query = view.name === 'search' ? query : '';
   render(); window.scrollTo(0, 0); arm();
 }
 function goUp(){ const p = parentView(); if (!p) return false; go(p); return true; }
 function navigate(v){
-  if (v.name === 'box') remember('box', v.boxId);
+  if (v.name === 'box'){ remember('box', v.boxId); touchOpened(findBox(v.boxId)); if (view.name === 'search' && v.hl) v.fromSearch = true; }
   if (v.name === 'item' && v.itemId !== itemDraft) remember('item', v.itemId, v.boxId);
   if (v.name !== 'search') query = '';
   go(v);
@@ -13755,13 +13974,15 @@ function render(){
   else if (view.name === 'item') renderItem();
   else if (view.name === 'batch') renderBatch();
   else if (view.name === 'search') renderSearch();
+  else if (view.name === 'collection') renderCollection(view.tag);
+  else if (view.name === 'mapfocus') renderPlace(view.place, true);
   else if (view.name === 'profile') renderProfile();
   else if (currentPlace !== 'all' && findPlace(currentPlace)) renderPlace(currentPlace);
   else renderSpace();
   const tab = view.name === 'search' ? 'search' : view.name === 'profile' ? 'profile' : 'home';
-  if (view.name !== 'box') document.body.classList.remove('selecting');
+  if (!['box', 'search', 'collection'].includes(view.name)) document.body.classList.remove('selecting');
   document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr('tab_' + b.dataset.tab); });
-  const pdot = $('#profileDot'); if (pdot) pdot.hidden = !dueCount();
+  const pdot = $('#profileDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
 }
@@ -13770,20 +13991,17 @@ STR.sv.tab_home = 'Aktiv'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Pro
 
 /* tiles */
 const addTile = (act, label, extra = '') => `<button class="tile add" data-act="${act}" ${extra} aria-label="${esc(label)}">+</button>`;
-function boxTile(b){
-  const n = (b.items || []).length + childBoxes(b.id).length;
-  const sel = selecting && selecting.has('b:' + b.id);
-  return `<button class="tile solid${sel ? ' sel' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}"><span class="bico">${ICON.box}</span>${b.fav ? '<span class="favstar">★</span>' : ''}<span class="tname">${esc(b.name)}</span><span class="tcode">${esc(b.code)} · ${n} ${n === 1 ? tr('item') : tr('items')}</span>${dot(dueCount(x => x.id === b.id))}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</button>`;
-}
+function boxTile(b){ return shelfTile(b); }
 function itemTile(it, b, caption){
   const p = (it.photos || [])[0];
   const sel = selecting && selecting.has('i:' + b.id + ':' + it.id);
-  return `<button class="itile${sel ? ' sel' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
+  const hl = view.name === 'box' && view.hl === it.id;
+  return `<button class="itile${sel ? ' sel' : ''}${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
     <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
     <span class="ttext"><span class="tname">${esc(it.name || tr('unnamed'))}</span>${caption ? `<span class="tcap">${caption}</span>` : ''}</span></button>`;
 }
 const whereCaption = b => b.loose ? `${esc(placeName(b.placeId))}` : `${ICON.box}${esc(b.code)} · ${esc(placeName(b.placeId))}`;
-const PLACE_ICONS = ['🚪','🔒','🏠','🏡','🏚️','🚗','🛖','🗄️','📦','🏢','⛵','🧳','🪜','🔑'];
+const PLACE_ICONS = ['🚪','🔒','🏠','🏡','🏚️','🚗','🛖','🗄️','🏢','⛵','🧳','🪜','🔑','🏗️'];
 function placeIcon(p){
   if (p.icon) return p.icon;
   const n = p.name.toLowerCase();
@@ -13860,7 +14078,7 @@ function shelfTile(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
   const where = [b.location, b.stack ? `${tr('stack')} ${b.stack}` : '', b.level > 1 ? `${tr('level')} ${b.level}` : ''].filter(Boolean).join(' · ');
-  return `<button class="stile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}"><span class="scode">${esc(b.code.replace('B-', ''))}</span><span class="sname">${esc(b.name)}</span>${where ? `<span class="swhere">${esc(where)}</span>` : ''}<span class="scount">${n}</span>${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</button>`;
+  return `<button class="stile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">${freshDot(b)}${b.out ? `<span class="boxouttag"><span class="oarrow">↗</span><span class="otext"> ${tr('outTag')}</span></span>` : ''}<span class="scode"><span class="sico">${ICON.box}</span>${esc(b.code.replace('B-', ''))}</span><span class="sname">${esc(b.name)}</span>${where ? `<span class="swhere">${esc(where)}</span>` : ''}<span class="scount">${n}</span>${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</button>`;
 }
 function looseItems(pid){ const l = looseOf(pid); return l ? [...(l.items || [])].sort(byName) : []; }
 function tokenHTML(it, l, opts = {}){
@@ -13875,8 +14093,8 @@ function looseCarousel(pid, opts = {}){
   return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b><span class="zcount">${tr('items_n', li.length).toLowerCase()}</span>
     ${l && li.length ? `<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')}</button>` : ''}</div>
     ${opts.hint ? `<p class="maphint">${opts.hint}</p>` : ''}
-    <div class="lstrip">${li.map(it => tokenHTML(it, l, {big: !opts.small, cap: opts.showZone && it.zone ? it.zone : '', lp: !opts.dropTarget})).join('')}
-      <button class="ltoken add" data-act="addloose" data-pid="${esc(pid)}"><span class="lcirc">+</span><span class="lname">${tr('add')}</span></button></div></section>`;
+    <div class="lstrip">${li.map(it => itemTile(it, l, opts.showZone && it.zone ? esc(it.zone) : '')).join('')}
+      <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('add')}</span></span></button></div></section>`;
 }
 function shelfHTML(pid){
   const bx = topBoxesIn(pid).sort(byCode);
@@ -13886,23 +14104,29 @@ function shelfHTML(pid){
 function placeHead(pid){
   const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
   return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}</p></div>
-    ${placeView === 'shelf' ? viewToggle('shelf') : ''}<div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button></div></div>`;
+    ${placeView === 'shelf' ? viewToggle('shelf') : ''}<div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button></div></div>`;
 }
 function renderSpace(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}</p>${viewToggle('shelf')}</div>
     ${places.map(p => { const pb = boxesIn(p.id).length, pi = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.items || []).length, 0);
-      return `<section class="spacesec"><button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
+      const [cc, cn] = checkedThisYear(p.id);
+      return `<section class="spacesec card">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
     ${stripRow(tr('favorites'), favEntries())}${stripRow(tr('recent'), recentEntries())}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
 }
-function renderPlace(pid){
-  app.innerHTML = `${placeHead(pid)}
-    ${placeView === 'map' ? mapHTML(pid) : shelfHTML(pid)}
-    ${stripRow(tr('favorites'), favEntries(pid))}${stripRow(tr('recent'), recentEntries(pid))}
+function nudgeBar(pid){ const n = nudges(pid)[0]; return n ? nudgeCard(n, true) : ''; }
+function renderPlace(pid, focus){
+  const what = focus ? [...(view.hlBoxes || []).map(findBox).filter(Boolean).map(b => (view.hlBoxes.length === 1 ? `${b.code} ${b.name}` : b.code)), ...looseItems(pid).filter(i => (view.hlItems || []).includes(i.id)).map(i => i.name)] : [];
+  app.innerHTML = `${focus ? `<div class="findhint"><span>🗺️ <b>${esc(what.join(', '))}</b></span></div>` : placeHead(pid)}
+    ${focus ? '' : nudgeBar(pid)}
+    ${focus || placeView === 'map' ? mapHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
+    ${focus ? '' : (([c, n]) => n ? `<p class="freshsum">${freshDot({checkedAt: c === n ? today() : null, updatedAt: null})} ${esc(tr('checkedYear', c, n))}</p>` : '')(checkedThisYear(pid))}
+    ${focus || placeView === 'list' ? '' : stripRow(tr('favorites'), favEntries(pid)) + stripRow(tr('recent'), recentEntries(pid))}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
+  if (focus) scrollToHighlight();
 }
 let selecting = null;
 function renderBox(b){
@@ -13910,26 +14134,39 @@ function renderBox(b){
   const chain = b.loose ? [] : boxChain(b);
   const path = [placeName(b.placeId), ...chain.map(x => x.code)].join(' › ');
   const where = [b.location, b.stack ? `${tr('stack')} ${b.stack}` : '', b.level ? `${tr('level')} ${b.level}` : ''].filter(Boolean).join(' · ');
-  app.innerHTML = `<div class="bhead">
+  const hlIt = view.hl && items.find(i => i.id === view.hl);
+  const nOut = items.filter(isOut).length;
+  const askOut = hlIt && view.fromSearch && !view.asked && !isOut(hlIt);
+  const needCheck = !b.loose && items.length && daysSince(b.checkedAt) > 30 && !view.checkDismissed;
+  app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>↗ <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
+    ${askOut ? `<div class="askout"><span>${esc(tr('askOut', hlIt.name))}</span><span class="fhbtns"><button class="btn primary small" data-askout="temp">${tr('yesTemp')}</button><button class="btn quiet small" data-askout="gone">${tr('yesGone')}</button><button class="btn quiet small" data-askout="no">${tr('no')}</button></span></div>` : ''}
+    ${hlIt ? `<div class="findhint"><span>🔎 <b>${esc(hlIt.name)}</b> ${tr('isHere')}</span><span class="fhbtns"><button class="btn primary small" data-item="${esc(hlIt.id)}" data-box="${esc(b.id)}" data-open-item="1">${tr('openItem')}</button><button class="btn quiet small" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? hlIt.id : '')}">🗺️ ${tr('showOnMap')}</button></span></div>` : ''}
+    <div class="bhead">
       ${b.loose ? `<h1 class="btitle"><span class="bname">${tr('notInBox')}</span></h1>` : `<h1 class="btitle"><span class="bcode">${esc(b.code)}</span><span class="bname">${esc(b.name)}</span></h1>`}
-      <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}</p>
+      <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}${nOut ? ` · <b class="outsum">↗ ${esc(tr('outOfN', nOut, items.length))}</b>` : ''}</p>
+      ${b.loose ? '' : `<p class="bfresh">${freshDot(b)} ${esc(freshText(b))}</p>`}
     </div>
+    ${needCheck ? `<div class="checkbar"><span>${tr('checkQ')}</span><span class="fhbtns"><button class="btn primary small" data-act="checkyes">${tr('checkYes')}</button><button class="btn quiet small" data-act="checkno">${tr('checkNo')}</button></span></div>` : ''}
     ${b.loose ? `<div class="boxbar">${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}${viewToggle()}</div>` : `<div class="boxbar">
       <button class="qr" data-act="label" aria-label="${esc(tr('label'))} ${esc(b.code)}">${qrSvg(labelText(b), 2)}</button>
       <button class="btn quiet small" data-act="editbox">${tr('editBox')}</button>
       <button class="btn quiet small" data-act="placement">${tr('placement')}</button>
+      <button class="btn quiet small" data-mapbox="${esc(b.id)}" aria-label="${esc(tr('showOnMap'))}">🗺️</button>
       <button class="btn quiet small" data-act="favbox" aria-pressed="${b.fav ? 'true' : 'false'}">${b.fav ? '★' : '☆'}</button>
+      ${b.out ? '' : `<button class="btn quiet small" data-act="boxout" aria-label="${esc(tr('takeOutBox'))}">↗</button>`}
       ${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}
       ${viewToggle()}
     </div>`}
     ${kids.length ? `<div class="kids${shelfCls()}">${kids.map(shelfTile).join('')}</div>` : ''}
-    <div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}
-      ${selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
+    ${viewMode === 'list' ? rowsHTML(items.map(it => [it, b])) + `<p class="swipehint">${tr('swipeHint')}</p>` : ''}
+    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
       <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
-      ${b.loose ? '' : `<button class="itile add" data-act="subbox"><span class="timg">${ICON.box}</span><span class="ttext"><span class="tname">${tr('boxInBox')}</span></span></button>`}`}</div>
+      ${b.loose ? '' : `<button class="itile add" data-act="subbox"><span class="timg">${ICON.box}</span><span class="ttext"><span class="tname">${tr('boxInBox')}</span></span></button>`}`}</div>`}
+    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addShort')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('severalShort')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">${ICON.box} ${tr('subShort')}</button>`}</div>` : ''}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
-    ${selecting ? `<div class="donebar selbar"><span class="selcount">${tr('selected', selecting.size)}</span><button class="btn quiet" data-act="selcancel">${tr('cancel')}</button><button class="btn quiet" data-act="selmove" ${selecting.size ? '' : 'disabled'}>${tr('moveSel')}</button><button class="btn danger" data-act="seldel" ${selecting.size ? '' : 'disabled'}>${tr('delSel')}</button></div>` : ''}`;
+    ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
+  if (hlIt) scrollToHighlight();
 }
 /* placement: which zone, which stack, on top or at the bottom */
 
@@ -13956,11 +14193,13 @@ function stacksIn(pid, zone){
 }
 function crate(b, ci){
   const n = (b.items || []).length + childBoxes(b.id).length;
-  return `<button class="crate${b.fav ? ' fav' : ''}" data-open="${esc(b.id)}" data-ek="b:${esc(b.id)}" data-ci="${ci}"><span class="ccode">${esc(b.code.replace('B-', ''))}</span><span class="cname">${esc(b.name)}</span><span class="ccount">${n}</span>${dot(dueCount(x => x.id === b.id))}</button>`;
+  const hl = view.name === 'mapfocus' && (view.hlBoxes || []).includes(b.id);
+  return `<button class="crate${b.fav ? ' fav' : ''}${hl ? ' hl' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-ek="b:${esc(b.id)}" data-ci="${ci}"><span class="ccode"><span class="sico">${ICON.box}</span>${esc(b.code.replace('B-', ''))}</span><span class="cname">${esc(b.name)}</span><span class="ccount">${n}</span>${dot(dueCount(x => x.id === b.id))}</button>`;
 }
 function mtoken(it, l, ci){
   const p = (it.photos || [])[0];
-  return `<button class="mtoken" data-item="${esc(it.id)}" data-box="${esc(l.id)}" data-ek="i:${esc(it.id)}" data-ci="${ci}"><span class="lcirc">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}</span><span class="lname">${esc(it.name)}</span></button>`;
+  const hl = view.name === 'mapfocus' && (view.hlItems || []).includes(it.id);
+  return `<button class="mtoken${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}" data-item="${esc(it.id)}" data-box="${esc(l.id)}" data-ek="i:${esc(it.id)}" data-ci="${ci}"><span class="lcirc">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}</span><span class="lname">${esc(it.name)}</span></button>`;
 }
 const OPP = {top: 'bottom', bottom: 'top', left: 'right', right: 'left'};
 const doorOf = p => p.door || 'top', farOf = p => (p.far && p.far !== doorOf(p)) ? p.far : OPP[doorOf(p)];
@@ -14184,6 +14423,12 @@ function scopeChips(){
     ${places.length > 1 ? `<button class="chipbtn${!P.size ? ' on' : ''}" data-scope="all">${tr('everywhere')}</button>${places.map(p => `<button class="chipbtn${P.has(p.id) ? ' on' : ''}" data-scope="p:${esc(p.id)}">${esc(p.name)}</button>`).join('')}` : ''}
     </div>${one && boxesIn(one).length > 1 ? `<div class="chips"><button class="chipbtn small${!B.size ? ' on' : ''}" data-scope="allboxes">${esc(tr('allOf', placeName(one)))}</button>${boxesIn(one).sort(byCode).map(b => `<button class="chipbtn small${B.has(b.id) ? ' on' : ''}" data-scope="b:${esc(b.id)}">${esc(b.code)} ${esc(b.name)}</button>`).join('')}</div>` : ''}</div>`;
 }
+let recentQ = [];
+function rememberQuery(q){ q = (q || '').trim(); if (q.length < 2) return; recentQ = [q, ...recentQ.filter(x => x.toLowerCase() !== q.toLowerCase())].slice(0, 8); metaPut('recentQ', recentQ).catch(() => {}); }
+function rowsOrTiles(entries){
+  const bx = entries.filter(e => e[0] === 'box').map(e => e[1]), its = entries.filter(e => e[0] === 'item').map(e => [e[1], e[2]]);
+  return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
+}
 function renderSearch(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   const q = query.trim(), P = searchScope.places, B = searchScope.boxes;
@@ -14196,20 +14441,29 @@ function renderSearch(){
   if (q){
     const {exact, related} = searchItems(q, {placeIds: P, boxIds: B});
     const boxHits = realBoxes().filter(b => inScope(b) && [b.code, b.name, b.location, b.notes].some(v => (v || '').toLowerCase().includes(q.toLowerCase()))).sort(byCode);
-    body = `${exact.length ? `<div class="igrid${viewCls()}">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
-      ${boxHits.length ? `<h2 class="section">${tr('boxesH')}</h2><div class="grid">${boxHits.map(boxTile).join('')}</div>` : ''}
+    body = `${exact.length ? (viewMode === 'list' && !selecting ? rowsHTML(exact, {where: true}) : `<div class="igrid${viewCls()}">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}
+      ${boxHits.length ? `<h2 class="section">${tr('boxesH')}</h2><div class="shelf${shelfCls()}">${boxHits.map(shelfTile).join('')}</div>` : ''}
       ${related.length ? `<h2 class="section">${tr('similar')}</h2><div class="igrid${viewCls()}">${related.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
       ${!exact.length && !related.length && !boxHits.length ? `<p class="hint center">${esc(tr('noMatch', q))}</p>${(sg => sg.length ? `<div class="didyou"><span class="lab">${tr('didYouMean')}</span><div class="chips">${sg.map(s => `<button class="chipbtn" data-suggest="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>` : '')(searchSuggestions(q))}` : ''}`;
+  }
+  if (!q && !P.size && !B.size){
+    body = `${recentQ.length ? `<div class="recentq"><div class="rqhead"><span class="lab">${tr('recentSearches')}</span><button class="linkbtn" data-act="clearrq">${tr('clear')}</button></div><div class="chips">${recentQ.map(s => `<button class="chipbtn" data-suggest="${esc(s)}">🔎 ${esc(s)}</button>`).join('')}</div></div>` : ''}
+      ${(r => r.length ? `<h2 class="section">${tr('recent')}</h2>` + rowsOrTiles(r) : '')(recentEntries())}`;
   }
   const had = $('#q'), focused = had && document.activeElement === had, pos = had ? had.selectionStart : 0;
   app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div>${viewToggle()}</div>
     <input class="input search" id="q" type="search" placeholder="${esc(tr('typeKeyword'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">
     ${scopeChips()}
-    <div id="results">${body}</div>`;
+    ${collectionChips(q)}
+    ${(q || P.size || B.size) && !selecting && /itile/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
+    <div id="results">${body}</div>
+    ${selBar(['tag', 'move', 'del'])}`;
+  document.body.classList.toggle('selecting', !!selecting);
   const s = $('#q');
   if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
   let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
-  app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => { query = c.dataset.suggest; render(); });
+  app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => { query = c.dataset.suggest; rememberQuery(query); render(); });
+  s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
   app.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
     const v = c.dataset.scope;
     if (v === 'all'){ P.clear(); B.clear(); }
@@ -14286,15 +14540,23 @@ function renderProfile(){
         <button class="row" data-m="labels"><span>${tr('labelsAll')}</span></button>
         <button class="row" data-m="scan"><span>${tr('scanLabel')}</span></button>
       </div>
+      <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
       <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
       <p class="proof center" id="usage"></p>`;
+    $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
     $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
     if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr('usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
     return;
   }
   if (sub === 'notifications'){
+    const late = outItems().filter(([it]) => outOverdue(it));
+    const lateBoxes = realBoxes().filter(boxOutLate), sug = nudges();
     app.innerHTML = `${crumbs([...back, {label: tr('notifications').toUpperCase()}])}
       ${backupBanner()}
+      ${sug.length ? `<h2 class="section">${tr('suggestions')}</h2>${sug.map(n => nudgeCard(n)).join('')}` : ''}
+      ${lateBoxes.length ? `<h2 class="section">${tr('backQ')}</h2><div class="shelf">${lateBoxes.map(shelfTile).join('')}</div>` : ''}
+      ${late.length ? `<h2 class="section">${tr('backQ')}</h2><div class="dues">${late.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
+        <div class="dueact"><span class="hint">${esc(tr('backBy', it.out.until))}</span><button class="btn primary small" data-backok="${esc(b.id)}:${esc(it.id)}">↩ ${tr('isBack')}</button><button class="btn quiet small" data-more="${esc(b.id)}:${esc(it.id)}">${tr('stillOut')}</button></div></div>`).join('')}</div>` : ''}
       ${due.length ? `<p class="hint">${tr('dueIntro')}</p>
         <div class="dues">${due.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
           <div class="dueact"><span class="hint">${esc(tr('lastUsedOn', it.lastUsed || it.storedOn || ''))}</span>
@@ -14398,10 +14660,11 @@ function renderItem(){
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
   app.innerHTML = `${crumbs(crumbParts)}
     <div class="hero">
-      ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<div class="heroimg empty"><span class="ticon">${guessIcon(it)}</span></div>`}
+      ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
       <label class="cam" aria-label="Photo">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
+    ${isOut(it) ? `<div class="findhint outhint"><span>↗ <b>${tr('outTag')}</b> · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="btn primary small" data-act="itemback">↩ ${tr('putBack')}</button></div>` : ''}
     <div class="titlerow"><input class="title" id="fName" value="${esc(it.name)}" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" required>
       <button class="iconbtn star" data-act="favitem" aria-label="${esc(it.fav ? tr('unfav') : tr('fav'))}" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? '★' : '☆'}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
@@ -14414,9 +14677,11 @@ function renderItem(){
     <div class="fl att"><label class="always">${tr('attachments')}</label>
       ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
       <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/*,application/pdf" id="fFile" hidden></label></div></div>
-    <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<button class="tag" data-rmtag="${i}">${esc(t)}</button>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
+    <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<span class="tag"><button class="tagopen" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button class="tagx" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
+    ${isOut(it) ? '' : `<button class="btn quiet block" data-act="itemout">↗ ${tr('takeOut')}</button>`}
     <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
-    <p class="proof">${esc(tr('registered', fmtStamp(it.addedAt), it.addedBy))} ${esc(tr('storedSince', it.storedOn || fmtDate(it.addedAt)))}${it.updatedAt ? ' ' + esc(tr('changed', fmtStamp(it.updatedAt))) : ''}</p>
+    ${adSlot('card')}
+    <p class="proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
     <button class="btn danger block" data-act="delitem">${tr('delItem')}</button>
     <div class="donebar">${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${isNew ? tr('save') : tr('done')}</button></div>
     <datalist id="people">${household.map(p => `<option value="${esc(p)}">`).join('')}<option value="${esc(tr('shared'))}"></datalist>
@@ -14749,33 +15014,390 @@ function exportSheet(){
 }
 
 /* ---------- select several items in a box: move or delete together ---------- */
+/* ---------- show on the map: highlight boxes (and loose things) ---------- */
+function showOnMap(boxIds, itemIds, back){
+  const first = (boxIds || []).map(findBox).find(Boolean) || null;
+  let pid = first ? first.placeId : null;
+  if (!pid && (itemIds || []).length){ const hit = boxes.find(b => b.loose && (b.items || []).some(i => itemIds.includes(i.id))); pid = hit && hit.placeId; }
+  if (!pid) return;
+  // a box inside another box is shown by highlighting the outermost box on the map
+  const top = id => { let b = findBox(id), g = 0; while (b && b.parentId && findBox(b.parentId) && g++ < 10) b = findBox(b.parentId); return b ? b.id : id; };
+  setPlace(pid);
+  navigate({name: 'mapfocus', place: pid, hlBoxes: [...new Set((boxIds || []).map(top))], hlItems: itemIds || [], back: back || clone(view)});
+}
+function scrollToHighlight(){ setTimeout(() => { const el = app.querySelector('.hl'); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'}); }, 60); }
+
+/* ---------- collections: one tag on several things, across boxes ---------- */
+function collectionsAll(){
+  const m = new Map();
+  boxes.forEach(b => (b.items || []).forEach(it => (it.tags || []).forEach(t => { const k = String(t).toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k).push([it, b]); })));
+  return [...m.entries()].map(([tag, list]) => ({tag, list, boxes: new Set(list.map(([, b]) => b.id)).size})).sort((x, y) => y.list.length - x.list.length || x.tag.localeCompare(y.tag, 'sv'));
+}
+const tagLabel = t => cap(String(t));
+function collectionChips(filter){
+  const cs = collectionsAll().filter(c => !filter || c.tag.includes(filter.toLowerCase()) || nearWord(filter.toLowerCase(), [c.tag]));
+  if (!cs.length) return '';
+  return `<div class="colls"><span class="lab">${tr('collections')}</span><div class="chips">${cs.slice(0, 20).map(c => `<button class="chipbtn coll" data-coll="${esc(c.tag)}">#${esc(tagLabel(c.tag))} <small>${c.list.length}</small></button>`).join('')}</div></div>`;
+}
+function renderCollection(tag){
+  const c = collectionsAll().find(x => x.tag === tag);
+  if (!c){ app.innerHTML = `<p class="hint center">${tr('nothingHere')}</p>`; return; }
+  const byBox = new Map(); c.list.forEach(([it, b]) => { if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it); });
+  const groups = [...byBox.entries()].map(([id, its]) => [findBox(id), its]).sort((x, y) => placeName(x[0].placeId).localeCompare(placeName(y[0].placeId), 'sv') || (x[0].loose ? 1 : 0) - (y[0].loose ? 1 : 0) || byCode(x[0], y[0]));
+  const placesIn = [...new Set(groups.map(([b]) => b.placeId))];
+  app.innerHTML = `<div class="bhead"><p class="tagline">${tr('collection').toUpperCase()}</p><h1 class="btitle"><span class="bname">#${esc(tagLabel(tag))}</span></h1>
+      <p class="bpath">${tr('items_n', c.list.length).toLowerCase()} · ${tr('inBoxes', groups.length)}</p></div>
+    <div class="boxbar">${placesIn.map(pid => `<button class="btn primary small" data-mapcoll="${esc(pid)}">🗺️ ${tr('showOnMap')}${placesIn.length > 1 ? ' · ' + esc(placeName(pid)) : ''}</button>`).join('')}
+      <button class="btn quiet small" data-act="collout">↗ ${tr('takeOutAll')}</button><button class="btn quiet small" data-act="collback">↩ ${tr('putBackAll')}</button>
+      <button class="btn quiet small" data-act="selectmode">${tr('select')}</button>${viewToggle()}</div>
+    ${groups.map(([b, its]) => `<section class="cgroup"><button class="cghead" data-open="${esc(b.id)}"><span class="cgcode${b.loose ? ' loose' : ''}">${b.loose ? '' : `<span class="sico">${ICON.box}</span>` + esc(b.code.replace('B-', ''))}</span><span class="cgtext"><b>${b.loose ? tr('notInBox') : esc(b.name)}</b><small>${esc(boxWhere(b))}</small></span><span class="chev">›</span></button>
+      ${viewMode === 'list' && !selecting ? rowsHTML(its.sort(byName).map(it => [it, b])) : `<div class="igrid${viewCls()}">${its.sort(byName).map(it => itemTile(it, b)).join('')}</div>`}</section>`).join('')}
+    ${selBar(['tag', 'move', 'del'])}`;
+  document.body.classList.toggle('selecting', !!selecting);
+}
+function boxWhere(b){
+  if (b.loose) return [placeName(b.placeId), b.zone].filter(Boolean).join(' › ');
+  const chain = boxChain(b);
+  const top = chain[0] || b;
+  return [placeName(b.placeId), top.location, top.stack ? `${tr('stack')} ${top.stack}` : '', top.level ? `${tr('level')} ${top.level}` : '', chain.length ? `${tr('insideBox')} ${chain.map(x => x.code).join(' › ')}` : ''].filter(Boolean).join(' · ');
+}
+
+/* ---------- select several things anywhere: add to a collection, move, delete ---------- */
+function selBar(acts){
+  if (!selecting) return '';
+  const n = selecting.size;
+  return `<div class="donebar selbar"><span class="selcount">${tr('selected', n)}</span><button class="btn quiet" data-act="selcancel">${tr('cancel')}</button>
+    ${acts.includes('tag') ? `<button class="btn quiet" data-act="seltag" ${n ? '' : 'disabled'}>#&nbsp;${tr('toCollection')}</button>` : ''}
+    ${acts.includes('move') ? `<button class="btn quiet" data-act="selmove" ${n ? '' : 'disabled'}>${tr('moveSel')}</button>` : ''}
+    ${acts.includes('del') ? `<button class="btn danger" data-act="seldel" ${n ? '' : 'disabled'}>${tr('delSel')}</button>` : ''}</div>`;
+}
+function selectedItems(){ return [...(selecting || [])].filter(k => k.startsWith('i:')).map(k => { const [, bid, iid] = k.split(':'); const b = findBox(bid), it = b && (b.items || []).find(i => i.id === iid); return it ? [it, b] : null; }).filter(Boolean); }
+async function selTag(){
+  const sel = selectedItems(); if (!sel.length) return;
+  const existing = collectionsAll().map(c => c.tag);
+  openSheet(`<h3>#&nbsp;${tr('toCollection')} (${sel.length})</h3><p class="hint">${tr('collHint')}</p>
+    <input class="input" id="ctIn" list="ctList" placeholder="${esc(tr('collPh'))}" autocapitalize="sentences"><datalist id="ctList">${existing.map(t => `<option value="${esc(tagLabel(t))}">`).join('')}</datalist>
+    ${existing.length ? `<div class="chips" style="margin-top:8px">${existing.slice(0, 12).map(t => `<button class="chipbtn" data-ct="${esc(t)}">#${esc(tagLabel(t))}</button>`).join('')}</div>` : ''}
+    <div class="sheet-foot" style="margin-top:14px"><button class="btn quiet" id="ctX">${tr('cancel')}</button><button class="btn primary" id="ctOk">${tr('add')}</button></div>`);
+  sheet.querySelectorAll('[data-ct]').forEach(c => c.onclick = () => { $('#ctIn').value = tagLabel(c.dataset.ct); });
+  $('#ctX').onclick = closeSheet;
+  const go = () => {
+    const tag = $('#ctIn').value.trim().toLowerCase().replace(/^#/, ''); if (!tag) return $('#ctIn').focus();
+    const byBox = new Map(); sel.forEach(([it, b]) => { if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it.id); });
+    snapshot([...byBox.keys()]);
+    for (const [bid, ids] of byBox){ const nb = clone(findBox(bid)); nb.items.forEach(i => { if (ids.includes(i.id)) i.tags = [...new Set([...(i.tags || []), tag])]; }); putBox(nb, true); }
+    selecting = null; closeSheet(); toast(tr('addedToColl', sel.length, tagLabel(tag)));
+    navigate({name: 'collection', tag});
+  };
+  $('#ctOk').onclick = go; $('#ctIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  setTimeout(() => $('#ctIn') && $('#ctIn').focus(), 60);
+}
 async function selMove(){
-  const b = findBox(view.boxId); if (!b || !selecting || !selecting.size) return;
-  openSheet(`<h3>${tr('moveSel')} (${selecting.size})</h3><label class="field"><span>${tr('to')}</span><select id="mvTo">${moveTargetsHTML(b)}</select></label>
+  const sel = selectedItems(); if (!sel.length) return;
+  const ref = sel[0][1];
+  openSheet(`<h3>${tr('moveSel')} (${sel.length})</h3><label class="field"><span>${tr('to')}</span><select id="mvTo">${moveTargetsHTML(ref)}</select></label>
     <div class="sheet-foot"><button class="btn quiet" id="mvX">${tr('cancel')}</button><button class="btn primary" id="mvGo">${tr('move')}</button></div>`);
   $('#mvX').onclick = closeSheet;
   $('#mvGo').onclick = () => {
-    const sel = $('#mvTo').value, destId = sel.startsWith('loose:') ? ensureLoose(sel.slice(6)).id : sel;
-    if (destId !== b.id){
-      const ids = [...selecting].map(k => k.split(':')[2]);
-      snapshot([b.id, destId]);
-      const from = clone(findBox(b.id)), moving = from.items.filter(i => ids.includes(i.id));
-      from.items = from.items.filter(i => !ids.includes(i.id)); putBox(from, true);
-      const to = clone(findBox(destId)); to.items = (to.items || []).concat(moving.map(m => { const x = clone(m); x.updatedAt = new Date().toISOString(); if (!to.loose){ delete x.spot; delete x.zone; delete x.stack; delete x.level; } return x; })); putBox(to, true);
-      toast(tr('movedN', moving.length, to.loose ? placeName(to.placeId) : to.code));
+    const v = $('#mvTo').value, destId = v.startsWith('loose:') ? ensureLoose(v.slice(6)).id : v;
+    const byBox = new Map(); sel.forEach(([it, b]) => { if (b.id === destId) return; if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it.id); });
+    if (byBox.size){
+      snapshot([...byBox.keys(), destId]);
+      const to = clone(findBox(destId)); let n = 0;
+      for (const [bid, ids] of byBox){
+        const from = clone(findBox(bid)), moving = from.items.filter(i => ids.includes(i.id));
+        from.items = from.items.filter(i => !ids.includes(i.id)); putBox(from, true);
+        to.items = (to.items || []).concat(moving.map(m => { const x = clone(m); x.updatedAt = new Date().toISOString(); if (!to.loose){ delete x.spot; delete x.zone; delete x.stack; delete x.level; } return x; })); n += moving.length;
+      }
+      putBox(to, true); toast(tr('movedN', n, to.loose ? placeName(to.placeId) : to.code));
     }
     selecting = null; closeSheet(); render();
   };
 }
 async function selDelete(){
-  const b = findBox(view.boxId); if (!b || !selecting || !selecting.size) return;
-  const ids = [...selecting].map(k => k.split(':')[2]);
-  if (!(await askConfirm(tr('delSelQ', ids.length)))) return render();
-  snapshot([b.id]);
-  const nb = clone(findBox(b.id)), gone = nb.items.filter(i => ids.includes(i.id));
-  nb.items = nb.items.filter(i => !ids.includes(i.id)); putBox(nb, true);
+  const sel = selectedItems(); if (!sel.length) return;
+  if (!(await askConfirm(tr('delSelQ', sel.length)))) return render();
+  const byBox = new Map(); sel.forEach(([it, b]) => { if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it.id); });
+  snapshot([...byBox.keys()]);
+  let gone = [];
+  for (const [bid, ids] of byBox){ const nb = clone(findBox(bid)); gone = gone.concat(nb.items.filter(i => ids.includes(i.id))); nb.items = nb.items.filter(i => !ids.includes(i.id)); putBox(nb, true); }
   gone.forEach(i => { (i.photos || []).forEach(p => dropPhoto(p.ref)); (i.files || []).forEach(f => dropPhoto(f.ref)); });
   toast(tr('deletedN', gone.length)); selecting = null; render();
+}
+
+/* ---------- list rows (OurGroceries style): swipe right = out/back, swipe left = delete, ••• = more ---------- */
+const isOut = it => !!(it && it.out);
+const outOverdue = it => isOut(it) && it.out.until && it.out.until <= today();
+const outItems = (filter = () => true) => boxes.filter(filter).flatMap(b => (b.items || []).filter(isOut).map(it => [it, b]));
+function itemSub(it, b, showWhere){
+  const bits = [it.size && (lang === 'sv' ? 'stl ' : 'size ') + it.size, showOwner(it.owner), showColor(it.color), it.brand, it.category].filter(Boolean);
+  if (isOut(it)) bits.unshift(tr('outSince', it.out.since) + (it.out.until ? ' · ' + tr('backBy', it.out.until) : ''));
+  if (showWhere) bits.push(b.loose ? placeName(b.placeId) : b.code);
+  return bits.join(' · ') || (it.notes ? it.notes.slice(0, 60) : '');
+}
+function rowHTML(it, b, opts = {}){
+  const p = (it.photos || [])[0];
+  return `<div class="lrow-wrap" data-sw="${esc(b.id)}:${esc(it.id)}">
+    <div class="lrow-bg"><span class="swl">${isOut(it) ? '↩ ' + tr('putBack') : '↗ ' + tr('takeOut')}</span><span class="swr">${tr('del')} 🗑</span></div>
+    <div class="lrow${isOut(it) ? ' out' : ''}${outOverdue(it) ? ' late' : ''}${view.hl === it.id ? ' hl' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}">
+      <span class="lthumb">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span></span>
+      <span class="ltext"><span class="lt">${esc(it.name || tr('unnamed'))}</span>${(s => s ? `<span class="ls">${esc(s)}</span>` : '')(itemSub(it, b, opts.where))}</span>
+      ${isOut(it) ? `<span class="outtag">${tr('outTag')}</span>` : ''}${it.fav ? '<span class="lfav">★</span>' : ''}${dot(isDue(it) || outOverdue(it))}
+      <button class="lmore" data-more="${esc(b.id)}:${esc(it.id)}" aria-label="${esc(tr('more'))}">•••</button>
+    </div></div>`;
+}
+function rowsHTML(list, opts = {}){ return `<div class="lrows">${list.map(([it, b]) => rowHTML(it, b, opts)).join('')}</div>`; }
+function groupHeader(b){
+  const n = (b.items || []).length, nOut = (b.items || []).filter(isOut).length;
+  const chain = b.loose ? [] : boxChain(b);
+  return `<div class="lgroup-h${b.loose ? ' loose' : ''}"><button class="lgh-main" data-open="${esc(b.id)}">
+      <span class="lgh-code">${b.loose ? '' : `<span class="sico">${ICON.box}</span>` + esc([...chain.map(x => x.code.replace('B-', '')), b.code.replace('B-', '')].join(' › '))}</span>
+      <span class="lgh-name">${b.loose ? tr('notInBox') : esc(b.name)}</span>
+      <span class="lgh-count">${b.out ? `↗ ${tr('outTag')} · ` : ''}${n}${nOut ? ` · ↗${nOut}` : ''}</span></button>
+    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">+</button></div>`;
+}
+let quickAddFor = null;
+function quickAddRow(b){
+  if (quickAddFor !== b.id) return '';
+  return `<div class="qadd"><input class="input" id="qaIn" data-qa="${esc(b.id)}" placeholder="${esc(tr('quickAddPh', b.loose ? tr('notInBox').toLowerCase() : b.code))}" autocapitalize="sentences" enterkeyhint="done"><button class="btn primary" data-act="qadone">${tr('done')}</button></div>`;
+}
+/* the whole place as one grouped list */
+function listHTML(pid){
+  const groups = boxesIn(pid).sort((x, y) => byCode(x, y));
+  const order = []; const walk = b => { order.push(b); childBoxes(b.id).sort(byCode).forEach(walk); };
+  groups.filter(b => !b.parentId || !findBox(b.parentId)).forEach(walk);
+  const loose = looseOf(pid);
+  const all = order.concat(loose && (loose.items || []).length ? [loose] : []);
+  const outs = outItems(b => b.placeId === pid);
+  return `${all.map(b => `<section class="lgroup">${groupHeader(b)}${rowsHTML([...(b.items || [])].filter(it => !isOut(it)).sort(byName).map(it => [it, b]))}${quickAddRow(b)}
+      ${!(b.items || []).filter(it => !isOut(it)).length && quickAddFor !== b.id ? `<p class="lempty">${tr('boxEmpty')}</p>` : ''}</section>`).join('')}
+    ${!all.length ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}
+    <div class="lgroup-actions"><button class="btn quiet small" data-act="addhere" data-pid="${esc(pid)}">+ ${tr('boxStorage')}</button>${loose && (loose.items || []).length ? '' : `<button class="btn quiet small" data-quickadd="${esc(ensureLooseId(pid))}">+ ${tr('itemNoBox')}</button>`}</div>
+    ${quickAddFor && findBox(quickAddFor) && findBox(quickAddFor).loose && !(findBox(quickAddFor).items || []).length && findBox(quickAddFor).placeId === pid ? `<section class="lgroup">${groupHeader(findBox(quickAddFor))}${quickAddRow(findBox(quickAddFor))}</section>` : ''}
+    ${outs.length ? `<section class="lgroup outsec"><div class="lgroup-h outh"><span class="lgh-main static"><span class="lgh-name">↗ ${tr('outSection')}</span><span class="lgh-count">${outs.length}</span></span></div>${rowsHTML(outs.sort((x, y) => byName(x[0], y[0])), {where: true})}</section>` : ''}
+    ${adSlot('banner')}`;
+}
+function ensureLooseId(pid){ const l = looseOf(pid); return l ? l.id : 'new:' + pid; }
+
+/* out / back */
+function deleteWithUndo(boxId, itemId){
+  const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
+  snapshot([b.id]);
+  const nb = clone(b); nb.items = nb.items.filter(i => i.id !== itemId); putBox(nb);
+  // photos are only cleaned up once the undo window has passed
+  const refs = [...(it.photos || []).map(p => p.ref), ...(it.files || []).map(f => f.ref)];
+  toastAction(tr('deletedX', it.name), tr('undo'), () => { undoApply(); render(); }, () => refs.forEach(dropPhoto));
+}
+let toastAct = null;
+function toastAction(msg, label, fn, after){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  if (toastAct && toastAct.after) toastAct.after();
+  const t = document.createElement('div'); t.className = 'toast act'; t.setAttribute('role', 'status');
+  t.innerHTML = `<span>${esc(msg)}</span><button class="linkbtn">${esc(label)}</button>`;
+  document.body.appendChild(t);
+  const me = toastAct = {after};
+  t.querySelector('button').onclick = () => { me.after = null; t.remove(); fn(); };
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.remove(); if (me.after) me.after(); me.after = null; }, 5000);
+}
+function rowMenu(boxId, itemId){
+  const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
+  openSheet(`<h3>${esc(it.name)}</h3><p class="hint">${esc(b.loose ? placeName(b.placeId) + ', ' + tr('notInBoxShort') : `${b.code} ${b.name}`)}</p><div class="menu">
+    <button class="btn quiet" id="rmOpen">${tr('openItem')}</button>
+    ${isOut(it) ? `<button class="btn quiet" id="rmBack">↩ ${tr('putBack')}</button>` : `<button class="btn quiet" id="rmOut">↗ ${tr('takeOut')}</button>`}
+    <label class="field"><span>${tr('outUntil')}</span><input type="date" id="rmUntil" value="${esc(it.out && it.out.until || '')}" min="${today()}"></label>
+    <button class="btn quiet" id="rmMove">${tr('move')}</button>
+    <button class="btn quiet" id="rmColl"># ${tr('toCollection')}</button>
+    <button class="btn danger" id="rmDel">${tr('del')}</button><button class="btn" id="rmX">${tr('close')}</button></div>`);
+  $('#rmOpen').onclick = () => { closeSheet(); navigate({name: 'item', boxId, itemId}); };
+  if ($('#rmBack')) $('#rmBack').onclick = () => { closeSheet(); setOut(boxId, itemId, false); };
+  if ($('#rmOut')) $('#rmOut').onclick = () => { const u = $('#rmUntil').value; closeSheet(); setOut(boxId, itemId, true, u); };
+  $('#rmUntil').onchange = e => { const u = e.target.value; closeSheet(); setOut(boxId, itemId, true, u); };
+  $('#rmMove').onclick = () => moveItemSheet(boxId, itemId);
+  $('#rmColl').onclick = () => { selecting = new Set([`i:${boxId}:${itemId}`]); selTag(); };
+  $('#rmDel').onclick = () => { closeSheet(); deleteWithUndo(boxId, itemId); };
+  $('#rmX').onclick = closeSheet;
+}
+/* swipe handling */
+let swipe = null;
+app.addEventListener('pointerdown', e => {
+  const row = e.target.closest('.lrow'); if (!row || e.target.closest('.lmore') || e.button > 0 || selecting) return;
+  swipe = {row, wrap: row.parentElement, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId};
+});
+document.addEventListener('pointermove', e => {
+  if (!swipe) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (!swipe.on){
+    if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)){ swipe = null; return; }
+    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3){ swipe.on = true; swipe.wrap.classList.add('swiping'); try { swipe.row.setPointerCapture(swipe.id); } catch {} }
+    else return;
+  }
+  swipe.dx = dx;
+  swipe.row.style.transform = `translate3d(${dx}px,0,0)`;
+  swipe.wrap.classList.toggle('sw-right', dx > 0); swipe.wrap.classList.toggle('sw-left', dx < 0);
+  swipe.wrap.classList.toggle('armed', Math.abs(dx) > 90);
+}, {passive: true});
+document.addEventListener('touchmove', e => { if (swipe && swipe.on) e.preventDefault(); }, {passive: false});
+const endSwipe = () => {
+  if (!swipe) return;
+  const s = swipe; swipe = null;
+  if (!s.on) return;
+  lpFired = true; setTimeout(() => { lpFired = false; }, 350);
+  const [boxId, itemId] = s.wrap.dataset.sw.split(':');
+  const done = Math.abs(s.dx) > 90;
+  s.row.style.transition = 'transform .18s ease';
+  if (done && s.dx > 0){ s.row.style.transform = 'translate3d(100%,0,0)'; setTimeout(() => { const it = (findBox(boxId).items || []).find(i => i.id === itemId); setOut(boxId, itemId, !isOut(it)); }, 160); }
+  else if (done){ s.row.style.transform = 'translate3d(-100%,0,0)'; setTimeout(() => deleteWithUndo(boxId, itemId), 160); }
+  else { s.row.style.transform = ''; setTimeout(() => { s.wrap.classList.remove('swiping', 'sw-left', 'sw-right', 'armed'); s.row.style.transition = ''; }, 200); }
+};
+document.addEventListener('pointerup', endSwipe);
+document.addEventListener('pointercancel', () => { if (swipe && swipe.on){ swipe.dx = 0; endSwipe(); } swipe = null; });
+
+/* quick add: type a name, Enter, type the next */
+function quickAdd(boxId, name){
+  name = (name || '').trim(); if (!name) return;
+  let b = findBox(boxId); if (!b) return;
+  const it = {id: newId(), name: cap(name), category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
+  const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb);
+  setTimeout(() => { const i = $('#qaIn'); if (i){ i.focus(); } }, 30);
+}
+document.addEventListener('keydown', e => {
+  const i = e.target.closest && e.target.closest('#qaIn'); if (!i || e.key !== 'Enter') return;
+  e.preventDefault(); const v = i.value; i.value = ''; quickAdd(i.dataset.qa, v);
+});
+
+/* ad slots (test): only a house ad for Premium until there's an ad partner */
+let adsPreview = true;
+function adSlot(kind){
+  if (!adsPreview) return '';
+  return `<aside class="adslot ad-${kind}" aria-label="${esc(tr('adLabel'))}"><span class="adtag">${tr('adLabel')}</span>
+    <div class="admain"><span class="adlogo">${logoSVG()}</span><span class="adtext"><b>${tr('adTitle')}</b><small>${tr('adText')}</small></span>
+    <button class="btn quiet small" data-sub="premium">${tr('readMore')}</button></div></aside>`;
+}
+
+function iconSheet(){
+  const [it] = curItem(); if (!it) return;
+  if (flushItem) flushItem();
+  const all = [...new Set([DEFAULT_ITEM_ICON, ...ICONS.map(x => x[0])])];
+  const auto = matchIcon(it.name) || matchIcon(it.category) || DEFAULT_ITEM_ICON;
+  openSheet(`<h3>${tr('pickIcon')}</h3><p class="hint">${tr('pickIconHint')}</p>
+    <button class="btn ${it.icon ? 'quiet' : 'primary'} block" data-ic="">${auto} ${tr('autoIcon')}</button>
+    <div class="iconpick big">${all.map(e => `<button class="${it.icon === e ? 'on' : ''}" data-ic="${e}">${e}</button>`).join('')}</div>
+    <div class="sheet-foot"><button class="btn" id="icX">${tr('close')}</button></div>`);
+  sheet.querySelectorAll('[data-ic]').forEach(btn => btn.onclick = () => { const v = btn.dataset.ic; saveItem(x => { if (v) x.icon = v; else delete x.icon; }, true); closeSheet(); });
+  $('#icX').onclick = closeSheet;
+}
+
+/* ---------- out: single items, whole boxes, whole collections; with a history so patterns can be learned ---------- */
+function markOut(x, out, until){
+  x.outLog = x.outLog || [];
+  if (out){
+    if (!x.out) x.outLog.push({out: today()});
+    x.out = {since: (x.out && x.out.since) || today()}; if (until) x.out.until = until;
+  } else {
+    if (x.out){ const last = x.outLog[x.outLog.length - 1]; if (last && !last.back) last.back = today(); else x.outLog.push({out: x.out.since, back: today()}); }
+    delete x.out; x.lastUsed = today();
+  }
+  if (x.outLog.length > 30) x.outLog = x.outLog.slice(-30);
+  x.updatedAt = new Date().toISOString();
+}
+function setOut(boxId, itemId, out, until){
+  const b = findBox(boxId); if (!b) return;
+  snapshot([b.id]);
+  const nb = clone(b), x = nb.items.find(i => i.id === itemId); if (!x) return;
+  markOut(x, out, until); putBox(nb);
+  toastAction(out ? tr('tookOut', x.name, b.loose ? placeName(b.placeId) : b.code) : tr('putBackDone', x.name, b.loose ? placeName(b.placeId) : b.code), tr('undo'), () => { undoApply(); render(); });
+}
+function setOutMany(list, out, until, label){
+  const byBox = new Map(); list.forEach(([it, b]) => { if (isOut(it) === out) return; if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it.id); });
+  if (!byBox.size) return toast(out ? tr('allOutAlready') : tr('allBackAlready'));
+  snapshot([...byBox.keys()]); let n = 0;
+  for (const [bid, ids] of byBox){ const nb = clone(findBox(bid)); nb.items.forEach(i => { if (ids.includes(i.id)){ markOut(i, out, until); n++; } }); putBox(nb, true); }
+  render();
+  toastAction(out ? tr('tookOutN', n, label) : tr('putBackN', n, label), tr('undo'), () => { undoApply(); render(); });
+}
+function setBoxOut(boxId, out, until){
+  const b = findBox(boxId); if (!b || b.loose) return;
+  snapshot([b.id]);
+  const nb = clone(b);
+  if (out){ nb.out = {since: (b.out && b.out.since) || today()}; if (until) nb.out.until = until; } else { delete nb.out; nb.checkedAt = new Date().toISOString(); }
+  putBox(nb);
+  toastAction(out ? tr('boxOutDone', b.code) : tr('boxBackDone', b.code), tr('undo'), () => { undoApply(); render(); });
+}
+const boxOutLate = b => b.out && b.out.until && b.out.until <= today();
+
+/* ---------- freshness: when a box was last checked, opened in the app, or changed ---------- */
+const daysSince = d => d ? Math.floor((Date.now() - new Date(d)) / 864e5) : Infinity;
+function freshDays(b){ return Math.min(daysSince(b.checkedAt), daysSince(b.updatedAt)); }
+function freshLevel(b){ const d = freshDays(b); return d === Infinity ? 0 : d <= 90 ? 4 : d <= 180 ? 3 : d <= 365 ? 2 : 1; }
+const freshDot = b => `<i class="fresh f${freshLevel(b)}" title="${esc(freshText(b))}"></i>`;
+function ago(d){
+  const n = daysSince(d); if (n === Infinity) return '';
+  if (n === 0) return tr('today'); if (n === 1) return tr('yesterday');
+  if (n < 14) return tr('daysAgo', n); if (n < 60) return tr('weeksAgo', Math.round(n / 7));
+  if (n < 365) return tr('monthsAgo', Math.round(n / 30)); return tr('yearsAgo', Math.round(n / 365));
+}
+function freshText(b){
+  return [b.checkedAt ? `✓ ${tr('checked')} ${ago(b.checkedAt)}` : tr('neverChecked'), b.openedAt ? `${tr('openedApp')} ${ago(b.openedAt)}` : '', b.updatedAt ? `${tr('changedAgo')} ${ago(b.updatedAt)}` : ''].filter(Boolean).join(' · ');
+}
+function checkedThisYear(pid){ const bx = realBoxes().filter(b => !pid || b.placeId === pid); return [bx.filter(b => freshDays(b) <= 365).length, bx.length]; }
+function touchOpened(b){ if (!b || b.loose) return; b.openedAt = new Date().toISOString(); dbPut(clone(b)).catch(() => {}); }
+function checkBox(boxId){
+  const b = findBox(boxId); if (!b) return;
+  b.checkedAt = new Date().toISOString(); dbPut(clone(b)).catch(() => {});
+  toast(tr('checkedThanks')); render();
+}
+
+/* ---------- seasonal and learned nudges ---------- */
+const SEASON_RULES = [
+  {re: /^(jul|julpynt|christmas|xmas)$/, out: [11, 12], back: [1], icon: '🎄'},
+  {re: /^(påsk|easter)$/, out: [3, 4], back: [4, 5], icon: '🐣'},
+  {re: /^(halloween)$/, out: [10], back: [11], icon: '🎃'},
+  {re: /^(vinter|winter|ski|skidor|vinterkläder)$/, out: [11, 12], back: [4], icon: '❄️'},
+  {re: /^(sommar|summer|sommarkläder|camping)$/, out: [5, 6], back: [9], icon: '☀️'},
+];
+let nudgeSnooze = {};
+const snoozed = key => nudgeSnooze[key] && nudgeSnooze[key] >= today();
+function snooze(key, days){ const d = new Date(); d.setDate(d.getDate() + (days || 21)); nudgeSnooze[key] = d.toISOString().slice(0, 10); metaPut('nudgeSnooze', nudgeSnooze).catch(() => {}); }
+function nudges(pid){
+  const month = new Date().getMonth() + 1, out = [];
+  for (const c of collectionsAll()){
+    const list = c.list.filter(([, b]) => !pid || b.placeId === pid); if (!list.length) continue;
+    const rule = SEASON_RULES.find(r => r.re.test(c.tag)); if (!rule) continue;
+    const anyIn = list.some(([it]) => !isOut(it)), anyOut = list.some(([it]) => isOut(it));
+    if (rule.out.includes(month) && anyIn) out.push({key: `out:${c.tag}:${month}`, kind: 'collOut', tag: c.tag, icon: rule.icon});
+    if (rule.back.includes(month) && anyOut) out.push({key: `back:${c.tag}:${month}`, kind: 'collBack', tag: c.tag, icon: rule.icon});
+  }
+  // learned: things you take out regularly (the extra bed once a month), or around the same time every year
+  boxes.forEach(b => { if (pid && b.placeId !== pid) return; (b.items || []).forEach(it => {
+    if (isOut(it) || !(it.outLog || []).length) return;
+    const outs = it.outLog.map(e => e.out).filter(Boolean).sort();
+    const last = outs[outs.length - 1];
+    if (outs.length >= 2){
+      const gaps = outs.slice(1).map((d, i) => (new Date(d) - new Date(outs[i])) / 864e5), avg = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+      if (avg >= 5 && daysSince(last) >= avg * 0.9) out.push({key: `pat:${it.id}:${last}`, kind: 'pattern', it, b, every: Math.round(avg)});
+    }
+    const sameMonthBefore = outs.some(d => new Date(d).getMonth() + 1 === month && new Date(d).getFullYear() < new Date().getFullYear());
+    if (sameMonthBefore && daysSince(last) > 200) out.push({key: `yr:${it.id}:${month}`, kind: 'yearly', it, b});
+  }); });
+  const seen = new Set();
+  return out.filter(n => !snoozed(n.key) && !seen.has(n.key) && seen.add(n.key));
+}
+function nudgeCard(n, compact){
+  const coll = n.tag ? '#' + tagLabel(n.tag) : '';
+  const text = n.kind === 'collOut' ? tr('nudgeCollOut', coll) : n.kind === 'collBack' ? tr('nudgeCollBack', coll)
+    : n.kind === 'pattern' ? tr('nudgePattern', n.it.name, n.every) : tr('nudgeYearly', n.it.name);
+  const yes = n.kind === 'collOut' ? tr('takeOutAll') : n.kind === 'collBack' ? tr('putBackAll') : tr('takeOut');
+  return `<div class="nudge${compact ? ' compact' : ''}"><span class="nico">${n.icon || guessIcon(n.it)}</span><span class="ntext">${esc(text)}</span>
+    <span class="nbtns"><button class="btn primary small" data-nudge="${esc(n.key)}" data-ny="1">${esc(yes)}</button><button class="btn quiet small" data-nudge="${esc(n.key)}">${tr('notNow')}</button></span></div>`;
+}
+function doNudge(key, yes, pid){
+  const n = nudges().find(x => x.key === key);
+  if (!yes || !n){ snooze(key); return render(); }
+  snooze(key, 60);
+  const c = n.tag && collectionsAll().find(x => x.tag === n.tag);
+  if (n.kind === 'collOut') return setOutMany(c.list, true, null, '#' + tagLabel(n.tag));
+  if (n.kind === 'collBack') return setOutMany(c.list, false, null, '#' + tagLabel(n.tag));
+  setOut(n.b.id, n.it.id, true);
 }
 
 /* ---------- sheets: add, move, long press ---------- */
@@ -14956,12 +15578,22 @@ app.addEventListener('click', e => {
   const zd = e.target.closest('[data-zdel]'); if (zd) return deleteZone(currentPlace, zd.dataset.zdel);
   const sm = e.target.closest('[data-shelfmode]'); if (sm){ shelfMode = sm.dataset.shelfmode; metaPut('shelfMode', shelfMode).catch(() => {}); return render(); }
   const vm = e.target.closest('[data-viewmode]'); if (vm){ viewMode = vm.dataset.viewmode; metaPut('viewMode', viewMode).catch(() => {}); return render(); }
+  const mb = e.target.closest('[data-mapbox]'); if (mb){ const bx = findBox(mb.dataset.mapbox); if (bx && bx.loose) return showOnMap([], [mb.dataset.mapitem].filter(Boolean)); return showOnMap([mb.dataset.mapbox]); }
+  const mc = e.target.closest('[data-mapcoll]'); if (mc){ const c = collectionsAll().find(x => x.tag === view.tag); if (!c) return; const inP = c.list.filter(([, b]) => b.placeId === mc.dataset.mapcoll); return showOnMap(inP.filter(([, b]) => !b.loose).map(([, b]) => b.id), inP.filter(([, b]) => b.loose).map(([it]) => it.id)); }
+  const co = e.target.closest('[data-coll]'); if (co){ if (flushItem) flushItem(); return navigate({name: 'collection', tag: co.dataset.coll}); }
+  const ao = e.target.closest('[data-askout]'); if (ao){ const k = ao.dataset.askout, itId = view.hl, bid = view.boxId; view.asked = true; if (k === 'temp') return setOut(bid, itId, true); if (k === 'gone') return deleteWithUndo(bid, itId); return render(); }
+  const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
+  const bo = e.target.closest('[data-backok]'); if (bo){ const [bid, iid] = bo.dataset.backok.split(':'); return setOut(bid, iid, false); }
+  const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
+  const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
   const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt]'); if (!t) return;
   const d = t.dataset;
   if (d.nav){ const v = JSON.parse(d.nav); if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
   if (d.goplace) return goHome(d.goplace === 'all' ? null : d.goplace);
-  if (selecting && (d.item || d.open)){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; if (d.open) return; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
+  if (selecting && (d.item || d.open) && !d.openItem){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; if (d.open) return; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
   if (d.open) return openBox(d.open);
+  if (view.name === 'search' && query) rememberQuery(query);
+  if (d.item && !d.openItem && (view.name === 'search' || view.name === 'collection')) return navigate({name: 'box', boxId: d.box, hl: d.item});
   if (d.item) return navigate({name: 'item', boxId: d.box, itemId: d.item});
   if (d.notedel) return deleteNote(d.notedel);
   if (d.sub) return navigate({name: 'profile', sub: d.sub});
@@ -15002,6 +15634,18 @@ app.addEventListener('click', e => {
     case 'selcancel': selecting = null; render(); break;
     case 'selmove': selMove(); break;
     case 'seldel': selDelete(); break;
+    case 'seltag': selTag(); break;
+    case 'checkyes': checkBox(b.id); break;
+    case 'checkno': view.checkDismissed = true; render(); toast(tr('checkFix')); break;
+    case 'boxout': setBoxOut(b.id, true); break;
+    case 'boxback': setBoxOut(b.id, false); break;
+    case 'collout': { const c = collectionsAll().find(x => x.tag === view.tag); if (c) setOutMany(c.list, true, null, '#' + tagLabel(c.tag)); break; }
+    case 'collback': { const c = collectionsAll().find(x => x.tag === view.tag); if (c) setOutMany(c.list, false, null, '#' + tagLabel(c.tag)); break; }
+    case 'clearrq': recentQ = []; metaPut('recentQ', recentQ).catch(() => {}); render(); break;
+    case 'pickicon': iconSheet(); break;
+    case 'itemout': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, true); break;
+    case 'itemback': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, false); break;
+    case 'qadone': quickAddFor = null; render(); break;
     case 'subbox': boxSheet(null, b.placeId, b.id); break;
     case 'placement': placementSheet(b.id); break;
     case 'doorside': doorSheet(currentPlace); break;
@@ -15259,6 +15903,8 @@ const VT = {
     empty: '{box} is empty.', removed: 'Removed {name} from {box}.', notInBox: 'I can’t find {q} in {box}.',
     moved: 'Moved {name} to {box}.', undone: 'Undone.', nothingUndo: 'There’s nothing to undo.',
     unknown: 'I didn’t get that. Try “add …”, “where is …” or “what’s in here”.',
+    itemOutV: '{name} is out. Its place in {box} is kept.', itemBackV: '{name} is back in {box}.', alreadyOut: '{name} is already out.', alreadyBack: '{name} is already in place.',
+    boxOutV: '{box} is out. Its place is kept.', boxBackV: '{box} is back in place.', allBackIn: 'Everything is back in {box}.', collOutV: 'Took out {n} things in #{c}.', collBackV: 'Everything in #{c} is back.',
     unknownAdd: 'Did you want to add “{text}” to {box}?', and: 'and', in: 'in', box: 'box {n}', size: 'size {v}',
     boxesCreated: 'Created {n} boxes in {place}: {list}. {first} is open now.',
     whichBox: 'Which box: {list}?', oddSize: 'Size {v} sounds unusual. What size is it?',
@@ -15287,6 +15933,8 @@ const VT = {
     empty: '{box} är tom.', removed: 'Tog bort {name} från {box}.', notInBox: 'Jag hittar inte {q} i {box}.',
     moved: 'Flyttade {name} till {box}.', undone: 'Ångrat.', nothingUndo: 'Det finns inget att ångra.',
     unknown: 'Det förstod jag inte. Prova “lägg till …”, “var är …” eller “vad finns i lådan”.',
+    itemOutV: '{name} är framme. Platsen i {box} sparas.', itemBackV: '{name} är tillbaka i {box}.', alreadyOut: '{name} är redan framme.', alreadyBack: '{name} ligger redan på sin plats.',
+    boxOutV: '{box} är framme. Platsen sparas.', boxBackV: '{box} är tillbaka på sin plats.', allBackIn: 'Allt är tillbaka i {box}.', collOutV: 'Tog ut {n} saker i #{c}.', collBackV: 'Allt i #{c} är tillbaka.',
     unknownAdd: 'Ville du lägga till “{text}” i {box}?', and: 'och', in: 'i', box: 'låda {n}', size: 'storlek {v}',
     boxesCreated: 'Skapade {n} lådor i {place}: {list}. {first} är öppen nu.',
     whichBox: 'Vilken låda: {list}?', oddSize: 'Storlek {v} låter konstigt. Vilken storlek är det?',
@@ -15425,7 +16073,9 @@ const CMD = {
   contents: /^(?:what'?s|whats|what is|vad finns|vad är det|vad innehåller|vad ligger|list|lista|läs upp|read)\s*(.*)$/i,
   where: /^(?:where(?:'s| is| are| did (?:i|we) put)?|wheres|var (?:är|finns|ligger|la (?:jag|vi)|lade (?:jag|vi)|har (?:jag|vi) lagt)|find|hitta|leta(?: efter| upp)?|search(?: for)?|sök(?: efter)?|do we have|have we got|har vi|finns det)\s+(.+)$/i,
   move: /^(?:move|flytta)\s+(.+?)\s+(?:to|into|till|in i|out of|ut ur|ut i|ut)\s+(.+)$/i,
-  remove: /^(?:remove|delete|take out|ta bort|ta ut|plocka ut|radera)\s+(.+)$/i,
+  remove: /^(?:remove|delete|ta bort|radera)\s+(.+)$/i,
+  takeOut: /^(?:(?:jag|vi)\s+)?(?:tog|har tagit|tar|ta|plockade|plocka)\s+(?:ut|fram)\s+(.+)$|^(?:(?:i|we)\s+)?(?:took|take|taking|have taken)\s+out\s+(.+)$|^(?:(?:i|we)\s+)?(?:took|take|taking)\s+(.+?)\s+out$|^(?:tog|plockade|har)\s+(?:jag|vi)\s+(?:tagit\s+)?(?:ut|fram)\s+(.+)$/i,
+  putBack: /^(?:(?:jag|vi)\s+)?(?:ställde|ställ|har ställt|la|lade|lägg|lagt)\s+tillbaka\s+(.+)$|^(.+?)\s+(?:är|ligger)\s+tillbaka(?:\s+i\s+(.+))?$|^(?:(?:i|we)\s+)?put\s+(.+?)\s+back$|^(?:(?:i|we)\s+)?put\s+back\s+(.+)$|^(.+?)\s+(?:is|are)\s+back(?:\s+in\s+(.+))?$|^(?:ställde|la|lade|har)\s+(?:jag|vi)\s+(?:ställt\s+|lagt\s+)?tillbaka\s+(.+)$/i,
   add: /^(?:add|put|lägg till|lägg in|lägg|stoppa in|in med|ny|nytt|new)\s+(.+)$/i,
 };
 const isCommand = low => Object.values(CMD).some(re => re.test(low));
@@ -15664,6 +16314,8 @@ function handle(text){
   }
   if ((m = raw.match(CMD.where))) return doFind(m[1]);
   if ((m = raw.match(CMD.move))) return doMove(m[1], m[2]);
+  if ((m = raw.match(CMD.takeOut))) return doOutVoice(m[1] || m[2] || m[3] || m[4], true);
+  if ((m = raw.match(CMD.putBack))) return doOutVoice(m[1] || m[2] || m[4] || m[5] || m[6] || m[8], false, m[3] || m[7]);
   if ((m = raw.match(CMD.remove))) return doRemove(m[1]);
   if ((m = raw.match(CMD.add))) return doAdd(m[1]);
   // "back to the watermelons, they are big and brown" / "the watermelons are Rebecca's" / "it should be brown"
@@ -15747,6 +16399,29 @@ function findIn(q, opts){
   return list[0] || null;
 }
 const askWhich = hit => say(t('which', {list: joinList(hit.many.slice(0, 4).map(([it, b]) => `${it.name} ${t('in')} ${whereShort(b)}`))}));
+function doOutVoice(subject, out, where){
+  subject = (subject || '').trim().replace(/[.!?]+$/, '');
+  const everything = /^(allt|alla|everything|all|all of it|allting)$/i.test(subject);
+  const r = boxRef(where || subject);
+  // a whole box: "ta ut låda 3", "låda 3 är tillbaka", "allt är tillbaka i låda 3"
+  if (r && r.box && (everything || /^(?:hela\s+|the\s+whole\s+|whole\s+)?(?:box|låda|lådan|kartong)/i.test(subject) || where)){
+    const b = r.box;
+    if (everything && !out){ if (b.out) setBoxOut(b.id, false); setOutMany((b.items || []).map(it => [it, b]), false, null, b.code); return say(t('allBackIn', {box: boxSpoken(b)})); }
+    setBoxOut(b.id, out); return say(out ? t('boxOutV', {box: boxSpoken(b)}) : t('boxBackV', {box: boxSpoken(b)}));
+  }
+  // a whole collection: "ta ut hela #jul", "take out the christmas collection"
+  const cm = subject.replace(/^(?:hela|samlingen|the|whole|collection)\s+/i, '').replace(/\s+(?:collection|samlingen)$/i, '').replace(/^#/, '').toLowerCase();
+  const coll = collectionsAll().find(c => c.tag === cm || stems(cm).includes(c.tag) || stems(c.tag).includes(cm));
+  if (coll && (/#|hela|samling|whole|collection/i.test(subject) || !findIn(subject))){ setOutMany(coll.list, out, null, '#' + tagLabel(coll.tag)); return say(out ? t('collOutV', {c: tagLabel(coll.tag), n: coll.list.length}) : t('collBackV', {c: tagLabel(coll.tag)})); }
+  const pid = scopePlace();
+  const hit = findIn(subject, curBox() ? {boxId: curBox().id} : pid ? {placeId: pid} : {}) || findIn(subject);
+  if (!hit) return say(t('notFound', {q: cleanQ(subject)}));
+  if (hit.many) return askWhich(hit);
+  const [it, b] = hit;
+  if (isOut(it) === out) return say(out ? t('alreadyOut', {name: it.name}) : t('alreadyBack', {name: it.name}));
+  setOut(b.id, it.id, out); rememberItems([[it, b]]);
+  say(out ? t('itemOutV', {name: it.name, box: whereShort(b)}) : t('itemBackV', {name: it.name, box: whereShort(b)}));
+}
 function doRemove(q){
   const b = curBox(), pid = b ? null : scopePlace();
   const opts = b ? {boxId: b.id} : pid ? {placeId: pid} : {};
@@ -15959,7 +16634,7 @@ function normalizeSpeech(s){
   return x.replace(/\s+/g, ' ').trim();
 }
 /* split one long utterance into separate commands */
-const STARTERS = ['öppna','lägg till','lägg in','ny låda','nytt låda','ny kartong','ny plats','ny förvaringsplats','skapa','ta bort','ta ut','plocka ut','flytta','var är','var finns','var ligger','vad finns','vad innehåller','har vi','finns det','jag är i','jag är på','vi är i','gå till','byt till','ångra',
+const STARTERS = ['tog jag ut','tog vi ut','ställde jag tillbaka','ställde vi tillbaka','tog ut','ta ut','tog fram','ställ tillbaka','ställde tillbaka','lägg tillbaka','la tillbaka','took out','put back','öppna','lägg till','lägg in','ny låda','nytt låda','ny kartong','ny plats','ny förvaringsplats','skapa','ta bort','ta ut','plocka ut','flytta','var är','var finns','var ligger','vad finns','vad innehåller','har vi','finns det','jag är i','jag är på','vi är i','gå till','byt till','ångra',
   'open','add','put','new box','new place','create','remove','delete','take out','move','where is','where are',"where's",'where did',"what's in",'what is in','do we have',"i'm in",'i am in',"we're in",'go to','switch to','undo'];
 function splitCommands(text){
   let parts = text.split(/\s*[.;!?]\s+|\s*,?\s+(?:och sen|och sedan|och så|sen|sedan|därefter|and then|then|after that)\s+/i);
@@ -15968,6 +16643,8 @@ function splitCommands(text){
   // "within those boxes, add socks" → the place phrase belongs to the next command
   const out = [];
   for (let i = 0; i < parts.length; i++){
+    // "jag tog ut …": a lone "jag/vi/I/we" belongs to the command after it
+    if (/^(?:jag|vi|i|we)$/i.test(parts[i]) && i + 1 < parts.length){ parts[i + 1] = parts[i] + ' ' + parts[i + 1]; continue; }
     if (/^(?:in|into|within|inside|i|inuti|till|to)\s/i.test(parts[i]) && i + 1 < parts.length){ parts[i + 1] = parts[i + 1] + ' ' + parts[i]; continue; }
     out.push(parts[i]);
   }
@@ -16106,6 +16783,9 @@ Action types (use only these):
 {"type":"remove_item","item":"<item id>"}
 {"type":"update_box","box":"B-003","set":{"name":"","location":""}}
 {"type":"search","query":"tent"}
+{"type":"take_out","item":"<item id>","until":"YYYY-MM-DD or omit"}  (the thing is taken out of storage for a while; its place is kept)
+{"type":"put_back","item":"<item id>"}
+{"type":"box_out","box":"B-003"} / {"type":"box_back","box":"B-003"}  (the whole box is carried out / back)
 {"type":"undo"}
 Use the next free box codes in order when creating boxes. Colors must be one of: Black, White, Grey, Blue, Red, Green, Yellow, Pink, Purple, Brown, Beige, Multicolour. Sizes look like 38, 38.5, 128, S, M, L, XL. Seasons: Winter, Summer, Spring/autumn, All year. If the user only asks something, return an empty actions list.`;
 }
@@ -16113,6 +16793,7 @@ function itemForAI(i){
   const o = {id: i.id, name: i.name};
   for (const k of ['owner','size','color','season','brand','model','serial','spot','category']) if (i[k]) o[k] = i[k];
   if (i.tags && i.tags.length) o.tags = i.tags;
+  if (i.out) o.out = i.out;
   return o;
 }
 function aiState(){
@@ -16261,6 +16942,14 @@ function applyPlan(actions){
           putBox(nb); break;
         }
         case 'search': { const q = String(a.query || '').trim(); if (q) showSearch(q); break; }
+        case 'take_out': case 'put_back': {
+          const f = findItem(a.item); if (!f) break; keep(f[1].id);
+          const nb = clone(findBox(f[1].id)), x = nb.items.find(i => i.id === a.item); markOut(x, a.type === 'take_out', a.until); putBox(nb, true); touched.push([x, nb]); break;
+        }
+        case 'box_out': case 'box_back': {
+          const b = getBox(a.box); if (!b) break; keep(b.id);
+          const nb = clone(b); if (a.type === 'box_out') nb.out = {since: today()}; else delete nb.out; putBox(nb, true); break;
+        }
         case 'undo': { undoApply(); break; }
       }
     } catch (e) { console.warn('AI action failed', a, e); }
@@ -16500,6 +17189,9 @@ async function init(){
     viewMode = await metaGet('viewMode') || 'grid';
     placeView = await metaGet('placeView') || 'shelf';
     shelfMode = await metaGet('shelfMode') || 'grid';
+    recentQ = await metaGet('recentQ') || [];
+    nudgeSnooze = await metaGet('nudgeSnooze') || {};
+    { const ap = await metaGet('adsPreview'); if (typeof ap === 'boolean') adsPreview = ap; }
     recents = await metaGet('recent') || [];
     notes = await noteAll();
     places = await metaGet('places') || [];
