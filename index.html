@@ -962,6 +962,13 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .pact small{color:var(--dot)}
 .linkbtn.muted{color:var(--muted);text-decoration:none}
 dialog .toast{position:fixed;z-index:100}
+/* 2026-10-21.7 */
+.chips.center{justify-content:center}
+.btn.kitbtn{display:flex;flex-direction:column;gap:2px;white-space:normal;padding:12px}
+.btn.kitbtn small{font-weight:400;opacity:.9;font-size:.78rem}
+@keyframes nudgeplus{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.tabbar .addtab.nudge .plus{color:var(--dot);animation:nudgeplus 1.4s ease-in-out infinite}
+.tabbar .addtab.nudge .tl{color:var(--dot);font-weight:700}
 </style>
 </head>
 <body>
@@ -13392,7 +13399,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.6';
+const APP_VERSION = '2026-10-21.7';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14314,6 +14321,7 @@ function render(){
   const tab = view.name === 'search' ? 'search' : ['profile', 'settings'].includes(view.name) ? '' : 'home';
   if (!['box', 'search', 'collection'].includes(view.name)) document.body.classList.remove('selecting');
   document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr('tab_' + b.dataset.tab); });
+  { const at = document.querySelector('.tabbar .addtab'); if (at) at.classList.toggle('nudge', ready && view.name !== 'welcome' && !boxes.some(b => (b.items || []).length)); }
   const pdot = $('#menuDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
@@ -14842,17 +14850,51 @@ function renderSearch(){
     render();
   });
 }
+const KITS = {
+  basement: {zones: ['zoneLeft', 'zoneBack', 'zoneRight'], boxes: [['kitXmas', 0], ['kitEaster', 0], ['kitTools', 1], ['kitCamping', 1], ['kitSport', 1], ['kitKidsClothes', 2], ['kitBooks', 2], ['kitCables', 2], ['kitKitchen', 0], ['kitMisc', 1]]},
+};
+function applyKit(pid){
+  const p = findPlace(pid); if (!p) return;
+  const k = KITS.basement, zones = k.zones.map(z => tr(z));
+  p.zones = [...new Set([...(p.zones || []), ...zones])]; metaPut('places', places).catch(() => {});
+  const now = new Date().toISOString();
+  k.boxes.forEach(([nameKey, zi]) => putBox({id: newId(), code: nextCode(pid), name: tr(nameKey), placeId: pid, location: zones[zi], items: [], createdAt: now, updatedAt: now, checkedAt: now}, true));
+  track('start_kit');
+}
 function renderWelcome(){
-  app.innerHTML = `<div class="welcome">
-    <div class="langsw">${langSwitch()}</div>
-    <div class="logobig">${logoSVG()}</div>
-    <h1>Storrrage</h1>
+  const step = view.step || 1;
+  const head = `<div class="langsw">${langSwitch()}</div><div class="logobig">${logoSVG()}</div><h1>Storrrage</h1>`;
+  if (step === 2){
+    const sug = lang === 'sv' ? ['Källaren', 'Förrådet', 'Garaget', 'Vinden', 'Hemma'] : ['Basement', 'Storage unit', 'Garage', 'Attic', 'Home'];
+    app.innerHTML = `<div class="welcome">${head}
+      <div class="wcard"><h2>${esc(tr('hiName', me))}</h2><p class="hint">${tr('placeQ')}</p>
+      <input class="input" id="wPlace" placeholder="${esc(sug[0])}" autocapitalize="sentences">
+      <div class="chips center">${sug.map(n => `<button class="chipbtn" data-sug="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <p class="hint" style="margin-top:6px">${tr('kitQ')}</p>
+      <button class="btn primary block kitbtn" id="wKit"><b>${tr('kitYes')}</b><small>${tr('kitYesSub')}</small></button>
+      <button class="btn block" id="wEmpty">${tr('kitNo')}</button></div></div>`;
+    app.querySelectorAll('[data-sug]').forEach(c => c.onclick = () => { $('#wPlace').value = c.dataset.sug; app.querySelectorAll('[data-sug]').forEach(x => x.classList.toggle('on', x === c)); });
+    const finish = kit => {
+      const n = $('#wPlace').value.trim() || sug[0];
+      let p = places.find(x => !x.inbox && boxesIn(x.id).length === 0 && !(looseOf(x.id) || {items: []}).items.length) || null;
+      if (p){ p.name = n; } else { p = {id: newId(), name: n, createdAt: new Date().toISOString()}; places.push(p); }
+      metaPut('places', places).catch(() => {});
+      if (kit) applyKit(p.id);
+      metaPut('onboarded', true).catch(() => {});
+      currentPlace = p.id; metaPut('currentPlace', p.id).catch(() => {});
+      navigate({name: 'home', place: p.id}, true);
+      if (kit) setTimeout(() => toast(tr('kitDone')), 300);
+    };
+    $('#wKit').onclick = () => finish(true); $('#wEmpty').onclick = () => finish(false);
+    return;
+  }
+  app.innerHTML = `<div class="welcome">${head}
     <p class="slogan">${tr('slogan')}</p>
     ${pendingJoinCode ? `<div class="wcard"><h2>${tr('invitedTitle')}</h2><p class="hint">${tr('invitedIntro')}</p>${loginForm(true)}</div>`
     : `<div class="wcard">
       <button class="btn primary block" id="wNew">${tr('startNew')}</button>
-      <div class="wform" id="wNewF" hidden><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name"><button class="btn primary block" id="wGo">${tr('getStarted')}</button></div>
-      <p class="hint">${tr('startNewHint')}</p></div>
+      <div class="wform" id="wNewF" hidden><p class="hint">${tr('nameQ')}</p><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name"><button class="btn primary block" id="wGo">${tr('next')}</button></div>
+      <p class="hint" id="wNewHint">${tr('startNewHint')}</p></div>
     <div class="wor"><span>${tr('or')}</span></div>
     <div class="wcard">
       <button class="btn block" id="wLog">${tr('logInOrCreate')}</button>
@@ -14860,12 +14902,12 @@ function renderWelcome(){
       <p class="hint" id="wLogHint">${tr('loginHint')}</p></div>`}</div>`;
   wireLogin();
   if (pendingJoinCode) return;
-  $('#wNew').onclick = () => { $('#wNew').hidden = true; $('#wNewF').hidden = false; $('#wName').focus(); };
+  $('#wNew').onclick = () => { $('#wNew').hidden = true; $('#wNewHint').hidden = true; $('#wNewF').hidden = false; $('#wName').focus(); };
   $('#wLog').onclick = () => { $('#wLog').hidden = true; $('#wLogHint').hidden = true; $('#wLogF').hidden = false; $('#clEmail').focus(); };
   const go = () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
-    me = addPerson(n); metaPut('me', me).catch(() => {}); metaPut('onboarded', true).catch(() => {});
-    navigate({name: 'home', place: 'all'}, true);
+    me = addPerson(n); metaPut('me', me).catch(() => {});
+    view = {name: 'welcome', step: 2}; render();
   };
   $('#wGo').onclick = go; $('#wName').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 }
@@ -17674,7 +17716,7 @@ function menuSheet(){
   const row = (m, icon, label, extra = '') => `<button class="mrow" data-m="${m}"><span class="mi">${icon}</span><span class="ml">${label}</span>${extra}</button>`;
   openSheet(`<div class="menuhead"><h3>${tr('menu')}</h3>${langSwitch()}</div><div class="menu mlist">
     ${row('profile', ICON.user, esc(me || tr('profile')), nN ? `<b class="count">${nN}</b>` : '')}
-    ${row('cloud', ICON.cloud, tr('cloudMenu'), cloud.hid ? '<em>✓</em>' : '')}
+    ${row('cloud', ICON.cloud, tr('cloudMenu'))}
     ${row('scan', ICON.scan, tr('scanLabel'))}
     ${row('feedback', ICON.chat, tr('feedback'))}
     ${canInstall() ? row('install', ICON.install, tr('installTitle')) : ''}
@@ -18027,7 +18069,8 @@ function accountPitch(){
 }
 function codeSheet(email){
   openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))} <button class="linkbtn" id="cdWrong">${tr('wrongAddress')}</button></p>
-    <input class="input codein" id="cdIn" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456">
+    <input class="input codein" id="cdIn" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+    ${navigator.clipboard && navigator.clipboard.readText ? `<button class="btn block icontext" id="cdPaste">📋 <span>${tr('pasteCode')}</span></button>` : ''}
     <button class="btn primary block" id="cdGo">${tr('logIn')}</button>
     <p class="hint">${tr('orTapLink')}</p>
     <div class="sheet-foot"><button class="btn" id="cdAgain">${tr('sendAgain')}</button><button class="btn" id="cdX">${tr('close')}</button></div>`);
@@ -18038,6 +18081,9 @@ function codeSheet(email){
     catch (e){ $('#cdGo').disabled = false; toast(e.status === 403 || e.status === 400 ? tr('codeWrong') : tr('sendFailed')); }
   };
   $('#cdGo').onclick = go;
+  const clean = v => (v || '').replace(/\D/g, '');
+  $('#cdIn').addEventListener('input', e => { const d = clean(e.target.value); if (d !== e.target.value) e.target.value = d; if (e.inputType === 'insertFromPaste' && (d.length === 6 || d.length === 8)) go(); });
+  if ($('#cdPaste')) $('#cdPaste').onclick = async () => { try { const d = clean(await navigator.clipboard.readText()); if (d.length >= 6){ $('#cdIn').value = d.slice(0, 10); go(); } else toast(tr('noCodeCopied')); } catch { $('#cdIn').focus(); toast(tr('pasteManually')); } };
   $('#cdIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
   $('#cdWrong').onclick = () => { closeSheet(); cloudSheet(); };
   $('#cdAgain').onclick = async () => { try { await sendLoginLink(email); toast(tr('sentAgain')); } catch (er){ toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); } };
@@ -18241,7 +18287,7 @@ function feedbackSheet(){
   };
 }
 
-Object.assign(STR.en, {cloudMenu: 'Household & sync', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
+Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
   email: 'E-mail', emailWhy: 'Only used to log in. No password, no newsletters.', sendLink: 'Send login link', checkMail: 'Check your e-mail', linkSent: e => `We sent a login link to ${e}.`, linkSamePhone: 'Open the link on this phone. It can take a minute – check the spam folder too.',
   tooMany: 'Too many links sent just now – try again in a while.', sendFailed: 'Couldn’t send. Try again.', loginFailed: 'Login didn’t work.', loggedIn: 'You’re logged in.', loggedOut: 'Logged out. Your things are still on this phone.', loginAgain: 'Log in again to keep syncing.',
   loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded encrypted. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
@@ -18254,7 +18300,7 @@ Object.assign(STR.en, {cloudMenu: 'Household & sync', cloudTitle: 'Share with yo
   statsToast: 'Storrrage sends anonymous usage stats – never your things.', statsWhat: 'Settings',
   feedback: 'Give feedback', feedbackIntro: 'What’s good, what’s annoying, what’s missing? We read everything.', fbIdea: 'Idea', fbBug: 'Something’s wrong', fbLove: 'I like', fbPh: 'Write here…', fbContact: 'E-mail, if you want an answer', optional: 'optional',
   fbPrivacy: 'Sent without your account. App version and which screen you were on are included.', send: 'Send', fbThanks: 'Thanks! 💜', offlineSend: 'No signal – try again when you’re online.', ok: 'OK'});
-Object.assign(STR.sv, {cloudMenu: 'Hushåll & synk', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
+Object.assign(STR.sv, {cloudMenu: 'Konto & delning', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
   email: 'E-post', emailWhy: 'Används bara för inloggning. Inget lösenord, inga nyhetsbrev.', sendLink: 'Skicka inloggningslänk', checkMail: 'Kolla din e-post', linkSent: e => `Vi har skickat en inloggningslänk till ${e}.`, linkSamePhone: 'Öppna länken på den här telefonen. Det kan ta en minut – kolla skräpposten också.',
   tooMany: 'För många länkar skickade just nu – försök igen om en stund.', sendFailed: 'Kunde inte skicka. Försök igen.', loginFailed: 'Inloggningen fungerade inte.', loggedIn: 'Du är inloggad.', loggedOut: 'Utloggad. Dina saker finns kvar på telefonen.', loginAgain: 'Logga in igen för att fortsätta synka.',
   loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp krypterat. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
@@ -18391,6 +18437,17 @@ Object.assign(STR.sv, {moveLocalQ: n => `Telefonen har lådor och saker (${n} st
 
 Object.assign(STR.en, {notSharedYet: 'Your storage isn’t saved in your account yet.', creatingInvite: 'Creating the invite…', inviteFailed: 'Couldn’t create the invite.'});
 Object.assign(STR.sv, {notSharedYet: 'Ditt förråd är inte sparat i kontot än.', creatingInvite: 'Skapar inbjudan…', inviteFailed: 'Kunde inte skapa inbjudan.'});
+
+Object.assign(STR.en, {pasteCode: 'Paste code', noCodeCopied: 'No code copied – copy the digits in the e-mail first.', pasteManually: 'Long-press the field and choose Paste.',
+  nameQ: 'What’s your name?', next: 'Next', hiName: n => `Hi ${n}!`, placeQ: 'What do you call the place where you store things?', kitQ: 'How do you want to start?',
+  kitYes: 'Start kit', kitYesSub: '10 common boxes along three walls – rename or remove as you like', kitNo: 'Start empty', kitDone: 'Your start kit is ready. Tap a box to fill it.',
+  zoneLeft: 'Left wall', zoneBack: 'Back wall', zoneRight: 'Right wall',
+  kitXmas: 'Christmas', kitEaster: 'Easter & holidays', kitTools: 'Tools', kitCamping: 'Camping', kitSport: 'Sports', kitKidsClothes: 'Kids’ clothes', kitBooks: 'Books', kitCables: 'Cables & electronics', kitKitchen: 'Kitchen & china', kitMisc: 'Miscellaneous'});
+Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod kopierad – kopiera siffrorna i mejlet först.', pasteManually: 'Håll inne i fältet och välj Klistra in.',
+  nameQ: 'Vad heter du?', next: 'Nästa', hiName: n => `Hej ${n}!`, placeQ: 'Vad kallar du platsen där du förvarar saker?', kitQ: 'Hur vill du börja?',
+  kitYes: 'Startkit', kitYesSub: '10 vanliga lådor längs tre väggar – byt namn eller ta bort som du vill', kitNo: 'Börja tomt', kitDone: 'Ditt startkit är klart. Tryck på en låda för att fylla den.',
+  zoneLeft: 'Vänster vägg', zoneBack: 'Bakre väggen', zoneRight: 'Höger vägg',
+  kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
 /* ---------- start ---------- */
 async function init(){
   render();
