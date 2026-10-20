@@ -865,6 +865,53 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 .fblist{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto}
 .fbrow{border-bottom:1px solid var(--line);padding:6px 0}.fbrow small{color:var(--muted);font-size:.7rem}.fbrow p{margin:3px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .fbrow a{font-size:.78rem;color:var(--primary)}
+
+/* ===== 2026-10-20.4: one button style everywhere ===== */
+.btn{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;font-weight:600}
+.btn.primary,.btn.big{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.quiet{border-color:var(--line);background:var(--surface);color:var(--ink)}
+.btn.danger{border-color:var(--danger);color:var(--danger);background:transparent}
+.row{border:1.5px solid var(--line);border-radius:10px;color:var(--ink)}
+.chipbtn.on{background:var(--primary);border-color:var(--primary)}
+.seg button.on{background:var(--primary);color:#fff}
+.tabbar{grid-template-columns:repeat(3,1fr)}
+.burger{position:relative}.burger .dot{top:2px;right:0}
+/* welcome: name and Get started close together */
+.welcome .wform{display:flex;flex-direction:column;gap:8px}
+.welcome .wform .btn{margin-top:0}
+/* menu */
+.menuhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.menuhead h3{margin:0}
+.mlist{gap:2px}
+.mrow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 6px;border:none;border-bottom:1px solid var(--line);background:none;color:var(--ink);text-align:left;font-size:.95rem;font-weight:500}
+.mrow .mi{width:24px;display:grid;place-items:center;flex:none;font-size:1.05rem;color:var(--primary)}
+.mrow .mi svg{width:20px;height:20px}
+.mrow .ml{flex:1;min-width:0}
+.mrow em{font-style:normal;color:var(--primary);font-weight:700}
+.count{background:var(--dot);color:#fff;border-radius:999px;padding:1px 8px;font-size:.75rem;font-weight:700}
+.count.muted{background:var(--lav-2);color:var(--ink)}
+.row .count{margin-left:auto}
+.loginbox{background:var(--lav-3);border-radius:12px;padding:10px 12px;margin:10px 0}
+.loginbox .hint{margin:0 0 8px}
+/* household */
+.prow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.prow small{color:var(--muted);font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .online{color:#2FBF71}
+/* presence */
+.presence{margin:6px 0 8px;padding:7px 10px;border-radius:10px;background:rgba(249,127,38,.1);color:var(--ink);font-size:.84rem}
+.herebadge{position:absolute;bottom:4px;right:4px;width:18px;height:18px;border-radius:50%;background:var(--dot);color:#fff;font-size:.62rem;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--bg)}
+/* chat */
+.chathead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chathead h3{margin:0;font-size:1rem}
+.vlog.chat{min-height:180px;max-height:46vh;overflow-y:auto;padding:8px;border-radius:12px;background:var(--lav-3);margin:8px 0}
+.chatbar{display:flex;gap:8px;align-items:center}
+.chatbar .input{flex:1;min-width:0;padding:10px 12px}
+.chatbar .btn{flex:none;padding:10px 14px}
+.micround{flex:none;width:46px;height:46px;border-radius:50%;border:none;background:var(--primary);color:#fff;display:grid;place-items:center}
+.micround svg{width:22px;height:22px}
+.micround.on{background:var(--dot);animation:hlpulse 1.2s ease-in-out infinite}
+.aistat{font-size:.76rem;color:var(--muted);margin:6px 0 0}
+.chathead .chips{flex-wrap:nowrap;flex:none;gap:4px}
 </style>
 </head>
 <body>
@@ -872,7 +919,7 @@ body.ldragging{-webkit-user-select:none;user-select:none}
   <button class="backbtn" id="backBtn" aria-label="Back" hidden>‹</button>
   <button class="logo" id="logoBtn" aria-label="Storrrage"></button>
   <button class="spacebtn" id="spaceBtn" aria-haspopup="dialog"></button>
-  <button class="burger" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="2.6" rx="1.3"/><rect x="3" y="10.7" width="18" height="2.6" rx="1.3"/><rect x="3" y="16.4" width="18" height="2.6" rx="1.3"/></svg></button>
+  <button class="burger" id="menuBtn" aria-label="Menu"><i class="dot" id="menuDot" hidden></i><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="2.6" rx="1.3"/><rect x="3" y="10.7" width="18" height="2.6" rx="1.3"/><rect x="3" y="16.4" width="18" height="2.6" rx="1.3"/></svg></button>
 </header>
 <p class="statusline" id="statusline" hidden></p>
 <main id="app" class="wrap"></main>
@@ -881,7 +928,6 @@ body.ldragging{-webkit-user-select:none;user-select:none}
   <button data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg><span class="tl">Active</span></button>
   <button data-tab="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span class="tl">Search</span></button>
   <button data-tab="add" class="addtab"><span class="plus" aria-hidden="true">+</span><span class="tl">Add</span></button>
-  <button data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5"/><path d="M3.5 21c.6-4.6 4.1-7.5 8.5-7.5s7.9 2.9 8.5 7.5z"/></svg><span class="tl">Profile</span><i class="dot" id="profileDot" hidden></i></button>
 </nav>
 <dialog id="sheet"></dialog>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -13296,7 +13342,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-20.3';
+const APP_VERSION = '2026-10-20.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13333,7 +13379,7 @@ const phGet = k => tx('photos', 'readonly', s => s.get(k));
 const phDel = k => phDelRaw(k).then(r => { markDirty('p:' + k); return r; });
 const metaGet = k => tx('meta', 'readonly', s => s.get(k));
 const SYNC_META = ['places', 'household', 'trash', 'boxOrder'];
-const metaPut = (k, v) => metaPutRaw(k, v).then(r => { if (SYNC_META.includes(k)) markDirty('m:' + k); return r; });
+const metaPut = (k, v) => metaPutRaw(k, v).then(r => { if (SYNC_META.includes(k)) markDirty('m:' + k); if (k === 'me') markMe(); return r; });
 const noteAll = () => tx('notes', 'readonly', s => s.getAll());
 const notePut = n => tx('notes', 'readwrite', s => s.put(n));
 const noteDel = id => tx('notes', 'readwrite', s => s.delete(id));
@@ -14120,7 +14166,7 @@ function parentView(v){
   if (v.name === 'mapfocus') return v.back || {name: 'home', place: v.place};
   if (v.name === 'collection') return {name: 'search'};
   if (v.name === 'profile' && v.sub) return {name: 'profile'};
-  if (v.name === 'search' || v.name === 'profile') return {name: 'home', place: currentPlace};
+  if (v.name === 'search' || v.name === 'profile' || v.name === 'settings') return {name: 'home', place: currentPlace};
   if (v.name === 'home' && places.length > 1 && (v.place || currentPlace) !== 'all') return {name: 'home', place: 'all'};
   return null;
 }
@@ -14144,6 +14190,7 @@ function goBack(){
 function arm(){ if (armed || !(prevView() || parentView())) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
 function go(v){
   leaveItemPage();
+  if (typeof presenceSoon === 'function') presenceSoon();
   if (v.name !== view.name) track('view', {v: v.name});
   quickAddFor = null;
   if (selecting && !(v.name === view.name && v.boxId === view.boxId && v.tag === view.tag)) selecting = null;
@@ -14203,12 +14250,13 @@ function render(){
   else if (view.name === 'collection') renderCollection(view.tag);
   else if (view.name === 'mapfocus') renderPlace(view.place, true);
   else if (view.name === 'profile') renderProfile();
+  else if (view.name === 'settings') renderSettings();
   else if (currentPlace !== 'all' && findPlace(currentPlace)) renderPlace(currentPlace);
   else renderSpace();
-  const tab = view.name === 'search' ? 'search' : view.name === 'profile' ? 'profile' : 'home';
+  const tab = view.name === 'search' ? 'search' : ['profile', 'settings'].includes(view.name) ? '' : 'home';
   if (!['box', 'search', 'collection'].includes(view.name)) document.body.classList.remove('selecting');
   document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr('tab_' + b.dataset.tab); });
-  const pdot = $('#profileDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
+  const pdot = $('#menuDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
 }
@@ -14309,7 +14357,7 @@ function shelfTile(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
   return `<button class="itile btile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">
-    <span class="timg">${boxArt(boxNum(b))}<span class="bcount">${n}</span>${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
+    <span class="timg">${boxArt(boxNum(b))}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
     <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span></span></button>`;
 }
 /* the freshness dot only shows when a box is about to stop being "fresh" (not checked for ~5 months) */
@@ -14381,6 +14429,7 @@ function renderBox(b){
   app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>↗ <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
     ${askOut ? `<div class="askout"><span>${esc(tr('askOut', hlIt.name))}</span><span class="fhbtns"><button class="btn primary small" data-askout="temp">${tr('yesTemp')}</button><button class="btn quiet small" data-askout="gone">${tr('yesGone')}</button><button class="btn quiet small" data-askout="no">${tr('no')}</button></span></div>` : ''}
     ${hlIt ? `<div class="findhint"><span>🔎 <b>${esc(hlIt.name)}</b> ${tr('isHere')}</span><span class="fhbtns"><button class="btn primary small" data-item="${esc(hlIt.id)}" data-box="${esc(b.id)}" data-open-item="1">${tr('openItem')}</button><button class="btn quiet small" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? hlIt.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button></span></div>` : ''}
+    ${presenceNote(b.id)}
     <div class="bhead">
       ${b.loose ? `<h1 class="btitle"><span class="bname">${tr('notInBox')}</span></h1>` : `<h1 class="btitle"><span class="bcode">${esc(b.code)}</span><span class="bname">${esc(b.name)}</span></h1>`}
       <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}${nOut ? ` · <b class="outsum">↗ ${esc(tr('outOfN', nOut, items.length))}</b>` : ''}</p>
@@ -14740,8 +14789,8 @@ function renderWelcome(){
     <div class="logobig">${logoSVG()}</div>
     <h1>Storrrage</h1>
     <p>${tr('welcome')}</p>
-    <input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name">
-    <button class="btn primary block" id="wGo">${tr('getStarted')}</button>
+    <div class="wform"><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name">
+    <button class="btn primary block" id="wGo">${tr('getStarted')}</button></div>
     <p class="hint center">${tr('noAccount')}</p>
     <p class="center"><button class="linkbtn" id="wLogin">${tr('haveHousehold')}</button></p></div>`;
   $('#wLogin').onclick = () => cloudSheet();
@@ -14762,62 +14811,32 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-lang
 
 function renderProfile(){
   const sub = view.sub || '', due = dueItems();
+  const back = [{label: tr('profile').toUpperCase(), nav: {name: 'profile'}}];
   if (!sub){
-    app.innerHTML = `${crumbs([{label: possessive() + ' ' + tr('storrrage')}])}
+    const nN = due.length + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length;
+    app.innerHTML = `${crumbs([{label: tr('profile').toUpperCase()}])}
+      <div class="fl" style="margin-top:14px"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
+      <p class="proof">${tr('nameShown')}</p>
+      ${cloud.session ? `<div class="fl"><input value="${esc(cloud.email || '')}" disabled><label class="always">${tr('loginEmail')}</label></div>
+        <label class="check"><input type="checkbox" id="pfMail" ${prof.notify_email ? 'checked' : ''}> ${tr('mailReminders')}</label>
+        <div class="fl" id="pfAltWrap" ${prof.notify_email ? '' : 'hidden'}><input id="pfAlt" type="email" inputmode="email" value="${esc(prof.contact_email || '')}" placeholder="${esc(cloud.email || '')}"><label class="always">${tr('otherEmail')}</label></div>
+        <p class="proof">${tr('mailHint')}</p>`
+      : `<div class="loginbox"><p class="hint">${tr('loginForMore')}</p><button class="btn primary" data-m="cloud">${tr('logIn')}</button></div>`}
       <div class="list">
-        <button class="row" data-sub="profile">${ICON.user}<span>${tr('profile')}</span></button>
-        <button class="row" data-sub="settings">${ICON.gear}<span>${tr('settings')}</span></button>
-        <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}${due.length ? '<i class="dot inline"></i>' : ''}</span>${due.length ? `<b class="count">${due.length}</b>` : ''}</button>
+        <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}</span>${nN ? `<b class="count">${nN}</b>` : ''}</button>
         <button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>
-      </div>
-      <div class="field"><span>${tr('language')}</span>${langSwitch()}</div>
-      <p class="proof center">${tr('version', APP_VERSION)}</p>`;
-    return;
-  }
-  const back = [{label: possessive() + ' ' + tr('storrrage'), nav: {name: 'profile'}}];
-  if (sub === 'profile'){
-    app.innerHTML = `${crumbs([...back, {label: tr('profile').toUpperCase()}])}
-      <div class="fl"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
-      <h2 class="section">${tr('household')}</h2>
-      <div id="plist2"></div>
-      <div class="vtype"><input class="input" id="pName2" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn primary" id="pAdd2">${tr('add')}</button></div>
-      <p class="proof">${tr('householdHint')}</p>`;
-    const draw = () => { $('#plist2').innerHTML = household.length ? household.map((n, i) => `<div class="prow"><span>${esc(n)}${n === me ? ' ' + tr('you') : ''}</span>${n === me ? '' : `<button class="linkbtn" data-pdel="${i}">${tr('remove')}</button>`}</div>`).join('') : `<p class="hint">${tr('noOne')}</p>`; };
-    draw();
-    $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); draw(); });
-    const add = () => { const n = addPerson($('#pName2').value); $('#pName2').value = ''; if (n) draw(); };
-    $('#pAdd2').onclick = add; $('#pName2').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
-    $('#plist2').onclick = e => { const d = e.target.closest('[data-pdel]'); if (!d) return; household.splice(+d.dataset.pdel, 1); metaPut('household', household).catch(() => {}); draw(); };
-    return;
-  }
-  if (sub === 'settings'){
-    app.innerHTML = `${crumbs([...back, {label: tr('settings').toUpperCase()}])}
-      <div class="field" style="margin-top:14px"><span>${tr('language')}</span>${langSwitch()}</div>
-      <div class="list">
-        <button class="row" data-m="ai"><span>${tr('aiAssistant')}</span><em>${ai.provider === 'off' ? tr('off') : esc(AI_LABEL[ai.provider])}</em></button>
-        <button class="row" data-m="places"><span>${tr('storagePlaces')}</span><em>${places.length}</em></button>
-        <button class="row" data-m="backup"><span>${tr('backupNow')}</span><em>${lastBackup ? esc(fmtDate(lastBackup)) : tr('never')}</em></button>
-        <button class="row" data-m="import"><span>${tr('restore')}</span></button>
-        <button class="row" data-m="export"><span>${tr('export')}</span><em>Excel · Word · PDF</em></button>
-        <button class="row" data-m="report"><span>${tr('insurance')}</span></button>
-        <button class="row" data-m="labels"><span>${tr('labelsAll')}</span></button>
-        <button class="row" data-m="scan"><span>${tr('scanLabel')}</span></button>
-      </div>
-      <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
-      <label class="check"><input type="checkbox" id="statsChk" ${statsOn ? 'checked' : ''}> ${tr('statsSetting')}</label><p class="proof">${tr('statsHint')}</p>
-      <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
-      <p class="proof center" id="usage"></p>`;
-    $('#statsChk').onchange = e => { statsOn = e.target.checked; metaPutRaw('statsOn', statsOn).catch(() => {}); if (!statsOn) evq = []; };
-    $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
-    $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
-    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr('usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
+      </div>`;
+    $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); });
+    if ($('#pfMail')){
+      $('#pfMail').onchange = e => { prof.notify_email = e.target.checked; $('#pfAltWrap').hidden = !prof.notify_email; saveProfile(); };
+      $('#pfAlt').onchange = e => { prof.contact_email = e.target.value.trim() || null; saveProfile(); };
+    }
     return;
   }
   if (sub === 'notifications'){
     const late = outItems().filter(([it]) => outOverdue(it));
     const lateBoxes = realBoxes().filter(boxOutLate), sug = nudges();
     app.innerHTML = `${crumbs([...back, {label: tr('notifications').toUpperCase()}])}
-      ${backupBanner()}
       ${sug.length ? `<h2 class="section">${tr('suggestions')}</h2>${sug.map(n => nudgeCard(n)).join('')}` : ''}
       ${lateBoxes.length ? `<h2 class="section">${tr('backQ')}</h2><div class="shelf">${lateBoxes.map(shelfTile).join('')}</div>` : ''}
       ${late.length ? `<h2 class="section">${tr('backQ')}</h2><div class="dues">${late.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
@@ -14837,6 +14856,36 @@ function renderProfile(){
       <div class="row static">${ICON.star}<span>${tr('prem3')}</span></div></div>
       <p class="hint center">${tr('premLater')}</p>`;
   }
+}
+/* settings: one place for everything that isn't profile or household */
+let theme = 'system';
+function applyTheme(){
+  const r = document.documentElement;
+  if (theme === 'system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', theme);
+  const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#17151F' : '#FFFFFF';
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+function renderSettings(){
+  const seg = (cur, opts, attr) => `<div class="seg">${opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" ${attr}="${v}">${l}</button>`).join('')}</div>`;
+  app.innerHTML = `${crumbs([{label: tr('settings').toUpperCase()}])}
+    <div class="field" style="margin-top:14px"><span>${tr('appearance')}</span>${seg(theme, [['light', tr('light')], ['dark', tr('dark')], ['system', tr('auto')]], 'data-theme-set')}</div>
+    <div class="list">
+      <button class="row" data-m="ai"><span>${tr('aiAssistant')}</span><em>${ai.provider === 'off' ? tr('off') : esc(AI_LABEL[ai.provider])}</em></button>
+      <button class="row" data-m="export"><span>${tr('export')}</span><em>Excel · Word · PDF</em></button>
+      <button class="row" data-m="report"><span>${tr('insurance')}</span></button>
+      <button class="row" data-m="labels"><span>${tr('labelsAll')}</span></button>
+    </div>
+    <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
+    <label class="check"><input type="checkbox" id="statsChk" ${statsOn ? 'checked' : ''}> ${tr('statsSetting')}</label><p class="proof">${tr('statsHint')}</p>
+    <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
+    <details class="more"><summary>${tr('advanced')}</summary><div class="list"><button class="row" data-m="import"><span>${tr('restore')}</span></button></div><p class="proof">${tr('restoreHint')}</p></details>
+    <p class="proof center" id="usage"></p>`;
+  app.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => { theme = b.dataset.themeSet; metaPutRaw('theme', theme).catch(() => {}); applyTheme(); track('theme', {v: theme}); render(); });
+  $('#statsChk').onchange = e => { statsOn = e.target.checked; metaPutRaw('statsOn', statsOn).catch(() => {}); if (!statsOn) evq = []; };
+  $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
+  $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
+  if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr(cloud.hid ? 'usageSync' : 'usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
 }
 /* ---------- item page: name under the photo, place as a field, optional details ---------- */
 let itemDraft = null, flushItem = null, shownOpt = new Set(), shownFor = null;
@@ -14926,6 +14975,7 @@ function renderItem(){
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
   app.innerHTML = `${crumbs(crumbParts)}
+    ${presenceNote(b.id, it.id)}
     <div class="hero">
       ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
       <label class="cam" aria-label="Photo">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
@@ -15877,7 +15927,8 @@ app.addEventListener('pointerdown', e => {
 app.addEventListener('pointermove', e => { if (lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) clearTimeout(lpTimer); });
 app.addEventListener('contextmenu', e => { if (e.target.closest('[data-lp], .crate, .ltoken, .mtoken')) e.preventDefault(); });
 
-function backupBanner(){
+function backupBanner(){ return ''; }
+function backupBannerOld(){
   const items = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   if (!items) return '';
   const days = lastBackup ? (Date.now() - new Date(lastBackup)) / 864e5 : Infinity;
@@ -16049,6 +16100,7 @@ document.querySelector('.tabbar').addEventListener('click', e => {
   if (b.dataset.tab === 'search'){ navigate({name: 'search'}); setTimeout(() => { const s = $('#q'); if (s) s.focus(); }, 50); return; }
   navigate({name: 'profile'});
 });
+/* the dot on the menu button: something needs attention */
 $('#logoBtn').innerHTML = logoSVG();
 $('#logoBtn').onclick = () => goHome(null);
 $('#backBtn').onclick = () => goBack();
@@ -16427,7 +16479,7 @@ function logLine(who, text, action){
 function drawLog(){
   const el = $('#vlog'); if (!el) return;
   el.innerHTML = voiceLog.map((l, i) => `<div class="vl ${l.who}">${l.src ? `<span class="src ${l.src}">${l.src === 'ai' ? 'AI' : 'Simple'}</span>` : ''}${esc(l.text)}${l.action ? `<br><button class="btn quiet" data-vact="${i}">${esc(l.action.label)}</button>` : ''}</div>`).join('')
-    || `<p class="hint">${L() === 'sv' ? 'Tryck på knappen och säg vad du gör, till exempel “öppna låda 3”.' : 'Tap the button and say what you’re doing, for example “open box 3”.'}</p>`;
+    || `<p class="hint">${L() === 'sv' ? 'Tryck på mikrofonen och prata, eller skriv. Till exempel “öppna låda 3” eller “var är tältet?”.' : 'Tap the microphone and talk, or type. For example “open box 3” or “where is the tent?”.'}</p>`;
   el.scrollTop = el.scrollHeight;
 }
 let speakOn = true;
@@ -16936,7 +16988,8 @@ const SILENCE_CHOICES = [[2000, '2 s'], [4000, '4 s'], [7000, '7 s'], [0, 'When 
 function setMic(state){
   const btn = $('#micBtn'); if (!btn) return;
   btn.classList.toggle('on', state === 'on');
-  btn.textContent = state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck när du är klar' : 'Listening… tap when you’re done') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak');
+  btn.setAttribute('aria-label', state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck när du är klar' : 'Listening… tap when you’re done') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak'));
+  if (state === 'on') showLive(L() === 'sv' ? 'Lyssnar…' : 'Listening…');
 }
 function showLive(text){ const el = $('#vLive'); if (!el) return; el.textContent = text; el.hidden = !text; }
 function stopListening(){
@@ -17078,42 +17131,29 @@ async function toggleRecord(){
 }
 
 function voiceSheet(){
-  openSheet(`<h3>${tr('talkH')}</h3>
+  openSheet(`<div class="chathead"><h3>${tr('talkH')}</h3><span class="chips" style="margin:0"><button type="button" class="chipbtn small" data-lang="sv-SE">SV</button><button type="button" class="chipbtn small" data-lang="en-US">EN</button></span></div>
     <p class="hint" id="vCtx"></p>
-    <p class="aistat" id="vAI"></p>
-    <div class="vlog" id="vlog" aria-live="polite"></div>
+    <div class="vlog chat" id="vlog" aria-live="polite"></div>
     <div class="vlive" id="vLive" hidden></div>
-    ${SR ? '<button class="mic" id="micBtn"></button>' : `<p class="hint">${tr('noSR')}</p>`}
-    <div class="vtype"><input id="vText" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend">${tr('send')}</button></div>
-    <div class="vrow">
-      <button class="btn quiet" id="recBtn"></button>
-      <span class="chips" style="margin:0"><button type="button" class="chipbtn" data-lang="sv-SE">Svenska</button><button type="button" class="chipbtn" data-lang="en-US">English</button></span>
-    </div>
-    <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> ${tr('readAloud')}</label>
-    ${SR ? `<div class="field"><span>${tr('pause')}</span><div class="chips" id="vPause">${SILENCE_CHOICES.map(([ms, l]) => `<button type="button" class="chipbtn${ms === silenceMs ? ' on' : ''}" data-ms="${ms}">${l}</button>`).join('')}</div></div>` : ''}
-    <details class="more"><summary>${tr('whatSay')}</summary><ul class="help" id="vHelp"></ul></details>
-    <details class="more"><summary>${tr('noSignal')}</summary><p class="hint">${tr('noSignalTxt')}</p></details>
-    <div class="sheet-foot"><button class="btn" id="vClose">${tr('close')}</button></div>`, () => { stopListening(); if (rec) rec.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); });
+    <div class="chatbar">${SR ? `<button class="micround" id="micBtn" aria-label="${esc(tr('tapTalk'))}">${ICON.mic}</button>` : ''}<input id="vText" class="input" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend" aria-label="${esc(tr('send'))}">➤</button></div>
+    <p class="aistat" id="vAI"></p>
+    <details class="more"><summary>${tr('whatSay')}</summary><ul class="help" id="vHelp"></ul><p class="hint"><b>${tr('noSignal')}</b> ${tr('noSignalTxt2')}</p>
+      <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> ${tr('readAloud')}</label></details>
+    <div class="sheet-foot"><button class="btn" id="vClose">${tr('close')}</button></div>`, () => { stopListening(); if (window.speechSynthesis) speechSynthesis.cancel(); });
   const drawLang = () => {
     sheet.querySelectorAll('[data-lang]').forEach(c => c.classList.toggle('on', c.dataset.lang === voiceLang));
     $('#vHelp').innerHTML = HELP[L()].map(h => `<li>“${esc(h)}”</li>`).join('');
-    $('#vText').placeholder = vPlaceholder(); setMic('off'); drawLog();
+    $('#vText').placeholder = tr('chatPh'); setMic('off'); drawLog();
   };
-  drawLang(); updateCtx(); updRecBtn();
-  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? `${lang === 'sv' ? 'Enkla kommandon.' : 'Simple commands.'} <button class="linkbtn" id="vAIset">${lang === 'sv' ? 'Slå på AI' : 'Turn on AI'}</button>` : `AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : (lang === 'sv' ? ' (offline, enkla kommandon)' : ' (offline, using simple commands)')}. <button class="linkbtn" id="vAIset">${tr('settings')}</button>`; $('#vAIset').onclick = aiSheet; };
+  drawLang(); updateCtx();
+  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? `${tr('simpleMode')} · <button class="linkbtn" id="vAIset">${tr('aiOn')}</button>` : `✨ AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : ' · ' + tr('offlineSimple')} · <button class="linkbtn" id="vAIset">${tr('settings')}</button>`; $('#vAIset').onclick = aiSheet; };
   drawAI();
-  if (SR) $('#micBtn').onclick = listen;
-  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()) handleBatch(x); };
-  if (SR) $('#vPause').onclick = e => {
-    const c = e.target.closest('[data-ms]'); if (!c) return;
-    silenceMs = +c.dataset.ms; metaPut('silenceMs', silenceMs).catch(() => {});
-    $('#vPause').querySelectorAll('[data-ms]').forEach(x => x.classList.toggle('on', +x.dataset.ms === silenceMs));
-  };
+  if (SR) $('#micBtn').onclick = () => { track('voice'); listen(); };
+  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()){ track('chat'); handleBatch(x); } };
   $('#vSend').onclick = send;
   $('#vText').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
-  $('#recBtn').onclick = toggleRecord;
-  $('#vSpeak').onchange = e => { speakOn = e.target.checked; if (!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
-  sheet.querySelector('.vrow').addEventListener('click', e => {
+  $('#vSpeak').onchange = e => { speakOn = e.target.checked; metaPutRaw('speakOn', speakOn).catch(() => {}); if (!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
+  sheet.querySelector('.chathead').addEventListener('click', e => {
     const c = e.target.closest('[data-lang]'); if (!c) return;
     voiceLang = c.dataset.lang; metaPut('voiceLang', voiceLang).catch(() => {}); stopListening(); drawLang();
   });
@@ -17541,24 +17581,24 @@ $('#importFile').addEventListener('change', async e => {
   } catch { toast('That file isn’t a Storrrage backup.'); }
 });
 function menuSheet(){
-  openSheet(`<h3>${tr('menu')}</h3><div class="menu">
-    <div class="field" style="margin:0 0 6px"><span>${tr('language')}</span>${langSwitch()}</div>
-    <button class="btn quiet" data-m="scan">${tr('scanLabel')}</button>
-    <button class="btn quiet" data-m="backup">${tr('backupNow')}</button>
-    <button class="btn quiet" data-m="export">${tr('export')}</button>
-    <button class="btn quiet" data-m="ai">${tr('aiAssistant')}${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
-    <button class="btn quiet" data-m="cloud">${ICON.cloud} ${tr('cloudMenu')}${cloud.hid ? ' ✓' : ''}</button>
-    <button class="btn quiet" data-m="feedback">💬 ${tr('feedback')}</button>
-    ${canInstall() ? `<button class="btn quiet" data-m="install">📲 ${tr('installTitle')}</button>` : ''}
-    ${cloud.admin ? `<button class="btn quiet" data-m="admin">📊 ${tr('adminTitle')}</button>` : ''}
-    <button class="btn quiet" data-m="trash">${ICON.trash} ${tr('trash')}${trash.length ? ` (${trash.length})` : ''}</button>
-    <button class="btn quiet" data-m="settings">${tr('allSettings')}</button>
-    <button class="btn" data-m="close">${tr('close')}</button>
-    <p class="proof center" style="margin:8px 0 0">${tr('version', APP_VERSION)}</p></div>`);
-  sheet.querySelector('.menu').onclick = e => {
+  const nN = dueCount() + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length;
+  const row = (m, icon, label, extra = '') => `<button class="mrow" data-m="${m}"><span class="mi">${icon}</span><span class="ml">${label}</span>${extra}</button>`;
+  openSheet(`<div class="menuhead"><h3>${tr('menu')}</h3>${langSwitch()}</div><div class="menu mlist">
+    ${row('profile', ICON.user, esc(me || tr('profile')), nN ? `<b class="count">${nN}</b>` : '')}
+    ${row('cloud', ICON.cloud, tr('cloudMenu'), cloud.hid ? '<em>✓</em>' : '')}
+    ${row('scan', '⌗', tr('scanLabel'))}
+    ${row('feedback', '💬', tr('feedback'))}
+    ${canInstall() ? row('install', '📲', tr('installTitle')) : ''}
+    ${row('settings', ICON.gear, tr('settings'))}
+    ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
+    ${cloud.admin ? row('admin', '📊', tr('adminTitle')) : ''}
+    ${cloud.session ? row('logout', '↪', tr('logout')) : ''}
+    <p class="proof center" style="margin:10px 0 0">${tr('version', APP_VERSION)}</p></div>`);
+  sheet.querySelector('.mlist').onclick = e => {
     const m = e.target.closest('[data-m]'); if (!m) return; const k = m.dataset.m;
-    if (k === 'close') return closeSheet();
-    if (k === 'settings'){ closeSheet(); return navigate({name: 'profile', sub: 'settings'}); }
+    if (k === 'settings'){ closeSheet(); return navigate({name: 'settings'}); }
+    if (k === 'profile'){ closeSheet(); return navigate({name: 'profile'}); }
+    if (k === 'logout') return askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(); });
     if (k === 'import') closeSheet();
     settingsAction(k);
   };
@@ -17574,6 +17614,9 @@ const SB_KEY = 'sb_publishable_vn4-GzgYonITq3cV1S5euQ_-ophAXvW';
 const APP_URL = location.origin + location.pathname;
 let cloud = {};            // {session, hid, key, cursor, lastSync, email}
 let cryptoKey = null, dirty = new Set(), syncing = false, syncTimer = null, syncErr = '';
+let memberNames = {}, prof = {}, others = [];
+const myId = () => cloud.session && cloud.session.user && cloud.session.user.id;
+function markMe(){ if (myId()) markDirty('u:' + myId()); }
 
 /* ---------- helpers ---------- */
 function bytesToB64(u8){ let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
@@ -17639,7 +17682,7 @@ async function takeAuthFromUrl(){
   syncErr = '';
   await saveCloud();
   track('login');
-  checkAdmin();
+  checkAdmin(); loadProfile(); markMe();
   toast(tr('loggedIn'));
   if (!cloud.hid){
     try { const mine = await sb('/rest/v1/members?select=household_id&user_id=eq.' + cloud.session.user.id); if (mine && mine[0]){ cloud.hid = mine[0].household_id; await saveCloud(); } } catch {}
@@ -17647,6 +17690,7 @@ async function takeAuthFromUrl(){
 }
 async function logout(){
   try { await sb('/auth/v1/logout', {method: 'POST'}); } catch {}
+  others = []; prof = {};
   cloud = {}; cryptoKey = null; dirty = new Set();
   await saveCloud(); await metaPutRaw('syncDirty', []).catch(() => {});
   toast(tr('loggedOut')); render();
@@ -17656,7 +17700,7 @@ async function logout(){
 async function createHousehold(){
   cloud.hid = await rpc('create_household');
   await newKey(); cloud.cursor = null; await saveCloud();
-  markEverything();
+  markEverything(); markMe();
   track('household_create');
   await syncNow();
 }
@@ -17678,6 +17722,7 @@ async function joinFromLink(text){
     await pull(true);
     if (keep) await mergeLocal(mine);
     else if (!places.length){ places = mine.places.slice(0, 1); await metaPut('places', places); }
+    markMe();
     track('household_join', {kept: keep});
     if (view.name === 'welcome'){ metaPutRaw('onboarded', true).catch(() => {}); view = {name: 'home', place: 'all'}; }
     toast(tr('joined'));
@@ -17749,6 +17794,7 @@ async function push(){
       continue;
     }
     if (t === 'b'){ const b = findBox(id); rows.push({household_id: cloud.hid, id: k, kind: 'box', payload: b ? await encJSON(b) : '', deleted: !b}); }
+    if (t === 'u'){ if (id === myId()) rows.push({household_id: cloud.hid, id: k, kind: 'member', payload: await encJSON({name: me || ''}), deleted: false}); }
     if (t === 'm'){ const v = metaVal(id); rows.push({household_id: cloud.hid, id: k, kind: 'meta', payload: await encJSON(v ?? null), deleted: false}); }
     done.push(k);
   }
@@ -17777,6 +17823,8 @@ async function applyRecord(r){
     const b = await decJSON(r.payload); const i = boxes.findIndex(x => x.id === b.id);
     if (i < 0) boxes.push(b); else boxes[i] = b;
     await dbPutRaw(b);
+  } else if (t === 'u'){
+    const v = await decJSON(r.payload); memberNames[id] = (v && v.name) || ''; await metaPutRaw('memberNames', memberNames);
   } else if (t === 'm'){
     const v = await decJSON(r.payload); if (v == null) return;
     if (id === 'places') places = v; else if (id === 'household') household = v; else if (id === 'trash') trash = v; else if (id === 'boxOrder') boxOrder = v; else return;
@@ -17796,6 +17844,7 @@ async function cloudInit(){
   dirty = new Set(await metaGet('syncDirty').catch(() => null) || []);
   statsOn = (await metaGet('statsOn').catch(() => undefined)) !== false;
   evq = await metaGet('evq').catch(() => null) || [];
+  memberNames = await metaGet('memberNames').catch(() => null) || {};
   await takeAuthFromUrl();
   await loadKey().catch(() => {});
   const pj = await metaGet('pendingJoin').catch(() => null);
@@ -17804,7 +17853,7 @@ async function cloudInit(){
     else setTimeout(() => { toast(tr('loginToJoin')); cloudSheet(); }, 300);
   }
   if (cloud.hid && cloud.session) scheduleSync(500);
-  checkAdmin();
+  checkAdmin(); loadProfile(); presenceTick();
 }
 setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(300); else { flushEvents(true); if (dirty.size) syncNow(); } });
@@ -17820,55 +17869,111 @@ function syncText(){
   return cloud.lastSync ? tr('syncedAt', fmtStamp(cloud.lastSync)) : '';
 }
 function updateCloudLine(){ const el = $('#cloudLine'); if (el) el.textContent = syncText(); }
+function loginForm(){
+  return `<label class="field"><span>${tr('email')}</span><input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se" value="${esc(cloud.email || '')}"></label>
+    <p class="proof">${tr('emailWhy')}</p><button class="btn primary block" id="clSend">${tr('sendLink')}</button>`;
+}
+function wireLogin(){
+  const b = $('#clSend'); if (!b) return;
+  b.onclick = async () => {
+    const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)) return $('#clEmail').focus();
+    b.disabled = true;
+    try { await sendLoginLink(e); cloud.email = e; await saveCloud(); sheet.querySelector('.sheet').innerHTML = `<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('linkSent', e))}</p><p class="hint">${tr('linkSamePhone')}</p><div class="sheet-foot"><button class="btn primary" id="clOk">${tr('ok')}</button></div>`; $('#clOk').onclick = closeSheet; }
+    catch (er){ b.disabled = false; toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); }
+  };
+}
 async function cloudSheet(){
-  if (!cloud.session){
-    openSheet(`<h3>${ICON.cloud} ${tr('cloudTitle')}</h3><p class="hint">${tr('cloudIntro')}</p>
-      <label class="field"><span>${tr('email')}</span><input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se" value="${esc(cloud.email || '')}"></label>
-      <p class="proof">${tr('emailWhy')}</p>
-      <div class="sheet-foot"><button class="btn quiet" id="clX">${tr('close')}</button><button class="btn primary" id="clSend">${tr('sendLink')}</button></div>`);
-    $('#clX').onclick = closeSheet;
-    $('#clSend').onclick = async () => {
-      const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)) return $('#clEmail').focus();
-      $('#clSend').disabled = true;
-      try { await sendLoginLink(e); cloud.email = e; await saveCloud(); sheet.querySelector('.sheet').innerHTML = `<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('linkSent', e))}</p><p class="hint">${tr('linkSamePhone')}</p><div class="sheet-foot"><button class="btn primary" id="clOk">${tr('ok')}</button></div>`; $('#clOk').onclick = closeSheet; }
-      catch (er){ $('#clSend').disabled = false; toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); }
-    };
-    return;
-  }
-  if (!cloud.hid){
-    openSheet(`<h3>${ICON.cloud} ${tr('cloudTitle')}</h3><p class="hint">${esc(tr('loggedInAs', cloud.email || ''))}</p>
-      <div class="menu"><button class="btn primary" id="clCreate">${tr('createHousehold')}</button><p class="proof">${tr('createHint')}</p>
-      <button class="btn quiet" id="clJoin">${tr('joinHousehold')}</button><p class="proof">${tr('joinHint')}</p>
-      <button class="btn quiet" id="clOut">${tr('logout')}</button><button class="btn" id="clX">${tr('close')}</button></div>`);
-    $('#clCreate').onclick = async () => { $('#clCreate').disabled = true; try { await createHousehold(); toast(tr('householdCreated')); cloudSheet(); } catch (e){ $('#clCreate').disabled = false; toast(tr('syncFailed')); } };
-    $('#clJoin').onclick = () => scanSheet();
-    $('#clOut').onclick = () => { closeSheet(); logout(); };
-    $('#clX').onclick = closeSheet;
-    return;
-  }
-  let n = 0; try { n = (await sb('/rest/v1/members?select=user_id&household_id=eq.' + cloud.hid)).length; } catch {}
-  openSheet(`<h3>${ICON.cloud} ${tr('yourHousehold')}</h3>
-    <p class="hint">${esc(tr('membersN', n || 1))} · ${esc(cloud.email || '')}</p>
-    <p class="proof" id="cloudLine">${esc(syncText())}</p>
-    <p class="hint">🔒 ${tr('e2eNote')}</p>
-    <div class="menu"><button class="btn primary" id="clInvite">${tr('invite')}</button>
-    <div id="clQR"></div>
-    <button class="btn quiet" id="clSync">${tr('syncNow')}</button>
-    <button class="btn quiet" id="clOut">${tr('logout')}</button><button class="btn" id="clX">${tr('close')}</button></div>`);
+  const inApp = [];
+  const placeRows = places.map(p => { const nb = boxesIn(p.id).length; return `<div class="prow"><span>${placeIcon(p)} ${esc(p.name)}</span><small>${tr('boxes_n', nb).toLowerCase()}</small></div>`; }).join('');
+  const extra = () => household.filter(n => n !== me && !Object.values(memberNames).includes(n));
+  openSheet(`<h3>${ICON.cloud} ${tr('cloudMenu')}</h3>
+    ${cloud.hid && cloud.session ? `<p class="proof" id="cloudLine">${esc(syncText())}</p>` : ''}
+    <h4 class="adh">${tr('inApp')}</h4><div id="hhMembers"><div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span><small>${esc(cloud.email || '')}</small></div></div>
+    ${cloud.hid && cloud.session ? `<button class="btn primary block" id="clInvite">${tr('invite')}</button><div id="clQR"></div>` : ''}
+    <h4 class="adh">${tr('morePeople')}</h4><p class="proof" style="margin-top:0">${tr('morePeopleHint')}</p>
+    <div id="hhPeople"></div>
+    <div class="vtype"><input class="input" id="hhName" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn" id="hhAdd">${tr('add')}</button></div>
+    <h4 class="adh">${tr('storagePlaces')}</h4>${placeRows}<button class="btn block" data-m2="places">${tr('editPlaces')}</button>
+    ${!cloud.session ? `<h4 class="adh">${tr('shareTitle')}</h4><p class="hint">${tr('cloudIntro')}</p>${loginForm()}`
+      : !cloud.hid ? `<h4 class="adh">${tr('shareTitle')}</h4><div class="menu"><button class="btn primary" id="clCreate">${tr('createHousehold')}</button><p class="proof">${tr('createHint')}</p>
+        <button class="btn" id="clJoin">${tr('joinHousehold')}</button><p class="proof">${tr('joinHint')}</p></div>`
+      : `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button>`}
+    <div class="sheet-foot"><button class="btn" id="clX">${tr('close')}</button></div>`);
+  const drawPeople = () => { const ex = extra(); $('#hhPeople').innerHTML = ex.length ? ex.map(n => `<div class="prow"><span>${esc(n)}</span><button class="linkbtn" data-pdel="${esc(n)}">${tr('remove')}</button></div>`).join('') : `<p class="hint">${tr('noOne')}</p>`; };
+  drawPeople();
+  const add = () => { const n = addPerson($('#hhName').value); $('#hhName').value = ''; if (n) drawPeople(); };
+  $('#hhAdd').onclick = add; $('#hhName').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  $('#hhPeople').onclick = e => { const d = e.target.closest('[data-pdel]'); if (!d) return; household = household.filter(n => n !== d.dataset.pdel); metaPut('household', household).catch(() => {}); drawPeople(); };
+  sheet.querySelector('[data-m2="places"]').onclick = () => placesSheet();
   $('#clX').onclick = closeSheet;
-  $('#clOut').onclick = () => askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y){ closeSheet(); logout(); } });
-  $('#clSync').onclick = async () => { $('#cloudLine').textContent = tr('syncing'); await syncNow(); render(); updateCloudLine(); };
-  $('#clInvite').onclick = async () => {
+  wireLogin();
+  if ($('#clCreate')){
+    $('#clCreate').onclick = async () => { $('#clCreate').disabled = true; try { await createHousehold(); toast(tr('householdCreated')); cloudSheet(); } catch { $('#clCreate').disabled = false; toast(tr('syncFailed')); } };
+    $('#clJoin').onclick = () => scanSheet();
+  }
+  if ($('#clSync')) $('#clSync').onclick = async () => { $('#cloudLine').textContent = tr('syncing'); await syncNow(); render(); updateCloudLine(); };
+  if ($('#clInvite')) $('#clInvite').onclick = async () => {
     $('#clInvite').disabled = true;
     try {
       const link = await inviteLink(); track('invite');
       $('#clQR').innerHTML = `<div class="inviteqr">${qrSvg(link, 4)}</div><p class="hint center">${tr('inviteHint')}</p>
-        <button class="btn quiet" id="clShare">${tr('shareLink')}</button><p class="proof center">${tr('inviteSafe')}</p>`;
+        <button class="btn block" id="clShare">${tr('shareLink')}</button><p class="proof center">${tr('inviteSafe')}</p>`;
       $('#clShare').onclick = () => { if (navigator.share) navigator.share({title: 'Storrrage', text: tr('inviteText'), url: link}).catch(() => {}); else navigator.clipboard.writeText(link).then(() => toast(tr('copied'))).catch(() => {}); };
     } catch { toast(tr('syncFailed')); }
     $('#clInvite').disabled = false;
   };
+  if (cloud.hid && cloud.session){
+    try {
+      const rows = await sb('/rest/v1/members?select=user_id,role&household_id=eq.' + cloud.hid);
+      const el = $('#hhMembers'); if (!el) return;
+      el.innerHTML = rows.sort((x, y) => (y.user_id === myId()) - (x.user_id === myId())).map(r => r.user_id === myId()
+        ? `<div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span><small>${esc(cloud.email || '')}</small></div>`
+        : `<div class="prow"><span>👤 ${esc(memberNames[r.user_id] || tr('someone'))}</span>${others.some(o => o.user_id === r.user_id) ? `<small class="online">● ${tr('activeNow')}</small>` : ''}</div>`).join('');
+    } catch {}
+  }
 }
+
+/* ---------- profile on the server: only the e-mail reminder choice ---------- */
+async function loadProfile(){
+  if (!cloud.session) return;
+  try { const r = await sb('/rest/v1/profiles?select=notify_email,contact_email&user_id=eq.' + myId()); prof = (r && r[0]) || {}; } catch {}
+}
+async function saveProfile(){
+  if (!cloud.session) return;
+  try { await sb('/rest/v1/profiles', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: {user_id: myId(), notify_email: !!prof.notify_email, contact_email: prof.contact_email || null}}); toast(tr('saved')); }
+  catch { toast(tr('syncFailed')); }
+}
+
+/* ---------- who is here right now: lets you see if someone else is in the same box ---------- */
+let presT = null, presSig = '';
+async function presenceTick(){
+  clearTimeout(presT);
+  const inBox = view.name === 'box' || view.name === 'item';
+  presT = setTimeout(presenceTick, inBox ? 12000 : 45000);
+  if (!cloud.hid || !cloud.session || !navigator.onLine || document.visibilityState !== 'visible') return;
+  try {
+    await sb('/rest/v1/presence', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: {household_id: cloud.hid, user_id: myId(), box_id: inBox ? view.boxId : null, item_id: view.name === 'item' ? view.itemId : null, seen_at: new Date().toISOString()}});
+    const since = new Date(Date.now() - 40000).toISOString();
+    others = await sb(`/rest/v1/presence?select=user_id,box_id,item_id&household_id=eq.${cloud.hid}&user_id=neq.${myId()}&seen_at=gt.${encodeURIComponent(since)}`) || [];
+    const sig = JSON.stringify(others);
+    if (sig !== presSig){
+      presSig = sig;
+      if (view.name === 'item'){ const old = app.querySelector('.presence'), [it, b] = curItem(); const html = it ? presenceNote(b.id, it.id) : ''; if (old) old.outerHTML = html || ''; else if (html){ const c = app.querySelector('.crumbs'); if (c) c.insertAdjacentHTML('afterend', html); } }
+      else if (['box', 'home'].includes(view.name)) render();
+      if (others.length) scheduleSync(200);
+    }
+  } catch {}
+}
+let presKick = null;
+function presenceSoon(){ clearTimeout(presKick); presKick = setTimeout(presenceTick, 600); }
+const whoName = uid => memberNames[uid] || tr('someone');
+function presenceNote(boxId, itemId){
+  const here = others.filter(o => o.box_id === boxId); if (!here.length) return '';
+  const sameItem = itemId && here.filter(o => o.item_id === itemId);
+  const names = [...new Set(here.map(o => whoName(o.user_id)))].join(', ');
+  return `<p class="presence">✏️ ${esc(sameItem && sameItem.length ? tr('editingItem', [...new Set(sameItem.map(o => whoName(o.user_id)))].join(', ')) : tr('inThisBox', names))}</p>`;
+}
+const presenceBadge = boxId => { const h = others.filter(o => o.box_id === boxId); return h.length ? `<span class="herebadge" title="${esc(h.map(o => whoName(o.user_id)).join(', '))}">${esc((whoName(h[0].user_id)[0] || '•').toUpperCase())}</span>` : ''; };
 
 /* ---------- anonymous usage statistics: what people do, never what they have ---------- */
 let statsOn = true, evq = [], evT = null;
@@ -17897,7 +18002,7 @@ async function flushEvents(leaving){
 async function statsNotice(){
   if (await metaGet('statsNoticed').catch(() => false)) return;
   metaPutRaw('statsNoticed', true).catch(() => {});
-  setTimeout(() => toastAction(tr('statsToast'), tr('statsWhat'), () => navigate({name: 'profile', sub: 'settings'})), 2500);
+  setTimeout(() => toastAction(tr('statsToast'), tr('statsWhat'), () => navigate({name: 'settings'})), 2500);
 }
 
 /* ---------- feedback ---------- */
@@ -18005,6 +18110,21 @@ Object.assign(STR.sv, {adminTitle: 'Statistik & feedback', loading: 'Laddar…',
   andStep1: 'Tryck på ⋮ uppe till höger i Chrome.', andStep2: 'Välj ”Installera app” eller ”Lägg till på startskärmen”.'});
 
 
+
+Object.assign(STR.en, {usageSync: n => `Storrrage uses about ${n} MB on this phone. Everything is also synced, encrypted, with your household.`, nameShown: 'Shown to the others in your household.', loginEmail: 'Logged in with', mailReminders: 'E-mail me reminders (things to bring back, things not used for a long time)', otherEmail: 'Send to another address (optional)',
+  mailHint: 'Coming soon. The e-mail only says that something needs attention – what it is stays encrypted in the app.', loginForMore: 'Log in to share with your household and get reminders by e-mail.', logIn: 'Log in',
+  appearance: 'Appearance', light: 'Light', dark: 'Dark', auto: 'Automatic', advanced: 'More', restoreHint: 'Only needed for old backup files. Your things are kept safe by syncing with your household.',
+  inApp: 'In the app', youTag: '(you)', morePeople: 'Others in the household', morePeopleHint: 'People who don’t use the app but own things, e.g. kids. Pick them as owner of a thing.', editPlaces: 'Edit places', shareTitle: 'Share between phones',
+  someone: 'Someone', activeNow: 'in the app now', inThisBox: n => `${n} is in this box right now.`, editingItem: n => `${n} has this thing open right now – wait a moment so your changes don’t clash.`,
+  talkH: 'Talk or write to Storrrage', tapTalk: 'Tap and talk', chatPh: 'Write, e.g. “where is the tent?”', simpleMode: 'Simple commands, works offline', aiOn: 'Turn on AI', offlineSimple: 'offline – simple commands',
+  whatSay: 'What can I say? (also without signal)', noSignal: 'Without signal:', noSignalTxt2: 'all the commands above work offline. If the microphone needs signal on your phone, use the microphone on your keyboard instead.'});
+Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på telefonen. Allt synkas också, krypterat, med hushållet.`, nameShown: 'Visas för de andra i hushållet.', loginEmail: 'Inloggad med', mailReminders: 'Mejla mig påminnelser (saker som ska tillbaka, saker som inte använts på länge)', otherEmail: 'Skicka till en annan adress (valfritt)',
+  mailHint: 'Kommer snart. Mejlet säger bara att något behöver kollas – vad det är stannar krypterat i appen.', loginForMore: 'Logga in för att dela med hushållet och få påminnelser via e-post.', logIn: 'Logga in',
+  appearance: 'Utseende', light: 'Ljust', dark: 'Mörkt', auto: 'Automatiskt', advanced: 'Mer', restoreHint: 'Behövs bara för gamla säkerhetskopior. Dina saker skyddas nu av synken med hushållet.',
+  inApp: 'I appen', youTag: '(du)', morePeople: 'Fler i hushållet', morePeopleHint: 'Personer som inte använder appen men äger saker, t.ex. barn. Välj dem som ägare på en sak.', editPlaces: 'Ändra platser', shareTitle: 'Dela mellan telefoner',
+  someone: 'Någon', activeNow: 'i appen nu', inThisBox: n => `${n} är i den här lådan just nu.`, editingItem: n => `${n} har den här saken öppen just nu – vänta en stund så era ändringar inte krockar.`,
+  talkH: 'Prata eller skriv med Storrrage', tapTalk: 'Tryck och prata', chatPh: 'Skriv, t.ex. ”var är tältet?”', simpleMode: 'Enkla kommandon, funkar offline', aiOn: 'Slå på AI', offlineSimple: 'offline – enkla kommandon',
+  whatSay: 'Vad kan jag säga? (även utan täckning)', noSignal: 'Utan täckning:', noSignalTxt2: 'alla kommandon ovan fungerar offline. Om mikrofonen kräver täckning på din telefon, använd mikrofonen på tangentbordet i stället.'});
 /* ---------- start ---------- */
 async function init(){
   render();
@@ -18018,6 +18138,8 @@ async function init(){
     lang = await metaGet('lang') || (voiceLang.startsWith('sv') ? 'sv' : lang);
     { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
     ai = await metaGet('ai') || ai;
+    theme = await metaGet('theme') || 'system'; applyTheme();
+    { const so = await metaGet('speakOn'); if (typeof so === 'boolean') speakOn = so; }
     numbering = await metaGet('numbering') || 'place';
     viewMode = await metaGet('viewMode') || 'grid';
     listSort = await metaGet('listSort') || 'manual'; boxOrder = await metaGet('boxOrder') || {};
