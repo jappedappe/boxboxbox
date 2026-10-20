@@ -961,6 +961,7 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .pact{display:flex;align-items:center;gap:10px;flex:none}
 .pact small{color:var(--dot)}
 .linkbtn.muted{color:var(--muted);text-decoration:none}
+dialog .toast{position:fixed;z-index:100}
 </style>
 </head>
 <body>
@@ -13391,7 +13392,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.5';
+const APP_VERSION = '2026-10-21.6';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13435,10 +13436,11 @@ const noteDel = id => tx('notes', 'readwrite', s => s.delete(id));
 
 /* ---------- helpers ---------- */
 let toastTimer;
+const toastHost = () => { const d = document.getElementById('sheet'); return d && d.open ? d : document.body; };
 function toast(msg){
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status'); t.textContent = msg;
-  document.body.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3800);
+  toastHost().appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3800);
 }
 function age(dateStr){
   if (!dateStr) return '';
@@ -15607,7 +15609,7 @@ function toastAction(msg, label, fn, after){
   if (toastAct && toastAct.after) toastAct.after();
   const t = document.createElement('div'); t.className = 'toast act'; t.setAttribute('role', 'status');
   t.innerHTML = `<span>${esc(msg)}</span><button class="linkbtn">${esc(label)}</button>`;
-  document.body.appendChild(t);
+  toastHost().appendChild(t);
   const me = toastAct = {after};
   t.querySelector('button').onclick = () => { me.after = null; t.remove(); fn(); };
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.remove(); if (me.after) me.after(); me.after = null; }, 5000);
@@ -17846,7 +17848,9 @@ async function createHousehold(){
   await syncNow();
 }
 async function inviteLink(note){
-  const code = await rpc('create_invite', {hid: cloud.hid, note: note ? toPayload(note) : null});
+  let code;
+  try { code = await rpc('create_invite', {hid: cloud.hid, note: note ? toPayload(note) : null}); }
+  catch (e){ if (e.status === 404 || /PGRST202|function/i.test(e.message)) code = await rpc('create_invite', {hid: cloud.hid}); else throw e; }
   return APP_URL + '#join=' + code;
 }
 async function joinFromLink(text){
@@ -18091,9 +18095,10 @@ async function cloudSheet(){
   $('#hhPeople').onclick = async e => {
     const d = e.target.closest('[data-pdel]'); if (d){ household = household.filter(n => n !== d.dataset.pdel); metaPut('household', household).catch(() => {}); return drawPeople(); }
     const iv = e.target.closest('[data-inv]'); if (!iv) return;
-    if (!cloud.session){ toast(tr('loginToInvite')); const em = $('#clEmail'); if (em){ em.scrollIntoView({block: 'center'}); em.focus(); } return; }
-    if (!cloud.hid) return toast(tr('syncing'));
-    const who = iv.dataset.inv; iv.disabled = true;
+    const who = iv.dataset.inv, box = $('#clQR');
+    if (!cloud.session){ box.innerHTML = `<div class="invitebox"><b>${esc(tr('inviteFor', who))}</b><p class="hint">${tr('loginToInvite')}</p></div>`; const em = $('#clEmail'); if (em){ em.scrollIntoView({block: 'center'}); em.focus(); } return; }
+    if (!cloud.hid){ box.innerHTML = `<div class="invitebox"><p class="hint">${tr('notSharedYet')}</p><button class="btn primary block" id="clConn">${tr('connectNow')}</button></div>`; $('#clConn').onclick = async () => { try { await connectAccount(); cloudSheet(); } catch { toast(tr('syncFailed')); } }; return; }
+    iv.disabled = true; box.innerHTML = `<div class="invitebox"><p class="hint">${tr('creatingInvite')}</p></div>`; box.scrollIntoView({block: 'nearest'});
     try {
       const link = await inviteLink(who); track('invite');
       $('#clQR').innerHTML = `<div class="invitebox"><b>${esc(tr('inviteFor', who))}</b><button class="btn primary block" id="clShare">${tr('sendInvite')}</button>
@@ -18101,7 +18106,7 @@ async function cloudSheet(){
       $('#clShare').onclick = () => { const txt = tr('inviteMsg', me || 'Storrrage'); if (navigator.share) navigator.share({title: 'Storrrage', text: txt, url: link}).catch(() => {}); else navigator.clipboard.writeText(txt + ' ' + link).then(() => toast(tr('copied'))).catch(() => {}); };
       $('#clQR').scrollIntoView({block: 'nearest'});
       await loadInvites(); drawPeople();
-    } catch { toast(tr('syncFailed')); }
+    } catch (er){ box.innerHTML = `<div class="invitebox"><b>${tr('inviteFailed')}</b><p class="proof">${esc(String(er.status || ''))} ${esc(String(er.message || '').slice(0, 160))}</p></div>`; }
     iv.disabled = false;
   };
   sheet.querySelector('[data-m2="places"]').onclick = () => placesSheet();
@@ -18383,6 +18388,9 @@ Object.assign(STR.sv, {moveLocalQ: n => `Telefonen har lådor och saker (${n} st
   logInOrCreate: 'Logga in eller skapa konto', yourAccount: 'Ditt konto', peopleTitle: 'Personer i hushållet', peopleHint: 'Lägg till alla som har saker här. Bjud in dem som själva vill använda appen.',
   inAppTag: 'använder appen', invitePending: 'inbjuden', inviteAgain: 'Bjud in igen', inviteToApp: 'Bjud in', loginToInvite: 'Logga in först – sedan kan du bjuda in.', inviteFor: n => `Bjud in ${n}`, sendInvite: 'Skicka inbjudan',
   inviteHint2: 'Eller låt hen skanna koden med telefonens kamera.', inviteMsg: n => `${n} bjuder in dig att dela vårt förråd i Storrrage:`, storageWord: 'Förvaring'});
+
+Object.assign(STR.en, {notSharedYet: 'Your storage isn’t saved in your account yet.', creatingInvite: 'Creating the invite…', inviteFailed: 'Couldn’t create the invite.'});
+Object.assign(STR.sv, {notSharedYet: 'Ditt förråd är inte sparat i kontot än.', creatingInvite: 'Skapar inbjudan…', inviteFailed: 'Kunde inte skapa inbjudan.'});
 /* ---------- start ---------- */
 async function init(){
   render();
