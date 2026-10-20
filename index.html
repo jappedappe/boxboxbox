@@ -849,6 +849,22 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 .inviteqr{background:#fff;padding:14px;border-radius:12px;width:min(240px,70vw);margin:10px auto 6px}
 .inviteqr svg{width:100%;height:auto;display:block;fill:initial}
 .menu .btn svg.stroke{width:18px;height:18px}
+.installbar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--lav-3);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:0 0 10px;font-size:.84rem;color:var(--ink)}
+.installbar .fhbtns{display:flex;align-items:center;gap:10px;flex:none}
+.installbar .linkbtn{text-decoration:none;color:var(--muted)}
+.steps{padding-left:20px;margin:6px 0 10px}.steps li{margin:6px 0}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 10px}
+.kpi{background:var(--lav-3);border-radius:10px;padding:8px;display:flex;flex-direction:column;min-width:0}
+.kpi b{font-size:1.3rem;color:var(--ink);font-family:var(--caps)}.kpi span{font-size:.66rem;color:var(--muted);line-height:1.2}
+.adh{font-family:var(--caps);font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--lav);margin:14px 0 6px}
+.bars{display:flex;flex-direction:column;gap:4px}
+.bar{display:grid;grid-template-columns:minmax(0,40%) 1fr auto;gap:8px;align-items:center;font-size:.76rem}
+.bar .bl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .bt{height:8px;background:var(--lav-2);border-radius:4px;overflow:hidden}.bar .bt i{display:block;height:100%;background:var(--primary)}
+.bar .bv{font-weight:600;color:var(--ink)}
+.fblist{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto}
+.fbrow{border-bottom:1px solid var(--line);padding:6px 0}.fbrow small{color:var(--muted);font-size:.7rem}.fbrow p{margin:3px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.fbrow a{font-size:.78rem;color:var(--primary)}
 </style>
 </head>
 <body>
@@ -13280,7 +13296,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-20.2';
+const APP_VERSION = '2026-10-20.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14332,7 +14348,7 @@ function placeHead(pid){
 function renderSpace(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}</p></div>
-    ${topStrips()}
+    ${installBanner()}${topStrips()}
     ${places.map(p => { const pb = boxesIn(p.id).length, pi = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.items || []).length, 0);
       const [cc, cn] = checkedThisYear(p.id);
       return `<section class="spacesec card">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
@@ -14343,6 +14359,7 @@ function nudgeBar(pid){ const n = nudges(pid)[0]; return n ? nudgeCard(n, true) 
 function renderPlace(pid, focus){
   const what = focus ? [...(view.hlBoxes || []).map(findBox).filter(Boolean).map(b => (view.hlBoxes.length === 1 ? `${b.code} ${b.name}` : b.code)), ...looseItems(pid).filter(i => (view.hlItems || []).includes(i.id)).map(i => i.name)] : [];
   app.innerHTML = `${focus ? `<div class="findhint"><span>${ICON.pin} <b>${esc(what.join(', '))}</b></span></div>` : placeHead(pid)}
+    ${focus ? '' : installBanner()}
     ${focus || placeView === 'map' ? '' : topStrips(pid)}
     ${focus ? '' : nudgeBar(pid)}
     ${focus || placeView === 'map' ? mapHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
@@ -15930,6 +15947,8 @@ function settingsAction(k){
   if (k === 'trash') return trashSheet();
   if (k === 'cloud') return cloudSheet();
   if (k === 'feedback') return feedbackSheet();
+  if (k === 'admin') return adminSheet();
+  if (k === 'install') return installApp();
 }
 
 app.addEventListener('click', e => {
@@ -16006,6 +16025,8 @@ app.addEventListener('click', e => {
     case 'collback': { const c = collectionsAll().find(x => x.tag === view.tag); if (c) setOutMany(c.list, false, null, '#' + tagLabel(c.tag)); break; }
     case 'clearrq': recentQ = []; metaPut('recentQ', recentQ).catch(() => {}); render(); break;
     case 'pickicon': iconSheet(); break;
+    case 'install': installApp(); break;
+    case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
     case 'itemout': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, true); break;
@@ -17528,6 +17549,8 @@ function menuSheet(){
     <button class="btn quiet" data-m="ai">${tr('aiAssistant')}${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
     <button class="btn quiet" data-m="cloud">${ICON.cloud} ${tr('cloudMenu')}${cloud.hid ? ' ✓' : ''}</button>
     <button class="btn quiet" data-m="feedback">💬 ${tr('feedback')}</button>
+    ${canInstall() ? `<button class="btn quiet" data-m="install">📲 ${tr('installTitle')}</button>` : ''}
+    ${cloud.admin ? `<button class="btn quiet" data-m="admin">📊 ${tr('adminTitle')}</button>` : ''}
     <button class="btn quiet" data-m="trash">${ICON.trash} ${tr('trash')}${trash.length ? ` (${trash.length})` : ''}</button>
     <button class="btn quiet" data-m="settings">${tr('allSettings')}</button>
     <button class="btn" data-m="close">${tr('close')}</button>
@@ -17616,6 +17639,7 @@ async function takeAuthFromUrl(){
   syncErr = '';
   await saveCloud();
   track('login');
+  checkAdmin();
   toast(tr('loggedIn'));
   if (!cloud.hid){
     try { const mine = await sb('/rest/v1/members?select=household_id&user_id=eq.' + cloud.session.user.id); if (mine && mine[0]){ cloud.hid = mine[0].household_id; await saveCloud(); } } catch {}
@@ -17780,6 +17804,7 @@ async function cloudInit(){
     else setTimeout(() => { toast(tr('loginToJoin')); cloudSheet(); }, 300);
   }
   if (cloud.hid && cloud.session) scheduleSync(500);
+  checkAdmin();
 }
 setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(300); else { flushEvents(true); if (dirty.size) syncNow(); } });
@@ -17922,6 +17947,62 @@ Object.assign(STR.sv, {cloudMenu: 'Hushåll & synk', cloudTitle: 'Dela med ditt 
   statsToast: 'Storrrage skickar anonym användningsstatistik – aldrig dina saker.', statsWhat: 'Inställningar',
   feedback: 'Tyck till', feedbackIntro: 'Vad är bra, vad stör, vad saknas? Vi läser allt.', fbIdea: 'Idé', fbBug: 'Något är fel', fbLove: 'Gillar', fbPh: 'Skriv här…', fbContact: 'E-post, om du vill ha svar', optional: 'valfritt',
   fbPrivacy: 'Skickas utan koppling till ditt konto. Appversion och vilken skärm du var på följer med.', send: 'Skicka', fbThanks: 'Tack! 💜', offlineSend: 'Ingen täckning – försök igen när du är online.', ok: 'OK'});
+
+
+/* ---------- admin: statistics and feedback, only for accounts in the admins table ---------- */
+async function checkAdmin(){ if (!cloud.session) return; try { cloud.admin = !!(await rpc('is_admin')); await saveCloud(); } catch { cloud.admin = false; } }
+async function adminSheet(){
+  openSheet(`<h3>📊 ${tr('adminTitle')}</h3><p class="hint">${tr('loading')}</p>`);
+  let s, fb;
+  try { [s, fb] = await Promise.all([rpc('admin_stats'), rpc('admin_feedback', {lim: 100})]); }
+  catch { sheet.querySelector('.sheet').innerHTML = `<h3>📊 ${tr('adminTitle')}</h3><p class="hint">${tr('adminFail')}</p><div class="sheet-foot"><button class="btn" id="adX">${tr('close')}</button></div>`; $('#adX').onclick = closeSheet; return; }
+  const num = (v, l) => `<div class="kpi"><b>${nf.format(v || 0)}</b><span>${esc(l)}</span></div>`;
+  const bars = (rows, label, val) => { const max = Math.max(1, ...rows.map(val)); return `<div class="bars">${rows.map(r => `<div class="bar"><span class="bl">${esc(label(r))}</span><span class="bt"><i style="width:${Math.round(val(r) / max * 100)}%"></i></span><span class="bv">${nf.format(val(r))}</span></div>`).join('')}</div>`; };
+  const EV = {open: tr('evOpen'), view: tr('evView'), item_add: tr('evItemAdd'), item_save: tr('evItemSave'), search: tr('evSearch'), search_quick: tr('evSearchQuick'), place_view: tr('evPlaceView'), sort: tr('evSort'), drag: tr('evDrag'), trash_restore: tr('evRestore'), feedback: tr('feedback'), login: tr('evLogin'), login_link: tr('evLoginLink'), household_create: tr('evHhCreate'), household_join: tr('evHhJoin'), invite: tr('evInvite')};
+  const groups = {}; (s.details || []).forEach(d => { (groups[d.name] = groups[d.name] || []).push(d); });
+  sheet.querySelector('.sheet').innerHTML = `<h3>📊 ${tr('adminTitle')}</h3>
+    <div class="kpis">${num(s.active7, tr('active7'))}${num(s.active30, tr('active30'))}${num(s.accounts, tr('accounts'))}${num(s.households, tr('households'))}${num(s.shared, tr('sharedHh'))}${num(s.feedbackN, tr('feedback'))}</div>
+    <h4 class="adh">${tr('perWeek')}</h4>${(s.weeks || []).length ? bars(s.weeks.slice(0, 12), r => fmtDate(r.week), r => r.active) : `<p class="hint">${tr('noData')}</p>`}
+    <h4 class="adh">${tr('used30')}</h4>${(s.events || []).length ? bars(s.events, r => EV[r.name] || r.name, r => r.n) : `<p class="hint">${tr('noData')}</p>`}
+    ${Object.entries(groups).map(([k, rows]) => `<h4 class="adh">${esc(EV[k] || k)}</h4>${bars(rows, r => r.value ?? '–', r => r.n)}`).join('')}
+    <h4 class="adh">${tr('versions')}</h4>${bars(s.versions || [], r => r.app_version || '?', r => r.n)}
+    <h4 class="adh">${tr('feedback')} (${(fb || []).length})</h4>
+    <div class="fblist">${(fb || []).map(f => `<div class="fbrow"><small>${esc(fmtStamp(f.created_at))} · ${esc({idea: '💡', bug: '🐞', love: '❤️'}[f.kind] || f.kind || '')} · ${esc(f.screen || '')} · ${esc(f.app_version || '')}</small><p>${esc(f.message)}</p>${f.contact ? `<a href="mailto:${esc(f.contact)}">${esc(f.contact)}</a>` : ''}</div>`).join('') || `<p class="hint">${tr('noData')}</p>`}</div>
+    <p class="proof">${tr('adminNote')}</p>
+    <div class="sheet-foot"><button class="btn" id="adX">${tr('close')}</button></div>`;
+  $('#adX').onclick = closeSheet;
+}
+
+/* ---------- install as an app (no app store needed) ---------- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (ready) render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; track('installed'); toast(tr('installedToast')); if (ready) render(); });
+const canInstall = () => !isStandalone() && (installEvt || isIOS());
+async function installApp(){
+  if (installEvt){ installEvt.prompt(); const r = await installEvt.userChoice.catch(() => ({})); track('install_prompt', {result: r.outcome || '?'}); installEvt = null; render(); return; }
+  openSheet(`<h3>📲 ${tr('installTitle')}</h3>${isIOS() ? `<ol class="steps"><li>${tr('iosStep1')}</li><li>${tr('iosStep2')}</li><li>${tr('iosStep3')}</li></ol><p class="hint">${tr('iosNote')}</p>`
+    : `<ol class="steps"><li>${tr('andStep1')}</li><li>${tr('andStep2')}</li></ol>`}<div class="sheet-foot"><button class="btn primary" id="inOk">${tr('ok')}</button></div>`);
+  $('#inOk').onclick = closeSheet;
+}
+function installBanner(){
+  if (!canInstall() || view.name === 'welcome' || sessionStorage.getItem('noInstall')) return '';
+  return `<div class="installbar"><span>📲 ${tr('installBanner')}</span><span class="fhbtns"><button class="btn primary small" data-act="install">${tr('install')}</button><button class="linkbtn" data-act="noinstall" aria-label="${esc(tr('close'))}">✕</button></span></div>`;
+}
+
+Object.assign(STR.en, {adminTitle: 'Statistics & feedback', loading: 'Loading…', adminFail: 'Couldn’t load. Are you logged in as admin?', active7: 'active phones, 7 days', active30: 'active phones, 30 days', accounts: 'accounts', households: 'households', sharedHh: 'shared households',
+  perWeek: 'Active phones per week', used30: 'Used the last 30 days', versions: 'App versions (14 days)', noData: 'No data yet.', adminNote: 'Phones are counted with an anonymous id that changes every month. People who turned statistics off aren’t counted.',
+  evOpen: 'App opened', evView: 'Screen changes', evItemAdd: 'Quick add', evItemSave: 'Item saved', evSearch: 'Searches', evSearchQuick: 'Search filters', evPlaceView: 'Shelf / list / map', evSort: 'Sorting', evDrag: 'Drag & drop', evRestore: 'Restored from Deleted', evLogin: 'Logins', evLoginLink: 'Login links sent', evHhCreate: 'Households created', evHhJoin: 'Joined a household', evInvite: 'Invites',
+  installTitle: 'Install Storrrage', install: 'Install', installBanner: 'Install Storrrage as an app on your phone', installedToast: 'Storrrage is on your home screen.',
+  iosStep1: 'Tap the Share button (square with an arrow) at the bottom of Safari.', iosStep2: 'Choose “Add to Home Screen”.', iosStep3: 'Tap “Add”. Then always open Storrrage from the home screen.', iosNote: 'On iPhone it has to be Safari. The installed app has its own storage, so log in and join the household inside the app.',
+  andStep1: 'Tap ⋮ at the top right in Chrome.', andStep2: 'Choose “Install app” or “Add to Home screen”.'});
+Object.assign(STR.sv, {adminTitle: 'Statistik & feedback', loading: 'Laddar…', adminFail: 'Kunde inte hämta. Är du inloggad som admin?', active7: 'aktiva telefoner, 7 dagar', active30: 'aktiva telefoner, 30 dagar', accounts: 'konton', households: 'hushåll', sharedHh: 'delade hushåll',
+  perWeek: 'Aktiva telefoner per vecka', used30: 'Använt senaste 30 dagarna', versions: 'Appversioner (14 dagar)', noData: 'Ingen data än.', adminNote: 'Telefoner räknas med ett anonymt id som byts varje månad. De som stängt av statistiken räknas inte.',
+  evOpen: 'Appen öppnad', evView: 'Byten av skärm', evItemAdd: 'Snabbtillägg', evItemSave: 'Sak sparad', evSearch: 'Sökningar', evSearchQuick: 'Sökfilter', evPlaceView: 'Hylla / lista / karta', evSort: 'Sortering', evDrag: 'Dra och släpp', evRestore: 'Tagits tillbaka från Borttaget', evLogin: 'Inloggningar', evLoginLink: 'Inloggningslänkar skickade', evHhCreate: 'Hushåll skapade', evHhJoin: 'Gått med i hushåll', evInvite: 'Inbjudningar',
+  installTitle: 'Installera Storrrage', install: 'Installera', installBanner: 'Installera Storrrage som app på telefonen', installedToast: 'Storrrage finns nu på hemskärmen.',
+  iosStep1: 'Tryck på Dela-knappen (fyrkant med pil) längst ner i Safari.', iosStep2: 'Välj ”Lägg till på hemskärmen”.', iosStep3: 'Tryck ”Lägg till”. Öppna sedan alltid Storrrage från hemskärmen.', iosNote: 'På iPhone måste det vara Safari. Den installerade appen har eget minne, så logga in och gå med i hushållet inne i appen.',
+  andStep1: 'Tryck på ⋮ uppe till höger i Chrome.', andStep2: 'Välj ”Installera app” eller ”Lägg till på startskärmen”.'});
 
 
 /* ---------- start ---------- */
