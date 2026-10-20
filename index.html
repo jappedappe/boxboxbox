@@ -920,6 +920,7 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .welcome .wform{gap:10px}
 .welcome .wform .field{text-align:left}
+.codein{font-size:1.6rem;letter-spacing:.35em;text-align:center;font-weight:700;margin:8px 0}
 </style>
 </head>
 <body>
@@ -13350,7 +13351,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.1';
+const APP_VERSION = '2026-10-21.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14820,7 +14821,7 @@ function renderWelcome(){
 }
 const langSwitch = () => `<div class="seg" role="group" aria-label="Language / Språk"><button class="${lang === 'sv' ? 'on' : ''}" data-lang-ui="sv">Svenska</button><button class="${lang === 'en' ? 'on' : ''}" data-lang-ui="en">English</button></div>`;
 function setLang(l){
-  lang = l; metaPut('lang', l).catch(() => {});
+  lang = l; metaPut('lang', l).catch(() => {}); if (typeof saveLangToAccount === 'function') saveLangToAccount();
   voiceLang = l === 'sv' ? 'sv-SE' : 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
   render();
 }
@@ -17709,7 +17710,7 @@ const rpc = (fn, args) => sb('/rest/v1/rpc/' + fn, {method: 'POST', body: args |
 
 /* ---------- login with a link in the e-mail ---------- */
 async function sendLoginLink(email){
-  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL), {method: 'POST', auth: false, body: {email, create_user: true}});
+  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL), {method: 'POST', auth: false, body: {email, create_user: true, data: {lang}}});
   track('login_link');
 }
 async function takeAuthFromUrl(){
@@ -17720,8 +17721,12 @@ async function takeAuthFromUrl(){
   if (p.get('join')){ await metaPutRaw('pendingJoin', p.get('join')).catch(() => {}); try { history.replaceState(null, '', APP_URL); } catch {} return; }
   if (!p.get('access_token')) return;
   try { history.replaceState(null, '', APP_URL); } catch {}
-  cloud.session = {access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_at: +p.get('expires_at') || Math.floor(Date.now() / 1000) + (+p.get('expires_in') || 3600)};
+  await completeLogin({access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_at: +p.get('expires_at') || Math.floor(Date.now() / 1000) + (+p.get('expires_in') || 3600)});
+}
+async function completeLogin(sess){
+  cloud.session = sess;
   try { const u = await sb('/auth/v1/user'); cloud.session.user = {id: u.id}; cloud.email = u.email || ''; } catch {}
+  saveLangToAccount();
   syncErr = '';
   await saveCloud();
   track('login');
@@ -17729,6 +17734,13 @@ async function takeAuthFromUrl(){
   toast(tr('loggedIn'));
   if (!cloud.hid) await connectAccount();
 }
+/* the 6-digit code from the e-mail: same as the link, but works inside the installed app (iPhone) */
+async function verifyCode(email, code){
+  const n = await sb('/auth/v1/verify', {method: 'POST', auth: false, body: {type: 'email', email, token: code}});
+  await completeLogin({access_token: n.access_token, refresh_token: n.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (n.expires_in || 3600)});
+}
+/* the login e-mail is written in the language chosen in the app */
+function saveLangToAccount(){ if (cloud.session) sb('/auth/v1/user', {method: 'PUT', body: {data: {lang}}}).catch(() => {}); }
 const KEEP_META = ['lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
 async function wipeLocal(){
   for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
@@ -17945,12 +17957,30 @@ function loginForm(){
   return `<label class="field"><span>${tr('email')}</span><input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se" value="${esc(cloud.email || '')}"></label>
     <p class="proof">${tr('emailWhy')}</p><button class="btn primary block" id="clSend">${tr('sendLink')}</button>`;
 }
+function codeSheet(email){
+  openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))} <button class="linkbtn" id="cdWrong">${tr('wrongAddress')}</button></p>
+    <input class="input codein" id="cdIn" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456">
+    <button class="btn primary block" id="cdGo">${tr('logIn')}</button>
+    <p class="hint">${tr('orTapLink')}</p>
+    <div class="sheet-foot"><button class="btn" id="cdAgain">${tr('sendAgain')}</button><button class="btn" id="cdX">${tr('close')}</button></div>`);
+  const go = async () => {
+    const c = $('#cdIn').value.replace(/\D/g, ''); if (c.length < 6) return $('#cdIn').focus();
+    $('#cdGo').disabled = true;
+    try { await verifyCode(email, c); closeSheet(); location.replace(APP_URL); }
+    catch (e){ $('#cdGo').disabled = false; toast(e.status === 403 || e.status === 400 ? tr('codeWrong') : tr('sendFailed')); }
+  };
+  $('#cdGo').onclick = go;
+  $('#cdIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  $('#cdWrong').onclick = () => { closeSheet(); cloudSheet(); };
+  $('#cdAgain').onclick = async () => { try { await sendLoginLink(email); toast(tr('sentAgain')); } catch (er){ toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); } };
+  $('#cdX').onclick = closeSheet;
+}
 function wireLogin(){
   const b = $('#clSend'); if (!b) return;
   b.onclick = async () => {
     const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)) return $('#clEmail').focus();
     b.disabled = true;
-    try { await sendLoginLink(e); cloud.email = e; await saveCloud(); sheet.querySelector('.sheet').innerHTML = `<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('linkSent', e))}</p><p class="hint">${tr('linkSamePhone')}</p><div class="sheet-foot"><button class="btn primary" id="clOk">${tr('ok')}</button></div>`; $('#clOk').onclick = closeSheet; }
+    try { await sendLoginLink(e); cloud.email = e; await saveCloud(); codeSheet(e); }
     catch (er){ b.disabled = false; toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); }
   };
 }
@@ -18245,6 +18275,9 @@ Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förråde
   joinOther: 'Gå med i ett annat hushåll (QR)', mergedIntoAccount: 'Det som fanns på telefonen lades till i ditt konto.', logoutQ: 'Logga ut? Förrådet tas bort från den här enheten men finns kvar i ditt konto – logga in igen så kommer det tillbaka.',
   unsyncedQ: n => `${n} ändringar har inte sparats i kontot än (ingen täckning?). Logga ut ändå? De försvinner då.`, logoutAll: 'Logga ut på alla enheter', logoutAllQ: 'Logga ut på alla dina enheter? Använd det om en telefon kommit bort. Varje enhet tar bort förrådet nästa gång den är online.',
   logoutAllHint: 'Tappat telefonen? Logga in här eller på datorn och välj ”Logga ut på alla enheter”.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
+
+Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, wrongAddress: 'Wrong address?', orTapLink: 'Or tap the button in the e-mail (on this device).', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
+Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, wrongAddress: 'Fel adress?', orTapLink: 'Eller tryck på knappen i mejlet (på den här enheten).', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
 /* ---------- start ---------- */
 async function init(){
   render();
