@@ -13379,7 +13379,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.3';
+const APP_VERSION = '2026-10-21.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -18017,13 +18017,26 @@ function codeSheet(email){
   $('#cdAgain').onclick = async () => { try { await sendLoginLink(email); toast(tr('sentAgain')); } catch (er){ toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); } };
   $('#cdX').onclick = closeSheet;
 }
+function sendErrorSheet(msg, status, detail){
+  openSheet(`<h3>${tr('mailNotSent')}</h3><p>${esc(msg)}</p>${status || detail ? `<p class="proof">${esc(tr('errorCode'))}: ${esc(String(status || ''))} ${esc(detail)}</p>` : ''}
+    <div class="sheet-foot"><button class="btn primary" id="seOk">${tr('ok')}</button></div>`);
+  $('#seOk').onclick = closeSheet;
+}
 function wireLogin(){
   const b = $('#clSend'); if (!b) return;
   b.onclick = async () => {
-    const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)) return $('#clEmail').focus();
-    b.disabled = true;
-    try { await sendLoginLink(e); cloud.email = e; await saveCloud(); codeSheet(e); }
-    catch (er){ b.disabled = false; toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); }
+    const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)){ $('#clEmail').focus(); return toast(tr('badEmail')); }
+    if (!navigator.onLine) return toast(tr('offlineSend'));
+    const label = b.textContent; b.disabled = true; b.textContent = tr('sending');
+    try {
+      await Promise.race([sendLoginLink(e), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), {status: 'timeout'})), 25000))]);
+      cloud.email = e; await saveCloud(); b.disabled = false; b.textContent = label; codeSheet(e);
+    } catch (er){
+      b.disabled = false; b.textContent = label;
+      const detail = er.status === 'timeout' ? '' : (String(er.message || '').match(/"(?:msg|message|error_description)":"([^"]+)"/) || [])[1] || '';
+      track('login_send_fail', {status: String(er.status || 'net')});
+      sendErrorSheet(er.status === 429 ? tr('tooMany') : er.status === 'timeout' ? tr('sendTimeout') : tr('sendFailed'), er.status, detail);
+    }
   };
 }
 async function cloudSheet(){
@@ -18331,6 +18344,9 @@ Object.assign(STR.sv, {slogan: 'Ha koll på allt du har – och var det finns.',
   invitedTitle: 'Du är inbjuden!', invitedIntro: 'Skriv din e-post så mejlar vi en kod. Sedan kommer du direkt in i det delade förrådet.',
   pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt från datorn och andra telefoner', pitch3: 'Tryggt om telefonen kommer bort', pitch4: 'Fler funktioner på väg för kontoinnehavare',
   fold: 'Fäll ihop', unfold: 'Fäll ut', foldAll: 'Fäll ihop alla', unfoldAll: 'Fäll ut alla'});
+
+Object.assign(STR.en, {badEmail: 'Check the e-mail address.', sending: 'Sending…', sendTimeout: 'The mail server didn’t answer in time. Try again in a minute.', mailNotSent: 'The e-mail wasn’t sent', errorCode: 'Details'});
+Object.assign(STR.sv, {badEmail: 'Kolla e-postadressen.', sending: 'Skickar…', sendTimeout: 'Mejlservern svarade inte i tid. Försök igen om en minut.', mailNotSent: 'Mejlet skickades inte', errorCode: 'Detaljer'});
 /* ---------- start ---------- */
 async function init(){
   render();
