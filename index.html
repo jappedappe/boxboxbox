@@ -912,6 +912,14 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 .micround.on{background:var(--dot);animation:hlpulse 1.2s ease-in-out infinite}
 .aistat{font-size:.76rem;color:var(--muted);margin:6px 0 0}
 .chathead .chips{flex-wrap:nowrap;flex:none;gap:4px}
+/* 2026-10-20.5 */
+.tabbar .addtab .plus{background:none;color:inherit;width:auto;height:22px;font-size:1.9rem;font-weight:400;line-height:22px;margin:0;border-radius:0}
+.tabbar button.addtab.on .plus{color:var(--accent)}
+.mrow .mmail{color:var(--muted);font-size:.72rem;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pfacts{margin:4px 0 12px}
+h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
+.welcome .wform{gap:10px}
+.welcome .wform .field{text-align:left}
 </style>
 </head>
 <body>
@@ -926,8 +934,8 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 <button class="fab" id="talkBtn" aria-label="Talk to Storrrage"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg></button>
 <nav class="tabbar" aria-label="Main">
   <button data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg><span class="tl">Active</span></button>
-  <button data-tab="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span class="tl">Search</span></button>
   <button data-tab="add" class="addtab"><span class="plus" aria-hidden="true">+</span><span class="tl">Add</span></button>
+  <button data-tab="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span class="tl">Search</span></button>
 </nav>
 <dialog id="sheet"></dialog>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -13342,7 +13350,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-20.4';
+const APP_VERSION = '2026-10-21.1';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14124,6 +14132,12 @@ const ICON = {
   mic: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>',
   pin: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
   starO: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.2 2.7 5.5 6 .9-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2 6-.9z"/></svg>',
+  chat: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 3.5v-3.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/></svg>',
+  scan: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg>',
+  install: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2"/><path d="M12 7v7M9 11.5l3 3 3-3"/></svg>',
+  chart: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>',
+  logout: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h10"/></svg>',
+  login: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M9 8l4 4-4 4M4 12h9"/></svg>',
   cloud: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .6-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7 18.5z"/></svg>',
   trash: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg>',
   grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
@@ -14260,8 +14274,8 @@ function render(){
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
 }
-STR.en.tab_home = 'Active'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Profile'; STR.en.tab_add = 'Add'; STR.sv.tab_add = 'Lägg till';
-STR.sv.tab_home = 'Aktiv'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
+STR.en.tab_home = 'Home'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Profile'; STR.en.tab_add = 'Add'; STR.sv.tab_add = 'Lägg till';
+STR.sv.tab_home = 'Hem'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
 
 /* tiles */
 const addTile = (act, label, extra = '') => `<button class="tile add" data-act="${act}" ${extra} aria-label="${esc(label)}">+</button>`;
@@ -14788,12 +14802,15 @@ function renderWelcome(){
     <div class="langsw">${langSwitch()}</div>
     <div class="logobig">${logoSVG()}</div>
     <h1>Storrrage</h1>
-    <p>${tr('welcome')}</p>
-    <div class="wform"><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name">
-    <button class="btn primary block" id="wGo">${tr('getStarted')}</button></div>
-    <p class="hint center">${tr('noAccount')}</p>
-    <p class="center"><button class="linkbtn" id="wLogin">${tr('haveHousehold')}</button></p></div>`;
-  $('#wLogin').onclick = () => cloudSheet();
+    ${pendingJoinCode ? `<p>${tr('invitedIntro')}</p><div class="wform">${loginForm()}</div>`
+    : `<p>${tr('welcome')}</p>
+    <div class="wform" id="wStart"><button class="btn primary block" id="wNew">${tr('startNew')}</button><button class="btn block" id="wLog">${tr('logIn')}</button></div>
+    <div class="wform" id="wNewF" hidden><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name"><button class="btn primary block" id="wGo">${tr('getStarted')}</button><p class="hint center">${tr('noAccount')}</p></div>
+    <div class="wform" id="wLogF" hidden><p class="hint">${tr('loginWelcome')}</p>${loginForm()}</div>`}</div>`;
+  wireLogin();
+  if (pendingJoinCode) return;
+  $('#wNew').onclick = () => { $('#wStart').hidden = true; $('#wNewF').hidden = false; };
+  $('#wLog').onclick = () => { $('#wStart').hidden = true; $('#wLogF').hidden = false; };
   const go = () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
     me = addPerson(n); metaPut('me', me).catch(() => {}); metaPut('onboarded', true).catch(() => {});
@@ -14818,14 +14835,18 @@ function renderProfile(){
       <div class="fl" style="margin-top:14px"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
       <p class="proof">${tr('nameShown')}</p>
       ${cloud.session ? `<div class="fl"><input value="${esc(cloud.email || '')}" disabled><label class="always">${tr('loginEmail')}</label></div>
+        <div class="pfacts">${pfacts()}</div>
         <label class="check"><input type="checkbox" id="pfMail" ${prof.notify_email ? 'checked' : ''}> ${tr('mailReminders')}</label>
         <div class="fl" id="pfAltWrap" ${prof.notify_email ? '' : 'hidden'}><input id="pfAlt" type="email" inputmode="email" value="${esc(prof.contact_email || '')}" placeholder="${esc(cloud.email || '')}"><label class="always">${tr('otherEmail')}</label></div>
         <p class="proof">${tr('mailHint')}</p>`
-      : `<div class="loginbox"><p class="hint">${tr('loginForMore')}</p><button class="btn primary" data-m="cloud">${tr('logIn')}</button></div>`}
+      : `<div class="loginbox"><p class="hint">${tr('notLoggedIn')}</p>${loginForm()}</div>`}
       <div class="list">
         <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}</span>${nN ? `<b class="count">${nN}</b>` : ''}</button>
         <button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>
-      </div>`;
+      </div>
+      ${cloud.session ? `<div class="list"><button class="btn block" id="pfOut">${tr('logout')}</button><button class="btn danger block" id="pfOutAll">${tr('logoutAll')}</button></div><p class="proof">${tr('logoutAllHint')}</p>` : ''}`;
+    if ($('#pfOut')){ $('#pfOut').onclick = () => askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); }); $('#pfOutAll').onclick = () => askConfirm(tr('logoutAllQ'), tr('logoutAll')).then(y => { if (y) logout(true); }); }
+    wireLogin();
     $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); });
     if ($('#pfMail')){
       $('#pfMail').onchange = e => { prof.notify_email = e.target.checked; $('#pfAltWrap').hidden = !prof.notify_email; saveProfile(); };
@@ -15838,19 +15859,29 @@ function addHereSheet(pid, boxId){
   $('#adBatch').onclick = () => { closeSheet(); openBatch(b ? b.id : ensureLoose(pid).id); };
   $('#adX').onclick = closeSheet;
 }
+function ensureInbox(){
+  let p = places.find(x => x.inbox);
+  if (!p){ p = {id: newId(), name: tr('unsorted'), icon: '📥', inbox: true, createdAt: new Date().toISOString()}; places.push(p); metaPut('places', places).catch(() => {}); }
+  return p;
+}
 function addNavSheet(){
   const v = view;
-  if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); return b.loose ? addHereSheet(b.placeId) : addHereSheet(b.placeId, b.id); }
-  const pid = scopePlace();
-  if (pid) return addHereSheet(pid);
-  openSheet(`<h3>${tr('whichPlace')}</h3><div class="menu">${places.map(p => `<button class="btn quiet" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}
-    <button class="btn quiet" data-ap="new">${tr('addPlace')}</button><button class="btn" data-ap="x">${tr('close')}</button></div>`);
-  sheet.querySelector('.menu').onclick = e => {
-    const t = e.target.closest('[data-ap]'); if (!t) return;
-    if (t.dataset.ap === 'x') return closeSheet();
-    if (t.dataset.ap === 'new') return askText(tr('newPlace'), {placeholder: tr('newPlaceHint'), ok: tr('add')}).then(n => { const p = n && addPlace(n); if (p){ goHome(p.id); addHereSheet(p.id); } });
-    addHereSheet(t.dataset.ap);
-  };
+  if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); if (!b.loose) return addHereSheet(b.placeId, b.id); }
+  let pid = (v.name === 'box' || v.name === 'item') && findBox(v.boxId) ? findBox(v.boxId).placeId : scopePlace() || '';
+  const chips = () => `${places.filter(p => !p.inbox).map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${pid === 'inbox' || (findPlace(pid) || {}).inbox ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
+  openSheet(`<h3>${tr('addWhat')}</h3>
+    <div class="choice"><button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button></div>
+    <button class="btn block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>
+    <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips" id="adPlaces">${chips()}</div>
+    <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div>`);
+  if (!pid) pid = places.filter(p => !p.inbox).length === 1 ? places.find(p => !p.inbox).id : 'inbox';
+  $('#adPlaces').innerHTML = chips();
+  $('#adPlaces').onclick = e => { const c = e.target.closest('[data-ap]'); if (!c) return; pid = c.dataset.ap; $('#adPlaces').innerHTML = chips(); };
+  const target = () => pid === 'inbox' ? ensureInbox().id : pid;
+  $('#adBox').onclick = () => { const p = target(); closeSheet(); boxSheet(null, p, null); };
+  $('#adItem').onclick = () => { const p = target(); closeSheet(); newItem(ensureLoose(p).id); };
+  $('#adBatch').onclick = () => { const p = target(); closeSheet(); openBatch(ensureLoose(p).id); };
+  $('#adX').onclick = closeSheet;
 }
 function moveItemSheet(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
@@ -15997,6 +16028,7 @@ function settingsAction(k){
   if (k === 'export') return exportSheet();
   if (k === 'trash') return trashSheet();
   if (k === 'cloud') return cloudSheet();
+  if (k === 'login') return cloudSheet();
   if (k === 'feedback') return feedbackSheet();
   if (k === 'admin') return adminSheet();
   if (k === 'install') return installApp();
@@ -16097,7 +16129,7 @@ document.querySelector('.tabbar').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
   if (b.dataset.tab === 'add') return addNavSheet();
   if (b.dataset.tab === 'home') return goHome(currentPlace !== 'all' ? currentPlace : null);
-  if (b.dataset.tab === 'search'){ navigate({name: 'search'}); setTimeout(() => { const s = $('#q'); if (s) s.focus(); }, 50); return; }
+  if (b.dataset.tab === 'search'){ navigate({name: 'search'}); return; }
   navigate({name: 'profile'});
 });
 /* the dot on the menu button: something needs attention */
@@ -16116,6 +16148,7 @@ function openSheet(html, onClose){
   sheet.innerHTML = `<div class="sheet">${html}</div>`;
   onSheetClose = onClose || null;
   sheet.showModal();
+  const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && sheet.contains(ae)) ae.blur();
 }
 function closeSheet(){ if (sheet.open) sheet.close(); }
 sheet.addEventListener('close', () => { if (sheet.open) return; const f = onSheetClose; onSheetClose = null; if (f) f(); });
@@ -17586,19 +17619,19 @@ function menuSheet(){
   openSheet(`<div class="menuhead"><h3>${tr('menu')}</h3>${langSwitch()}</div><div class="menu mlist">
     ${row('profile', ICON.user, esc(me || tr('profile')), nN ? `<b class="count">${nN}</b>` : '')}
     ${row('cloud', ICON.cloud, tr('cloudMenu'), cloud.hid ? '<em>✓</em>' : '')}
-    ${row('scan', '⌗', tr('scanLabel'))}
-    ${row('feedback', '💬', tr('feedback'))}
-    ${canInstall() ? row('install', '📲', tr('installTitle')) : ''}
+    ${row('scan', ICON.scan, tr('scanLabel'))}
+    ${row('feedback', ICON.chat, tr('feedback'))}
+    ${canInstall() ? row('install', ICON.install, tr('installTitle')) : ''}
     ${row('settings', ICON.gear, tr('settings'))}
     ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
-    ${cloud.admin ? row('admin', '📊', tr('adminTitle')) : ''}
-    ${cloud.session ? row('logout', '↪', tr('logout')) : ''}
+    ${cloud.admin ? row('admin', ICON.chart, tr('adminTitle')) : ''}
+    ${cloud.session ? row('logout', ICON.logout, tr('logout'), cloud.email ? `<small class="mmail">${esc(cloud.email)}</small>` : '') : row('cloud', ICON.login, tr('logIn'))}
     <p class="proof center" style="margin:10px 0 0">${tr('version', APP_VERSION)}</p></div>`);
   sheet.querySelector('.mlist').onclick = e => {
     const m = e.target.closest('[data-m]'); if (!m) return; const k = m.dataset.m;
     if (k === 'settings'){ closeSheet(); return navigate({name: 'settings'}); }
     if (k === 'profile'){ closeSheet(); return navigate({name: 'profile'}); }
-    if (k === 'logout') return askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(); });
+    if (k === 'logout') return askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); });
     if (k === 'import') closeSheet();
     settingsAction(k);
   };
@@ -17614,7 +17647,8 @@ const SB_KEY = 'sb_publishable_vn4-GzgYonITq3cV1S5euQ_-ophAXvW';
 const APP_URL = location.origin + location.pathname;
 let cloud = {};            // {session, hid, key, cursor, lastSync, email}
 let cryptoKey = null, dirty = new Set(), syncing = false, syncTimer = null, syncErr = '';
-let memberNames = {}, prof = {}, others = [];
+let memberNames = {}, prof = {}, others = [], hhInfo = {}, pendingJoinCode = null;
+async function askMyName(){ const n = await askText(tr('whatName'), {placeholder: tr('yourName'), ok: tr('save')}); if (n){ me = addPerson(n); metaPut('me', me).catch(() => {}); metaPutRaw('onboarded', true).catch(() => {}); render(); } }
 const myId = () => cloud.session && cloud.session.user && cloud.session.user.id;
 function markMe(){ if (myId()) markDirty('u:' + myId()); }
 
@@ -17632,6 +17666,8 @@ async function encBytes(u8){ const iv = crypto.getRandomValues(new Uint8Array(12
 async function decBytes(u8){ return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv: u8.subarray(0, 12)}, cryptoKey, u8.subarray(12))); }
 async function encJSON(o){ return bytesToB64(await encBytes(new TextEncoder().encode(JSON.stringify(o)))); }
 async function decJSON(s){ return JSON.parse(new TextDecoder().decode(await decBytes(b64ToBytes(s)))); }
+const toPayload = v => 'j:' + JSON.stringify(v);
+async function fromPayload(p){ if (!p) return null; if (p.startsWith('j:')) return JSON.parse(p.slice(2)); if (!cryptoKey) await loadKey(); return cryptoKey ? decJSON(p) : null; }
 async function encBlob(blob){
   const type = new TextEncoder().encode((blob.type || '').slice(0, 100)), data = new Uint8Array(await blob.arrayBuffer());
   const plain = new Uint8Array(1 + type.length + data.length); plain[0] = type.length; plain.set(type, 1); plain.set(data, 1 + type.length);
@@ -17651,15 +17687,21 @@ async function sb(path, o = {}){
   if (o.raw) return r;
   const txt = await r.text(); return txt ? JSON.parse(txt) : null;
 }
+let refreshing = null;
 async function accessToken(){
   const s = cloud.session; if (!s) return null;
   if (Date.now() / 1000 < (s.expires_at || 0) - 60) return s.access_token;
+  if (!refreshing) refreshing = doRefresh(s).finally(() => { refreshing = null; });
+  return refreshing;
+}
+async function doRefresh(s){
   try {
     const n = await sb('/auth/v1/token?grant_type=refresh_token', {method: 'POST', auth: false, body: {refresh_token: s.refresh_token}});
     cloud.session = {access_token: n.access_token, refresh_token: n.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (n.expires_in || 3600), user: s.user};
     await saveCloud(); return cloud.session.access_token;
   } catch (e){
-    if (e.status === 400 || e.status === 401){ cloud.session = null; await saveCloud(); syncErr = tr('loginAgain'); }
+    // the login was revoked ("Log out everywhere" on another device): remove everything from this phone
+    if ((e.status === 400 || e.status === 401) && /refresh|token|session/i.test(e.message)){ try { sessionStorage.setItem('wiped', '1'); } catch {} await wipeLocal(); location.replace(APP_URL); }
     return null;
   }
 }
@@ -17671,6 +17713,7 @@ async function sendLoginLink(email){
   track('login_link');
 }
 async function takeAuthFromUrl(){
+  { const qs = new URLSearchParams(location.search); if (qs.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + qs.get('error_description')); return; } }
   const h = location.hash.slice(1); if (!h) return;
   const p = new URLSearchParams(h);
   if (p.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + p.get('error_description')); return; }
@@ -17684,38 +17727,65 @@ async function takeAuthFromUrl(){
   track('login');
   checkAdmin(); loadProfile(); markMe();
   toast(tr('loggedIn'));
-  if (!cloud.hid){
-    try { const mine = await sb('/rest/v1/members?select=household_id&user_id=eq.' + cloud.session.user.id); if (mine && mine[0]){ cloud.hid = mine[0].household_id; await saveCloud(); } } catch {}
-  }
+  if (!cloud.hid) await connectAccount();
 }
-async function logout(){
-  try { await sb('/auth/v1/logout', {method: 'POST'}); } catch {}
-  others = []; prof = {};
-  cloud = {}; cryptoKey = null; dirty = new Set();
-  await saveCloud(); await metaPutRaw('syncDirty', []).catch(() => {});
-  toast(tr('loggedOut')); render();
+const KEEP_META = ['lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
+async function wipeLocal(){
+  for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
+  const keys = await tx('meta', 'readonly', s => s.getAllKeys()).catch(() => []) || [];
+  for (const k of keys) if (!KEEP_META.includes(k)) await tx('meta', 'readwrite', s => s.delete(k)).catch(() => {});
+}
+async function logout(everywhere){
+  if (cloud.hid && navigator.onLine) await syncNow();
+  if (dirty.size && !(await askConfirm(tr('unsyncedQ', dirty.size), tr('logout')))) return;
+  try { await sb('/auth/v1/logout' + (everywhere ? '?scope=global' : ''), {method: 'POST'}); } catch {}
+  track(everywhere ? 'logout_all' : 'logout');
+  await flushEvents(true);
+  await wipeLocal();
+  try { sessionStorage.setItem('loggedOut', '1'); } catch {}
+  location.replace(APP_URL);
 }
 
 /* ---------- household: create, invite, join ---------- */
+/* after login: your account's storage comes to this device; what was only on this device is added to it */
+async function connectAccount(){
+  const pj = await metaGet('pendingJoin').catch(() => null);
+  if (pj) return;                                            // the invite decides which household
+  let mine = null;
+  try { mine = await sb('/rest/v1/members?select=household_id,joined_at&user_id=eq.' + myId() + '&order=joined_at.asc'); } catch { return; }
+  if (mine && mine[0]){
+    const local = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
+    const hasLocal = local.boxes.some(b => !b.loose || (b.items || []).length);
+    cloud.hid = mine[0].household_id; cloud.plain = true; cloud.cursor = null; cloud.lockedHid = null; await saveCloud();
+    if (cloud.key) await loadKey();
+    await pull(true);
+    if (!me && memberNames[myId()]){ me = memberNames[myId()]; await metaPutRaw('me', me).catch(() => {}); await metaPutRaw('onboarded', true).catch(() => {}); }
+    if (hasLocal){ await mergeLocal(local); toast(tr('mergedIntoAccount')); }
+    markMe(); await syncNow();
+  } else {
+    try { await createHousehold(); } catch {}
+  }
+}
 async function createHousehold(){
   cloud.hid = await rpc('create_household');
-  await newKey(); cloud.cursor = null; await saveCloud();
+  cloud.plain = true; cloud.cursor = null; await saveCloud();
   markEverything(); markMe();
   track('household_create');
   await syncNow();
 }
-async function inviteLink(){
-  const code = await rpc('create_invite', {hid: cloud.hid});
-  return APP_URL + '#join=' + code + '.' + toUrl64(cloud.key);
+async function inviteLink(note){
+  const code = await rpc('create_invite', {hid: cloud.hid, note: note ? toPayload(note) : null});
+  return APP_URL + '#join=' + code;
 }
 async function joinFromLink(text){
-  const m = /#join=([0-9a-f]+)\.([\w-]+)/.exec(text || ''); if (!m) return toast(tr('badInvite'));
-  if (!cloud.session){ await metaPutRaw('pendingJoin', m[1] + '.' + m[2]).catch(() => {}); toast(tr('loginToJoin')); return cloudSheet(); }
-  if (cloud.hid && !(await askConfirm(tr('switchHouseholdQ'), tr('join')))) return;
+  const m = /#join=([0-9a-f]+)(?:\.([\w-]+))?/.exec(text || ''); if (!m) return toast(tr('badInvite'));
+  const pj = m[1] + (m[2] ? '.' + m[2] : '');
+  if (!cloud.session){ await metaPutRaw('pendingJoin', pj).catch(() => {}); pendingJoinCode = pj; if (view.name === 'welcome') return render(); toast(tr('loginToJoin')); return cloudSheet(); }
+  if (cloud.hid && boxes.some(b => !b.loose || (b.items || []).length) && !(await askConfirm(tr('switchHouseholdQ'), tr('join')))) return;
   const keep = (boxes.some(b => (b.items || []).length) || realBoxes().length) ? await askChoice(tr('mergeQ'), tr('mergeYes'), tr('mergeNo')) : false;
   try {
     const hid = await rpc('join_household', {c: m[1]});
-    cloud.hid = hid; cloud.key = fromUrl64(m[2]); cloud.cursor = null; await loadKey(); await saveCloud();
+    cloud.hid = hid; cloud.lockedHid = null; cloud.key = m[2] ? fromUrl64(m[2]) : cloud.key; cloud.cursor = null; await loadKey(); await saveCloud();
     const mine = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
     if (!keep){ for (const b of boxes) await dbDelRaw(b.id).catch(() => {}); boxes = []; }
     dirty = new Set(); await saveDirty();
@@ -17726,7 +17796,8 @@ async function joinFromLink(text){
     track('household_join', {kept: keep});
     if (view.name === 'welcome'){ metaPutRaw('onboarded', true).catch(() => {}); view = {name: 'home', place: 'all'}; }
     toast(tr('joined'));
-    await syncNow(); render();
+    await syncNow(); render(); loadProfile();
+    if (!me) setTimeout(askMyName, 600);
   } catch (e){ toast(tr('joinFailed') + (e.status ? ' (' + e.status + ')' : '')); }
 }
 /* put what was on this phone into the household without overwriting the others */
@@ -17770,7 +17841,8 @@ async function syncNow(){
   if (syncing || !cloud.hid || !cloud.session || !navigator.onLine) return;
   syncing = true;
   try {
-    if (!cryptoKey) await loadKey();
+    // one-time move from the old encrypted format: upload everything again in the new one
+    if (!cloud.plain){ markEverything(); cloud.plain = true; await saveCloud(); }
     await push(); await pull(false);
     cloud.lastSync = new Date().toISOString(); syncErr = ''; await saveCloud();
   } catch (e){
@@ -17787,15 +17859,15 @@ async function push(){
     if (t === 'p'){
       const blob = await phGet(id).catch(() => null), path = `/storage/v1/object/photos/${cloud.hid}/${encodeURIComponent(id)}`;
       try {
-        if (blob) await sb(path, {method: 'POST', headers: {'x-upsert': 'true'}, body: await encBlob(blob)});
+        if (blob) await sb(path, {method: 'POST', headers: {'x-upsert': 'true', 'Content-Type': blob.type || 'application/octet-stream'}, body: blob});
         else await sb(path, {method: 'DELETE'}).catch(e => { if (e.status !== 404 && e.status !== 400) throw e; });
         done.push(k);
       } catch (e){ if (e.status === 413) done.push(k); else throw e; }
       continue;
     }
-    if (t === 'b'){ const b = findBox(id); rows.push({household_id: cloud.hid, id: k, kind: 'box', payload: b ? await encJSON(b) : '', deleted: !b}); }
-    if (t === 'u'){ if (id === myId()) rows.push({household_id: cloud.hid, id: k, kind: 'member', payload: await encJSON({name: me || ''}), deleted: false}); }
-    if (t === 'm'){ const v = metaVal(id); rows.push({household_id: cloud.hid, id: k, kind: 'meta', payload: await encJSON(v ?? null), deleted: false}); }
+    if (t === 'b'){ const b = findBox(id); rows.push({household_id: cloud.hid, id: k, kind: 'box', payload: b ? toPayload(b) : '', deleted: !b}); }
+    if (t === 'u'){ if (id === myId()) rows.push({household_id: cloud.hid, id: k, kind: 'member', payload: toPayload({name: me || ''}), deleted: false}); }
+    if (t === 'm'){ const v = metaVal(id); rows.push({household_id: cloud.hid, id: k, kind: 'meta', payload: toPayload(v ?? null), deleted: false}); }
     done.push(k);
   }
   for (let i = 0; i < rows.length; i += 200) await sb('/rest/v1/records', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: rows.slice(i, i + 200)});
@@ -17820,22 +17892,22 @@ async function applyRecord(r){
   const t = r.id.slice(0, 1), id = r.id.slice(2);
   if (t === 'b'){
     if (r.deleted){ boxes = boxes.filter(b => b.id !== id); await dbDelRaw(id).catch(() => {}); return; }
-    const b = await decJSON(r.payload); const i = boxes.findIndex(x => x.id === b.id);
+    const b = await fromPayload(r.payload); if (!b) return; const i = boxes.findIndex(x => x.id === b.id);
     if (i < 0) boxes.push(b); else boxes[i] = b;
     await dbPutRaw(b);
   } else if (t === 'u'){
-    const v = await decJSON(r.payload); memberNames[id] = (v && v.name) || ''; await metaPutRaw('memberNames', memberNames);
+    const v = await fromPayload(r.payload); memberNames[id] = (v && v.name) || ''; await metaPutRaw('memberNames', memberNames);
   } else if (t === 'm'){
-    const v = await decJSON(r.payload); if (v == null) return;
+    const v = await fromPayload(r.payload); if (v == null) return;
     if (id === 'places') places = v; else if (id === 'household') household = v; else if (id === 'trash') trash = v; else if (id === 'boxOrder') boxOrder = v; else return;
     await metaPutRaw(id, v);
   }
 }
 async function cloudPhoto(ref){
   if (!cloud.hid || !cloud.session || !navigator.onLine) return null;
-  if (!cryptoKey) await loadKey();
   const r = await sb(`/storage/v1/object/authenticated/photos/${cloud.hid}/${encodeURIComponent(ref)}`, {raw: true});
-  const blob = await decBlob(await r.arrayBuffer());
+  let blob = await r.blob();
+  if (/octet-stream/.test(r.headers.get('content-type') || '')){ if (!cryptoKey) await loadKey(); if (cryptoKey) try { blob = await decBlob(await blob.arrayBuffer()); } catch {} }
   await phPutRaw(ref, blob);
   return blob;
 }
@@ -17847,10 +17919,10 @@ async function cloudInit(){
   memberNames = await metaGet('memberNames').catch(() => null) || {};
   await takeAuthFromUrl();
   await loadKey().catch(() => {});
-  const pj = await metaGet('pendingJoin').catch(() => null);
+  const pj = await metaGet('pendingJoin').catch(() => null); pendingJoinCode = pj || null;
   if (pj){
     if (cloud.session){ await metaPutRaw('pendingJoin', null).catch(() => {}); setTimeout(() => joinFromLink('#join=' + pj), 300); }
-    else setTimeout(() => { toast(tr('loginToJoin')); cloudSheet(); }, 300);
+    else if (me || boxes.some(b => !b.loose)) setTimeout(() => { toast(tr('loginToJoin')); cloudSheet(); }, 300);
   }
   if (cloud.hid && cloud.session) scheduleSync(500);
   checkAdmin(); loadProfile(); presenceTick();
@@ -17889,15 +17961,16 @@ async function cloudSheet(){
   openSheet(`<h3>${ICON.cloud} ${tr('cloudMenu')}</h3>
     ${cloud.hid && cloud.session ? `<p class="proof" id="cloudLine">${esc(syncText())}</p>` : ''}
     <h4 class="adh">${tr('inApp')}</h4><div id="hhMembers"><div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span><small>${esc(cloud.email || '')}</small></div></div>
-    ${cloud.hid && cloud.session ? `<button class="btn primary block" id="clInvite">${tr('invite')}</button><div id="clQR"></div>` : ''}
+    ${cloud.hid && cloud.session ? `<div class="vtype"><input class="input" id="invNote" placeholder="${esc(tr('inviteWho'))}" autocapitalize="words"><button class="btn primary" id="clInvite">${tr('invite')}</button></div><div id="clQR"></div>
+      <h4 class="adh">${tr('invitesSent')}</h4><div id="hhInvites"><p class="hint">…</p></div>` : ''}
     <h4 class="adh">${tr('morePeople')}</h4><p class="proof" style="margin-top:0">${tr('morePeopleHint')}</p>
     <div id="hhPeople"></div>
     <div class="vtype"><input class="input" id="hhName" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn" id="hhAdd">${tr('add')}</button></div>
     <h4 class="adh">${tr('storagePlaces')}</h4>${placeRows}<button class="btn block" data-m2="places">${tr('editPlaces')}</button>
     ${!cloud.session ? `<h4 class="adh">${tr('shareTitle')}</h4><p class="hint">${tr('cloudIntro')}</p>${loginForm()}`
-      : !cloud.hid ? `<h4 class="adh">${tr('shareTitle')}</h4><div class="menu"><button class="btn primary" id="clCreate">${tr('createHousehold')}</button><p class="proof">${tr('createHint')}</p>
-        <button class="btn" id="clJoin">${tr('joinHousehold')}</button><p class="proof">${tr('joinHint')}</p></div>`
-      : `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button>`}
+      : !cloud.hid ? `<h4 class="adh">${tr('shareTitle')}</h4><div class="menu"><button class="btn primary" id="clCreate">${tr('connectNow')}</button></div>`
+      : `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button>
+        <button class="btn block" id="clJoin">${tr('joinOther')}</button>`}
     <div class="sheet-foot"><button class="btn" id="clX">${tr('close')}</button></div>`);
   const drawPeople = () => { const ex = extra(); $('#hhPeople').innerHTML = ex.length ? ex.map(n => `<div class="prow"><span>${esc(n)}</span><button class="linkbtn" data-pdel="${esc(n)}">${tr('remove')}</button></div>`).join('') : `<p class="hint">${tr('noOne')}</p>`; };
   drawPeople();
@@ -17907,24 +17980,24 @@ async function cloudSheet(){
   sheet.querySelector('[data-m2="places"]').onclick = () => placesSheet();
   $('#clX').onclick = closeSheet;
   wireLogin();
-  if ($('#clCreate')){
-    $('#clCreate').onclick = async () => { $('#clCreate').disabled = true; try { await createHousehold(); toast(tr('householdCreated')); cloudSheet(); } catch { $('#clCreate').disabled = false; toast(tr('syncFailed')); } };
-    $('#clJoin').onclick = () => scanSheet();
-  }
+  if ($('#clJoin')) $('#clJoin').onclick = () => scanSheet();
+  if ($('#clCreate')) $('#clCreate').onclick = async () => { $('#clCreate').disabled = true; try { await connectAccount(); cloudSheet(); } catch { $('#clCreate').disabled = false; toast(tr('syncFailed')); } };
   if ($('#clSync')) $('#clSync').onclick = async () => { $('#cloudLine').textContent = tr('syncing'); await syncNow(); render(); updateCloudLine(); };
   if ($('#clInvite')) $('#clInvite').onclick = async () => {
     $('#clInvite').disabled = true;
     try {
-      const link = await inviteLink(); track('invite');
+      const link = await inviteLink($('#invNote').value.trim()); track('invite'); drawInvites();
       $('#clQR').innerHTML = `<div class="inviteqr">${qrSvg(link, 4)}</div><p class="hint center">${tr('inviteHint')}</p>
         <button class="btn block" id="clShare">${tr('shareLink')}</button><p class="proof center">${tr('inviteSafe')}</p>`;
       $('#clShare').onclick = () => { if (navigator.share) navigator.share({title: 'Storrrage', text: tr('inviteText'), url: link}).catch(() => {}); else navigator.clipboard.writeText(link).then(() => toast(tr('copied'))).catch(() => {}); };
     } catch { toast(tr('syncFailed')); }
     $('#clInvite').disabled = false;
   };
+  if (cloud.hid && cloud.session) drawInvites();
   if (cloud.hid && cloud.session){
     try {
-      const rows = await sb('/rest/v1/members?select=user_id,role&household_id=eq.' + cloud.hid);
+      const rows = await sb('/rest/v1/members?select=user_id,role,joined_at&household_id=eq.' + cloud.hid);
+      hhInfo.n = rows.length;
       const el = $('#hhMembers'); if (!el) return;
       el.innerHTML = rows.sort((x, y) => (y.user_id === myId()) - (x.user_id === myId())).map(r => r.user_id === myId()
         ? `<div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span><small>${esc(cloud.email || '')}</small></div>`
@@ -17933,10 +18006,35 @@ async function cloudSheet(){
   }
 }
 
+async function drawInvites(){
+  const el = $('#hhInvites'); if (!el) return;
+  try {
+    const rows = await rpc('household_invites', {hid: cloud.hid}) || [];
+    const out = [];
+    for (const r of rows){
+      let who = ''; try { who = r.note ? await fromPayload(r.note) : ''; } catch {}
+      const st = r.used_at ? `✓ ${tr('joinedOn', fmtDate(r.used_at))}${r.used_by && memberNames[r.used_by] && memberNames[r.used_by] !== who ? ' · ' + esc(memberNames[r.used_by]) : ''}` : new Date(r.expires_at) < new Date() ? tr('expired') : tr('waitingUntil', fmtStamp(r.expires_at));
+      out.push(`<div class="prow"><span>${esc(who || tr('invite1'))}</span><small class="${r.used_at ? 'online' : ''}">${st}</small></div>`);
+    }
+    el.innerHTML = out.join('') || `<p class="hint">${tr('noInvites')}</p>`;
+  } catch { el.innerHTML = `<p class="hint">${tr('noInvites')}</p>`; }
+}
+function pfacts(){
+  const nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
+  const rows = [];
+  if (cloud.hid) rows.push([tr('household'), `${tr('membersN', hhInfo.n || 1)}${hhInfo.role === 'owner' ? ' · ' + tr('ownerTag') : ''}`]);
+  else rows.push([tr('household'), tr('noHousehold')]);
+  if (hhInfo.joined) rows.push([tr('memberSince'), fmtDate(hhInfo.joined)]);
+  rows.push([tr('inStorage'), `${tr('places_n', places.length).toLowerCase()} · ${tr('boxes_n', realBoxes().length).toLowerCase()} · ${tr('items_n', nI).toLowerCase()}`]);
+  if (cloud.lastSync) rows.push([tr('lastSynced'), fmtStamp(cloud.lastSync)]);
+  return rows.map(([k, v]) => `<div class="prow"><span>${esc(k)}</span><small>${esc(v)}</small></div>`).join('');
+}
 /* ---------- profile on the server: only the e-mail reminder choice ---------- */
 async function loadProfile(){
   if (!cloud.session) return;
   try { const r = await sb('/rest/v1/profiles?select=notify_email,contact_email&user_id=eq.' + myId()); prof = (r && r[0]) || {}; } catch {}
+  try { const r = await sb('/rest/v1/members?select=role,joined_at,household_id&user_id=eq.' + myId()); const m = (r || []).find(x => x.household_id === (cloud.hid || cloud.lockedHid)); if (m){ hhInfo.role = m.role; hhInfo.joined = m.joined_at; } } catch {}
+  if (view.name === 'profile') render();
 }
 async function saveProfile(){
   if (!cloud.session) return;
@@ -18007,7 +18105,7 @@ async function statsNotice(){
 
 /* ---------- feedback ---------- */
 function feedbackSheet(){
-  openSheet(`<h3>💬 ${tr('feedback')}</h3><p class="hint">${tr('feedbackIntro')}</p>
+  openSheet(`<h3>${ICON.chat} ${tr('feedback')}</h3><p class="hint">${tr('feedbackIntro')}</p>
     <div class="chips" id="fbKind"><button class="chipbtn on" data-k="idea">💡 ${tr('fbIdea')}</button><button class="chipbtn" data-k="bug">🐞 ${tr('fbBug')}</button><button class="chipbtn" data-k="love">❤️ ${tr('fbLove')}</button></div>
     <textarea class="input" id="fbText" rows="5" maxlength="4000" placeholder="${esc(tr('fbPh'))}" style="margin-top:10px"></textarea>
     <label class="field"><span>${tr('fbContact')}</span><input class="input" id="fbContact" type="email" inputmode="email" placeholder="${esc(tr('optional'))}" value=""></label>
@@ -18125,6 +18223,28 @@ Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på
   someone: 'Någon', activeNow: 'i appen nu', inThisBox: n => `${n} är i den här lådan just nu.`, editingItem: n => `${n} har den här saken öppen just nu – vänta en stund så era ändringar inte krockar.`,
   talkH: 'Prata eller skriv med Storrrage', tapTalk: 'Tryck och prata', chatPh: 'Skriv, t.ex. ”var är tältet?”', simpleMode: 'Enkla kommandon, funkar offline', aiOn: 'Slå på AI', offlineSimple: 'offline – enkla kommandon',
   whatSay: 'Vad kan jag säga? (även utan täckning)', noSignal: 'Utan täckning:', noSignalTxt2: 'alla kommandon ovan fungerar offline. Om mikrofonen kräver täckning på din telefon, använd mikrofonen på tangentbordet i stället.'});
+
+Object.assign(STR.en, {noPlaceYet: 'No place yet', unsorted: 'Unsorted', addWhat: 'Add', where: 'Where?', notLoggedIn: 'You’re not logged in. Log in to share with your household and get reminders.',
+  household: 'Household', ownerTag: 'you started it', lockedHere: 'Locked on this phone – scan a QR code from another phone', noHousehold: 'Not shared yet', memberSince: 'Member since', inStorage: 'Stored', lastSynced: 'Last synced',
+  inviteWho: 'Who? (optional, e.g. Anna)', invitesSent: 'Invites', joinedOn: d => `joined ${d}`, expired: 'expired', waitingUntil: t => `waiting · valid until ${t}`, invite1: 'Invite', noInvites: 'No invites yet.',
+  unlockTitle: 'Unlock on this phone', unlockHint: 'You’re in a household, but the key only lives on your phones. On another phone in the household: ☰ → Household & sync → Invite someone. Then scan the code here.', scanQR: 'Scan QR code',
+  whatName: 'What’s your name?', startNew: 'Start a new storage', loginWelcome: 'We’ll send a link to your e-mail. Open it on this phone and you’re in – no password.', invitedIntro: 'You’ve been invited to a household! Log in with your e-mail and you’ll come straight into it.'});
+Object.assign(STR.sv, {noPlaceYet: 'Ingen plats än', unsorted: 'Osorterat', addWhat: 'Lägg till', where: 'Var?', notLoggedIn: 'Du är inte inloggad. Logga in för att dela med hushållet och få påminnelser.',
+  household: 'Hushåll', ownerTag: 'du startade det', lockedHere: 'Låst på den här telefonen – skanna en QR-kod från en annan telefon', noHousehold: 'Inte delat än', memberSince: 'Medlem sedan', inStorage: 'Förvarat', lastSynced: 'Senast synkat',
+  inviteWho: 'Vem? (valfritt, t.ex. Anna)', invitesSent: 'Inbjudningar', joinedOn: d => `gick med ${d}`, expired: 'gick ut', waitingUntil: t => `väntar · giltig till ${t}`, invite1: 'Inbjudan', noInvites: 'Inga inbjudningar än.',
+  unlockTitle: 'Lås upp på den här telefonen', unlockHint: 'Du är med i ett hushåll, men nyckeln finns bara på era telefoner. På en annan telefon i hushållet: ☰ → Hushåll & synk → Bjud in någon. Skanna sedan koden här.', scanQR: 'Skanna QR-kod',
+  whatName: 'Vad heter du?', startNew: 'Starta ett nytt förråd', loginWelcome: 'Vi skickar en länk till din e-post. Öppna den på den här telefonen så är du inne – inget lösenord.', invitedIntro: 'Du har blivit inbjuden till ett hushåll! Logga in med din e-post så kommer du direkt in i det.'});
+
+Object.assign(STR.en, {cloudIntro: 'Log in with your e-mail to keep your storage in your account. Then you can use it on your computer and other phones, share it with your household and log out if your phone gets lost.',
+  e2eNote: 'Stored in your account on servers in the EU. Only you and the people you invite can see it.', inviteSafe: 'The code works once, for 24 hours.', connectNow: 'Save in my account',
+  joinOther: 'Join another household (QR)', mergedIntoAccount: 'What was on this phone was added to your account.', logoutQ: 'Log out? Your storage is removed from this device but stays in your account – log in again to get it back.',
+  unsyncedQ: n => `${n} changes haven’t been saved to your account yet (no signal?). Log out anyway? They will be lost.`, logoutAll: 'Log out on all devices', logoutAllQ: 'Log out on all your devices? Use this if a phone is lost. Each device removes your storage the next time it’s online.',
+  logoutAllHint: 'Lost a phone? Log in here or on your computer and choose “Log out on all devices”.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.'});
+Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förrådet i ditt konto. Då kommer du åt det från datorn och andra telefoner, kan dela med hushållet och logga ut om telefonen kommer bort.',
+  e2eNote: 'Sparas i ditt konto på servrar i EU. Bara du och de du bjuder in kan se det.', inviteSafe: 'Koden fungerar en gång i 24 timmar.', connectNow: 'Spara i mitt konto',
+  joinOther: 'Gå med i ett annat hushåll (QR)', mergedIntoAccount: 'Det som fanns på telefonen lades till i ditt konto.', logoutQ: 'Logga ut? Förrådet tas bort från den här enheten men finns kvar i ditt konto – logga in igen så kommer det tillbaka.',
+  unsyncedQ: n => `${n} ändringar har inte sparats i kontot än (ingen täckning?). Logga ut ändå? De försvinner då.`, logoutAll: 'Logga ut på alla enheter', logoutAllQ: 'Logga ut på alla dina enheter? Använd det om en telefon kommit bort. Varje enhet tar bort förrådet nästa gång den är online.',
+  logoutAllHint: 'Tappat telefonen? Logga in här eller på datorn och välj ”Logga ut på alla enheter”.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
 /* ---------- start ---------- */
 async function init(){
   render();
@@ -18163,10 +18283,12 @@ async function init(){
   ready = true; updateStatus();
   await cloudInit();
   const hasStuff = boxes.some(b => !b.loose || (b.items || []).length);
-  if (!me && !hasStuff && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
+  if (!me && !hasStuff && !cloud.session && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
   else view = {name: 'home', place: currentPlace};
   try { history.replaceState({root: 1}, ''); } catch {}
   render(); arm();
+  try { if (sessionStorage.getItem('wiped')){ sessionStorage.removeItem('wiped'); setTimeout(() => toast(tr('wipedRemote')), 600); } if (sessionStorage.getItem('loggedOut')){ sessionStorage.removeItem('loggedOut'); setTimeout(() => toast(tr('loggedOut')), 600); } } catch {}
+  if (cloud.session && !me && !pendingJoinCode) setTimeout(askMyName, 800);
   track('open', {places: places.length, boxes: Math.min(realBoxes().length, 999), synced: !!cloud.hid});
   statsNotice();
 }
