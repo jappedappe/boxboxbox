@@ -949,6 +949,18 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .sortbar .foldall{position:absolute;right:0;top:0;font-size:.75rem}
 .itile .timg{overflow:visible}
 .itile .timg img{border-radius:10px}
+/* 2026-10-21.5 */
+.newrib{position:absolute;top:4px;left:-3px;background:var(--dot);color:#fff;font-size:.56rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:3px 6px 6px 3px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.newrib.inline{position:static;display:inline-block;margin-left:6px;vertical-align:2px}
+.btn.addopt{flex-direction:column;gap:6px;padding:14px 8px}
+.addopt .aoi{width:44px;height:44px;border-radius:12px;background:#fff;display:grid;place-items:center}
+.addopt .aoi svg{width:36px;height:36px}
+.btn.icontext{display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.icontext svg{width:18px;height:18px;flex:none}
+.invitebox{background:var(--lav-3);border-radius:12px;padding:12px;margin:10px 0;display:flex;flex-direction:column;gap:8px;text-align:center}
+.pact{display:flex;align-items:center;gap:10px;flex:none}
+.pact small{color:var(--dot)}
+.linkbtn.muted{color:var(--muted);text-decoration:none}
 </style>
 </head>
 <body>
@@ -13379,7 +13391,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.4';
+const APP_VERSION = '2026-10-21.5';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14315,7 +14327,7 @@ function itemTile(it, b, caption){
   const sel = selecting && selecting.has('i:' + b.id + ':' + it.id);
   const hl = view.name === 'box' && view.hl === it.id;
   return `<button class="itile${sel ? ' sel' : ''}${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
-    <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
+    <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${it.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
     <span class="ttext"><span class="tname">${esc(it.name || tr('unnamed'))}</span>${caption ? `<span class="tcap">${caption}</span>` : ''}</span></button>`;
 }
 const whereCaption = b => b.loose ? `${esc(placeName(b.placeId))}` : `${ICON.box}${esc(b.code)} · ${esc(placeName(b.placeId))}`;
@@ -14401,7 +14413,7 @@ function shelfTile(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
   return `<button class="itile btile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">
-    <span class="timg">${boxArt(boxNum(b))}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
+    <span class="timg">${boxArt(boxNum(b))}${b.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
     <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span></span></button>`;
 }
 /* the freshness dot only shows when a box is about to stop being "fresh" (not checked for ~5 months) */
@@ -14422,7 +14434,7 @@ function tokenHTML(it, l, opts = {}){
 function looseCarousel(pid, opts = {}){
   const l = looseOf(pid), li = looseItems(pid).filter(opts.filter || (() => true));
   if (!li.length && !opts.always) return '';
-  return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length ? `<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
+  return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length ? `${li.some(i => i.isNew) ? `<span class="newrib inline">${tr('newTag')}</span>` : ''}<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
     ${opts.hint ? `<p class="maphint">${opts.hint}</p>` : ''}
     <div class="lstrip">${li.map(it => itemTile(it, l, opts.showZone && it.zone ? esc(it.zone) : '')).join('')}
       <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('add')}</span></span></button></div></section>`;
@@ -14462,6 +14474,7 @@ function renderPlace(pid, focus){
 }
 let selecting = null;
 function renderBox(b){
+  if (b.isNew) setTimeout(() => { const nb = clone(findBox(b.id)); if (nb && nb.isNew){ delete nb.isNew; putBox(nb, true); } }, 1500);
   const items = [...(b.items || [])].sort(byName), kids = b.loose ? [] : childBoxes(b.id).sort(byCode);
   const chain = b.loose ? [] : boxChain(b);
   const path = [placeName(b.placeId), ...chain.map(x => x.code)].join(' › ');
@@ -14840,7 +14853,7 @@ function renderWelcome(){
       <p class="hint">${tr('startNewHint')}</p></div>
     <div class="wor"><span>${tr('or')}</span></div>
     <div class="wcard">
-      <button class="btn block" id="wLog">${tr('logIn')}</button>
+      <button class="btn block" id="wLog">${tr('logInOrCreate')}</button>
       <div class="wform" id="wLogF" hidden>${loginForm(true)}</div>
       <p class="hint" id="wLogHint">${tr('loginHint')}</p></div>`}</div>`;
   wireLogin();
@@ -15006,6 +15019,7 @@ function moveTargetsHTML(cur){
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
 function renderItem(){
+  { const [it0, b0] = curItem(); if (it0 && it0.isNew) setTimeout(() => { const nb = clone(findBox(b0.id)), x = nb && (nb.items || []).find(i => i.id === it0.id); if (x && x.isNew){ delete x.isNew; putBox(nb, true); } }, 1500); }
   const [it, b] = curItem();
   if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; }
   const isNew = itemDraft === it.id;
@@ -15908,8 +15922,8 @@ function addNavSheet(){
   let pid = (v.name === 'box' || v.name === 'item') && findBox(v.boxId) ? findBox(v.boxId).placeId : scopePlace() || '';
   const chips = () => `${places.filter(p => !p.inbox).map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${pid === 'inbox' || (findPlace(pid) || {}).inbox ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
   openSheet(`<h3>${tr('addWhat')}</h3>
-    <div class="choice"><button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button></div>
-    <button class="btn block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>
+    <div class="choice"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('storageWord')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button></div>
+    <button class="btn block icontext" id="adBatch">${ICON.camera}<span>${tr('severalPhotos')}</span></button>
     <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips" id="adPlaces">${chips()}</div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div>`);
   if (!pid) pid = places.filter(p => !p.inbox).length === 1 ? places.find(p => !p.inbox).id : 'inbox';
@@ -17749,11 +17763,11 @@ const rpc = (fn, args) => sb('/rest/v1/rpc/' + fn, {method: 'POST', body: args |
 
 /* ---------- login with a link in the e-mail ---------- */
 async function sendLoginLink(email){
-  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL), {method: 'POST', auth: false, body: {email, create_user: true, data: {lang}}});
+  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL + (lang === 'en' ? '?lang=en' : '')), {method: 'POST', auth: false, body: {email, create_user: true, data: {lang}}});
   track('login_link');
 }
 async function takeAuthFromUrl(){
-  { const qs = new URLSearchParams(location.search); if (qs.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + qs.get('error_description')); return; } }
+  { const qs = new URLSearchParams(location.search); if (qs.get('lang') === 'en' || qs.get('lang') === 'sv'){ if (qs.get('lang') !== lang) setLang(qs.get('lang')); if (!location.hash) try { history.replaceState(null, '', APP_URL); } catch {} } if (qs.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + qs.get('error_description')); return; } }
   const h = location.hash.slice(1); if (!h) return;
   const p = new URLSearchParams(h);
   if (p.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + p.get('error_description')); return; }
@@ -17806,12 +17820,19 @@ async function connectAccount(){
   try { mine = await sb('/rest/v1/members?select=household_id,joined_at&user_id=eq.' + myId() + '&order=joined_at.asc'); } catch { return; }
   if (mine && mine[0]){
     const local = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
-    const hasLocal = local.boxes.some(b => !b.loose || (b.items || []).length);
+    const nLocal = local.boxes.reduce((s, b) => s + (b.loose ? 0 : 1) + (b.items || []).length, 0);
+    // put the phone's own things aside, bring in the account, then let the user decide
+    for (const b of boxes) await dbDelRaw(b.id).catch(() => {});
+    boxes = []; places = []; dirty = new Set(); await saveDirty();
     cloud.hid = mine[0].household_id; cloud.plain = true; cloud.cursor = null; cloud.lockedHid = null; await saveCloud();
     if (cloud.key) await loadKey();
     await pull(true);
     if (!me && memberNames[myId()]){ me = memberNames[myId()]; await metaPutRaw('me', me).catch(() => {}); await metaPutRaw('onboarded', true).catch(() => {}); }
-    if (hasLocal){ await mergeLocal(local); toast(tr('mergedIntoAccount')); }
+    if (nLocal){
+      const keep = await askChoice(tr('moveLocalQ', nLocal), tr('moveLocalYes'), tr('moveLocalNo'));
+      if (keep){ await mergeLocal(local, true); toast(tr('mergedIntoAccount')); track('merge_local', {n: nLocal}); }
+    }
+    if (!places.length && local.places.length){ places = local.places.slice(0, 1); await metaPut('places', places); }
     markMe(); await syncNow();
   } else {
     try { await createHousehold(); } catch {}
@@ -17852,7 +17873,7 @@ async function joinFromLink(text){
   } catch (e){ toast(tr('joinFailed') + (e.status ? ' (' + e.status + ')' : '')); }
 }
 /* put what was on this phone into the household without overwriting the others */
-async function mergeLocal(mine){
+async function mergeLocal(mine, markNew){
   const byName = new Map(places.map(p => [p.name.trim().toLowerCase(), p.id]));
   const remap = {};
   for (const p of mine.places){
@@ -17863,6 +17884,7 @@ async function mergeLocal(mine){
   for (const b0 of mine.boxes){
     if (findBox(b0.id)) continue;
     const b = clone(b0); if (remap[b.placeId]) b.placeId = remap[b.placeId];
+    if (markNew){ if (!b.loose) b.isNew = true; (b.items || []).forEach(i => { if (b.loose) i.isNew = true; }); }
     if (b.loose){ const l = looseOf(b.placeId); if (l){ const nl = clone(l); nl.items = (nl.items || []).concat(b.items || []); putBox(nl, true); continue; } }
     else if (boxes.some(x => !x.loose && x.placeId === b.placeId && x.code === b.code)) b.code = nextCode(b.placeId);
     putBox(b, true);
@@ -18040,57 +18062,62 @@ function wireLogin(){
   };
 }
 async function cloudSheet(){
-  const inApp = [];
-  const placeRows = places.map(p => { const nb = boxesIn(p.id).length; return `<div class="prow"><span>${placeIcon(p)} ${esc(p.name)}</span><small>${tr('boxes_n', nb).toLowerCase()}</small></div>`; }).join('');
-  const extra = () => household.filter(n => n !== me && !Object.values(memberNames).includes(n));
+  const placeRows = places.map(p => `<div class="prow"><span>${placeIcon(p)} ${esc(p.name)}</span><small>${tr('boxes_n', boxesIn(p.id).length).toLowerCase()}</small></div>`).join('');
   openSheet(`<h3>${ICON.cloud} ${tr('cloudMenu')}</h3>
-    ${cloud.hid && cloud.session ? `<p class="proof" id="cloudLine">${esc(syncText())}</p>` : ''}
-    <h4 class="adh">${tr('inApp')}</h4><div id="hhMembers"><div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span><small>${esc(cloud.email || '')}</small></div></div>
-    ${cloud.hid && cloud.session ? `<div class="vtype"><input class="input" id="invNote" placeholder="${esc(tr('inviteWho'))}" autocapitalize="words"><button class="btn primary" id="clInvite">${tr('invite')}</button></div><div id="clQR"></div>
-      <h4 class="adh">${tr('invitesSent')}</h4><div id="hhInvites"><p class="hint">…</p></div>` : ''}
-    <h4 class="adh">${tr('morePeople')}</h4><p class="proof" style="margin-top:0">${tr('morePeopleHint')}</p>
-    <div id="hhPeople"></div>
+    <h4 class="adh">${tr('yourAccount')}</h4>
+    ${cloud.session ? `<div class="prow"><span>👤 ${esc(me || tr('you'))}</span><small>${esc(cloud.email || '')}</small></div>${cloud.hid ? `<p class="proof" id="cloudLine">${esc(syncText())}</p>` : ''}`
+      : `${accountPitch()}${loginForm()}`}
+    <h4 class="adh">${tr('peopleTitle')}</h4><p class="proof" style="margin-top:0">${tr('peopleHint')}</p>
+    <div id="hhPeople"><p class="hint">…</p></div>
     <div class="vtype"><input class="input" id="hhName" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn" id="hhAdd">${tr('add')}</button></div>
+    <div id="clQR"></div>
     <h4 class="adh">${tr('storagePlaces')}</h4>${placeRows}<button class="btn block" data-m2="places">${tr('editPlaces')}</button>
-    ${!cloud.session ? `<h4 class="adh">${tr('shareTitle')}</h4>${accountPitch()}${loginForm()}`
-      : !cloud.hid ? `<h4 class="adh">${tr('shareTitle')}</h4><div class="menu"><button class="btn primary" id="clCreate">${tr('connectNow')}</button></div>`
-      : `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button>
-        <button class="btn block" id="clJoin">${tr('joinOther')}</button>`}
+    ${cloud.hid && cloud.session ? `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button><button class="btn block" id="clJoin">${tr('joinOther')}</button>` : ''}
     <div class="sheet-foot"><button class="btn" id="clX">${tr('close')}</button></div>`);
-  const drawPeople = () => { const ex = extra(); $('#hhPeople').innerHTML = ex.length ? ex.map(n => `<div class="prow"><span>${esc(n)}</span><button class="linkbtn" data-pdel="${esc(n)}">${tr('remove')}</button></div>`).join('') : `<p class="hint">${tr('noOne')}</p>`; };
+  let members = [], invites = [];
+  const drawPeople = () => {
+    const rows = [];
+    members.filter(r => r.user_id !== myId()).forEach(r => rows.push(`<div class="prow"><span>👤 ${esc(memberNames[r.user_id] || tr('someone'))}</span><small class="online">${others.some(o => o.user_id === r.user_id) ? '● ' + tr('activeNow') : '✓ ' + tr('inAppTag')}</small></div>`));
+    const memberSet = new Set(members.map(r => memberNames[r.user_id]).filter(Boolean));
+    household.filter(n => n !== me && !memberSet.has(n)).forEach(n => {
+      const inv = invites.find(i => i.who === n && !i.used_at && new Date(i.expires_at) > new Date());
+      rows.push(`<div class="prow"><span>${esc(n)}</span><span class="pact">${inv ? `<small>${tr('invitePending')}</small>` : ''}<button class="linkbtn" data-inv="${esc(n)}">${inv ? tr('inviteAgain') : tr('inviteToApp')}</button><button class="linkbtn muted" data-pdel="${esc(n)}" aria-label="${esc(tr('remove'))}">✕</button></span></div>`);
+    });
+    $('#hhPeople').innerHTML = `<div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span></div>` + rows.join('');
+  };
   drawPeople();
   const add = () => { const n = addPerson($('#hhName').value); $('#hhName').value = ''; if (n) drawPeople(); };
   $('#hhAdd').onclick = add; $('#hhName').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
-  $('#hhPeople').onclick = e => { const d = e.target.closest('[data-pdel]'); if (!d) return; household = household.filter(n => n !== d.dataset.pdel); metaPut('household', household).catch(() => {}); drawPeople(); };
+  $('#hhPeople').onclick = async e => {
+    const d = e.target.closest('[data-pdel]'); if (d){ household = household.filter(n => n !== d.dataset.pdel); metaPut('household', household).catch(() => {}); return drawPeople(); }
+    const iv = e.target.closest('[data-inv]'); if (!iv) return;
+    if (!cloud.session){ toast(tr('loginToInvite')); const em = $('#clEmail'); if (em){ em.scrollIntoView({block: 'center'}); em.focus(); } return; }
+    if (!cloud.hid) return toast(tr('syncing'));
+    const who = iv.dataset.inv; iv.disabled = true;
+    try {
+      const link = await inviteLink(who); track('invite');
+      $('#clQR').innerHTML = `<div class="invitebox"><b>${esc(tr('inviteFor', who))}</b><button class="btn primary block" id="clShare">${tr('sendInvite')}</button>
+        <div class="inviteqr">${qrSvg(link, 4)}</div><p class="hint center">${tr('inviteHint2')}</p><p class="proof center">${tr('inviteSafe')}</p></div>`;
+      $('#clShare').onclick = () => { const txt = tr('inviteMsg', me || 'Storrrage'); if (navigator.share) navigator.share({title: 'Storrrage', text: txt, url: link}).catch(() => {}); else navigator.clipboard.writeText(txt + ' ' + link).then(() => toast(tr('copied'))).catch(() => {}); };
+      $('#clQR').scrollIntoView({block: 'nearest'});
+      await loadInvites(); drawPeople();
+    } catch { toast(tr('syncFailed')); }
+    iv.disabled = false;
+  };
   sheet.querySelector('[data-m2="places"]').onclick = () => placesSheet();
   $('#clX').onclick = closeSheet;
   wireLogin();
   if ($('#clJoin')) $('#clJoin').onclick = () => scanSheet();
-  if ($('#clCreate')) $('#clCreate').onclick = async () => { $('#clCreate').disabled = true; try { await connectAccount(); cloudSheet(); } catch { $('#clCreate').disabled = false; toast(tr('syncFailed')); } };
   if ($('#clSync')) $('#clSync').onclick = async () => { $('#cloudLine').textContent = tr('syncing'); await syncNow(); render(); updateCloudLine(); };
-  if ($('#clInvite')) $('#clInvite').onclick = async () => {
-    $('#clInvite').disabled = true;
-    try {
-      const link = await inviteLink($('#invNote').value.trim()); track('invite'); drawInvites();
-      $('#clQR').innerHTML = `<div class="inviteqr">${qrSvg(link, 4)}</div><p class="hint center">${tr('inviteHint')}</p>
-        <button class="btn block" id="clShare">${tr('shareLink')}</button><p class="proof center">${tr('inviteSafe')}</p>`;
-      $('#clShare').onclick = () => { if (navigator.share) navigator.share({title: 'Storrrage', text: tr('inviteText'), url: link}).catch(() => {}); else navigator.clipboard.writeText(link).then(() => toast(tr('copied'))).catch(() => {}); };
-    } catch { toast(tr('syncFailed')); }
-    $('#clInvite').disabled = false;
-  };
-  if (cloud.hid && cloud.session) drawInvites();
+  async function loadInvites(){
+    try { const rows = await rpc('household_invites', {hid: cloud.hid}) || []; invites = []; for (const r of rows){ let who = ''; try { who = r.note ? await fromPayload(r.note) : ''; } catch {} invites.push(Object.assign({who}, r)); } } catch {}
+  }
   if (cloud.hid && cloud.session){
-    try {
-      const rows = await sb('/rest/v1/members?select=user_id,role,joined_at&household_id=eq.' + cloud.hid);
-      hhInfo.n = rows.length;
-      const el = $('#hhMembers'); if (!el) return;
-      el.innerHTML = rows.sort((x, y) => (y.user_id === myId()) - (x.user_id === myId())).map(r => r.user_id === myId()
-        ? `<div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span><small>${esc(cloud.email || '')}</small></div>`
-        : `<div class="prow"><span>👤 ${esc(memberNames[r.user_id] || tr('someone'))}</span>${others.some(o => o.user_id === r.user_id) ? `<small class="online">● ${tr('activeNow')}</small>` : ''}</div>`).join('');
-    } catch {}
+    try { members = await sb('/rest/v1/members?select=user_id,role,joined_at&household_id=eq.' + cloud.hid) || []; hhInfo.n = members.length; } catch {}
+    await loadInvites();
+    if ($('#hhPeople')) drawPeople();
   }
 }
-
 async function drawInvites(){
   const el = $('#hhInvites'); if (!el) return;
   try {
@@ -18347,6 +18374,15 @@ Object.assign(STR.sv, {slogan: 'Ha koll på allt du har – och var det finns.',
 
 Object.assign(STR.en, {badEmail: 'Check the e-mail address.', sending: 'Sending…', sendTimeout: 'The mail server didn’t answer in time. Try again in a minute.', mailNotSent: 'The e-mail wasn’t sent', errorCode: 'Details'});
 Object.assign(STR.sv, {badEmail: 'Kolla e-postadressen.', sending: 'Skickar…', sendTimeout: 'Mejlservern svarade inte i tid. Försök igen om en minut.', mailNotSent: 'Mejlet skickades inte', errorCode: 'Detaljer'});
+
+Object.assign(STR.en, {moveLocalQ: n => `This phone has boxes and things (${n}) that aren’t in your account. Move them into your account? They’ll be marked “New” so you can find them.`, moveLocalYes: 'Yes, move them in', moveLocalNo: 'No, remove them', newTag: 'New',
+  logInOrCreate: 'Log in or create an account', yourAccount: 'Your account', peopleTitle: 'People in the household', peopleHint: 'Add everyone who has things here. Invite those who want to use the app themselves.',
+  inAppTag: 'uses the app', invitePending: 'invited', inviteAgain: 'Invite again', inviteToApp: 'Invite', loginToInvite: 'Log in first – then you can invite.', inviteFor: n => `Invite ${n}`, sendInvite: 'Send invite',
+  inviteHint2: 'Or let them scan the code with their phone camera.', inviteMsg: n => `${n} invites you to share our storage in Storrrage:`, storageWord: 'Storage'});
+Object.assign(STR.sv, {moveLocalQ: n => `Telefonen har lådor och saker (${n} st) som inte finns i ditt konto. Flytta in dem i kontot? De markeras ”Ny” så du hittar dem.`, moveLocalYes: 'Ja, flytta in', moveLocalNo: 'Nej, ta bort dem', newTag: 'Ny',
+  logInOrCreate: 'Logga in eller skapa konto', yourAccount: 'Ditt konto', peopleTitle: 'Personer i hushållet', peopleHint: 'Lägg till alla som har saker här. Bjud in dem som själva vill använda appen.',
+  inAppTag: 'använder appen', invitePending: 'inbjuden', inviteAgain: 'Bjud in igen', inviteToApp: 'Bjud in', loginToInvite: 'Logga in först – sedan kan du bjuda in.', inviteFor: n => `Bjud in ${n}`, sendInvite: 'Skicka inbjudan',
+  inviteHint2: 'Eller låt hen skanna koden med telefonens kamera.', inviteMsg: n => `${n} bjuder in dig att dela vårt förråd i Storrrage:`, storageWord: 'Förvaring'});
 /* ---------- start ---------- */
 async function init(){
   render();
