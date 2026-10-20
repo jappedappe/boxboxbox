@@ -846,6 +846,9 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 .menu .btn svg.stroke{width:18px;height:18px;vertical-align:-3px}
 .shelf .itile,.kids .itile,.strip .itile,.lstrip .itile,.igrid .itile{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
 .strip.mini{margin:0 -16px;padding:3px 16px 4px}
+.inviteqr{background:#fff;padding:14px;border-radius:12px;width:min(240px,70vw);margin:10px auto 6px}
+.inviteqr svg{width:100%;height:auto;display:block;fill:initial}
+.menu .btn svg.stroke{width:18px;height:18px}
 </style>
 </head>
 <body>
@@ -13277,7 +13280,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-20.1';
+const APP_VERSION = '2026-10-20.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13301,13 +13304,20 @@ function tx(store, mode, fn){
   });
 }
 const dbAll = () => tx('boxes', 'readonly', s => s.getAll());
-const dbPut = b => tx('boxes', 'readwrite', s => s.put(b));
-const dbDel = id => tx('boxes', 'readwrite', s => s.delete(id));
-const phPut = (k, b) => tx('photos', 'readwrite', s => s.put(b, k));
+/* the *Raw versions only touch the phone; the normal ones also mark the change for syncing */
+const dbPutRaw = b => tx('boxes', 'readwrite', s => s.put(b));
+const dbDelRaw = id => tx('boxes', 'readwrite', s => s.delete(id));
+const phPutRaw = (k, b) => tx('photos', 'readwrite', s => s.put(b, k));
+const phDelRaw = k => tx('photos', 'readwrite', s => s.delete(k));
+const metaPutRaw = (k, v) => tx('meta', 'readwrite', s => s.put(v, k));
+const dbPut = b => dbPutRaw(b).then(r => { markDirty('b:' + b.id); return r; });
+const dbDel = id => dbDelRaw(id).then(r => { markDirty('b:' + id); return r; });
+const phPut = (k, b) => phPutRaw(k, b).then(r => { markDirty('p:' + k); return r; });
 const phGet = k => tx('photos', 'readonly', s => s.get(k));
-const phDel = k => tx('photos', 'readwrite', s => s.delete(k));
+const phDel = k => phDelRaw(k).then(r => { markDirty('p:' + k); return r; });
 const metaGet = k => tx('meta', 'readonly', s => s.get(k));
-const metaPut = (k, v) => tx('meta', 'readwrite', s => s.put(v, k));
+const SYNC_META = ['places', 'household', 'trash', 'boxOrder'];
+const metaPut = (k, v) => metaPutRaw(k, v).then(r => { if (SYNC_META.includes(k)) markDirty('m:' + k); return r; });
 const noteAll = () => tx('notes', 'readonly', s => s.getAll());
 const notePut = n => tx('notes', 'readwrite', s => s.put(n));
 const noteDel = id => tx('notes', 'readwrite', s => s.delete(id));
@@ -13617,7 +13627,9 @@ async function storePhoto(file){
 const urls = new Map();
 async function photoURL(ref){
   if (urls.has(ref)) return urls.get(ref);
-  const b = await phGet(ref).catch(() => null); if (!b) return '';
+  let b = await phGet(ref).catch(() => null);
+  if (!b) b = await cloudPhoto(ref).catch(() => null);
+  if (!b) return '';
   const u = URL.createObjectURL(b); urls.set(ref, u); return u;
 }
 function hydrate(root = document){
@@ -13649,6 +13661,7 @@ function purgeTrash(){
 }
 function restoreTrash(id){
   const t = trash.find(x => x.id === id); if (!t) return;
+  track('trash_restore');
   let b = findBox(t.boxId);
   if (!b) b = ensureLoose(findPlace(t.placeId) ? t.placeId : places[0].id);
   const nb = clone(b); nb.items = (nb.items || []).filter(i => i.id !== t.item.id).concat(t.item); putBox(nb, true);
@@ -14023,6 +14036,13 @@ function askText(title, {placeholder = '', value = '', ok} = {}){
     setTimeout(() => { const el = $('#atIn'); if (el){ el.focus(); el.select(); } }, 60);
   });
 }
+function askChoice(text, yes, no){
+  return new Promise(res => {
+    let done = false; const fin = v => { if (done) return; done = true; res(v); };
+    openSheet(`<p style="margin:0 0 16px">${esc(text)}</p><div class="sheet-foot"><button class="btn quiet" id="chNo">${esc(no)}</button><button class="btn primary" id="chYes">${esc(yes)}</button></div>`, () => fin(false));
+    $('#chYes').onclick = () => { fin(true); closeSheet(); }; $('#chNo').onclick = () => { fin(false); closeSheet(); };
+  });
+}
 function askConfirm(text, ok){
   ok = ok || tr('del');
   return new Promise(res => {
@@ -14042,6 +14062,7 @@ const ICON = {
   mic: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>',
   pin: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
   starO: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.2 2.7 5.5 6 .9-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2 6-.9z"/></svg>',
+  cloud: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .6-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7 18.5z"/></svg>',
   trash: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg>',
   grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.6 2.5H20a1.5 1.5 0 0 1 1.5 1.5v10.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>',
@@ -14107,6 +14128,7 @@ function goBack(){
 function arm(){ if (armed || !(prevView() || parentView())) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
 function go(v){
   leaveItemPage();
+  if (v.name !== view.name) track('view', {v: v.name});
   quickAddFor = null;
   if (selecting && !(v.name === view.name && v.boxId === view.boxId && v.tag === view.tag)) selecting = null;
   if ((v.name === 'home' || v.name === 'mapfocus') && v.place) setPlace(v.place);
@@ -14625,7 +14647,7 @@ function scopeChips(){
     </div>${one && boxesIn(one).length > 1 ? `<div class="chips"><button class="chipbtn small${!B.size ? ' on' : ''}" data-scope="allboxes">${esc(tr('allOf', placeName(one)))}</button>${boxesIn(one).sort(byCode).map(b => `<button class="chipbtn small${B.has(b.id) ? ' on' : ''}" data-scope="b:${esc(b.id)}">${esc(b.code)} ${esc(b.name)}</button>`).join('')}</div>` : ''}</div>`;
 }
 let recentQ = [];
-function rememberQuery(q){ q = (q || '').trim(); if (q.length < 2) return; recentQ = [q, ...recentQ.filter(x => x.toLowerCase() !== q.toLowerCase())].slice(0, 8); metaPut('recentQ', recentQ).catch(() => {}); }
+function rememberQuery(q){ q = (q || '').trim(); if (q.length < 2) return; { const r = searchItems(q); track('search', {hits: r.exact.length ? 'yes' : r.related.length ? 'similar' : 'none', words: q.split(/\s+/).length}); } recentQ = [q, ...recentQ.filter(x => x.toLowerCase() !== q.toLowerCase())].slice(0, 8); metaPut('recentQ', recentQ).catch(() => {}); }
 function rowsOrTiles(entries){
   const bx = entries.filter(e => e[0] === 'box').map(e => e[1]), its = entries.filter(e => e[0] === 'item').map(e => [e[1], e[2]]);
   return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
@@ -14683,7 +14705,7 @@ function renderSearch(){
   const s = $('#q');
   if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
   let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
-  app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; render(); });
+  app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { track('search_quick', {f: c.dataset.quick}); searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; render(); });
   app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => { query = c.dataset.suggest; rememberQuery(query); render(); });
   s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
   app.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
@@ -14703,7 +14725,9 @@ function renderWelcome(){
     <p>${tr('welcome')}</p>
     <input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name">
     <button class="btn primary block" id="wGo">${tr('getStarted')}</button>
-    <p class="hint center">${tr('noAccount')}</p></div>`;
+    <p class="hint center">${tr('noAccount')}</p>
+    <p class="center"><button class="linkbtn" id="wLogin">${tr('haveHousehold')}</button></p></div>`;
+  $('#wLogin').onclick = () => cloudSheet();
   const go = () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
     me = addPerson(n); metaPut('me', me).catch(() => {}); metaPut('onboarded', true).catch(() => {});
@@ -14763,8 +14787,10 @@ function renderProfile(){
         <button class="row" data-m="scan"><span>${tr('scanLabel')}</span></button>
       </div>
       <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
+      <label class="check"><input type="checkbox" id="statsChk" ${statsOn ? 'checked' : ''}> ${tr('statsSetting')}</label><p class="proof">${tr('statsHint')}</p>
       <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
       <p class="proof center" id="usage"></p>`;
+    $('#statsChk').onchange = e => { statsOn = e.target.checked; metaPutRaw('statsOn', statsOn).catch(() => {}); if (!statsOn) evq = []; };
     $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
     $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
     if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr('usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
@@ -14834,6 +14860,7 @@ function finishItem(again){
   const [it, b] = curItem(); if (!it) return;
   if (!(it.name || '').trim()){ const nm = $('#fName'); if (nm){ nm.focus(); nm.classList.add('need'); } return toast(tr('nameFirst')); }
   itemDraft = null;
+  track('item_save', {photo: !!(it.photos || []).length, fields: Object.keys(it).length});
   toast(again ? tr('savedNext', it.name) : tr('saved'));
   if (again) return newItem(b.id, true);
   goBack();
@@ -15549,6 +15576,7 @@ function endListDrag(){
   clearInterval(d.scroll); d.ghost.remove(); d.line.remove(); d.el.classList.remove('ldrag-src'); document.body.classList.remove('ldragging');
   setTimeout(() => { lpFired = false; }, 300);
   const t = d.target; if (!t) return;
+  track('drag', {what: d.isGroup ? 'box' : 'item'});
   const pid = currentPlace;
   if (d.isGroup){
     const ids = orderedGroups(pid).map(b => b.id), from = d.el.dataset.gid;
@@ -15584,6 +15612,7 @@ document.addEventListener('pointerdown', e => {
 }, true);
 function quickAdd(boxId, name){
   name = (name || '').trim(); if (!name) return;
+  track('item_add', {via: 'quick'});
   let b = findBox(boxId); if (!b) return;
   const it = {id: newId(), name: cap(name), category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
   const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb);
@@ -15899,11 +15928,13 @@ function settingsAction(k){
   if (k === 'scan') return scanSheet();
   if (k === 'export') return exportSheet();
   if (k === 'trash') return trashSheet();
+  if (k === 'cloud') return cloudSheet();
+  if (k === 'feedback') return feedbackSheet();
 }
 
 app.addEventListener('click', e => {
   if (lpFired){ lpFired = false; e.preventDefault(); return; }
-  const pv = e.target.closest('[data-pview]'); if (pv){ placeView = pv.dataset.pview; metaPut('placeView', placeView).catch(() => {}); return render(); }
+  const pv = e.target.closest('[data-pview]'); if (pv){ placeView = pv.dataset.pview; track('place_view', {v: placeView}); metaPut('placeView', placeView).catch(() => {}); return render(); }
   const zm = e.target.closest('[data-zmove]'); if (zm) return moveZone(currentPlace, zm.dataset.zmove, +zm.dataset.dir);
   const zr = e.target.closest('[data-zrename]'); if (zr) return renameZone(currentPlace, zr.dataset.zrename);
   const zd = e.target.closest('[data-zdel]'); if (zd) return deleteZone(currentPlace, zd.dataset.zdel);
@@ -15915,7 +15946,7 @@ app.addEventListener('click', e => {
   const ao = e.target.closest('[data-askout]'); if (ao){ const k = ao.dataset.askout, itId = view.hl, bid = view.boxId; view.asked = true; if (k === 'temp') return setOut(bid, itId, true); if (k === 'gone') return deleteWithUndo(bid, itId); return render(); }
   const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
   const bo = e.target.closest('[data-backok]'); if (bo){ const [bid, iid] = bo.dataset.backok.split(':'); return setOut(bid, iid, false); }
-  const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; metaPut('listSort', listSort).catch(() => {}); return render(); }
+  const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; track('sort', {by: listSort}); metaPut('listSort', listSort).catch(() => {}); return render(); }
   const ft = e.target.closest('[data-favtoggle]'); if (ft){ const [bid, iid] = ft.dataset.favtoggle.split(':'); const nb = clone(findBox(bid)), x = nb && nb.items.find(i => i.id === iid); if (!x) return; x.fav = !x.fav; putBox(nb); return; }
   const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
   const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
@@ -16211,6 +16242,7 @@ function scanSheet(){
         const w = 480, h = Math.round(w * video.videoHeight / video.videoWidth);
         cv.width = w; cv.height = h; ctx.drawImage(video, 0, 0, w, h);
         const r = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, {inversionAttempts: 'dontInvert'});
+        if (r && r.data && r.data.includes('#join=')){ closeSheet(); joinFromLink(r.data); return; }
         if (r && r.data && r.data.startsWith('BOXES:id:')){ const bx = findBox(r.data.slice(9)); if (bx){ closeSheet(); openBox(bx.id); return; } }
         else if (r && r.data && r.data.startsWith('BOXES:') && go(r.data.slice(6))) return;
       }
@@ -17494,6 +17526,8 @@ function menuSheet(){
     <button class="btn quiet" data-m="backup">${tr('backupNow')}</button>
     <button class="btn quiet" data-m="export">${tr('export')}</button>
     <button class="btn quiet" data-m="ai">${tr('aiAssistant')}${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
+    <button class="btn quiet" data-m="cloud">${ICON.cloud} ${tr('cloudMenu')}${cloud.hid ? ' ✓' : ''}</button>
+    <button class="btn quiet" data-m="feedback">💬 ${tr('feedback')}</button>
     <button class="btn quiet" data-m="trash">${ICON.trash} ${tr('trash')}${trash.length ? ` (${trash.length})` : ''}</button>
     <button class="btn quiet" data-m="settings">${tr('allSettings')}</button>
     <button class="btn" data-m="close">${tr('close')}</button>
@@ -17506,6 +17540,389 @@ function menuSheet(){
     settingsAction(k);
   };
 }
+
+/* ====================================================================
+   Cloud: login (e-mail link), household, end-to-end encrypted sync,
+   anonymous usage statistics and feedback. Supabase is only a mailbox:
+   everything about the inventory is encrypted on the phone first.
+   ==================================================================== */
+const SB_URL = 'https://lqzfkhactizvzfzmigcz.supabase.co';
+const SB_KEY = 'sb_publishable_vn4-GzgYonITq3cV1S5euQ_-ophAXvW';
+const APP_URL = location.origin + location.pathname;
+let cloud = {};            // {session, hid, key, cursor, lastSync, email}
+let cryptoKey = null, dirty = new Set(), syncing = false, syncTimer = null, syncErr = '';
+
+/* ---------- helpers ---------- */
+function bytesToB64(u8){ let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function b64ToBytes(b64){ const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+const toUrl64 = b => b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromUrl64 = b => { b = b.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '='; return b; };
+async function saveCloud(){ await metaPutRaw('cloud', cloud).catch(() => {}); }
+
+/* ---------- encryption (AES-GCM 256, key only on the household's phones) ---------- */
+async function loadKey(){ cryptoKey = cloud.key ? await crypto.subtle.importKey('raw', b64ToBytes(cloud.key), 'AES-GCM', false, ['encrypt', 'decrypt']) : null; }
+async function newKey(){ const k = crypto.getRandomValues(new Uint8Array(32)); cloud.key = bytesToB64(k); await loadKey(); }
+async function encBytes(u8){ const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv}, cryptoKey, u8)); const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out; }
+async function decBytes(u8){ return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv: u8.subarray(0, 12)}, cryptoKey, u8.subarray(12))); }
+async function encJSON(o){ return bytesToB64(await encBytes(new TextEncoder().encode(JSON.stringify(o)))); }
+async function decJSON(s){ return JSON.parse(new TextDecoder().decode(await decBytes(b64ToBytes(s)))); }
+async function encBlob(blob){
+  const type = new TextEncoder().encode((blob.type || '').slice(0, 100)), data = new Uint8Array(await blob.arrayBuffer());
+  const plain = new Uint8Array(1 + type.length + data.length); plain[0] = type.length; plain.set(type, 1); plain.set(data, 1 + type.length);
+  return new Blob([await encBytes(plain)], {type: 'application/octet-stream'});
+}
+async function decBlob(ab){ const p = await decBytes(new Uint8Array(ab)); const n = p[0]; return new Blob([p.subarray(1 + n)], {type: new TextDecoder().decode(p.subarray(1, 1 + n))}); }
+
+/* ---------- talking to Supabase ---------- */
+async function sb(path, o = {}){
+  const h = Object.assign({apikey: SB_KEY}, o.headers || {});
+  if (o.auth !== false){ const t = await accessToken(); if (!t) throw new Error('auth'); h.Authorization = 'Bearer ' + t; }
+  let body = o.body;
+  if (body !== undefined && !(body instanceof Blob)){ h['Content-Type'] = 'application/json'; body = JSON.stringify(body); }
+  const r = await fetch(SB_URL + path, {method: o.method || 'GET', headers: h, body, keepalive: !!o.keepalive});
+  if (r.status === 401 && o.auth !== false && !o.retried){ cloud.session.expires_at = 0; return sb(path, Object.assign({}, o, {retried: true})); }
+  if (!r.ok){ const txt = await r.text().catch(() => ''); const e = new Error(r.status + ' ' + txt.slice(0, 200)); e.status = r.status; throw e; }
+  if (o.raw) return r;
+  const txt = await r.text(); return txt ? JSON.parse(txt) : null;
+}
+async function accessToken(){
+  const s = cloud.session; if (!s) return null;
+  if (Date.now() / 1000 < (s.expires_at || 0) - 60) return s.access_token;
+  try {
+    const n = await sb('/auth/v1/token?grant_type=refresh_token', {method: 'POST', auth: false, body: {refresh_token: s.refresh_token}});
+    cloud.session = {access_token: n.access_token, refresh_token: n.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (n.expires_in || 3600), user: s.user};
+    await saveCloud(); return cloud.session.access_token;
+  } catch (e){
+    if (e.status === 400 || e.status === 401){ cloud.session = null; await saveCloud(); syncErr = tr('loginAgain'); }
+    return null;
+  }
+}
+const rpc = (fn, args) => sb('/rest/v1/rpc/' + fn, {method: 'POST', body: args || {}});
+
+/* ---------- login with a link in the e-mail ---------- */
+async function sendLoginLink(email){
+  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL), {method: 'POST', auth: false, body: {email, create_user: true}});
+  track('login_link');
+}
+async function takeAuthFromUrl(){
+  const h = location.hash.slice(1); if (!h) return;
+  const p = new URLSearchParams(h);
+  if (p.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + p.get('error_description')); return; }
+  if (p.get('join')){ await metaPutRaw('pendingJoin', p.get('join')).catch(() => {}); try { history.replaceState(null, '', APP_URL); } catch {} return; }
+  if (!p.get('access_token')) return;
+  try { history.replaceState(null, '', APP_URL); } catch {}
+  cloud.session = {access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_at: +p.get('expires_at') || Math.floor(Date.now() / 1000) + (+p.get('expires_in') || 3600)};
+  try { const u = await sb('/auth/v1/user'); cloud.session.user = {id: u.id}; cloud.email = u.email || ''; } catch {}
+  syncErr = '';
+  await saveCloud();
+  track('login');
+  toast(tr('loggedIn'));
+  if (!cloud.hid){
+    try { const mine = await sb('/rest/v1/members?select=household_id&user_id=eq.' + cloud.session.user.id); if (mine && mine[0]){ cloud.hid = mine[0].household_id; await saveCloud(); } } catch {}
+  }
+}
+async function logout(){
+  try { await sb('/auth/v1/logout', {method: 'POST'}); } catch {}
+  cloud = {}; cryptoKey = null; dirty = new Set();
+  await saveCloud(); await metaPutRaw('syncDirty', []).catch(() => {});
+  toast(tr('loggedOut')); render();
+}
+
+/* ---------- household: create, invite, join ---------- */
+async function createHousehold(){
+  cloud.hid = await rpc('create_household');
+  await newKey(); cloud.cursor = null; await saveCloud();
+  markEverything();
+  track('household_create');
+  await syncNow();
+}
+async function inviteLink(){
+  const code = await rpc('create_invite', {hid: cloud.hid});
+  return APP_URL + '#join=' + code + '.' + toUrl64(cloud.key);
+}
+async function joinFromLink(text){
+  const m = /#join=([0-9a-f]+)\.([\w-]+)/.exec(text || ''); if (!m) return toast(tr('badInvite'));
+  if (!cloud.session){ await metaPutRaw('pendingJoin', m[1] + '.' + m[2]).catch(() => {}); toast(tr('loginToJoin')); return cloudSheet(); }
+  if (cloud.hid && !(await askConfirm(tr('switchHouseholdQ'), tr('join')))) return;
+  const keep = (boxes.some(b => (b.items || []).length) || realBoxes().length) ? await askChoice(tr('mergeQ'), tr('mergeYes'), tr('mergeNo')) : false;
+  try {
+    const hid = await rpc('join_household', {c: m[1]});
+    cloud.hid = hid; cloud.key = fromUrl64(m[2]); cloud.cursor = null; await loadKey(); await saveCloud();
+    const mine = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
+    if (!keep){ for (const b of boxes) await dbDelRaw(b.id).catch(() => {}); boxes = []; }
+    dirty = new Set(); await saveDirty();
+    await pull(true);
+    if (keep) await mergeLocal(mine);
+    else if (!places.length){ places = mine.places.slice(0, 1); await metaPut('places', places); }
+    track('household_join', {kept: keep});
+    if (view.name === 'welcome'){ metaPutRaw('onboarded', true).catch(() => {}); view = {name: 'home', place: 'all'}; }
+    toast(tr('joined'));
+    await syncNow(); render();
+  } catch (e){ toast(tr('joinFailed') + (e.status ? ' (' + e.status + ')' : '')); }
+}
+/* put what was on this phone into the household without overwriting the others */
+async function mergeLocal(mine){
+  const byName = new Map(places.map(p => [p.name.trim().toLowerCase(), p.id]));
+  const remap = {};
+  for (const p of mine.places){
+    if (findPlace(p.id)) continue;
+    const same = byName.get(p.name.trim().toLowerCase());
+    if (same) remap[p.id] = same; else { places.push(p); byName.set(p.name.trim().toLowerCase(), p.id); }
+  }
+  for (const b0 of mine.boxes){
+    if (findBox(b0.id)) continue;
+    const b = clone(b0); if (remap[b.placeId]) b.placeId = remap[b.placeId];
+    if (b.loose){ const l = looseOf(b.placeId); if (l){ const nl = clone(l); nl.items = (nl.items || []).concat(b.items || []); putBox(nl, true); continue; } }
+    else if (boxes.some(x => !x.loose && x.placeId === b.placeId && x.code === b.code)) b.code = nextCode(b.placeId);
+    putBox(b, true);
+  }
+  household = [...new Set([...(household || []), ...(mine.household || [])])];
+  trash = [...trash, ...mine.trash.filter(t => !trash.some(x => x.id === t.id))];
+  await metaPut('places', places); await metaPut('household', household); await metaPut('trash', trash);
+}
+
+/* ---------- sync ---------- */
+function markDirty(k){
+  if (!cloud || !cloud.hid) return;
+  dirty.add(k); saveDirty(); scheduleSync(2500);
+}
+let dirtyT; function saveDirty(){ clearTimeout(dirtyT); return new Promise(r => { dirtyT = setTimeout(() => { metaPutRaw('syncDirty', [...dirty]).catch(() => {}).then(r); }, 200); }); }
+function markEverything(){
+  boxes.forEach(b => dirty.add('b:' + b.id));
+  SYNC_META.forEach(k => dirty.add('m:' + k));
+  const refs = new Set(); const add = r => r && refs.add(r);
+  boxes.forEach(b => { if (b.photo) add(b.photo.ref); (b.items || []).forEach(i => { (i.photos || []).forEach(p => add(p.ref)); (i.files || []).forEach(f => add(f.ref)); }); });
+  trash.forEach(t => { (t.item.photos || []).forEach(p => add(p.ref)); (t.item.files || []).forEach(f => add(f.ref)); });
+  refs.forEach(r => dirty.add('p:' + r));
+  saveDirty();
+}
+function scheduleSync(ms){ clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms || 0); }
+async function syncNow(){
+  if (syncing || !cloud.hid || !cloud.session || !navigator.onLine) return;
+  syncing = true;
+  try {
+    if (!cryptoKey) await loadKey();
+    await push(); await pull(false);
+    cloud.lastSync = new Date().toISOString(); syncErr = ''; await saveCloud();
+  } catch (e){
+    syncErr = e.message === 'auth' ? tr('loginAgain') : tr('syncFailed');
+    if (e.status === 403 || /42501|row-level/.test(e.message)) syncErr = tr('notMember');
+  } finally { syncing = false; updateCloudLine(); }
+}
+const metaVal = k => k === 'places' ? places : k === 'household' ? household : k === 'trash' ? trash : k === 'boxOrder' ? boxOrder : null;
+async function push(){
+  const keys = [...dirty]; if (!keys.length) return;
+  const rows = [], done = [];
+  for (const k of keys){
+    const [t, id] = [k.slice(0, 1), k.slice(2)];
+    if (t === 'p'){
+      const blob = await phGet(id).catch(() => null), path = `/storage/v1/object/photos/${cloud.hid}/${encodeURIComponent(id)}`;
+      try {
+        if (blob) await sb(path, {method: 'POST', headers: {'x-upsert': 'true'}, body: await encBlob(blob)});
+        else await sb(path, {method: 'DELETE'}).catch(e => { if (e.status !== 404 && e.status !== 400) throw e; });
+        done.push(k);
+      } catch (e){ if (e.status === 413) done.push(k); else throw e; }
+      continue;
+    }
+    if (t === 'b'){ const b = findBox(id); rows.push({household_id: cloud.hid, id: k, kind: 'box', payload: b ? await encJSON(b) : '', deleted: !b}); }
+    if (t === 'm'){ const v = metaVal(id); rows.push({household_id: cloud.hid, id: k, kind: 'meta', payload: await encJSON(v ?? null), deleted: false}); }
+    done.push(k);
+  }
+  for (let i = 0; i < rows.length; i += 200) await sb('/rest/v1/records', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: rows.slice(i, i + 200)});
+  done.forEach(k => { if (keys.includes(k)) dirty.delete(k); });
+  await saveDirty();
+}
+async function pull(force){
+  let changed = false;
+  for (let page = 0; page < 50; page++){
+    const q = `/rest/v1/records?select=id,kind,payload,deleted,updated_at&household_id=eq.${cloud.hid}&order=updated_at.asc,id.asc&limit=500` + (cloud.cursor ? '&updated_at=gt.' + encodeURIComponent(cloud.cursor) : '');
+    const rows = await sb(q); if (!rows || !rows.length) break;
+    for (const r of rows){
+      if (!force && dirty.has(r.id)) continue;   // a newer local change is waiting to go up
+      try { await applyRecord(r); changed = true; } catch {}
+    }
+    cloud.cursor = rows[rows.length - 1].updated_at; await saveCloud();
+    if (rows.length < 500) break;
+  }
+  if (changed && ready) render();
+}
+async function applyRecord(r){
+  const t = r.id.slice(0, 1), id = r.id.slice(2);
+  if (t === 'b'){
+    if (r.deleted){ boxes = boxes.filter(b => b.id !== id); await dbDelRaw(id).catch(() => {}); return; }
+    const b = await decJSON(r.payload); const i = boxes.findIndex(x => x.id === b.id);
+    if (i < 0) boxes.push(b); else boxes[i] = b;
+    await dbPutRaw(b);
+  } else if (t === 'm'){
+    const v = await decJSON(r.payload); if (v == null) return;
+    if (id === 'places') places = v; else if (id === 'household') household = v; else if (id === 'trash') trash = v; else if (id === 'boxOrder') boxOrder = v; else return;
+    await metaPutRaw(id, v);
+  }
+}
+async function cloudPhoto(ref){
+  if (!cloud.hid || !cloud.session || !navigator.onLine) return null;
+  if (!cryptoKey) await loadKey();
+  const r = await sb(`/storage/v1/object/authenticated/photos/${cloud.hid}/${encodeURIComponent(ref)}`, {raw: true});
+  const blob = await decBlob(await r.arrayBuffer());
+  await phPutRaw(ref, blob);
+  return blob;
+}
+async function cloudInit(){
+  cloud = await metaGet('cloud').catch(() => null) || {};
+  dirty = new Set(await metaGet('syncDirty').catch(() => null) || []);
+  statsOn = (await metaGet('statsOn').catch(() => undefined)) !== false;
+  evq = await metaGet('evq').catch(() => null) || [];
+  await takeAuthFromUrl();
+  await loadKey().catch(() => {});
+  const pj = await metaGet('pendingJoin').catch(() => null);
+  if (pj){
+    if (cloud.session){ await metaPutRaw('pendingJoin', null).catch(() => {}); setTimeout(() => joinFromLink('#join=' + pj), 300); }
+    else setTimeout(() => { toast(tr('loginToJoin')); cloudSheet(); }, 300);
+  }
+  if (cloud.hid && cloud.session) scheduleSync(500);
+}
+setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(300); else { flushEvents(true); if (dirty.size) syncNow(); } });
+window.addEventListener('online', () => scheduleSync(500));
+window.addEventListener('hashchange', () => { if (location.hash.includes('join=')){ const h = location.hash; try { history.replaceState(null, '', APP_URL); } catch {} joinFromLink(h); } });
+
+/* ---------- the "Household & sync" sheet ---------- */
+function syncText(){
+  if (!navigator.onLine) return tr('offlineSync');
+  if (syncErr) return syncErr;
+  if (syncing) return tr('syncing');
+  if (dirty.size) return tr('waitingN', dirty.size);
+  return cloud.lastSync ? tr('syncedAt', fmtStamp(cloud.lastSync)) : '';
+}
+function updateCloudLine(){ const el = $('#cloudLine'); if (el) el.textContent = syncText(); }
+async function cloudSheet(){
+  if (!cloud.session){
+    openSheet(`<h3>${ICON.cloud} ${tr('cloudTitle')}</h3><p class="hint">${tr('cloudIntro')}</p>
+      <label class="field"><span>${tr('email')}</span><input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se" value="${esc(cloud.email || '')}"></label>
+      <p class="proof">${tr('emailWhy')}</p>
+      <div class="sheet-foot"><button class="btn quiet" id="clX">${tr('close')}</button><button class="btn primary" id="clSend">${tr('sendLink')}</button></div>`);
+    $('#clX').onclick = closeSheet;
+    $('#clSend').onclick = async () => {
+      const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)) return $('#clEmail').focus();
+      $('#clSend').disabled = true;
+      try { await sendLoginLink(e); cloud.email = e; await saveCloud(); sheet.querySelector('.sheet').innerHTML = `<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('linkSent', e))}</p><p class="hint">${tr('linkSamePhone')}</p><div class="sheet-foot"><button class="btn primary" id="clOk">${tr('ok')}</button></div>`; $('#clOk').onclick = closeSheet; }
+      catch (er){ $('#clSend').disabled = false; toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); }
+    };
+    return;
+  }
+  if (!cloud.hid){
+    openSheet(`<h3>${ICON.cloud} ${tr('cloudTitle')}</h3><p class="hint">${esc(tr('loggedInAs', cloud.email || ''))}</p>
+      <div class="menu"><button class="btn primary" id="clCreate">${tr('createHousehold')}</button><p class="proof">${tr('createHint')}</p>
+      <button class="btn quiet" id="clJoin">${tr('joinHousehold')}</button><p class="proof">${tr('joinHint')}</p>
+      <button class="btn quiet" id="clOut">${tr('logout')}</button><button class="btn" id="clX">${tr('close')}</button></div>`);
+    $('#clCreate').onclick = async () => { $('#clCreate').disabled = true; try { await createHousehold(); toast(tr('householdCreated')); cloudSheet(); } catch (e){ $('#clCreate').disabled = false; toast(tr('syncFailed')); } };
+    $('#clJoin').onclick = () => scanSheet();
+    $('#clOut').onclick = () => { closeSheet(); logout(); };
+    $('#clX').onclick = closeSheet;
+    return;
+  }
+  let n = 0; try { n = (await sb('/rest/v1/members?select=user_id&household_id=eq.' + cloud.hid)).length; } catch {}
+  openSheet(`<h3>${ICON.cloud} ${tr('yourHousehold')}</h3>
+    <p class="hint">${esc(tr('membersN', n || 1))} · ${esc(cloud.email || '')}</p>
+    <p class="proof" id="cloudLine">${esc(syncText())}</p>
+    <p class="hint">🔒 ${tr('e2eNote')}</p>
+    <div class="menu"><button class="btn primary" id="clInvite">${tr('invite')}</button>
+    <div id="clQR"></div>
+    <button class="btn quiet" id="clSync">${tr('syncNow')}</button>
+    <button class="btn quiet" id="clOut">${tr('logout')}</button><button class="btn" id="clX">${tr('close')}</button></div>`);
+  $('#clX').onclick = closeSheet;
+  $('#clOut').onclick = () => askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y){ closeSheet(); logout(); } });
+  $('#clSync').onclick = async () => { $('#cloudLine').textContent = tr('syncing'); await syncNow(); render(); updateCloudLine(); };
+  $('#clInvite').onclick = async () => {
+    $('#clInvite').disabled = true;
+    try {
+      const link = await inviteLink(); track('invite');
+      $('#clQR').innerHTML = `<div class="inviteqr">${qrSvg(link, 4)}</div><p class="hint center">${tr('inviteHint')}</p>
+        <button class="btn quiet" id="clShare">${tr('shareLink')}</button><p class="proof center">${tr('inviteSafe')}</p>`;
+      $('#clShare').onclick = () => { if (navigator.share) navigator.share({title: 'Storrrage', text: tr('inviteText'), url: link}).catch(() => {}); else navigator.clipboard.writeText(link).then(() => toast(tr('copied'))).catch(() => {}); };
+    } catch { toast(tr('syncFailed')); }
+    $('#clInvite').disabled = false;
+  };
+}
+
+/* ---------- anonymous usage statistics: what people do, never what they have ---------- */
+let statsOn = true, evq = [], evT = null;
+function deviceTag(){
+  const month = new Date().toISOString().slice(0, 7);
+  let d = null; try { d = JSON.parse(sessionStorage.getItem('sdev') || 'null'); } catch {}
+  if (!d || d.m !== month){ d = {m: month, id: (cloud.dev && cloud.dev.m === month) ? cloud.dev.id : newId()}; cloud.dev = d; saveCloud(); try { sessionStorage.setItem('sdev', JSON.stringify(d)); } catch {} }
+  return d.id;
+}
+function track(name, props){
+  if (!statsOn) return;
+  try {
+    const clean = {}; Object.entries(props || {}).forEach(([k, v]) => { if (['string', 'number', 'boolean'].includes(typeof v)) clean[k] = typeof v === 'string' ? v.slice(0, 30) : v; });
+    evq.push({name: String(name).slice(0, 40), props: clean, device: deviceTag(), app_version: APP_VERSION});
+    if (evq.length > 300) evq = evq.slice(-300);
+    clearTimeout(evT); evT = setTimeout(() => flushEvents(false), 20000);
+  } catch {}
+}
+async function flushEvents(leaving){
+  if (!statsOn || !evq.length) return;
+  if (!navigator.onLine){ metaPutRaw('evq', evq).catch(() => {}); return; }
+  const batch = evq; evq = [];
+  try { await sb('/rest/v1/events', {method: 'POST', auth: false, keepalive: leaving, headers: {Prefer: 'return=minimal'}, body: batch}); metaPutRaw('evq', []).catch(() => {}); }
+  catch { evq = batch.concat(evq).slice(-300); metaPutRaw('evq', evq).catch(() => {}); }
+}
+async function statsNotice(){
+  if (await metaGet('statsNoticed').catch(() => false)) return;
+  metaPutRaw('statsNoticed', true).catch(() => {});
+  setTimeout(() => toastAction(tr('statsToast'), tr('statsWhat'), () => navigate({name: 'profile', sub: 'settings'})), 2500);
+}
+
+/* ---------- feedback ---------- */
+function feedbackSheet(){
+  openSheet(`<h3>💬 ${tr('feedback')}</h3><p class="hint">${tr('feedbackIntro')}</p>
+    <div class="chips" id="fbKind"><button class="chipbtn on" data-k="idea">💡 ${tr('fbIdea')}</button><button class="chipbtn" data-k="bug">🐞 ${tr('fbBug')}</button><button class="chipbtn" data-k="love">❤️ ${tr('fbLove')}</button></div>
+    <textarea class="input" id="fbText" rows="5" maxlength="4000" placeholder="${esc(tr('fbPh'))}" style="margin-top:10px"></textarea>
+    <label class="field"><span>${tr('fbContact')}</span><input class="input" id="fbContact" type="email" inputmode="email" placeholder="${esc(tr('optional'))}" value=""></label>
+    <p class="proof">${tr('fbPrivacy')}</p>
+    <div class="sheet-foot"><button class="btn quiet" id="fbX">${tr('cancel')}</button><button class="btn primary" id="fbSend">${tr('send')}</button></div>`);
+  let kind = 'idea';
+  $('#fbKind').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; kind = b.dataset.k; $('#fbKind').querySelectorAll('.chipbtn').forEach(x => x.classList.toggle('on', x === b)); };
+  $('#fbX').onclick = closeSheet;
+  $('#fbSend').onclick = async () => {
+    const msg = $('#fbText').value.trim(); if (!msg) return $('#fbText').focus();
+    $('#fbSend').disabled = true;
+    try {
+      await sb('/rest/v1/feedback', {method: 'POST', auth: false, headers: {Prefer: 'return=minimal'}, body: {message: msg, kind, screen: view.name + (view.name === 'home' ? ':' + placeView : ''), app_version: APP_VERSION, contact: $('#fbContact').value.trim() || null}});
+      closeSheet(); toast(tr('fbThanks')); track('feedback', {kind});
+    } catch { $('#fbSend').disabled = false; toast(navigator.onLine ? tr('sendFailed') : tr('offlineSend')); }
+  };
+}
+
+Object.assign(STR.en, {cloudMenu: 'Household & sync', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
+  email: 'E-mail', emailWhy: 'Only used to log in. No password, no newsletters.', sendLink: 'Send login link', checkMail: 'Check your e-mail', linkSent: e => `We sent a login link to ${e}.`, linkSamePhone: 'Open the link on this phone. It can take a minute – check the spam folder too.',
+  tooMany: 'Too many links sent just now – try again in a while.', sendFailed: 'Couldn’t send. Try again.', loginFailed: 'Login didn’t work.', loggedIn: 'You’re logged in.', loggedOut: 'Logged out. Your things are still on this phone.', loginAgain: 'Log in again to keep syncing.',
+  loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded encrypted. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
+  householdCreated: 'Household created – now invite the others.', yourHousehold: 'Your household', membersN: n => n === 1 ? '1 member' : `${n} members`, e2eNote: 'Encrypted on your phones. The server only stores scrambled data.',
+  invite: 'Invite someone', inviteHint: 'Let them scan this with the phone camera or inside Storrrage (☰ → Scan label).', shareLink: 'Share link instead', inviteSafe: 'The code works once, for 24 hours. The key is in the link itself and never passes our server.', inviteText: 'Join our storage in Storrrage', copied: 'Copied.',
+  syncNow: 'Sync now', syncing: 'Syncing…', syncedAt: t => `Synced ${t}`, waitingN: n => `${n} changes waiting to sync`, offlineSync: 'Offline – syncs when you have signal.', syncFailed: 'Couldn’t sync right now.', notMember: 'You’re no longer in this household.',
+  badInvite: 'That invite doesn’t look right.', loginToJoin: 'Log in first, then the invite is used automatically.', switchHouseholdQ: 'You’re already in a household. Switch to the new one?', join: 'Join',
+  mergeQ: 'Bring along what’s already on this phone? Otherwise only the household’s things are kept here.', mergeYes: 'Yes, bring it', mergeNo: 'No', haveHousehold: 'Already have a household or an invite? Log in', joined: 'You’re in the household!', joinFailed: 'Couldn’t join. The code may be used or too old.',
+  statsSetting: 'Share anonymous usage statistics', statsHint: 'Only what is used (e.g. “list view opened”), never what you own, names or places. Not linked to your account. Helps us make Storrrage better.',
+  statsToast: 'Storrrage sends anonymous usage stats – never your things.', statsWhat: 'Settings',
+  feedback: 'Give feedback', feedbackIntro: 'What’s good, what’s annoying, what’s missing? We read everything.', fbIdea: 'Idea', fbBug: 'Something’s wrong', fbLove: 'I like', fbPh: 'Write here…', fbContact: 'E-mail, if you want an answer', optional: 'optional',
+  fbPrivacy: 'Sent without your account. App version and which screen you were on are included.', send: 'Send', fbThanks: 'Thanks! 💜', offlineSend: 'No signal – try again when you’re online.', ok: 'OK'});
+Object.assign(STR.sv, {cloudMenu: 'Hushåll & synk', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
+  email: 'E-post', emailWhy: 'Används bara för inloggning. Inget lösenord, inga nyhetsbrev.', sendLink: 'Skicka inloggningslänk', checkMail: 'Kolla din e-post', linkSent: e => `Vi har skickat en inloggningslänk till ${e}.`, linkSamePhone: 'Öppna länken på den här telefonen. Det kan ta en minut – kolla skräpposten också.',
+  tooMany: 'För många länkar skickade just nu – försök igen om en stund.', sendFailed: 'Kunde inte skicka. Försök igen.', loginFailed: 'Inloggningen fungerade inte.', loggedIn: 'Du är inloggad.', loggedOut: 'Utloggad. Dina saker finns kvar på telefonen.', loginAgain: 'Logga in igen för att fortsätta synka.',
+  loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp krypterat. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
+  householdCreated: 'Hushållet är skapat – bjud in de andra.', yourHousehold: 'Ditt hushåll', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmar`, e2eNote: 'Krypterat på era telefoner. Servern sparar bara oläslig data.',
+  invite: 'Bjud in någon', inviteHint: 'Låt dem skanna med telefonens kamera eller i Storrrage (☰ → Skanna etikett).', shareLink: 'Dela länk i stället', inviteSafe: 'Koden fungerar en gång i 24 timmar. Nyckeln ligger i själva länken och passerar aldrig vår server.', inviteText: 'Gå med i vår förvaring i Storrrage', copied: 'Kopierat.',
+  syncNow: 'Synka nu', syncing: 'Synkar…', syncedAt: t => `Synkat ${t}`, waitingN: n => `${n} ändringar väntar på att synkas`, offlineSync: 'Offline – synkar när du har täckning.', syncFailed: 'Kunde inte synka just nu.', notMember: 'Du är inte längre med i det här hushållet.',
+  badInvite: 'Inbjudan ser inte rätt ut.', loginToJoin: 'Logga in först, sedan används inbjudan automatiskt.', switchHouseholdQ: 'Du är redan med i ett hushåll. Byta till det nya?', join: 'Gå med',
+  mergeQ: 'Ta med det som redan finns på den här telefonen? Annars behålls bara hushållets saker här.', mergeYes: 'Ja, ta med', mergeNo: 'Nej', haveHousehold: 'Har du redan ett hushåll eller en inbjudan? Logga in', joined: 'Du är med i hushållet!', joinFailed: 'Kunde inte gå med. Koden kan vara använd eller för gammal.',
+  statsSetting: 'Dela anonym användningsstatistik', statsHint: 'Bara vad som används (t.ex. ”listvyn öppnades”), aldrig vad du äger, namn eller platser. Inte kopplat till ditt konto. Hjälper oss göra Storrrage bättre.',
+  statsToast: 'Storrrage skickar anonym användningsstatistik – aldrig dina saker.', statsWhat: 'Inställningar',
+  feedback: 'Tyck till', feedbackIntro: 'Vad är bra, vad stör, vad saknas? Vi läser allt.', fbIdea: 'Idé', fbBug: 'Något är fel', fbLove: 'Gillar', fbPh: 'Skriv här…', fbContact: 'E-post, om du vill ha svar', optional: 'valfritt',
+  fbPrivacy: 'Skickas utan koppling till ditt konto. Appversion och vilken skärm du var på följer med.', send: 'Skicka', fbThanks: 'Tack! 💜', offlineSend: 'Ingen täckning – försök igen när du är online.', ok: 'OK'});
+
 
 /* ---------- start ---------- */
 async function init(){
@@ -17541,11 +17958,14 @@ async function init(){
     app.innerHTML = '<p class="status">This browser won’t let Storrrage store data. Open it in Chrome, not in a private tab.</p>'; return;
   }
   ready = true; updateStatus();
+  await cloudInit();
   const hasStuff = boxes.some(b => !b.loose || (b.items || []).length);
   if (!me && !hasStuff && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
   else view = {name: 'home', place: currentPlace};
   try { history.replaceState({root: 1}, ''); } catch {}
   render(); arm();
+  track('open', {places: places.length, boxes: Math.min(realBoxes().length, 999), synced: !!cloud.hid});
+  statsNotice();
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
