@@ -921,6 +921,34 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .welcome .wform{gap:10px}
 .welcome .wform .field{text-align:left}
 .codein{font-size:1.6rem;letter-spacing:.35em;text-align:center;font-weight:700;margin:8px 0}
+/* 2026-10-21.3 */
+[hidden]{display:none!important}
+.welcome{padding-top:24px;gap:10px}
+.welcome .logobig{margin-bottom:0}
+.welcome h1{margin:6px 0 0}
+.welcome .slogan{font-size:1.02rem;font-weight:600;color:var(--ink);margin:0 0 10px}
+.wcard{display:flex;flex-direction:column;gap:8px;text-align:center}
+.wcard h2{margin:0;font-size:1.1rem;color:var(--ink)}
+.wcard .hint{margin:0;font-size:.82rem}
+.wor{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.8rem;margin:6px 0}
+.wor::before,.wor::after{content:"";flex:1;height:1px;background:var(--line)}
+.pitch{background:var(--lav-3);border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:.86rem;color:var(--ink)}
+.pitch ul{margin:6px 0 0;padding:0;list-style:none}
+.pitch li{padding:2px 0 2px 22px;position:relative}
+.pitch li::before{content:"✓";position:absolute;left:2px;color:var(--primary);font-weight:700}
+.loginbox{background:none;padding:0}
+/* photos: same square and corners as icons, icon hidden once the photo is there */
+.itile .timg,.lthumb{border-radius:10px;overflow:hidden}
+.itile .timg img,.lthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:0;z-index:1}
+.hasimg > .ticon{display:none}
+.itile .timg{overflow:hidden}
+/* fold boxes in the list */
+.lgh-fold{flex:none;border:none;background:none;color:var(--muted);width:34px;font-size:1.3rem;line-height:1;transition:transform .15s}
+.lgh-fold.shut{transform:rotate(-90deg)}
+.sortbar{position:relative}
+.sortbar .foldall{position:absolute;right:0;top:0;font-size:.75rem}
+.itile .timg{overflow:visible}
+.itile .timg img{border-radius:10px}
 </style>
 </head>
 <body>
@@ -13351,7 +13379,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.2';
+const APP_VERSION = '2026-10-21.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13707,6 +13735,7 @@ function hydrate(root = document){
   root.querySelectorAll('img[data-ph]:not([src])').forEach(async img => {
     const fail = () => { img.remove(); };
     img.onerror = fail;
+    img.onload = () => { if (img.parentElement) img.parentElement.classList.add('hasimg'); };
     const u = await photoURL(img.dataset.ph); if (u) img.src = u; else fail();
   });
 }
@@ -14803,15 +14832,21 @@ function renderWelcome(){
     <div class="langsw">${langSwitch()}</div>
     <div class="logobig">${logoSVG()}</div>
     <h1>Storrrage</h1>
-    ${pendingJoinCode ? `<p>${tr('invitedIntro')}</p><div class="wform">${loginForm()}</div>`
-    : `<p>${tr('welcome')}</p>
-    <div class="wform" id="wStart"><button class="btn primary block" id="wNew">${tr('startNew')}</button><button class="btn block" id="wLog">${tr('logIn')}</button></div>
-    <div class="wform" id="wNewF" hidden><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name"><button class="btn primary block" id="wGo">${tr('getStarted')}</button><p class="hint center">${tr('noAccount')}</p></div>
-    <div class="wform" id="wLogF" hidden><p class="hint">${tr('loginWelcome')}</p>${loginForm()}</div>`}</div>`;
+    <p class="slogan">${tr('slogan')}</p>
+    ${pendingJoinCode ? `<div class="wcard"><h2>${tr('invitedTitle')}</h2><p class="hint">${tr('invitedIntro')}</p>${loginForm(true)}</div>`
+    : `<div class="wcard">
+      <button class="btn primary block" id="wNew">${tr('startNew')}</button>
+      <div class="wform" id="wNewF" hidden><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name"><button class="btn primary block" id="wGo">${tr('getStarted')}</button></div>
+      <p class="hint">${tr('startNewHint')}</p></div>
+    <div class="wor"><span>${tr('or')}</span></div>
+    <div class="wcard">
+      <button class="btn block" id="wLog">${tr('logIn')}</button>
+      <div class="wform" id="wLogF" hidden>${loginForm(true)}</div>
+      <p class="hint" id="wLogHint">${tr('loginHint')}</p></div>`}</div>`;
   wireLogin();
   if (pendingJoinCode) return;
-  $('#wNew').onclick = () => { $('#wStart').hidden = true; $('#wNewF').hidden = false; };
-  $('#wLog').onclick = () => { $('#wStart').hidden = true; $('#wLogF').hidden = false; };
+  $('#wNew').onclick = () => { $('#wNew').hidden = true; $('#wNewF').hidden = false; $('#wName').focus(); };
+  $('#wLog').onclick = () => { $('#wLog').hidden = true; $('#wLogHint').hidden = true; $('#wLogF').hidden = false; $('#clEmail').focus(); };
   const go = () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
     me = addPerson(n); metaPut('me', me).catch(() => {}); metaPut('onboarded', true).catch(() => {});
@@ -14840,7 +14875,7 @@ function renderProfile(){
         <label class="check"><input type="checkbox" id="pfMail" ${prof.notify_email ? 'checked' : ''}> ${tr('mailReminders')}</label>
         <div class="fl" id="pfAltWrap" ${prof.notify_email ? '' : 'hidden'}><input id="pfAlt" type="email" inputmode="email" value="${esc(prof.contact_email || '')}" placeholder="${esc(cloud.email || '')}"><label class="always">${tr('otherEmail')}</label></div>
         <p class="proof">${tr('mailHint')}</p>`
-      : `<div class="loginbox"><p class="hint">${tr('notLoggedIn')}</p>${loginForm()}</div>`}
+      : `<div class="loginbox">${accountPitch()}${loginForm()}</div>`}
       <div class="list">
         <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}</span>${nN ? `<b class="count">${nN}</b>` : ''}</button>
         <button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>
@@ -15494,7 +15529,7 @@ function groupHeader(b){
   return `<div class="lgroup-h${b.loose ? ' loose' : ''}${b.out ? ' out' : ''}" data-gid="${esc(b.id)}"><button class="lgh-main" data-open="${esc(b.id)}">
       ${icon}<span class="lgh-text"><span class="lgh-name">${b.loose ? tr('notInBox') : esc((chain.length ? chain.map(boxNum).join(' › ') + ' › ' : '') + (b.name || boxLabel(b)))}</span><span class="lgh-in">${esc(inside || tr('boxEmpty'))}</span></span>
       <span class="lgh-count">${b.out ? '↗ ' : ''}${n}${nOut ? ` · ↗${nOut}` : ''}</span></button>
-    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">+</button></div>`;
+    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">+</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}">⌄</button></div>`;
 }
 let quickAddFor = null;
 function quickAddRow(b){
@@ -15503,7 +15538,8 @@ function quickAddRow(b){
 }
 /* the whole place as one grouped list */
 /* sorting the list: your own order (drag), A–Ö, last changed, last added, last used */
-let listSort = 'manual', boxOrder = {};
+let listSort = 'manual', boxOrder = {}, folded = new Set();
+function saveFolded(){ metaPutRaw('folded', [...folded]).catch(() => {}); }
 const SORTS = ['manual', 'az', 'changed', 'added', 'used'];
 const itStamp = (it, k) => k === 'changed' ? (it.updatedAt || it.addedAt || '') : k === 'added' ? (it.addedAt || it.storedOn || '') : k === 'used' ? [it.lastUsed || '', it.out ? it.out.since : '', ...(it.outLog || []).map(l => l.out || '')].sort().pop() || '' : '';
 function sortItems(list){
@@ -15525,13 +15561,14 @@ function orderedGroups(pid){
   return all;
 }
 function sortBar(){
-  return `<div class="sortbar"><span class="lab">${tr('sortBy')}</span><div class="chips">${SORTS.map(k => `<button class="chipbtn small${listSort === k ? ' on' : ''}" data-sort="${k}">${tr('sort_' + k)}</button>`).join('')}</div></div>`;
+  const ids = orderedGroups(currentPlace).map(b => b.id), anyOpen = ids.some(i => !folded.has(i));
+  return `<div class="sortbar"><span class="lab">${tr('sortBy')}</span><button class="linkbtn foldall" data-foldall="${anyOpen ? 1 : 0}">${anyOpen ? tr('foldAll') : tr('unfoldAll')}</button><div class="chips">${SORTS.map(k => `<button class="chipbtn small${listSort === k ? ' on' : ''}" data-sort="${k}">${tr('sort_' + k)}</button>`).join('')}</div></div>`;
 }
 function listHTML(pid){
   const all = orderedGroups(pid);
   const loose = looseOf(pid);
   const outs = outItems(b => b.placeId === pid);
-  return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}
+  return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => folded.has(b.id) ? `<section class="lgroup folded" data-gid="${esc(b.id)}">${groupHeader(b)}</section>` : `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}
       ${!(b.items || []).filter(it => !isOut(it)).length && quickAddFor !== b.id ? `<p class="lempty">${tr('boxEmpty')}</p>` : ''}</section>`).join('')}</div>
     ${all.length > 1 || all.some(b => (b.items || []).length > 1) ? `<p class="swipehint">${tr('listDragHint')}</p>` : ''}
     ${!all.length ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}
@@ -16049,6 +16086,8 @@ app.addEventListener('click', e => {
   const ao = e.target.closest('[data-askout]'); if (ao){ const k = ao.dataset.askout, itId = view.hl, bid = view.boxId; view.asked = true; if (k === 'temp') return setOut(bid, itId, true); if (k === 'gone') return deleteWithUndo(bid, itId); return render(); }
   const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
   const bo = e.target.closest('[data-backok]'); if (bo){ const [bid, iid] = bo.dataset.backok.split(':'); return setOut(bid, iid, false); }
+  const fo = e.target.closest('[data-fold]'); if (fo){ const id = fo.dataset.fold; folded.has(id) ? folded.delete(id) : folded.add(id); saveFolded(); return render(); }
+  const fa = e.target.closest('[data-foldall]'); if (fa){ const ids = orderedGroups(currentPlace).map(b => b.id); if (fa.dataset.foldall === '1') ids.forEach(i => folded.add(i)); else ids.forEach(i => folded.delete(i)); saveFolded(); track('fold_all'); return render(); }
   const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; track('sort', {by: listSort}); metaPut('listSort', listSort).catch(() => {}); return render(); }
   const ft = e.target.closest('[data-favtoggle]'); if (ft){ const [bid, iid] = ft.dataset.favtoggle.split(':'); const nb = clone(findBox(bid)), x = nb && nb.items.find(i => i.id === iid); if (!x) return; x.fav = !x.fav; putBox(nb); return; }
   const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
@@ -17741,7 +17780,7 @@ async function verifyCode(email, code){
 }
 /* the login e-mail is written in the language chosen in the app */
 function saveLangToAccount(){ if (cloud.session) sb('/auth/v1/user', {method: 'PUT', body: {data: {lang}}}).catch(() => {}); }
-const KEEP_META = ['lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
+const KEEP_META = ['folded', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
 async function wipeLocal(){
   for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
   const keys = await tx('meta', 'readonly', s => s.getAllKeys()).catch(() => []) || [];
@@ -17953,9 +17992,12 @@ function syncText(){
   return cloud.lastSync ? tr('syncedAt', fmtStamp(cloud.lastSync)) : '';
 }
 function updateCloudLine(){ const el = $('#cloudLine'); if (el) el.textContent = syncText(); }
-function loginForm(){
-  return `<label class="field"><span>${tr('email')}</span><input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se" value="${esc(cloud.email || '')}"></label>
-    <p class="proof">${tr('emailWhy')}</p><button class="btn primary block" id="clSend">${tr('sendLink')}</button>`;
+function loginForm(compact){
+  return `<input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="${esc(tr('yourEmail'))}" value="${esc(cloud.email || '')}">
+    <button class="btn primary block" id="clSend" style="margin-top:8px">${tr('sendCode')}</button>${compact ? '' : `<p class="proof">${tr('loginHint')}</p>`}`;
+}
+function accountPitch(){
+  return `<div class="pitch"><b>${tr('pitchTitle')}</b><ul>${['pitch1', 'pitch2', 'pitch3', 'pitch4'].map(k => `<li>${tr(k)}</li>`).join('')}</ul></div>`;
 }
 function codeSheet(email){
   openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))} <button class="linkbtn" id="cdWrong">${tr('wrongAddress')}</button></p>
@@ -17997,7 +18039,7 @@ async function cloudSheet(){
     <div id="hhPeople"></div>
     <div class="vtype"><input class="input" id="hhName" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn" id="hhAdd">${tr('add')}</button></div>
     <h4 class="adh">${tr('storagePlaces')}</h4>${placeRows}<button class="btn block" data-m2="places">${tr('editPlaces')}</button>
-    ${!cloud.session ? `<h4 class="adh">${tr('shareTitle')}</h4><p class="hint">${tr('cloudIntro')}</p>${loginForm()}`
+    ${!cloud.session ? `<h4 class="adh">${tr('shareTitle')}</h4>${accountPitch()}${loginForm()}`
       : !cloud.hid ? `<h4 class="adh">${tr('shareTitle')}</h4><div class="menu"><button class="btn primary" id="clCreate">${tr('connectNow')}</button></div>`
       : `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button>
         <button class="btn block" id="clJoin">${tr('joinOther')}</button>`}
@@ -18278,6 +18320,17 @@ Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förråde
 
 Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, wrongAddress: 'Wrong address?', orTapLink: 'Or tap the button in the e-mail (on this device).', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
 Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, wrongAddress: 'Fel adress?', orTapLink: 'Eller tryck på knappen i mejlet (på den här enheten).', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
+
+Object.assign(STR.en, {slogan: 'Know what you have – and where it is.', startNew: 'Start my storage', startNewHint: 'New here? Just enter your name and start. No account needed – everything is saved on your phone.',
+  or: 'or', loginHint: 'Already have an account, or want one? We e-mail you a code – no password. You can share with others and reach everything from your computer.', yourEmail: 'Your e-mail', sendCode: 'Send code',
+  invitedTitle: 'You’re invited!', invitedIntro: 'Enter your e-mail and we’ll send you a code. Then you’re straight into the shared storage.',
+  pitchTitle: 'Create a free account – all you need is your e-mail', pitch1: 'Share with the people you live with', pitch2: 'Reach everything from your computer and other phones', pitch3: 'Safe if your phone gets lost', pitch4: 'More features coming for account holders',
+  fold: 'Fold', unfold: 'Unfold', foldAll: 'Fold all', unfoldAll: 'Unfold all'});
+Object.assign(STR.sv, {slogan: 'Ha koll på allt du har – och var det finns.', startNew: 'Starta mitt förråd', startNewHint: 'Ny här? Skriv bara ditt namn och kör igång. Inget konto behövs – allt sparas på telefonen.',
+  or: 'eller', loginHint: 'Har du redan ett konto, eller vill skapa ett? Vi mejlar en kod – inget lösenord. Då kan du dela med andra och nå allt från datorn.', yourEmail: 'Din e-post', sendCode: 'Skicka kod',
+  invitedTitle: 'Du är inbjuden!', invitedIntro: 'Skriv din e-post så mejlar vi en kod. Sedan kommer du direkt in i det delade förrådet.',
+  pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt från datorn och andra telefoner', pitch3: 'Tryggt om telefonen kommer bort', pitch4: 'Fler funktioner på väg för kontoinnehavare',
+  fold: 'Fäll ihop', unfold: 'Fäll ut', foldAll: 'Fäll ihop alla', unfoldAll: 'Fäll ut alla'});
 /* ---------- start ---------- */
 async function init(){
   render();
@@ -18295,7 +18348,7 @@ async function init(){
     { const so = await metaGet('speakOn'); if (typeof so === 'boolean') speakOn = so; }
     numbering = await metaGet('numbering') || 'place';
     viewMode = await metaGet('viewMode') || 'grid';
-    listSort = await metaGet('listSort') || 'manual'; boxOrder = await metaGet('boxOrder') || {};
+    listSort = await metaGet('listSort') || 'manual'; folded = new Set(await metaGet('folded') || []); boxOrder = await metaGet('boxOrder') || {};
     trash = await metaGet('trash') || []; purgeTrash();
     placeView = await metaGet('placeView') || 'shelf';
     shelfMode = await metaGet('shelfMode') || 'grid';
