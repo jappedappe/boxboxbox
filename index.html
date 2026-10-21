@@ -1040,6 +1040,13 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .mvstate.unpacked{background:#2FBF71}
 .mvactions{display:flex;flex-direction:column;gap:8px}
 .chips.quick small{opacity:.7}
+.wnote{margin:-8px 0 12px;font-size:.8rem;color:var(--muted)}
+.wnote.soon{color:var(--dot);font-weight:600}
+.loangrp{margin:14px 0}
+.loangrp h3{margin:0 0 4px;font-size:1rem;color:var(--ink)}
+.loangrp h3 small{color:var(--muted);font-weight:500}
+.loanrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.loanrow.old .mvtx small{color:var(--dot);font-weight:600}
 </style>
 </head>
 <body>
@@ -13470,7 +13477,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-22.4';
+const APP_VERSION = '2026-10-22.5';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14304,7 +14311,7 @@ function parentView(v){
   if (v.name === 'mapfocus') return v.back || {name: 'home', place: v.place};
   if (v.name === 'collection') return {name: 'search'};
   if (v.name === 'profile' && v.sub) return {name: 'profile'};
-  if (v.name === 'search' || v.name === 'profile' || v.name === 'settings' || v.name === 'move') return {name: 'home', place: currentPlace};
+  if (v.name === 'search' || v.name === 'profile' || v.name === 'settings' || v.name === 'move' || v.name === 'loans') return {name: 'home', place: currentPlace};
   if (v.name === 'home' && places.length > 1 && (v.place || currentPlace) !== 'all') return {name: 'home', place: 'all'};
   return null;
 }
@@ -14390,15 +14397,16 @@ function render(){
   else if (view.name === 'profile') renderProfile();
   else if (view.name === 'settings') renderSettings();
   else if (view.name === 'move') renderMove();
+  else if (view.name === 'loans') renderLoans();
   else if (currentPlace !== 'all' && findPlace(currentPlace)) renderPlace(currentPlace);
   else renderSpace();
-  const tab = view.name === 'search' ? 'search' : ['profile', 'settings', 'move'].includes(view.name) ? '' : 'home';
+  const tab = view.name === 'search' ? 'search' : ['profile', 'settings', 'move', 'loans'].includes(view.name) ? '' : 'home';
   if (!['box', 'search', 'collection'].includes(view.name)) document.body.classList.remove('selecting');
   document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr('tab_' + b.dataset.tab); });
   { const at = document.querySelector('.tabbar .addtab'); if (at) at.classList.toggle('nudge', ready && view.name !== 'welcome' && !boxes.some(b => (b.items || []).length) && !realBoxes().some(b => !b.kit)); }
   document.body.dataset.view = view.name;
   { const f = $('#talkBtn'); if (f && !f.dataset.pill){ f.dataset.pill = 1; f.classList.add('pill'); f.insertAdjacentHTML('beforeend', `<span class="fabtxt"></span>`); } const ft = f && f.querySelector('.fabtxt'); if (ft) ft.textContent = tr('askAI'); }
-  const pdot = $('#menuDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
+  const pdot = $('#menuDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length && !attention();
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
 }
@@ -14533,12 +14541,12 @@ function shelfHTML(pid){
 }
 function placeHead(pid){
   const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
-  return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}</p></div>
+  return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(b => b.placeId === pid).toUpperCase())}</p></div>
     <div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button></div></div>`;
 }
 function renderSpace(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
-  app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}</p></div>
+  app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(() => true).toUpperCase())}</p></div>
     ${installBanner()}${moveBanner()}${topStrips()}
     ${places.map(p => { const pb = boxesIn(p.id).length, pi = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.items || []).length, 0);
       const [cc, cn] = checkedThisYear(p.id);
@@ -15052,7 +15060,7 @@ function renderProfile(){
   const sub = view.sub || '', due = dueItems();
   const back = [{label: tr('profile').toUpperCase(), nav: {name: 'profile'}}];
   if (!sub){
-    const nN = due.length + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length;
+    const nN = due.length + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length + attention();
     app.innerHTML = `${crumbs([{label: tr('profile').toUpperCase()}])}
       <div class="fl" style="margin-top:14px"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
       <p class="proof">${tr('nameShown')}</p>
@@ -15081,6 +15089,8 @@ function renderProfile(){
     const lateBoxes = realBoxes().filter(boxOutLate), sug = nudges();
     app.innerHTML = `${crumbs([...back, {label: tr('notifications').toUpperCase()}])}
       ${sug.length ? `<h2 class="section">${tr('suggestions')}</h2>${sug.map(n => nudgeCard(n)).join('')}` : ''}
+      ${warrantySoon().length ? `<h2 class="section">${tr('warrantyH')}</h2><div class="dues">${warrantySoon().map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}<div class="dueact"><span class="hint">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</span></div></div>`).join('')}</div>` : ''}
+      ${loanOld().length ? `<h2 class="section">${tr('loansOld')}</h2><div class="dues">${loanOld().map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}<div class="dueact"><span class="hint">${esc((it.loanTo || '') + ' · ' + tr('lentSince', loanDays(it)))}</span><button class="btn quiet small" data-m="loans">${tr('loansTitle')}</button></div></div>`).join('')}</div>` : ''}
       ${lateBoxes.length ? `<h2 class="section">${tr('backQ')}</h2><div class="shelf">${lateBoxes.map(shelfTile).join('')}</div>` : ''}
       ${late.length ? `<h2 class="section">${tr('backQ')}</h2><div class="dues">${late.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
         <div class="dueact"><span class="hint">${esc(tr('backBy', it.out.until))}</span><button class="btn primary small" data-backok="${esc(b.id)}:${esc(it.id)}">↩ ${tr('isBack')}</button><button class="btn quiet small" data-more="${esc(b.id)}:${esc(it.id)}">${tr('stillOut')}</button></div></div>`).join('')}</div>` : ''}
@@ -15089,7 +15099,7 @@ function renderProfile(){
           <div class="dueact"><span class="hint">${esc(tr('lastUsedOn', it.lastUsed || it.storedOn || ''))}</span>
           <button class="btn quiet small" data-used="${esc(b.id)}:${esc(it.id)}">${tr('usedRecently')}</button>
           <button class="btn quiet small" data-sell="${esc(b.id)}:${esc(it.id)}">${tr('markSale')}</button></div></div>`).join('')}</div>`
-      : `<p class="hint">${tr('nothingDue')}</p>`}`;
+      : attention() || sug.length || late.length || lateBoxes.length ? '' : `<p class="hint">${tr('nothingDue')}</p>`}`;
     return;
   }
   if (sub === 'premium'){
@@ -15154,7 +15164,7 @@ function newItem(boxId, replace){
   setTimeout(() => { const n = $('#fName'); if (n) n.focus(); }, 80);
 }
 function itemSheet(boxId, itemId){ if (itemId) navigate({name: 'item', boxId, itemId}); else newItem(boxId); }
-const OPT = ['size', 'brand', 'value', 'model', 'qty', 'owner', 'color', 'season', 'serial', 'category', 'spot', 'notes'];
+const OPT = ['size', 'brand', 'value', 'warranty', 'model', 'qty', 'owner', 'color', 'season', 'serial', 'category', 'spot', 'notes'];
 const STATUSES = Object.keys(STATUS_KEYS);
 function curItem(){ const b = findBox(view.boxId); const it = b && (b.items || []).find(i => i.id === view.itemId); return it ? [it, b] : [null, null]; }
 function saveItem(mut, rerender){
@@ -15209,6 +15219,7 @@ function renderItem(){
     if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
     if (k === 'season') return input(k, {value: showSeason(it.season), attrs: 'list="seasons"'});
     if (k === 'serial') return input(k, {attrs: 'autocapitalize="characters"'});
+    if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
     if (k === 'spot') return b.loose ? input(k) : '';
     if (k === 'notes') return `<div class="fl"><textarea data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea><label>${tr('f_notes')}</label></div>`;
     if (k === 'owner') return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
@@ -15266,10 +15277,11 @@ function renderItem(){
     if (k === 'value' || k === 'qty'){ if (v === '' || isNaN(+v)) delete x[k]; else x[k] = Math.max(0, +v); return; }
     if (k === 'remindMonths'){ if (+v) x.remindMonths = +v; else delete x.remindMonths; return; }
     v = conv(k, v);
-    if (k === 'status' && v !== 'On loan') delete x.loanTo;
+    if (k === 'status' && v !== 'On loan'){ delete x.loanTo; delete x.loanSince; }
+    if (k === 'status' && v === 'On loan' && !x.loanSince) x.loanSince = today();
     if (v === '' || v == null) delete x[k]; else x[k] = v;
   }, false);
-  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status'];
+  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty'];
   flushItem = () => {
     Object.keys(timers).forEach(k => clearTimeout(timers[k]));
     const [x] = curItem(); if (!x) return;
@@ -16256,6 +16268,7 @@ function settingsAction(k){
   if (k === 'trash') return trashSheet();
   if (k === 'blanklabels') return blankLabels();
   if (k === 'move'){ closeSheet(); return navigate({name: 'move'}); }
+  if (k === 'loans'){ closeSheet(); return navigate({name: 'loans'}); }
   if (k === 'cloud') return cloudSheet();
   if (k === 'login') return cloudSheet();
   if (k === 'feedback') return feedbackSheet();
@@ -17848,7 +17861,7 @@ $('#importFile').addEventListener('change', async e => {
   } catch { toast('That file isn’t a Storrrage backup.'); }
 });
 function menuSheet(){
-  const nN = dueCount() + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length;
+  const nN = dueCount() + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length + attention();
   const row = (m, icon, label, extra = '') => `<button class="mrow" data-m="${m}"><span class="mi">${icon}</span><span class="ml">${label}</span>${extra}</button>`;
   openSheet(`<div class="menuhead"><h3>${tr('menu')}</h3>${langSwitch()}</div><div class="menu mlist">
     ${row('profile', ICON.user, esc(me || tr('profile')), nN ? `<b class="count">${nN}</b>` : '')}
@@ -17856,6 +17869,7 @@ function menuSheet(){
     ${row('scan', ICON.scan, tr('scanLabel'))}
     ${row('feedback', ICON.chat, tr('feedback'))}
     ${canInstall() ? row('install', ICON.install, tr('installTitle')) : ''}
+    ${row('loans', '🤝', tr('loansTitle'), loans().length ? `<b class="count${loanOld().length ? '' : ' muted'}">${loans().length}</b>` : '')}
     ${row('move', ICON.truck, tr('moveTitle'), move.active ? `<b class="count muted">${moveBoxes().filter(b => b.moveState !== 'unpacked').length}</b>` : '')}
     ${row('settings', ICON.gear, tr('settings'))}
     ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
@@ -17867,6 +17881,7 @@ function menuSheet(){
     if (k === 'settings'){ closeSheet(); return navigate({name: 'settings'}); }
     if (k === 'profile'){ closeSheet(); return navigate({name: 'profile'}); }
     if (k === 'move'){ closeSheet(); return navigate({name: 'move'}); }
+    if (k === 'loans'){ closeSheet(); return navigate({name: 'loans'}); }
     if (k === 'logout') return askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); });
     if (k === 'import') closeSheet();
     settingsAction(k);
@@ -18794,6 +18809,34 @@ Object.assign(STR.sv, {editRooms: 'Ändra rum', labelLinked: c => `Etiketten hö
   mv_packed: 'Packad', mv_moved: 'Flyttad', mv_unpacked: 'Uppackad', allRooms: 'Alla rum', pickRoom: 'Välj rum', newRoom: 'Nytt rum', moveEmpty: 'Inga lådor i flytten än.', moveNewBox: 'Ny flyttlåda', moveAddExisting: 'Lägg till befintliga lådor',
   moveLabels: 'Skriv ut etiketter för flytten', moveRooms: 'Rum (separera med komma)', moveEnd: 'Avsluta flytten', moveEndQ: 'Avsluta flytten? Lådorna stannar där de är, utan rum och flyttstatus.', moveEnded: 'Flytten är klar. Välkommen hem!', moveOngoing: (d, n) => `Flytt: ${d} av ${n} lådor uppackade`});
 
+/* ---- warranties, total value and lending ---- */
+const daysTo = d => Math.round((new Date(d + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 864e5);
+const warrantySoon = () => boxes.flatMap(b => (b.items || []).filter(it => it.warranty && daysTo(it.warranty) >= -7 && daysTo(it.warranty) <= 30).map(it => [it, b]));
+const valueOf = filter => boxes.filter(filter).reduce((s, b) => s + (b.items || []).reduce((t, i) => t + (+i.value || 0) * Math.max(1, +i.qty || 1), 0), 0);
+const valueLine = filter => { const v = valueOf(filter); return v ? ` · ${tr('worth', kr(v))}` : ''; };
+const loans = () => boxes.flatMap(b => (b.items || []).filter(it => it.status === 'On loan').map(it => [it, b]));
+const loanDays = it => { const s = it.loanSince || (it.updatedAt || '').slice(0, 10); return s ? -daysTo(s) : 0; };
+const loanOld = () => loans().filter(([it]) => loanDays(it) > 30);
+const attention = () => warrantySoon().length + loanOld().length;
+function renderLoans(){
+  const all = loans(), groups = new Map();
+  all.forEach(e => { const k = (e[0].loanTo || '').trim() || tr('unknownPerson'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(e); });
+  app.innerHTML = `${crumbs([{label: tr('loansTitle').toUpperCase()}])}<p class="hint" style="margin-top:10px">${tr('loansHint')}</p>
+    ${all.length ? [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'sv')).map(([who, list]) => `<section class="loangrp"><h3>👤 ${esc(who)} <small>${list.length}</small></h3>
+      ${list.map(([it, b]) => { const d = loanDays(it); return `<div class="loanrow${d > 30 ? ' old' : ''}"><button class="mvopen" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-open-item="1"><span class="mvtx"><b>${esc(it.name)}</b><small>${esc(tr('lentSince', d))} · ${esc(b.loose ? placeName(b.placeId) : b.code + ' ' + b.name)}</small></span></button>
+        <button class="btn small" data-loanask="${esc(b.id)}:${esc(it.id)}">${tr('remindLoan')}</button><button class="btn primary small" data-loanback="${esc(b.id)}:${esc(it.id)}">${tr('gotBack')}</button></div>`; }).join('')}</section>`).join('')
+      : `<p class="hint center">${tr('loansEmpty')}</p>`}`;
+  app.querySelectorAll('[data-loanback]').forEach(c => c.onclick = () => { const [bid, iid] = c.dataset.loanback.split(':'); const nb = clone(findBox(bid)), x = nb.items.find(i => i.id === iid); if (!x) return; delete x.status; delete x.loanTo; delete x.loanSince; x.updatedAt = new Date().toISOString(); putBox(nb); track('loan_back'); toast(tr('putBackDone', x.name, nb.loose ? placeName(nb.placeId) : nb.code)); });
+  app.querySelectorAll('[data-loanask]').forEach(c => c.onclick = () => { const [bid, iid] = c.dataset.loanask.split(':'); const x = (findBox(bid).items || []).find(i => i.id === iid); if (!x) return; const txt = tr('loanMsg', (x.loanTo || '').trim(), x.name, me); track('loan_remind'); if (navigator.share) navigator.share({text: txt}).catch(() => {}); else navigator.clipboard.writeText(txt).then(() => toast(tr('copied'))).catch(() => {}); });
+  app.querySelectorAll('[data-open-item]').forEach(c => c.onclick = () => navigate({name: 'item', boxId: c.dataset.box, itemId: c.dataset.item}));
+}
+Object.assign(STR.en, {f_warranty: 'Warranty until', warrantyLeft: n => n < 0 ? `Warranty ended ${-n} days ago` : n === 0 ? 'Warranty ends today' : `Warranty ends in ${n} days`, warrantyH: 'Warranty ending soon', worth: v => `worth ${v}`,
+  loansTitle: 'Lent out', loansHint: 'Things you’ve lent, by person. Set a thing’s status to “On loan” and write who has it.', loansEmpty: 'Nothing is lent out. 🎉', unknownPerson: 'Someone', lentSince: d => d <= 0 ? 'lent today' : d === 1 ? 'lent 1 day ago' : `lent ${d} days ago`,
+  gotBack: 'Got it back', remindLoan: 'Remind', loanMsg: (who, item, me) => `Hi${who ? ' ' + who : ''}! Do you still have my ${item}? I’d like it back when you’re done 🙂${me ? ' /' + me : ''}`, loansOld: 'Lent out for over a month'});
+Object.assign(STR.sv, {f_warranty: 'Garanti till', warrantyLeft: n => n < 0 ? `Garantin gick ut för ${-n} dagar sedan` : n === 0 ? 'Garantin går ut i dag' : `Garantin går ut om ${n} dagar`, warrantyH: 'Garanti går ut snart', worth: v => `värt ${v}`,
+  loansTitle: 'Utlånat', loansHint: 'Saker du lånat ut, per person. Sätt status ”Utlånad” på en sak och skriv vem som har den.', loansEmpty: 'Inget är utlånat. 🎉', unknownPerson: 'Någon', lentSince: d => d <= 0 ? 'utlånad i dag' : d === 1 ? 'utlånad för 1 dag sedan' : `utlånad för ${d} dagar sedan`,
+  gotBack: 'Fått tillbaka', remindLoan: 'Påminn', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du kvar min ${item}? Vill gärna ha tillbaka den när du är klar 🙂${me ? ' /' + me : ''}`, loansOld: 'Utlånat i över en månad'});
+
 STR.da = {
   space: 'RUM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 KASSE' : `${n} KASSER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `KASSE ${n}`,
   allPlaces: 'Alle steder', addPlace: '+ Sted', notInBox: 'Ikke i en kasse', notInBoxShort: 'ikke i en kasse',
@@ -19244,6 +19287,15 @@ Object.assign(STR.fi, {editRooms: 'Muokkaa huoneita', labelLinked: c => `Tarra k
   moveTitle: 'Muutto', moveIntroH: 'Oletko muuttamassa?', moveIntro: 'Anna laatikoille huone uudessa kodissa ja seuraa niitä pakatusta muutettuun ja purettuun. Tavallinen varastosi toimii normaalisti.', moveStart: 'Aloita muutto',
   mv_packed: 'Pakattu', mv_moved: 'Muutettu', mv_unpacked: 'Purettu', allRooms: 'Kaikki huoneet', pickRoom: 'Valitse huone', newRoom: 'Uusi huone', moveEmpty: 'Muutossa ei ole vielä laatikoita.', moveNewBox: 'Uusi muuttolaatikko', moveAddExisting: 'Lisää olemassa olevia laatikoita',
   moveLabels: 'Tulosta muuton tarrat', moveRooms: 'Huoneet (pilkulla erotettuna)', moveEnd: 'Päätä muutto', moveEndQ: 'Päätetäänkö muutto? Laatikot jäävät paikoilleen ilman huonetta ja muuttotilaa.', moveEnded: 'Muutto valmis. Tervetuloa kotiin!', moveOngoing: (d, n) => `Muutto: ${d}/${n} laatikkoa purettu`});
+Object.assign(STR.da, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien udløb for ${-n} dage siden` : n === 0 ? 'Garantien udløber i dag' : `Garantien udløber om ${n} dage`, warrantyH: 'Garanti udløber snart', worth: v => `værdi ${v}`,
+  loansTitle: 'Udlånt', loansHint: 'Ting du har lånt ud, pr. person. Sæt status “Udlånt” på en ting og skriv, hvem der har den.', loansEmpty: 'Intet er lånt ud. 🎉', unknownPerson: 'Nogen', lentSince: d => d <= 0 ? 'lånt ud i dag' : d === 1 ? 'lånt ud for 1 dag siden' : `lånt ud for ${d} dage siden`,
+  gotBack: 'Fået tilbage', remindLoan: 'Påmind', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du stadig min ${item}? Vil gerne have den tilbage, når du er færdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ud i over en måned'});
+Object.assign(STR.nb, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien gikk ut for ${-n} dager siden` : n === 0 ? 'Garantien går ut i dag' : `Garantien går ut om ${n} dager`, warrantyH: 'Garanti går ut snart', worth: v => `verdi ${v}`,
+  loansTitle: 'Utlånt', loansHint: 'Ting du har lånt ut, per person. Sett status «Utlånt» på en ting og skriv hvem som har den.', loansEmpty: 'Ingenting er lånt ut. 🎉', unknownPerson: 'Noen', lentSince: d => d <= 0 ? 'lånt ut i dag' : d === 1 ? 'lånt ut for 1 dag siden' : `lånt ut for ${d} dager siden`,
+  gotBack: 'Fått tilbake', remindLoan: 'Påminn', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Har du fortsatt ${item} min? Vil gjerne ha den tilbake når du er ferdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ut i over en måned'});
+Object.assign(STR.fi, {f_warranty: 'Takuu päättyy', warrantyLeft: n => n < 0 ? `Takuu päättyi ${-n} päivää sitten` : n === 0 ? 'Takuu päättyy tänään' : `Takuu päättyy ${n} päivän kuluttua`, warrantyH: 'Takuu päättymässä', worth: v => `arvo ${v}`,
+  loansTitle: 'Lainassa', loansHint: 'Lainaamasi tavarat henkilöittäin. Aseta tavaran tilaksi ”Lainassa” ja kirjoita kenellä se on.', loansEmpty: 'Mitään ei ole lainassa. 🎉', unknownPerson: 'Joku', lentSince: d => d <= 0 ? 'lainattu tänään' : d === 1 ? 'lainattu 1 päivä sitten' : `lainattu ${d} päivää sitten`,
+  gotBack: 'Sain takaisin', remindLoan: 'Muistuta', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Onko ${item} vielä sinulla? Haluaisin sen takaisin, kun olet valmis 🙂${me ? ' /' + me : ''}`, loansOld: 'Lainassa yli kuukauden'});
 
 /* ---------- start ---------- */
 async function init(){
