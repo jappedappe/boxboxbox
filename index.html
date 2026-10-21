@@ -969,6 +969,25 @@ dialog .toast{position:fixed;z-index:100}
 @keyframes nudgeplus{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 .tabbar .addtab.nudge .plus{color:var(--dot);animation:nudgeplus 1.4s ease-in-out infinite}
 .tabbar .addtab.nudge .tl{color:var(--dot);font-weight:700}
+/* 2026-10-21.8 */
+.lrow,.lrow-wrap{touch-action:pan-y}
+.tabbar .addtab svg.plus{width:24px;height:24px;font-size:0;background:none;margin:0;border-radius:0;display:block;fill:currentColor;transform-origin:50% 50%}
+.tabbar .addtab.nudge svg.plus{color:var(--dot);animation:nudgeplus 1.4s ease-in-out infinite}
+.itile.add .timg{border:1.5px dashed var(--line);background:transparent;color:var(--primary)}
+.itile.add .plusic{width:30%;height:30%;fill:currentColor}
+.itile.add .timg svg{width:30%;height:30%}
+/* "Ask" pill only on Search */
+.fab{display:none}
+body[data-view="search"]:not(.selecting) .fab{display:flex}
+.fab.pill{width:auto;height:46px;padding:0 16px 0 12px;border-radius:999px;gap:8px;align-items:center;font-weight:600;font-size:.88rem;right:16px;bottom:calc(var(--tabh) + 28px + env(safe-area-inset-bottom,0px));box-shadow:0 6px 18px rgba(70,50,140,.28)}
+.fab.pill svg{width:20px;height:20px}
+/* search: compact */
+.sbar{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.sbar .input{flex:1;margin:0}
+.sbar .linkbtn{text-decoration:none;color:var(--muted);font-size:1.1rem;padding:6px}
+.chips.quick{flex-wrap:wrap;gap:6px}
+.chipbtn.searchchip{background:var(--primary);border-color:var(--primary);color:#fff}
+#scopeBody .chips{flex-wrap:wrap;max-height:50vh;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -980,10 +999,10 @@ dialog .toast{position:fixed;z-index:100}
 </header>
 <p class="statusline" id="statusline" hidden></p>
 <main id="app" class="wrap"></main>
-<button class="fab" id="talkBtn" aria-label="Talk to Storrrage"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg></button>
+<button class="fab" id="talkBtn" aria-label="Ask Storrrage"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg></button>
 <nav class="tabbar" aria-label="Main">
   <button data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg><span class="tl">Active</span></button>
-  <button data-tab="add" class="addtab"><span class="plus" aria-hidden="true">+</span><span class="tl">Add</span></button>
+  <button data-tab="add" class="addtab"><svg class="plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg><span class="tl">Add</span></button>
   <button data-tab="search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg><span class="tl">Search</span></button>
 </nav>
 <dialog id="sheet"></dialog>
@@ -13399,7 +13418,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.7';
+const APP_VERSION = '2026-10-21.8';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14321,7 +14340,9 @@ function render(){
   const tab = view.name === 'search' ? 'search' : ['profile', 'settings'].includes(view.name) ? '' : 'home';
   if (!['box', 'search', 'collection'].includes(view.name)) document.body.classList.remove('selecting');
   document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr('tab_' + b.dataset.tab); });
-  { const at = document.querySelector('.tabbar .addtab'); if (at) at.classList.toggle('nudge', ready && view.name !== 'welcome' && !boxes.some(b => (b.items || []).length)); }
+  { const at = document.querySelector('.tabbar .addtab'); if (at) at.classList.toggle('nudge', ready && view.name !== 'welcome' && !boxes.some(b => (b.items || []).length) && !realBoxes().some(b => !b.kit)); }
+  document.body.dataset.view = view.name;
+  { const f = $('#talkBtn'); if (f && !f.dataset.pill){ f.dataset.pill = 1; f.classList.add('pill'); f.insertAdjacentHTML('beforeend', `<span class="fabtxt"></span>`); } const ft = f && f.querySelector('.fabtxt'); if (ft) ft.textContent = tr('askAI'); }
   const pdot = $('#menuDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
@@ -14427,6 +14448,7 @@ function shelfTile(b){
     <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span></span></button>`;
 }
 /* the freshness dot only shows when a box is about to stop being "fresh" (not checked for ~5 months) */
+const PLUS_SVG = '<svg class="plusic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg>';
 const tileFresh = b => { const d = freshDays(b); return d !== Infinity && d > 150 ? freshDot(b) : ''; };
 function shelfTileOld(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
@@ -14447,11 +14469,11 @@ function looseCarousel(pid, opts = {}){
   return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length ? `${li.some(i => i.isNew) ? `<span class="newrib inline">${tr('newTag')}</span>` : ''}<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
     ${opts.hint ? `<p class="maphint">${opts.hint}</p>` : ''}
     <div class="lstrip">${li.map(it => itemTile(it, l, opts.showZone && it.zone ? esc(it.zone) : '')).join('')}
-      <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('add')}</span></span></button></div></section>`;
+      <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newThing')}</span></span></button></div></section>`;
 }
 function shelfHTML(pid){
   const bx = topBoxesIn(pid).sort(byCode);
-  return `<div class="shelf">${bx.map(shelfTile).join('')}<button class="itile add" data-act="addhere" data-pid="${esc(pid)}" aria-label="${esc(tr('addTo', placeName(pid)))}"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('add')}</span></span></button></div>
+  return `<div class="shelf">${bx.map(shelfTile).join('')}<button class="itile add" data-act="newboxin" data-pid="${esc(pid)}" aria-label="${esc(tr('newBox'))}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newBox')}</span></span></button></div>
     ${looseCarousel(pid, {showZone: true})}`;
 }
 function placeHead(pid){
@@ -14515,7 +14537,7 @@ function renderBox(b){
     </div>`}
     ${kids.length ? `<div class="kids${shelfCls()}">${kids.map(shelfTile).join('')}</div>` : ''}
     ${viewMode === 'list' ? rowsHTML(items.map(it => [it, b])) + `<p class="swipehint">${tr('swipeHint')}</p>` : ''}
-    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
+    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
       <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
       ${b.loose ? '' : `<button class="itile add" data-act="subbox"><span class="timg">${ICON.box}</span><span class="ttext"><span class="tname">${tr('boxInBox')}</span></span></button>`}`}</div>`}
     ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addShort')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('severalShort')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">${ICON.box} ${tr('subShort')}</button>`}</div>` : ''}
@@ -14786,6 +14808,26 @@ function rowsOrTiles(entries){
   return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
 }
 let searchQuick = null;
+let searchOpen = false;
+function scopeChip(){
+  if (places.length < 2 && realBoxes().length < 2) return '';
+  const P = searchScope.places, B = searchScope.boxes;
+  const label = B.size ? (B.size === 1 ? (findBox([...B][0]) || {}).code || '' : tr('boxes_n', B.size).toLowerCase()) : P.size === 1 ? placeName([...P][0]) : places.length > 1 ? tr('everywhere') : placeName(places[0].id);
+  return `<button class="chipbtn${P.size || B.size ? ' on' : ''}" id="scopeBtn">📍 ${esc(label)} ▾</button>`;
+}
+function scopeSheet(){
+  openSheet(`<h3>${tr('searchIn')}</h3><div id="scopeBody">${scopeChips().replace(/<span class="lab">.*?<\/span>/, '')}</div><div class="sheet-foot"><button class="btn primary" id="scX">${tr('ok')}</button></div>`);
+  const wire = () => sheet.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
+    const P = searchScope.places, B = searchScope.boxes, v = c.dataset.scope;
+    if (v === 'all'){ P.clear(); B.clear(); } else if (v === 'allboxes') B.clear();
+    else if (v.startsWith('p:')){ const id = v.slice(2); P.has(id) ? P.delete(id) : P.add(id); B.clear(); }
+    else if (v.startsWith('b:')){ const id = v.slice(2); B.has(id) ? B.delete(id) : B.add(id); }
+    $('#scopeBody').innerHTML = scopeChips().replace(/<span class="lab">.*?<\/span>/, ''); wire();
+  });
+  wire();
+  $('#scX').onclick = () => { closeSheet(); render(); };
+}
+function quickChipsInner(){ return quickChips().replace(/^<div class="chips quick">/, '').replace(/<\/div>$/, ''); }
 function quickChips(){
   const nOut = outItems().length + realBoxes().filter(b => b.out).length, nLoose = boxes.filter(b => b.loose).reduce((s, b) => s + (b.items || []).length, 0);
   const c = (k, label, n) => `<button class="chipbtn${searchQuick === k ? ' on' : ''}" data-quick="${k}">${label}${n !== undefined ? ` <small>${n}</small>` : ''}</button>`;
@@ -14827,20 +14869,28 @@ function renderSearch(){
   }
   const had = $('#q'), focused = had && document.activeElement === had, pos = had ? had.selectionStart : 0;
   app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div>${viewToggle()}</div>
-    <input class="input search" id="q" type="search" placeholder="${esc(tr('typeKeyword'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">
-    ${quickChips()}
-    ${scopeChips()}
+    ${searchOpen || q ? `<div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('typeKeyword'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search"><button class="linkbtn" id="qClose" aria-label="${esc(tr('close'))}">✕</button></div>` : ''}
+    <div class="chips quick">${searchOpen || q ? '' : `<button class="chipbtn searchchip" id="qOpen">🔍 ${tr('searchWord')}</button>`}${quickChipsInner()}${scopeChip()}</div>
     ${collectionChips(q)}
     ${(q || P.size || B.size) && !selecting && /itile/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
     <div id="results">${body}</div>
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
+  if ($('#qOpen')) $('#qOpen').onclick = () => { searchOpen = true; render(); setTimeout(() => { const i = $('#q'); if (i) i.focus(); }, 30); };
+  if ($('#scopeBtn')) $('#scopeBtn').onclick = scopeSheet;
   const s = $('#q');
+  if (!s){ bindSearchExtras(); return; }
+  if ($('#qClose')) $('#qClose').onclick = () => { searchOpen = false; query = ''; render(); };
   if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
   let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
+  bindSearchExtras();
+}
+function bindSearchExtras(){
+  const P = searchScope.places, B = searchScope.boxes;
   app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { track('search_quick', {f: c.dataset.quick}); searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; render(); });
   app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => { query = c.dataset.suggest; rememberQuery(query); render(); });
-  s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
+  const s = $('#q');
+  if (s) s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
   app.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
     const v = c.dataset.scope;
     if (v === 'all'){ P.clear(); B.clear(); }
@@ -14858,7 +14908,7 @@ function applyKit(pid){
   const k = KITS.basement, zones = k.zones.map(z => tr(z));
   p.zones = [...new Set([...(p.zones || []), ...zones])]; metaPut('places', places).catch(() => {});
   const now = new Date().toISOString();
-  k.boxes.forEach(([nameKey, zi]) => putBox({id: newId(), code: nextCode(pid), name: tr(nameKey), placeId: pid, location: zones[zi], items: [], createdAt: now, updatedAt: now, checkedAt: now}, true));
+  k.boxes.forEach(([nameKey, zi]) => putBox({id: newId(), code: nextCode(pid), name: tr(nameKey), placeId: pid, location: zones[zi], items: [], kit: true, createdAt: now, updatedAt: now, checkedAt: now}, true));
   track('start_kit');
 }
 function renderWelcome(){
@@ -16207,6 +16257,7 @@ app.addEventListener('click', e => {
     case 'clearrq': recentQ = []; metaPut('recentQ', recentQ).catch(() => {}); render(); break;
     case 'pickicon': iconSheet(); break;
     case 'install': installApp(); break;
+    case 'newboxin': boxSheet(null, d.pid || scopePlace(), null); break;
     case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
@@ -18448,6 +18499,9 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
   kitYes: 'Startkit', kitYesSub: '10 vanliga lådor längs tre väggar – byt namn eller ta bort som du vill', kitNo: 'Börja tomt', kitDone: 'Ditt startkit är klart. Tryck på en låda för att fylla den.',
   zoneLeft: 'Vänster vägg', zoneBack: 'Bakre väggen', zoneRight: 'Höger vägg',
   kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
+
+Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
+Object.assign(STR.sv, {newThing: 'Ny sak', askAI: 'Fråga · beta', searchWord: 'Sök', newBox: 'Ny låda'});
 /* ---------- start ---------- */
 async function init(){
   render();
