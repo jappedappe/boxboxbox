@@ -13470,7 +13470,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-22.3';
+const APP_VERSION = '2026-10-22.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -17945,11 +17945,11 @@ const rpc = (fn, args) => sb('/rest/v1/rpc/' + fn, {method: 'POST', body: args |
 
 /* ---------- login with a link in the e-mail ---------- */
 async function sendLoginLink(email){
-  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL + (lang === 'sv' ? '' : '?lang=en')), {method: 'POST', auth: false, body: {email, create_user: true, data: {lang}}});
+  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL + (lang === 'sv' ? '' : '?lang=' + lang)), {method: 'POST', auth: false, body: {email, create_user: true, data: {lang}}});
   track('login_link');
 }
 async function takeAuthFromUrl(){
-  { const qs = new URLSearchParams(location.search); if (qs.get('lang') === 'en' || qs.get('lang') === 'sv'){ if (qs.get('lang') !== lang && (lang === 'sv' || lang === 'en')) setLang(qs.get('lang')); if (!location.hash) try { history.replaceState(null, '', APP_URL); } catch {} } if (qs.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + qs.get('error_description')); return; } }
+  { const qs = new URLSearchParams(location.search); if (qs.get('lang')){ if (!location.hash) try { history.replaceState(null, '', APP_URL); } catch {} } if (qs.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + qs.get('error_description')); return; } }
   const h = location.hash.slice(1); if (!h) return;
   const p = new URLSearchParams(h);
   if (p.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + p.get('error_description')); return; }
