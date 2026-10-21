@@ -988,6 +988,22 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .chips.quick{flex-wrap:wrap;gap:6px}
 .chipbtn.searchchip{background:var(--primary);border-color:var(--primary);color:#fff}
 #scopeBody .chips{flex-wrap:wrap;max-height:50vh;overflow-y:auto}
+/* 2026-10-21.9: search + ask in one place */
+.fab,body[data-view="search"]:not(.selecting) .fab{display:none!important}
+.sbar{position:relative;margin:4px 0 8px}
+.sbar .input.search{padding-right:52px;font-size:1rem;height:48px}
+.micin{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:none;background:var(--lav-3);color:var(--primary);display:grid;place-items:center}
+.micin svg{width:20px;height:20px}
+.micin.on{background:var(--dot);color:#fff;animation:hlpulse 1.2s ease-in-out infinite}
+.chips.quick .chipbtn{font-size:.8rem;padding:5px 11px}
+.askbtn{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--primary);background:linear-gradient(90deg,rgba(106,81,196,.12),rgba(249,127,38,.10));color:var(--ink);font-weight:600;font-size:.88rem;text-align:left}
+.askbtn span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.askbtn small{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--primary);border:1px solid var(--primary);border-radius:6px;padding:1px 5px}
+.askpanel{border:1.5px solid var(--primary);border-radius:14px;padding:8px 10px 10px;margin:0 0 12px;background:var(--surface)}
+.askhead{display:flex;align-items:center;gap:8px}
+.askhead small{color:var(--muted);font-size:.72rem;flex:1}
+.askhead .linkbtn{text-decoration:none;color:var(--muted)}
+.askpanel .vlog.chat{min-height:0;max-height:40vh;margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -13418,7 +13434,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.8';
+const APP_VERSION = '2026-10-21.9';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14808,7 +14824,8 @@ function rowsOrTiles(entries){
   return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
 }
 let searchQuick = null;
-let searchOpen = false;
+let searchOpen = false, askOpen = false;
+const looksLikeQuestion = t => /\?\s*$/.test(t) || /^(var|vart|vad|hur|när|vem|har|finns|kan|visa|öppna|lägg|ta|flytta|where|what|how|when|who|do|is|are|can|show|open|add|put|move|take)\b/i.test((t || '').trim());
 function scopeChip(){
   if (places.length < 2 && realBoxes().length < 2) return '';
   const P = searchScope.places, B = searchScope.boxes;
@@ -14868,19 +14885,24 @@ function renderSearch(){
       ${(r => r.length ? `<h2 class="section">${tr('recent')}</h2>` + rowsOrTiles(r) : '')(recentEntries())}`;
   }
   const had = $('#q'), focused = had && document.activeElement === had, pos = had ? had.selectionStart : 0;
-  app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div>${viewToggle()}</div>
-    ${searchOpen || q ? `<div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('typeKeyword'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search"><button class="linkbtn" id="qClose" aria-label="${esc(tr('close'))}">✕</button></div>` : ''}
-    <div class="chips quick">${searchOpen || q ? '' : `<button class="chipbtn searchchip" id="qOpen">🔍 ${tr('searchWord')}</button>`}${quickChipsInner()}${scopeChip()}</div>
+  app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div></div>
+    <div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('searchOrAsk'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">${SR ? `<button class="micin" id="micBtn" aria-label="${esc(tr('tapTalk'))}">${ICON.mic}</button>` : ''}</div>
+    ${q.length >= 2 ? `<button class="askbtn" id="askGo"><span class="spark">✨</span><span>${esc(tr('askAbout', q))}</span><small>beta</small></button>` : ''}
+    <div class="chips quick">${quickChipsInner()}${scopeChip()}</div>
+    ${askOpen ? `<div class="askpanel"><div class="askhead"><b>✨ Storrrage</b><small>beta · ${ai.provider === 'off' ? tr('simpleMode') : 'AI'}</small><button class="linkbtn" id="askX" aria-label="${esc(tr('close'))}">✕</button></div><div class="vlog chat" id="vlog"></div><div class="vlive" id="vLive" hidden></div></div>` : ''}
     ${collectionChips(q)}
     ${(q || P.size || B.size) && !selecting && /itile/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
     <div id="results">${body}</div>
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
-  if ($('#qOpen')) $('#qOpen').onclick = () => { searchOpen = true; render(); setTimeout(() => { const i = $('#q'); if (i) i.focus(); }, 30); };
   if ($('#scopeBtn')) $('#scopeBtn').onclick = scopeSheet;
   const s = $('#q');
-  if (!s){ bindSearchExtras(); return; }
-  if ($('#qClose')) $('#qClose').onclick = () => { searchOpen = false; query = ''; render(); };
+  const ask = text => { text = (text || '').trim(); if (!text) return; askOpen = true; query = ''; track('ask', {from: 'search'}); render(); handleBatch(text); };
+  if ($('#askGo')) $('#askGo').onclick = () => ask(q);
+  if ($('#micBtn')) $('#micBtn').onclick = () => { track('voice'); if (!askOpen){ askOpen = true; render(); } listen(); };
+  if ($('#askX')) $('#askX').onclick = () => { askOpen = false; stopListening(); if (window.speechSynthesis) speechSynthesis.cancel(); render(); };
+  if ($('#vlog')){ drawLog(); $('#vlog').addEventListener('click', e => { const b = e.target.closest('[data-vact]'); if (!b) return; const l = voiceLog[+b.dataset.vact]; if (l && l.action){ const run = l.action.run; l.action = null; drawLog(); run(); } }); }
+  s.addEventListener('keydown', e => { if (e.key === 'Enter' && looksLikeQuestion(s.value)){ e.preventDefault(); e.stopImmediatePropagation(); ask(s.value); } }, true);
   if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
   let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
   bindSearchExtras();
@@ -18502,6 +18524,9 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
 
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
 Object.assign(STR.sv, {newThing: 'Ny sak', askAI: 'Fråga · beta', searchWord: 'Sök', newBox: 'Ny låda'});
+
+Object.assign(STR.en, {searchOrAsk: 'Search, or ask Storrrage…', askAbout: q => `Ask Storrrage: “${q}”`});
+Object.assign(STR.sv, {searchOrAsk: 'Sök, eller fråga Storrrage…', askAbout: q => `Fråga Storrrage: ”${q}”`});
 /* ---------- start ---------- */
 async function init(){
   render();
