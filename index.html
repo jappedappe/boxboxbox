@@ -13434,7 +13434,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-21.9';
+const APP_VERSION = '2026-10-22.1';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14983,12 +14983,19 @@ function renderWelcome(){
   };
   $('#wGo').onclick = go; $('#wName').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 }
-const langSwitch = () => `<div class="seg" role="group" aria-label="Language / Språk"><button class="${lang === 'sv' ? 'on' : ''}" data-lang-ui="sv">Svenska</button><button class="${lang === 'en' ? 'on' : ''}" data-lang-ui="en">English</button></div>`;
+/* language: Auto (follows the phone), Svenska or English */
+let langPref = 'auto';
+const phoneLang = () => ((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase().startsWith('sv') ? 'sv' : 'en';
+const langSwitch = () => `<div class="seg" role="group" aria-label="Language / Språk"><button class="${langPref === 'auto' ? 'on' : ''}" data-lang-ui="auto" title="${lang === 'sv' ? 'Samma som telefonen' : 'Same as your phone'}">Auto</button><button class="${langPref === 'sv' ? 'on' : ''}" data-lang-ui="sv">Svenska</button><button class="${langPref === 'en' ? 'on' : ''}" data-lang-ui="en">English</button></div>`;
 function setLang(l){
-  lang = l; metaPut('lang', l).catch(() => {}); if (typeof saveLangToAccount === 'function') saveLangToAccount();
-  voiceLang = l === 'sv' ? 'sv-SE' : 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
+  langPref = l === 'sv' || l === 'en' ? l : 'auto';
+  lang = langPref === 'auto' ? phoneLang() : langPref;
+  metaPut('langPref', langPref).catch(() => {}); metaPut('lang', lang).catch(() => {});
+  if (typeof saveLangToAccount === 'function') saveLangToAccount();
+  voiceLang = lang === 'sv' ? 'sv-SE' : 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
   render();
 }
+window.addEventListener('languagechange', () => { if (langPref === 'auto' && phoneLang() !== lang) setLang('auto'); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-lang-ui]'); if (b){ setLang(b.dataset.langUi); if (sheet.open && sheet.querySelector('[data-lang-ui]')) menuSheet(); } });
 
 function renderProfile(){
@@ -17911,7 +17918,7 @@ async function verifyCode(email, code){
 }
 /* the login e-mail is written in the language chosen in the app */
 function saveLangToAccount(){ if (cloud.session) sb('/auth/v1/user', {method: 'PUT', body: {data: {lang}}}).catch(() => {}); }
-const KEEP_META = ['folded', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
+const KEEP_META = ['folded', 'langPref', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
 async function wipeLocal(){
   for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
   const keys = await tx('meta', 'readonly', s => s.getAllKeys()).catch(() => []) || [];
@@ -18537,7 +18544,7 @@ async function init(){
     household = await metaGet('household') || [];
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
-    lang = await metaGet('lang') || (voiceLang.startsWith('sv') ? 'sv' : lang);
+    { const lp = await metaGet('langPref'), old = await metaGet('lang'); langPref = lp || (old === 'sv' || old === 'en' ? old : 'auto'); lang = langPref === 'auto' ? phoneLang() : langPref; if (langPref === 'auto') voiceLang = lang === 'sv' ? 'sv-SE' : 'en-US'; }
     { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
     ai = await metaGet('ai') || ai;
     theme = await metaGet('theme') || 'system'; applyTheme();
