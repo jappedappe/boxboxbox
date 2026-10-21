@@ -1047,6 +1047,8 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .loangrp h3 small{color:var(--muted);font-weight:500}
 .loanrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
 .loanrow.old .mvtx small{color:var(--dot);font-weight:600}
+.chips.tight{gap:6px;margin-top:4px}
+.fl.group .chips{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -13477,7 +13479,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-22.5';
+const APP_VERSION = '2026-10-23.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -14267,6 +14269,7 @@ const ICON = {
   chart: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>',
   logout: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h10"/></svg>',
   login: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M9 8l4 4-4 4M4 12h9"/></svg>',
+  lend: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/></svg>',
   truck: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>',
   barcode: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6v12M7 6v12M10 6v8M13 6v12M16 6v8M19 6v12M10 17h0M16 17h0"/></svg>',
   cloud: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .6-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7 18.5z"/></svg>',
@@ -14577,7 +14580,8 @@ function renderBox(b){
   const hlIt = view.hl && items.find(i => i.id === view.hl);
   const nOut = items.filter(isOut).length;
   const askOut = hlIt && view.fromSearch && !view.asked && !isOut(hlIt);
-  const needCheck = !b.loose && items.length && daysSince(b.checkedAt) > 30 && !view.checkDismissed;
+  const needCheck = !b.loose && items.length && daysSince(b.checkedAt || b.createdAt) > 60 && view.checkReady && !view.checkDismissed;
+  if (!b.loose && items.length && !view.checkReady && daysSince(b.checkedAt || b.createdAt) > 60){ clearTimeout(window._ckT); const vid = b.id; window._ckT = setTimeout(() => { if (view.name === 'box' && view.boxId === vid){ view.checkReady = true; render(); } }, 25000); }
   app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>↗ <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
     ${askOut ? `<div class="askout"><span>${esc(tr('askOut', hlIt.name))}</span><span class="fhbtns"><button class="btn primary small" data-askout="temp">${tr('yesTemp')}</button><button class="btn quiet small" data-askout="gone">${tr('yesGone')}</button><button class="btn quiet small" data-askout="no">${tr('no')}</button></span></div>` : ''}
     ${hlIt ? `<div class="findhint"><span>🔎 <b>${esc(hlIt.name)}</b> ${tr('isHere')}</span><span class="fhbtns"><button class="btn primary small" data-item="${esc(hlIt.id)}" data-box="${esc(b.id)}" data-open-item="1">${tr('openItem')}</button><button class="btn quiet small" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? hlIt.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button></span></div>` : ''}
@@ -14602,8 +14606,8 @@ function renderBox(b){
     ${viewMode === 'list' ? rowsHTML(items.map(it => [it, b])) + `<p class="swipehint">${tr('swipeHint')}</p>` : ''}
     ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
       <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
-      ${b.loose ? '' : `<button class="itile add" data-act="subbox"><span class="timg">${ICON.box}</span><span class="ttext"><span class="tname">${tr('boxInBox')}</span></span></button>`}`}</div>`}
-    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addShort')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('severalShort')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">${ICON.box} ${tr('subShort')}</button>`}</div>` : ''}
+      ${b.loose ? '' : `<button class="itile add" data-act="addinbox"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}`}</div>`}
+    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addShort')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('severalShort')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="addinbox">+ ${tr('addNav')}</button>`}</div>` : ''}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
@@ -15131,11 +15135,13 @@ function renderSettings(){
       <button class="row" data-m="blanklabels"><span>${tr('blankLabels')}</span></button>
     </div>
     <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
+    <label class="check"><input type="checkbox" id="notifChk" ${notifOn && 'Notification' in window && Notification.permission === 'granted' ? 'checked' : ''}> ${tr('notifSetting')}</label><p class="proof">${tr('notifHint')}</p>
     <label class="check"><input type="checkbox" id="statsChk" ${statsOn ? 'checked' : ''}> ${tr('statsSetting')}</label><p class="proof">${tr('statsHint')}</p>
     <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
     <details class="more"><summary>${tr('advanced')}</summary><div class="list"><button class="row" data-m="import"><span>${tr('restore')}</span></button></div><p class="proof">${tr('restoreHint')}</p></details>
     <p class="proof center" id="usage"></p>`;
   app.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => { theme = b.dataset.themeSet; metaPutRaw('theme', theme).catch(() => {}); applyTheme(); track('theme', {v: theme}); render(); });
+  $('#notifChk').onchange = async e => { if (e.target.checked){ const ok = await turnOnNotifications(); e.target.checked = ok; if (ok) toast(tr('notifOnToast')); } else { notifOn = false; metaPutRaw('notifOn', false).catch(() => {}); } };
   $('#statsChk').onchange = e => { statsOn = e.target.checked; metaPutRaw('statsOn', statsOn).catch(() => {}); if (!statsOn) evq = []; };
   $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
   $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
@@ -15225,7 +15231,7 @@ function renderItem(){
     if (k === 'owner') return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
       <div class="pair"><input data-f="owner" value="${esc(showOwner(it.owner))}" placeholder="${esc(tr('whose'))}" list="people" autocapitalize="words">
       <select data-f="status" aria-label="${esc(tr('status'))}"><option value="">${tr('status')}…</option>${STATUSES.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${status && !STATUS_KEYS[status] ? `<option value="${esc(status)}" selected>${esc(status)}</option>` : ''}</select></div>
-      ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">` : ''}</div>`;
+      ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">${loanFields(it)}` : ''}</div>`;
     return input(k);
   };
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
@@ -15246,8 +15252,7 @@ function renderItem(){
     ${OPT.map(field).join('')}
     ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="chips">${addable.map(k => `<button class="chipbtn" data-addopt="${k}">+ ${esc(tr('f_' + k))}</button>`).join('')}</div></div>` : ''}
     <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
-    <div class="fl"><select data-f="remindMonths" aria-label="${esc(tr('remind'))}">${[0, 6, 12, 24].map(v => `<option value="${v}" ${+(it.remindMonths || 0) === v ? 'selected' : ''}>${v ? tr('remindM', v) : tr('noRemind')}</option>`).join('')}</select><label class="always">${tr('remind')}</label></div>
-    <div class="fl"><input data-f="remindAt" type="date" value="${esc(it.remindAt || '')}"><label class="always">${tr('remindDate')}</label></div>
+    ${remindFields(it)}
     ${n ? `<p class="notifyrow"><span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span><button class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="fl att"><label class="always">${tr('attachments')}</label>
       ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
@@ -15278,10 +15283,11 @@ function renderItem(){
     if (k === 'remindMonths'){ if (+v) x.remindMonths = +v; else delete x.remindMonths; return; }
     v = conv(k, v);
     if (k === 'status' && v !== 'On loan'){ delete x.loanTo; delete x.loanSince; }
-    if (k === 'status' && v === 'On loan' && !x.loanSince) x.loanSince = today();
+    if (k === 'status' && v === 'On loan'){ if (!x.loanSince) x.loanSince = today(); if (!x.loanDue) x.loanDue = addDays(x.loanSince, 30); }
+    if (k === 'status' && v !== 'On loan') delete x.loanDue;
     if (v === '' || v == null) delete x[k]; else x[k] = v;
   }, false);
-  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty'];
+  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty', 'loanSince', 'loanDue'];
   flushItem = () => {
     Object.keys(timers).forEach(k => clearTimeout(timers[k]));
     const [x] = curItem(); if (!x) return;
@@ -16088,8 +16094,8 @@ function doNudge(key, yes, pid){
 /* ---------- sheets: add, move, long press ---------- */
 function addHereSheet(pid, boxId){
   const b = boxId && findBox(boxId);
-  openSheet(`<h3>${esc(b ? tr('addHereBox', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
-    <div class="choice">${b ? `<button class="btn primary big" id="adItem">${ICON.star}<span>${tr('addItem')}</span></button><button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxInBox')}</span></button>`
+  openSheet(`<h3>${esc(b ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
+    <div class="choice">${b ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addItem')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('boxInsideX', b.code)}</span></button>`
       : `<button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button>`}</div>
     <button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
@@ -16364,6 +16370,7 @@ app.addEventListener('click', e => {
     case 'itemback': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, false); break;
     case 'qadone': { const i = $('#qaIn'); if (i && i.value.trim()) quickAdd(i.dataset.qa, i.value); quickAddFor = null; render(); break; }
     case 'subbox': boxSheet(null, b.placeId, b.id); break;
+    case 'addinbox': addHereSheet(b.placeId, b.id); break;
     case 'placement': placementSheet(b.id); break;
     case 'doorside': doorSheet(currentPlace); break;
     case 'newzone': addZone(currentPlace); break;
@@ -17869,7 +17876,7 @@ function menuSheet(){
     ${row('scan', ICON.scan, tr('scanLabel'))}
     ${row('feedback', ICON.chat, tr('feedback'))}
     ${canInstall() ? row('install', ICON.install, tr('installTitle')) : ''}
-    ${row('loans', '🤝', tr('loansTitle'), loans().length ? `<b class="count${loanOld().length ? '' : ' muted'}">${loans().length}</b>` : '')}
+    ${row('loans', ICON.lend, tr('loansTitle'), loans().length ? `<b class="count${loanOld().length ? '' : ' muted'}">${loans().length}</b>` : '')}
     ${row('move', ICON.truck, tr('moveTitle'), move.active ? `<b class="count muted">${moveBoxes().filter(b => b.moveState !== 'unpacked').length}</b>` : '')}
     ${row('settings', ICON.gear, tr('settings'))}
     ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
@@ -18149,16 +18156,17 @@ async function push(){
 async function pull(force){
   let changed = false;
   for (let page = 0; page < 50; page++){
-    const q = `/rest/v1/records?select=id,kind,payload,deleted,updated_at&household_id=eq.${cloud.hid}&order=updated_at.asc,id.asc&limit=500` + (cloud.cursor ? '&updated_at=gt.' + encodeURIComponent(cloud.cursor) : '');
+    const q = `/rest/v1/records?select=id,kind,payload,deleted,updated_at,updated_by&household_id=eq.${cloud.hid}&order=updated_at.asc,id.asc&limit=500` + (cloud.cursor ? '&updated_at=gt.' + encodeURIComponent(cloud.cursor) : '');
     const rows = await sb(q); if (!rows || !rows.length) break;
     for (const r of rows){
       if (!force && dirty.has(r.id)) continue;   // a newer local change is waiting to go up
-      try { await applyRecord(r); changed = true; } catch {}
+      try { await applyRecord(r); changed = true; if (!force && r.id.startsWith('b:')) noteHouseholdChange(r.updated_by, findBox(r.id.slice(2))); } catch {}
     }
     cloud.cursor = rows[rows.length - 1].updated_at; await saveCloud();
     if (rows.length < 500) break;
   }
   if (changed && ready) render();
+  flushHouseholdChanges();
 }
 async function applyRecord(r){
   const t = r.id.slice(0, 1), id = r.id.slice(2);
@@ -18816,7 +18824,7 @@ const valueOf = filter => boxes.filter(filter).reduce((s, b) => s + (b.items || 
 const valueLine = filter => { const v = valueOf(filter); return v ? ` · ${tr('worth', kr(v))}` : ''; };
 const loans = () => boxes.flatMap(b => (b.items || []).filter(it => it.status === 'On loan').map(it => [it, b]));
 const loanDays = it => { const s = it.loanSince || (it.updatedAt || '').slice(0, 10); return s ? -daysTo(s) : 0; };
-const loanOld = () => loans().filter(([it]) => loanDays(it) > 30);
+const loanOld = () => loans().filter(([it]) => loanIsDue(it));
 const attention = () => warrantySoon().length + loanOld().length;
 function renderLoans(){
   const all = loans(), groups = new Map();
@@ -18836,6 +18844,106 @@ Object.assign(STR.en, {f_warranty: 'Warranty until', warrantyLeft: n => n < 0 ? 
 Object.assign(STR.sv, {f_warranty: 'Garanti till', warrantyLeft: n => n < 0 ? `Garantin gick ut för ${-n} dagar sedan` : n === 0 ? 'Garantin går ut i dag' : `Garantin går ut om ${n} dagar`, warrantyH: 'Garanti går ut snart', worth: v => `värt ${v}`,
   loansTitle: 'Utlånat', loansHint: 'Saker du lånat ut, per person. Sätt status ”Utlånad” på en sak och skriv vem som har den.', loansEmpty: 'Inget är utlånat. 🎉', unknownPerson: 'Någon', lentSince: d => d <= 0 ? 'utlånad i dag' : d === 1 ? 'utlånad för 1 dag sedan' : `utlånad för ${d} dagar sedan`,
   gotBack: 'Fått tillbaka', remindLoan: 'Påminn', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du kvar min ${item}? Vill gärna ha tillbaka den när du är klar 🙂${me ? ' /' + me : ''}`, loansOld: 'Utlånat i över en månad'});
+
+/* ---- notifications on the phone: reminders, warranty, loans, things that should be back ---- */
+let notifOn = false, notified = {};
+function alertsNow(){
+  const out = [], t = today();
+  boxes.forEach(b => (b.items || []).forEach(it => {
+    const where = b.loose ? placeName(b.placeId) : `${b.code} ${b.name}`;
+    if (isDue(it)) out.push({key: `due:${it.id}:${notifyAt(it)}`, title: tr('n_dueT'), body: tr('n_due', it.name), box: b.id, item: it.id});
+    if (it.warranty){ const d = daysTo(it.warranty); if (d <= 30 && d >= -1) out.push({key: `w:${it.id}:${it.warranty}:${d <= 7 ? 7 : 30}`, title: tr('warrantyH'), body: `${it.name}: ${tr('warrantyLeft', d)}`, box: b.id, item: it.id}); }
+    if (it.status === 'On loan' && loanIsDue(it)) out.push({key: `loan:${it.id}:${it.loanDue || ''}`, title: tr('loansTitle'), body: tr('n_loan', it.name, (it.loanTo || '').trim() || tr('unknownPerson')), box: b.id, item: it.id});
+    if (isOut(it) && outOverdue(it)) out.push({key: `out:${it.id}:${it.out.until}`, title: tr('backQ'), body: tr('n_out', it.name, where), box: b.id, item: it.id});
+  }));
+  return out;
+}
+/* Rules (see NOTISER.md): nothing changed in the last 24 h triggers anything, at most one notification
+   per check (several = one summary), at least 6 h between notifications, and none between 21 and 08. */
+const NOTIF_GAP_H = 6, QUIET_FROM = 21, QUIET_TO = 8, GRACE_H = 24;
+const quietNow = () => { const h = new Date().getHours(); return h >= QUIET_FROM || h < QUIET_TO; };
+const recentlyChanged = it => it.updatedAt && (Date.now() - Date.parse(it.updatedAt)) < GRACE_H * 3600e3;
+async function notifyAlerts(){
+  if (!notifOn || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (quietNow()) return;
+  const last = +(notified._last || 0);
+  if (Date.now() - last < NOTIF_GAP_H * 3600e3) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const byKey = new Map(boxes.flatMap(b => (b.items || []).map(it => [it.id, it])));
+  const fresh = alertsNow().filter(a => !notified[a.key] && !recentlyChanged(byKey.get(a.item) || {}));
+  if (fresh.length){
+    const a = fresh[0], many = fresh.length > 1;
+    const title = many ? 'Storrrage' : a.title, body = many ? tr('n_many', fresh.length, a.body) : a.body;
+    const opts = {body, tag: 'storrrage', renotify: true, icon: 'icon-192.png', badge: 'icon-192.png', data: many ? {} : {box: a.box, item: a.item}};
+    try { if (reg && reg.showNotification) await reg.showNotification(title, opts); else new Notification(title, opts); } catch {}
+    fresh.forEach(x => { notified[x.key] = today(); });
+    notified._last = Date.now();
+  }
+  if (fresh.length){ const keep = {_last: notified._last}; Object.entries(notified).forEach(([k, d]) => { if (k !== '_last' && daysSince(d) < 120) keep[k] = d; }); notified = keep; metaPutRaw('notified', notified).catch(() => {}); track('notified', {n: fresh.length}); }
+}
+async function turnOnNotifications(){
+  if (!('Notification' in window)){ toast(tr('notifUnsupported')); return false; }
+  let p = Notification.permission;
+  if (p !== 'granted') p = await Notification.requestPermission().catch(() => 'denied');
+  if (p !== 'granted'){ toast(tr('notifBlocked')); return false; }
+  notifOn = true; metaPutRaw('notifOn', true).catch(() => {});
+  try { const reg = await navigator.serviceWorker.ready; if (reg.periodicSync) await reg.periodicSync.register('storrrage-check', {minInterval: 12 * 3600 * 1000}); } catch {}
+  track('notif_on');
+  notifyAlerts();
+  return true;
+}
+/* something changed by someone else in the household while the app was in the background */
+let hhChanges = {};
+function noteHouseholdChange(updatedBy, box){
+  if (!updatedBy || updatedBy === myId() || !box || box.loose) return;
+  const who = memberNames[updatedBy] || tr('someone');
+  (hhChanges[who] = hhChanges[who] || new Set()).add(box.name || box.code);
+}
+async function flushHouseholdChanges(){
+  const entries = Object.entries(hhChanges); hhChanges = {};
+  if (!entries.length || !notifOn || document.visibilityState === 'visible' || Notification.permission !== 'granted' || quietNow()) return;
+  if (Date.now() - (+(notified._hh || 0)) < 2 * 3600e3) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const who = entries.map(e => e[0]).join(', '), list = [...new Set(entries.flatMap(e => [...e[1]]))];
+  try { if (reg) await reg.showNotification('Storrrage', {body: tr('n_hh', who, list.slice(0, 3).join(', ') + (list.length > 3 ? ' …' : '')), tag: 'storrrage-hh', icon: 'icon-192.png'}); } catch {}
+  notified._hh = Date.now(); metaPutRaw('notified', notified).catch(() => {});
+}
+navigator.serviceWorker?.addEventListener?.('message', e => { const d = e.data || {}; if (d.open && d.box) navigate(d.item ? {name: 'item', boxId: d.box, itemId: d.item} : {name: 'box', boxId: d.box}); });
+
+/* ---- loans: since when, and when to ask for it back ---- */
+const addDays = (d, n) => { const x = new Date((d || today()) + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const loanIsDue = it => it.loanDue ? it.loanDue <= today() : loanDays(it) > 30;
+function loanFields(it){
+  const since = it.loanSince || today(), due = it.loanDue || '';
+  const opts = [[7, tr('w1')], [14, tr('w2')], [30, tr('m1')], [90, tr('m3')]];
+  const cur = due ? Math.round((new Date(due) - new Date(since)) / 864e5) : null;
+  return `<div class="fl"><input data-f="loanSince" type="date" value="${esc(since)}"><label class="always">${tr('loanSinceL')}</label></div>
+    <div class="fl group"><label class="always">${tr('remindBack')}</label><div class="chips tight">${opts.map(([n, l]) => `<button class="chipbtn small${cur === n ? ' on' : ''}" data-loandue="${n}">${l}</button>`).join('')}<button class="chipbtn small${due && !opts.some(o => o[0] === cur) ? ' on' : ''}" data-loandue="pick">${tr('pickDate')}</button></div>
+    ${due && !opts.some(o => o[0] === cur) || showLoanPick ? `<input data-f="loanDue" type="date" value="${esc(due)}" style="margin-top:8px">` : ''}${due ? `<p class="wnote">${esc(tr('remindOn', due))}</p>` : ''}</div>`;
+}
+let showLoanPick = false, showRemindPick = false;
+function remindFields(it){
+  const m = +(it.remindMonths || 0), at = it.remindAt || '';
+  const opts = [[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]];
+  return `<div class="fl group"><label class="always">${tr('remind')}</label><div class="chips tight"><button class="chipbtn small${!m && !at ? ' on' : ''}" data-remind="0">${tr('noRemind')}</button>${opts.map(([v, l]) => `<button class="chipbtn small${m === v && !at ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="chipbtn small${at ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button></div>
+    ${at || showRemindPick ? `<input data-f="remindAt" type="date" value="${esc(at)}" style="margin-top:8px">` : ''}</div>`;
+}
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-remind]'), l = e.target.closest('[data-loandue]');
+  if (!r && !l) return;
+  if (flushItem) flushItem();
+  if (r){ const v = r.dataset.remind; if (v === 'pick'){ showRemindPick = true; saveItem(x => { delete x.remindMonths; }, true); return; } showRemindPick = false; saveItem(x => { delete x.remindAt; if (+v) x.remindMonths = +v; else delete x.remindMonths; }, true); return; }
+  const v = l.dataset.loandue;
+  if (v === 'pick'){ showLoanPick = true; render(); return; }
+  showLoanPick = false; saveItem(x => { x.loanDue = addDays(x.loanSince || today(), +v); }, true);
+});
+
+Object.assign(STR.en, {n_many: (n, first) => `${n} things need a look. First: ${first}`, notifTitle: 'Notifications', notifSetting: 'Notify me on this phone', notifHint: 'Reminders, warranties that end, things that should be back, and changes others in your household make.', notifBlocked: 'Notifications are blocked. Allow them for Storrrage in the phone’s settings.', notifUnsupported: 'This browser can’t show notifications.', notifOnToast: 'Notifications are on.',
+  n_dueT: 'Time to check', n_due: n => `${n} hasn’t been used in a while. Keep it, or sell it?`, n_loan: (n, w) => `${w} still has your ${n}. Time to ask for it back?`, n_out: (n, w) => `Is ${n} back in ${w}?`, n_hh: (w, list) => `${w} made changes: ${list}`,
+  loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to ${c}`, boxInsideX: c => `Box inside ${c}`});
+Object.assign(STR.sv, {n_many: (n, first) => `${n} saker behöver kollas. Först: ${first}`, notifTitle: 'Notiser', notifSetting: 'Skicka notiser till den här telefonen', notifHint: 'Påminnelser, garantier som går ut, saker som borde vara tillbaka och ändringar som andra i hushållet gör.', notifBlocked: 'Notiser är blockerade. Tillåt dem för Storrrage i telefonens inställningar.', notifUnsupported: 'Den här webbläsaren kan inte visa notiser.', notifOnToast: 'Notiser är på.',
+  n_dueT: 'Dags att kolla', n_due: n => `${n} har inte använts på länge. Behålla eller sälja?`, n_loan: (n, w) => `${w} har fortfarande din ${n}. Dags att be om den tillbaka?`, n_out: (n, w) => `Är ${n} tillbaka i ${w}?`, n_hh: (w, list) => `${w} har gjort ändringar: ${list}`,
+  loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i ${c}`, boxInsideX: c => `Låda inuti ${c}`});
 
 STR.da = {
   space: 'RUM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 KASSE' : `${n} KASSER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `KASSE ${n}`,
@@ -19296,6 +19404,15 @@ Object.assign(STR.nb, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Ga
 Object.assign(STR.fi, {f_warranty: 'Takuu päättyy', warrantyLeft: n => n < 0 ? `Takuu päättyi ${-n} päivää sitten` : n === 0 ? 'Takuu päättyy tänään' : `Takuu päättyy ${n} päivän kuluttua`, warrantyH: 'Takuu päättymässä', worth: v => `arvo ${v}`,
   loansTitle: 'Lainassa', loansHint: 'Lainaamasi tavarat henkilöittäin. Aseta tavaran tilaksi ”Lainassa” ja kirjoita kenellä se on.', loansEmpty: 'Mitään ei ole lainassa. 🎉', unknownPerson: 'Joku', lentSince: d => d <= 0 ? 'lainattu tänään' : d === 1 ? 'lainattu 1 päivä sitten' : `lainattu ${d} päivää sitten`,
   gotBack: 'Sain takaisin', remindLoan: 'Muistuta', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Onko ${item} vielä sinulla? Haluaisin sen takaisin, kun olet valmis 🙂${me ? ' /' + me : ''}`, loansOld: 'Lainassa yli kuukauden'});
+Object.assign(STR.da, {n_many: (n, first) => `${n} ting skal tjekkes. Først: ${first}`, notifTitle: 'Notifikationer', notifSetting: 'Send notifikationer til denne telefon', notifHint: 'Påmindelser, garantier der udløber, ting der burde være tilbage, og ændringer andre i husstanden laver.', notifBlocked: 'Notifikationer er blokeret. Tillad dem for Storrrage i telefonens indstillinger.', notifUnsupported: 'Denne browser kan ikke vise notifikationer.', notifOnToast: 'Notifikationer er slået til.',
+  n_dueT: 'Tid til at tjekke', n_due: n => `${n} er ikke brugt længe. Beholde eller sælge?`, n_loan: (n, w) => `${w} har stadig din ${n}. Tid til at bede om den tilbage?`, n_out: (n, w) => `Er ${n} tilbage i ${w}?`, n_hh: (w, list) => `${w} har lavet ændringer: ${list}`,
+  loanSinceL: 'Lånt ud siden', remindBack: 'Mind mig om at bede om den tilbage om', w1: '1 uge', w2: '2 uger', m1: '1 måned', m3: '3 måneder', pickDate: 'Vælg dato', remindOn: d => `Påmindelse ${d}`, addInto: c => `Tilføj til ${c}`, boxInsideX: c => `Kasse inden i ${c}`});
+Object.assign(STR.nb, {n_many: (n, first) => `${n} ting bør sjekkes. Først: ${first}`, notifTitle: 'Varsler', notifSetting: 'Send varsler til denne telefonen', notifHint: 'Påminnelser, garantier som går ut, ting som burde være tilbake, og endringer andre i husstanden gjør.', notifBlocked: 'Varsler er blokkert. Tillat dem for Storrrage i telefonens innstillinger.', notifUnsupported: 'Denne nettleseren kan ikke vise varsler.', notifOnToast: 'Varsler er på.',
+  n_dueT: 'På tide å sjekke', n_due: n => `${n} er ikke brukt på lenge. Beholde eller selge?`, n_loan: (n, w) => `${w} har fortsatt ${n} din. På tide å be om den tilbake?`, n_out: (n, w) => `Er ${n} tilbake i ${w}?`, n_hh: (w, list) => `${w} har gjort endringer: ${list}`,
+  loanSinceL: 'Lånt ut siden', remindBack: 'Minn meg på å be om den tilbake om', w1: '1 uke', w2: '2 uker', m1: '1 måned', m3: '3 måneder', pickDate: 'Velg dato', remindOn: d => `Påminnelse ${d}`, addInto: c => `Legg til i ${c}`, boxInsideX: c => `Eske inni ${c}`});
+Object.assign(STR.fi, {n_many: (n, first) => `${n} asiaa kaipaa huomiota. Ensin: ${first}`, notifTitle: 'Ilmoitukset', notifSetting: 'Lähetä ilmoituksia tähän puhelimeen', notifHint: 'Muistutukset, päättyvät takuut, tavarat joiden pitäisi olla palautettu ja muiden kotitalouden jäsenten muutokset.', notifBlocked: 'Ilmoitukset on estetty. Salli ne Storrragelle puhelimen asetuksista.', notifUnsupported: 'Tämä selain ei voi näyttää ilmoituksia.', notifOnToast: 'Ilmoitukset ovat päällä.',
+  n_dueT: 'Aika tarkistaa', n_due: n => `${n} on ollut pitkään käyttämättä. Säilytetäänkö vai myydäänkö?`, n_loan: (n, w) => `${w}: ${n} on yhä lainassa. Pyydetäänkö takaisin?`, n_out: (n, w) => `Onko ${n} palautettu kohteeseen ${w}?`, n_hh: (w, list) => `${w} teki muutoksia: ${list}`,
+  loanSinceL: 'Lainassa alkaen', remindBack: 'Muistuta pyytämään takaisin', w1: '1 viikko', w2: '2 viikkoa', m1: '1 kuukausi', m3: '3 kuukautta', pickDate: 'Valitse päivä', remindOn: d => `Muistutus ${d}`, addInto: c => `Lisää kohteeseen ${c}`, boxInsideX: c => `Laatikko laatikon ${c} sisään`});
 
 /* ---------- start ---------- */
 async function init(){
@@ -19342,6 +19459,8 @@ async function init(){
   render(); arm();
   try { if (sessionStorage.getItem('wiped')){ sessionStorage.removeItem('wiped'); setTimeout(() => toast(tr('wipedRemote')), 600); } if (sessionStorage.getItem('loggedOut')){ sessionStorage.removeItem('loggedOut'); setTimeout(() => toast(tr('loggedOut')), 600); } } catch {}
   if (cloud.session && !me && !pendingJoinCode) setTimeout(askMyName, 800);
+  notifOn = !!(await metaGet('notifOn').catch(() => false)); notified = await metaGet('notified').catch(() => null) || {};
+  setTimeout(notifyAlerts, 3000); setInterval(notifyAlerts, 3600 * 1000);
   track('open', {places: places.length, boxes: Math.min(realBoxes().length, 999), synced: !!cloud.hid});
   statsNotice();
 }
