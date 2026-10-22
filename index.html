@@ -260,6 +260,10 @@ video{width:100%;border-radius:10px;background:#000;aspect-ratio:4/3;object-fit:
 .donebar{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px));z-index:6;display:flex;gap:10px;justify-content:flex-end;padding:10px 16px;background:var(--bg);border-top:1px solid var(--line)}
 .donebar .btn{flex:1;max-width:260px}
 .donebar .btn.primary{flex:1.3}
+.donebar.newitembar{display:grid;grid-template-columns:.85fr 1.3fr .85fr;gap:6px;flex-wrap:nowrap}
+.donebar.newitembar .btn{width:100%;min-width:0;max-width:none;flex:none;padding:9px 4px;font-size:clamp(.65rem,2.6vw,.8rem);line-height:1.15;white-space:normal}
+.donebar.newitembar .btn.primary{flex:none}
+.donebar.edititembar{justify-content:space-between}
 body.itemview .fab{display:none}
 body.itemview .wrap{padding-bottom:calc(var(--tabh) + 120px + env(safe-area-inset-bottom,0px))}
 
@@ -678,6 +682,8 @@ body.dragging-item .map .zone{outline:1.5px dashed var(--lav);outline-offset:-2p
 /* each place is its own card on the all-places overview */
 .spacesec.card{border:1.5px solid var(--line);border-radius:14px;padding:4px 12px 12px;background:var(--lav-3);margin:14px 0}
 .spacesec.card .spacehead{border-bottom:1.5px solid var(--line);margin:0 -12px 10px;padding:10px 12px;width:calc(100% + 24px)}
+.spacesec.place-dragging{opacity:.35}
+.place-drag-ghost{position:fixed;z-index:50;pointer-events:none;opacity:.95;box-shadow:0 8px 24px rgba(40,25,90,.25);background:var(--lav-3);border-radius:14px;overflow:hidden;margin:0}
 .spacesec.card .lcarousel{margin-bottom:0}
 .spacesec.card .lstrip{margin:0 -12px;padding-left:12px;padding-right:12px}
 /* search: recent */
@@ -955,6 +961,9 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .btn.addopt{flex-direction:column;gap:6px;padding:14px 8px}
 .addopt .aoi{width:44px;height:44px;border-radius:12px;background:#fff;display:grid;place-items:center}
 .addopt .aoi svg{width:36px;height:36px}
+.addnav-sheet .btn.big{background:var(--surface);border:1px solid var(--lav);color:var(--ink)}
+.addnav-sheet .addopt .aoi{background:var(--lav-3);color:var(--primary)}
+.addnav-sheet .btn.block{border:1px solid var(--lav);color:var(--ink)}
 .btn.icontext{display:flex;align-items:center;justify-content:center;gap:8px}
 .btn.icontext svg{width:18px;height:18px;flex:none}
 .invitebox{background:var(--lav-3);border-radius:12px;padding:12px;margin:10px 0;display:flex;flex-direction:column;gap:8px;text-align:center}
@@ -13479,7 +13488,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-23.2';
+const APP_VERSION = '2026-10-23.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13792,7 +13801,7 @@ function putBox(box, quiet){
   if (box.autoName && !box.loose) box.name = autoBoxName(box);
   const i = boxes.findIndex(b => b.id === box.id);
   if (i < 0) boxes.push(box); else boxes[i] = box;
-  dbPut(clone(box)).catch(e => toast(saveErr(e)));
+  if (!itemEdit || (box.id !== itemEdit.boxId && !(box.items || []).some(i => i.id === itemEdit.itemId))) dbPut(clone(box)).catch(e => toast(saveErr(e)));
   if (!quiet) render();
 }
 function removeBox(id){
@@ -13937,7 +13946,7 @@ const STR = {
   en: {
     space: 'SPACE', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
     box_n: n => `BOX ${n}`, allPlaces: 'All places', addPlace: '+ Place', notInBox: 'Not in a box', notInBoxShort: 'not in a box',
-    emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', item: 'item', items: 'items',
+    emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', addThingChoice: 'Add thing', addMultipleChoice: 'Add multiple', addBoxChoice: 'Add box', item: 'item', items: 'items',
     editBox: 'Edit box', label: 'Label', findStuff: 'FIND YOUR STUFF!', typeKeyword: 'Type keyword', searchIn: 'Search in', everywhere: 'Everywhere', allOf: p => `All of ${p}`,
     boxesH: 'Boxes', similar: 'Similar things', noMatch: q => `Nothing matches “${q}”. Try another word, in Swedish or English.`, nothingHere: 'Nothing stored here yet.',
     welcome: 'Keep track of what’s stored where: boxes, things, photos and receipts. Find anything by searching or just asking.', yourName: 'Your name', getStarted: 'Get started',
@@ -13973,7 +13982,7 @@ const STR = {
   sv: {
     space: 'FÖRVARING', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
     box_n: n => `LÅDA ${n}`, allPlaces: 'Alla platser', addPlace: '+ Plats', notInBox: 'Utan låda', notInBoxShort: 'utan låda',
-    emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', item: 'sak', items: 'saker',
+    emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', addThingChoice: 'Lägg till sak', addMultipleChoice: 'Lägg till flera', addBoxChoice: 'Lägg till låda', item: 'sak', items: 'saker',
     editBox: 'Ändra låda', label: 'Etikett', findStuff: 'HITTA DINA GREJER!', typeKeyword: 'Skriv ett sökord', searchIn: 'Sök i', everywhere: 'Överallt', allOf: p => `Hela ${p}`,
     boxesH: 'Lådor', similar: 'Liknande saker', noMatch: q => `Inget matchar ”${q}”. Prova ett annat ord, på svenska eller engelska.`, nothingHere: 'Inget sparat här än.',
     welcome: 'Håll koll på vad som förvaras var: lådor, saker, foton och kvitton. Hitta allt genom att söka eller bara fråga.', yourName: 'Ditt namn', getStarted: 'Kom igång',
@@ -14332,27 +14341,34 @@ function viewValid(v){
 function pushBack(){ if (!view || view.name === 'welcome') return; const v = Object.assign({}, view); delete v.asked; backStack.push(v); if (backStack.length > 40) backStack.shift(); }
 function prevView(){ for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)) return backStack[i]; return null; }
 function goBack(){
-  while (backStack.length){ const v = backStack.pop(); if (viewValid(v) && !sameView(v, view)){ go(v); return true; } }
+  for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)){ go(backStack[i], {backIndex: i}); return true; }
   return goUp();
 }
 function arm(){ if (armed || !(prevView() || parentView())) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
-function go(v){
+async function go(v, options = {}){
+  if (sameView(v, view)) return true;
+  if (view.name === 'item' && !(await prepareItemLeave())){ arm(); return false; }
+  if (options.pushBack) pushBack();
+  if (options.backIndex !== undefined) backStack = backStack.slice(0, options.backIndex);
+  if (options.navigation){
+    if (v.name === 'box'){ const b = findBox(v.boxId); if (b && currentPlace !== b.placeId) setPlace(b.placeId); remember('box', v.boxId); touchOpened(b); if (view.name === 'search' && v.hl) v.fromSearch = true; }
+    if (v.name === 'item' && v.itemId !== itemDraft) remember('item', v.itemId, v.boxId);
+    if (v.name !== 'search') query = '';
+  }
   leaveItemPage();
   if (typeof presenceSoon === 'function') presenceSoon();
   if (v.name !== view.name) track('view', {v: v.name});
   quickAddFor = null;
   if (selecting && !(v.name === view.name && v.boxId === view.boxId && v.tag === view.tag)) selecting = null;
   if ((v.name === 'home' || v.name === 'mapfocus') && v.place) setPlace(v.place);
-  view = v; if (v.name !== 'search') query = view.name === 'search' ? query : '';
+  view = v;
+  if (v.name === 'item' && itemDraft !== v.itemId){ const [it, b] = curItem(); itemEdit = it ? {boxId: v.boxId, itemId: v.itemId, original: clone(it), boxUpdatedAt: b.updatedAt, removedRefs: new Set()} : null; }
+  if (v.name !== 'search') query = view.name === 'search' ? query : '';
   render(); window.scrollTo(0, 0); arm();
 }
 function goUp(){ const p = parentView(); if (!p) return false; go(p); return true; }
 function navigate(v){
-  if (v.name === 'box'){ remember('box', v.boxId); touchOpened(findBox(v.boxId)); if (view.name === 'search' && v.hl) v.fromSearch = true; }
-  if (v.name === 'item' && v.itemId !== itemDraft) remember('item', v.itemId, v.boxId);
-  if (v.name !== 'search') query = '';
-  if (!sameView(v, view)) pushBack();
-  go(v);
+  go(v, {pushBack: !sameView(v, view), navigation: true});
 }
 window.addEventListener('popstate', () => {
   armed = false;
@@ -14361,11 +14377,10 @@ window.addEventListener('popstate', () => {
   if (sheet.open){ closeSheet(); arm(); return; }
   if (goBack()) arm();
 });
-function goHome(pid){ setPlace(pid || 'all'); navigate({name: 'home', place: pid || 'all'}); }
+function goHome(pid){ navigate({name: 'home', place: pid || 'all'}); }
 function openSpace(){ goHome(currentPlace !== 'all' ? currentPlace : null); }
 function openBox(id){
   const b = findBox(id); if (!b) return;
-  if (currentPlace !== b.placeId) setPlace(b.placeId);
   navigate({name: 'box', boxId: id});
 }
 function showSearch(q){ query = q || ''; if (view.name !== 'search') navigate({name: 'search'}); else render(); const s = $('#q'); if (s && s.value !== query) s.value = query; }
@@ -14553,10 +14568,63 @@ function renderSpace(){
     ${installBanner()}${moveBanner()}${topStrips()}
     ${places.map(p => { const pb = boxesIn(p.id).length, pi = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.items || []).length, 0);
       const [cc, cn] = checkedThisYear(p.id);
-      return `<section class="spacesec card">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
+      return `<section class="spacesec card" data-place-card="${esc(p.id)}">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
 }
+let placePress = null, placeDrag = null;
+app.addEventListener('pointerdown', e => {
+  const head = e.target.closest('.spacehead'), card = head && head.closest('[data-place-card]');
+  if (!head || !card || places.length < 2 || e.button > 0) return;
+  e.stopImmediatePropagation();
+  const press = placePress = {head, card, x: e.clientX, y: e.clientY, pointerId: e.pointerId};
+  press.timer = setTimeout(() => {
+    if (placePress !== press) return;
+    const r = card.getBoundingClientRect(), ghost = card.cloneNode(true);
+    ghost.classList.add('place-drag-ghost');
+    Object.assign(ghost.style, {left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'});
+    document.body.appendChild(ghost);
+    card.classList.add('place-dragging');
+    placeDrag = {card, ghost, head, pointerId: press.pointerId, dy: press.y - r.top, original: [...app.querySelectorAll('[data-place-card]')]};
+    placePress = null;
+    try { head.setPointerCapture(press.pointerId); } catch {}
+    lpFired = true;
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+  }, 220);
+});
+document.addEventListener('pointermove', e => {
+  if (placePress && !placeDrag){
+    if (Math.hypot(e.clientX - placePress.x, e.clientY - placePress.y) > 8){
+      clearTimeout(placePress.timer); placePress = null;
+    }
+    return;
+  }
+  const d = placeDrag; if (!d) return;
+  e.preventDefault();
+  d.ghost.style.top = `${e.clientY - d.dy}px`;
+  d.ghost.style.visibility = 'hidden';
+  const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-place-card]');
+  d.ghost.style.visibility = '';
+  if (!target || target === d.card) return;
+  const r = target.getBoundingClientRect();
+  app.insertBefore(d.card, e.clientY < r.top + r.height / 2 ? target : target.nextSibling);
+}, {passive: false});
+document.addEventListener('pointerup', async () => {
+  if (placePress){ clearTimeout(placePress.timer); placePress = null; return; }
+  const d = placeDrag; if (!d) return;
+  placeDrag = null; d.ghost.remove(); d.card.classList.remove('place-dragging');
+  const ordered = [...app.querySelectorAll('[data-place-card]')].map(el => findPlace(el.dataset.placeCard)).filter(Boolean);
+  if (ordered.length === places.length && ordered.some((p, i) => p.id !== places[i].id)){
+    places = ordered;
+    render();
+    await metaPut('places', places).catch(err => toast(saveErr(err)));
+  }
+  setTimeout(() => { lpFired = false; }, 400);
+});
+document.addEventListener('pointercancel', () => {
+  if (placePress){ clearTimeout(placePress.timer); placePress = null; }
+  if (placeDrag){ placeDrag.ghost.remove(); placeDrag.card.classList.remove('place-dragging'); placeDrag.original.forEach(card => app.appendChild(card)); placeDrag = null; }
+});
 function nudgeBar(pid){ const n = nudges(pid)[0]; return n ? nudgeCard(n, true) : ''; }
 function renderPlace(pid, focus){
   const what = focus ? [...(view.hlBoxes || []).map(findBox).filter(Boolean).map(b => (view.hlBoxes.length === 1 ? `${b.code} ${b.name}` : b.code)), ...looseItems(pid).filter(i => (view.hlItems || []).includes(i.id)).map(i => i.name)] : [];
@@ -14607,7 +14675,7 @@ function renderBox(b){
     ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
       <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
       ${b.loose ? '' : `<button class="itile add" data-act="addinbox"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}`}</div>`}
-    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addShort')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('severalShort')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="addinbox">+ ${tr('addNav')}</button>`}</div>` : ''}
+    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addThingChoice')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('addMultipleChoice')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">+ ${tr('addBoxChoice')}</button>`}</div>` : ''}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
@@ -15148,7 +15216,91 @@ function renderSettings(){
   if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr(cloud.hid ? 'usageSync' : 'usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
 }
 /* ---------- item page: name under the photo, place as a field, optional details ---------- */
-let itemDraft = null, flushItem = null, shownOpt = new Set(), shownFor = null;
+let itemDraft = null, itemEdit = null, itemLeavePending = false, flushItem = null, shownOpt = new Set(), shownFor = null;
+function itemLocation(id){ return boxes.find(b => (b.items || []).some(i => i.id === id)) || null; }
+function itemRefs(it){ return [...(it.photos || []), ...(it.files || [])].map(x => x.ref).filter(Boolean); }
+function persistEditedBoxes(state, currentBoxId){
+  itemEdit = null;
+  [state.boxId, currentBoxId].filter((id, i, all) => id && all.indexOf(id) === i).forEach(id => {
+    const b = findBox(id); if (b) putBox(clone(b), true);
+  });
+}
+function itemEditChanged(){
+  if (!itemEdit) return false;
+  const b = itemLocation(itemEdit.itemId), it = b && b.items.find(i => i.id === itemEdit.itemId);
+  if (!it) return true;
+  const original = clone(itemEdit.original), current = clone(it);
+  delete original.updatedAt; delete current.updatedAt;
+  return b.id !== itemEdit.boxId || JSON.stringify(original) !== JSON.stringify(current);
+}
+function commitItemEdit(){
+  if (!itemEdit) return;
+  const state = itemEdit, b = itemLocation(state.itemId), it = b && b.items.find(i => i.id === state.itemId);
+  const currentRefs = new Set(it ? itemRefs(it) : []);
+  const removedRefs = new Set(state.removedRefs);
+  if (it) itemRefs(state.original).filter(ref => !currentRefs.has(ref)).forEach(ref => removedRefs.add(ref));
+  if (state.isNew) itemDraft = null;
+  persistEditedBoxes(state, b && b.id);
+  [...removedRefs].filter(ref => !currentRefs.has(ref)).forEach(dropPhoto);
+}
+function discardItemEdit(){
+  if (!itemEdit) return;
+  const state = itemEdit, originalRefs = new Set(itemRefs(state.original));
+  const currentBox = itemLocation(state.itemId), current = currentBox && currentBox.items.find(i => i.id === state.itemId);
+  const newRefs = new Set(current ? itemRefs(current).filter(ref => !originalRefs.has(ref)) : []);
+  for (const ref of state.removedRefs) if (!originalRefs.has(ref)) newRefs.add(ref);
+  if (state.isNew){
+    if (currentBox){ const removed = clone(currentBox); removed.items = removed.items.filter(i => i.id !== state.itemId); putBox(removed, true); }
+    itemDraft = null;
+  } else if (currentBox && currentBox.id !== state.boxId){
+    const movedFrom = clone(currentBox); movedFrom.items = movedFrom.items.filter(i => i.id !== state.itemId); putBox(movedFrom, true);
+  }
+  const origin = state.isNew ? null : findBox(state.boxId);
+  if (origin){
+    const restored = clone(origin), index = restored.items.findIndex(i => i.id === state.itemId);
+    if (index < 0) restored.items.push(clone(state.original)); else restored.items[index] = clone(state.original);
+    putBox(restored, true);
+    if (state.boxUpdatedAt !== undefined && findBox(state.boxId)) findBox(state.boxId).updatedAt = state.boxUpdatedAt;
+  } else if (state.isNew && currentBox && state.boxUpdatedAt !== undefined){
+    const restored = findBox(currentBox.id); if (restored) restored.updatedAt = state.boxUpdatedAt;
+  }
+  itemEdit = null;
+  newRefs.forEach(dropPhoto);
+}
+function askItemSaveDecision(){
+  return new Promise(resolve => {
+    let done = false;
+    const finish = choice => { if (done) return; done = true; resolve(choice); };
+    openSheet(`<p style="margin:0 0 16px">${esc(tr('itemSaveQ'))}</p><div class="sheet-foot">
+      <button class="btn quiet" data-itemleave="stay">${esc(tr('keepEditing'))}</button>
+      <button class="btn danger" data-itemleave="discard">${esc(tr('discardChanges'))}</button>
+      <button class="btn primary" data-itemleave="save">${esc(tr('saveChanges'))}</button></div>`, () => finish('stay'));
+    sheet.querySelectorAll('[data-itemleave]').forEach(button => button.onclick = () => { finish(button.dataset.itemleave); closeSheet(); });
+  });
+}
+async function prepareItemLeave(){
+  if (!itemEdit || itemEdit.itemId !== view.itemId) return true;
+  if (itemLeavePending) return false;
+  if (flushItem) flushItem();
+  if (!itemEditChanged()){ discardItemEdit(); flushItem = null; return true; }
+  itemLeavePending = true;
+  try {
+    const choice = await askItemSaveDecision();
+    if (choice === 'stay') return false;
+    if (choice === 'discard') discardItemEdit();
+    else {
+      const [it] = curItem();
+      if (!(it && (it.name || '').trim())){ toast(tr('nameFirst')); return false; }
+      commitItemEdit();
+    }
+    flushItem = null;
+    return true;
+  } finally { itemLeavePending = false; }
+}
+function dropEditedAttachment(ref){
+  if (itemEdit && itemEdit.itemId === view.itemId){ itemEdit.removedRefs.add(ref); return; }
+  dropPhoto(ref);
+}
 function leaveItemPage(){
   const v = view;
   if (v.name === 'item' && flushItem){ try { flushItem(); } catch {} }
@@ -15158,12 +15310,14 @@ function leaveItemPage(){
   if (it && !(it.name || '').trim()){ const nb = clone(b); nb.items = nb.items.filter(i => i.id !== it.id); putBox(nb, true); (it.photos || []).forEach(p => dropPhoto(p.ref)); (it.files || []).forEach(f => dropPhoto(f.ref)); if ((it.photos || []).length) toast(tr('discarded')); }
   itemDraft = null;
 }
-function newItem(boxId, replace){
+async function newItem(boxId, replace){
+  if (view.name === 'item' && !(await prepareItemLeave())) return;
+  leaveItemPage();
   const b = findBox(boxId); if (!b) return;
   const it = {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
-  const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
-  leaveItemPage();
   itemDraft = it.id;
+  itemEdit = {boxId, itemId: it.id, original: clone(it), boxUpdatedAt: b.updatedAt, removedRefs: new Set(), isNew: true};
+  const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
   if (!replace) pushBack();
   view = {name: 'item', boxId, itemId: it.id};
   render(); window.scrollTo(0, 0); arm();
@@ -15177,7 +15331,6 @@ function saveItem(mut, rerender){
   const [it, b] = curItem(); if (!it) return;
   const nb = clone(b), x = nb.items.find(i => i.id === it.id);
   mut(x); x.updatedAt = new Date().toISOString();
-  if (x.name && itemDraft === x.id) itemDraft = null;
   putBox(nb, !rerender);
 }
 function hasVal(it, k){ return k === 'owner' ? !!(it.owner || it.status || it.loanTo) : (it[k] !== undefined && it[k] !== null && String(it[k]).trim() !== ''); }
@@ -15185,13 +15338,45 @@ function finishItem(again){
   if (flushItem) flushItem();
   const [it, b] = curItem(); if (!it) return;
   if (!(it.name || '').trim()){ const nm = $('#fName'); if (nm){ nm.focus(); nm.classList.add('need'); } return toast(tr('nameFirst')); }
+  flushItem = null;
+  commitItemEdit();
   itemDraft = null;
   track('item_save', {photo: !!(it.photos || []).length, fields: Object.keys(it).length});
   toast(again ? tr('savedNext', it.name) : tr('saved'));
   if (again) return newItem(b.id, true);
   goBack();
 }
+async function cancelNewItem(){
+  if (flushItem) flushItem();
+  const [it, b] = curItem(); if (!it || itemDraft !== it.id) return;
+  const hasDetails = Object.entries(it).some(([k, v]) => {
+    if (['id', 'addedAt', 'addedBy', 'updatedAt', 'isNew'].includes(k)) return false;
+    if (k === 'storedOn') return !!v && v !== today();
+    if (Array.isArray(v)) return v.length > 0;
+    if (v && typeof v === 'object') return Object.keys(v).length > 0;
+    return v !== null && v !== undefined && v !== false && v !== '';
+  });
+  if (hasDetails && !(await askConfirm(tr('discardNewItemQ'), tr('del')))) return;
+  if (itemEdit && itemEdit.isNew) discardItemEdit();
+  else {
+    const nb = clone(b); nb.items = (nb.items || []).filter(x => x.id !== it.id); putBox(nb, true);
+    [...(it.photos || []), ...(it.files || [])].forEach(p => dropPhoto(p.ref));
+    itemDraft = null; itemEdit = null;
+  }
+  flushItem = null;
+  goBack();
+}
+function cancelItem(){
+  const [it] = curItem(); if (!it) return;
+  if (itemDraft === it.id) return cancelNewItem();
+  if (flushItem) flushItem();
+  discardItemEdit();
+  flushItem = null;
+  goBack();
+}
 function moveItemTo(boxId, itemId, sel){
+  const isCurrentItem = view.name === 'item' && view.itemId === itemId;
+  if (isCurrentItem && itemEdit){ if (flushItem) flushItem(); flushItem = null; commitItemEdit(); }
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return null;
   const destId = sel.startsWith('loose:') ? ensureLoose(sel.slice(6)).id : sel;
   if (destId === b.id) return b;
@@ -15199,7 +15384,11 @@ function moveItemTo(boxId, itemId, sel){
   const from = clone(findBox(b.id)); from.items = from.items.filter(i => i.id !== itemId); putBox(from, true);
   const to = clone(findBox(destId)), moved = Object.assign(clone(it), {updatedAt: new Date().toISOString()}); if (!to.loose){ delete moved.spot; delete moved.zone; delete moved.stack; delete moved.level; }
   to.items = (to.items || []).concat(moved); putBox(to, true);
-  if (view.name === 'item' && view.itemId === itemId) view = {name: 'item', boxId: destId, itemId};
+  if (isCurrentItem){
+    view = {name: 'item', boxId: destId, itemId};
+    const current = findBox(destId), movedItem = current && current.items.find(i => i.id === itemId);
+    itemEdit = movedItem ? {boxId: destId, itemId, original: clone(movedItem), boxUpdatedAt: current.updatedAt, removedRefs: new Set()} : null;
+  }
   toast(tr('movedTo', to.loose ? placeName(to.placeId) : to.code));
   return to;
 }
@@ -15261,8 +15450,8 @@ function renderItem(){
     <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
     ${adSlot('card')}
     <p class="proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
-    <button class="btn danger block" data-act="delitem">${tr('delItem')}</button>
-    <div class="donebar">${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${isNew ? tr('save') : tr('done')}</button></div>
+    ${isNew ? '' : `<button class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
+    <div class="donebar${isNew ? ' newitembar' : ' edititembar'}"><button class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${tr('save')}</button></div>
     <datalist id="people">${household.map(p => `<option value="${esc(p)}">`).join('')}<option value="${esc(tr('shared'))}"></datalist>
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
     <datalist id="seasons">${SEASONS.map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
@@ -15869,7 +16058,7 @@ app.addEventListener('pointerdown', e => {
   document.addEventListener('pointermove', cancel, {passive: true});
   const off = () => { clearTimeout(ldragT); document.removeEventListener('pointermove', cancel); document.removeEventListener('pointerup', off); document.removeEventListener('pointercancel', off); };
   document.addEventListener('pointerup', off); document.addEventListener('pointercancel', off);
-  ldragT = setTimeout(() => { off(); if (swipe && swipe.on) return; swipe = null; startListDrag(src, x0, y0, id); }, 420);
+  ldragT = setTimeout(() => { off(); if (swipe && swipe.on) return; swipe = null; startListDrag(src, x0, y0, id); }, 220);
 });
 function startListDrag(src, x, y, pid){
   const isGroup = src.classList.contains('lgroup-h');
@@ -16095,9 +16284,9 @@ function doNudge(key, yes, pid){
 function addHereSheet(pid, boxId){
   const b = boxId && findBox(boxId);
   openSheet(`<h3>${esc(b ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
-    <div class="choice">${b ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addItem')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('boxInsideX', b.code)}</span></button>`
+    <div class="choice">${b ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>`
       : `<button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button>`}</div>
-    <button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>
+    ${b ? '' : `<button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>`}
     <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
   $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid, b ? b.id : null); };
   $('#adItem').onclick = () => { closeSheet(); newItem(b ? b.id : ensureLoose(pid).id); };
@@ -16114,11 +16303,11 @@ function addNavSheet(){
   if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); if (!b.loose) return addHereSheet(b.placeId, b.id); }
   let pid = (v.name === 'box' || v.name === 'item') && findBox(v.boxId) ? findBox(v.boxId).placeId : scopePlace() || '';
   const chips = () => `${places.filter(p => !p.inbox).map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${pid === 'inbox' || (findPlace(pid) || {}).inbox ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
-  openSheet(`<h3>${tr('addWhat')}</h3>
+  openSheet(`<div class="addnav-sheet"><h3>${tr('addWhat')}</h3>
     <div class="choice"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('storageWord')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button></div>
     <button class="btn block icontext" id="adBatch">${ICON.camera}<span>${tr('severalPhotos')}</span></button>
     <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips" id="adPlaces">${chips()}</div>
-    <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div>`);
+    <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div></div>`);
   if (!pid) pid = places.filter(p => !p.inbox).length === 1 ? places.find(p => !p.inbox).id : 'inbox';
   $('#adPlaces').innerHTML = chips();
   $('#adPlaces').onclick = e => { const c = e.target.closest('[data-ap]'); if (!c) return; pid = c.dataset.ap; $('#adPlaces').innerHTML = chips(); };
@@ -16138,10 +16327,11 @@ function moveItemSheet(boxId, itemId){
 async function deleteItem(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
   if (!(await askConfirm(tr('delQ', it.name || tr('unnamed'))))) return;
+  if (view.name === 'item' && view.itemId === itemId){ itemEdit = null; flushItem = null; itemDraft = null; }
   toTrash([[it, b]]);
   const cur = findBox(boxId); const nb = clone(cur); nb.items = nb.items.filter(i => i.id !== itemId); putBox(nb, true);
   toast(tr('inTrash'));
-  if (view.name === 'item'){ flushItem = null; itemDraft = null; goBack(); } else render();
+  if (view.name === 'item'){ goBack(); } else render();
 }
 function lpMenu(key){
   const [kind, a, c] = key.split(':');
@@ -16315,9 +16505,9 @@ app.addEventListener('click', e => {
   if (d.m) return settingsAction(d.m);
   if (d.viewph) return openViewer(d.viewph);
   if (d.addopt){ if (flushItem) flushItem(); shownOpt.add(d.addopt); render(); setTimeout(() => { const el = app.querySelector(`[data-f="${d.addopt}"]`); if (el) el.focus(); }, 50); return; }
-  if (d.rmph !== undefined){ const [it] = curItem(); const p = it.photos[+d.rmph]; askConfirm(tr('rmPhotoQ'), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.photos = x.photos.filter(q => q.ref !== p.ref); }, true); dropPhoto(p.ref); }); return; }
+  if (d.rmph !== undefined){ const [it] = curItem(); const p = it.photos[+d.rmph]; askConfirm(tr('rmPhotoQ'), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.photos = x.photos.filter(q => q.ref !== p.ref); }, true); dropEditedAttachment(p.ref); }); return; }
   if (d.viewfile !== undefined){ const [it] = curItem(); return openFile(it.files[+d.viewfile]); }
-  if (d.rmfile !== undefined){ const [it] = curItem(); const f = it.files[+d.rmfile]; askConfirm(tr('rmQ', f.name), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.files = x.files.filter(q => q.ref !== f.ref); }, true); dropPhoto(f.ref); }); return; }
+  if (d.rmfile !== undefined){ const [it] = curItem(); const f = it.files[+d.rmfile]; askConfirm(tr('rmQ', f.name), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.files = x.files.filter(q => q.ref !== f.ref); }, true); dropEditedAttachment(f.ref); }); return; }
   if (d.rmtag !== undefined){ const [it] = curItem(); const tg = it.tags[+d.rmtag]; askConfirm(tr('rmTagQ', tg), tr('remove')).then(y => { if (y) saveItem(x => { x.tags = x.tags.filter(q => q !== tg); }, true); }); return; }
   if (d.used || d.sell){
     const [bid, iid] = (d.used || d.sell).split(':'); const b = findBox(bid); if (!b) return;
@@ -16377,6 +16567,7 @@ app.addEventListener('click', e => {
     case 'addloose': newItem(ensureLoose(d.pid || currentPlace).id); break;
     case 'addzone': boxSheet(null, currentPlace !== 'all' ? currentPlace : places[0].id, null, d.zone); break;
     case 'saveagain': finishItem(true); break;
+    case 'cancelitem': cancelItem(); break;
     case 'addtag': if (flushItem) flushItem(); askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { if (tg) saveItem(x => { x.tags = [...new Set([...(x.tags || []), tg.toLowerCase()])]; }, true); }); break;
   }
 });
@@ -18940,16 +19131,16 @@ document.addEventListener('click', e => {
 
 Object.assign(STR.en, {n_many: (n, first) => `${n} things need a look. First: ${first}`, notifTitle: 'Notifications', notifSetting: 'Notify me on this phone', notifHint: 'Reminders, warranties that end, things that should be back, and changes others in your household make.', notifBlocked: 'Notifications are blocked. Allow them for Storrrage in the phone’s settings.', notifUnsupported: 'This browser can’t show notifications.', notifOnToast: 'Notifications are on.',
   n_dueT: 'Time to check', n_due: n => `${n} hasn’t been used in a while. Keep it, or sell it?`, n_loan: (n, w) => `${w} still has your ${n}. Time to ask for it back?`, n_out: (n, w) => `Is ${n} back in ${w}?`, n_hh: (w, list) => `${w} made changes: ${list}`,
-  loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to ${c}`, boxInsideX: c => `Box inside ${c}`});
+  loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to box ${c}`, boxInsideX: c => `Box inside ${c}`});
 Object.assign(STR.sv, {n_many: (n, first) => `${n} saker behöver kollas. Först: ${first}`, notifTitle: 'Notiser', notifSetting: 'Skicka notiser till den här telefonen', notifHint: 'Påminnelser, garantier som går ut, saker som borde vara tillbaka och ändringar som andra i hushållet gör.', notifBlocked: 'Notiser är blockerade. Tillåt dem för Storrrage i telefonens inställningar.', notifUnsupported: 'Den här webbläsaren kan inte visa notiser.', notifOnToast: 'Notiser är på.',
   n_dueT: 'Dags att kolla', n_due: n => `${n} har inte använts på länge. Behålla eller sälja?`, n_loan: (n, w) => `${w} har fortfarande din ${n}. Dags att be om den tillbaka?`, n_out: (n, w) => `Är ${n} tillbaka i ${w}?`, n_hh: (w, list) => `${w} har gjort ändringar: ${list}`,
-  loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i ${c}`, boxInsideX: c => `Låda inuti ${c}`});
+  loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i lådan ${c}`, boxInsideX: c => `Låda inuti ${c}`});
 
 STR.da = {
   space: 'RUM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 KASSE' : `${n} KASSER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `KASSE ${n}`,
   allPlaces: 'Alle steder', addPlace: '+ Sted', notInBox: 'Ikke i en kasse', notInBoxShort: 'ikke i en kasse',
   emptyPlace: 'Tryk på + for at tilføje en kasse eller noget, der ikke ligger i en kasse, fx en cykel.',
-  addItem: 'Tilføj ting', addSeveral: 'Tilføj flere', item: 'ting', items: 'ting', editBox: 'Rediger kasse', label: 'Etiket',
+  addItem: 'Tilføj ting', addSeveral: 'Tilføj flere', addThingChoice: 'Tilføj ting', addMultipleChoice: 'Tilføj flere', addBoxChoice: 'Tilføj kasse', item: 'ting', items: 'ting', editBox: 'Rediger kasse', label: 'Etiket',
   findStuff: 'FIND DINE TING!', typeKeyword: 'Skriv et søgeord', searchIn: 'Søg i', everywhere: 'Overalt', allOf: p => `Hele ${p}`,
   boxesH: 'Kasser', similar: 'Lignende ting', noMatch: q => `Intet matcher “${q}”. Prøv et andet ord.`, nothingHere: 'Der er intet her endnu.',
   welcome: 'Hold styr på, hvad der står hvor: kasser, ting, fotos og kvitteringer. Find alt ved at søge eller bare spørge.',
@@ -19092,7 +19283,7 @@ STR.fi = {
   space: 'TILA', places_n: n => n === 1 ? '1 PAIKKA' : `${n} PAIKKAA`, boxes_n: n => n === 1 ? '1 LAATIKKO' : `${n} LAATIKKOA`, items_n: n => n === 1 ? '1 TAVARA' : `${n} TAVARAA`, box_n: n => `LAATIKKO ${n}`,
   allPlaces: 'Kaikki paikat', addPlace: '+ Paikka', notInBox: 'Ei laatikossa', notInBoxShort: 'ei laatikossa',
   emptyPlace: 'Napauta + lisätäksesi laatikon tai jotain, mikä ei ole laatikossa, kuten pyörän.',
-  addItem: 'Lisää tavara', addSeveral: 'Lisää useita', item: 'tavara', items: 'tavarat', editBox: 'Muokkaa laatikkoa', label: 'Tarra',
+  addItem: 'Lisää tavara', addSeveral: 'Lisää useita', addThingChoice: 'Lisää tavara', addMultipleChoice: 'Lisää useita', addBoxChoice: 'Lisää laatikko', item: 'tavara', items: 'tavarat', editBox: 'Muokkaa laatikkoa', label: 'Tarra',
   findStuff: 'LÖYDÄ TAVARASI!', typeKeyword: 'Kirjoita hakusana', searchIn: 'Hae kohteesta', everywhere: 'Kaikkialta', allOf: p => `Koko ${p}`,
   boxesH: 'Laatikot', similar: 'Samankaltaiset', noMatch: q => `Mikään ei vastaa hakua ”${q}”. Kokeile toista sanaa.`, nothingHere: 'Täällä ei ole vielä mitään.',
   welcome: 'Pidä kirjaa siitä, mitä missäkin on: laatikot, tavarat, kuvat ja kuitit. Löydät kaiken hakemalla tai kysymällä.',
@@ -19235,7 +19426,7 @@ STR.nb = {
   space: 'ROM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 ESKE' : `${n} ESKER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `ESKE ${n}`,
   allPlaces: 'Alle steder', addPlace: '+ Sted', notInBox: 'Ikke i en eske', notInBoxShort: 'ikke i en eske',
   emptyPlace: 'Trykk på + for å legge til en eske, eller noe som ikke ligger i en eske, som en sykkel.',
-  addItem: 'Legg til ting', addSeveral: 'Legg til flere', item: 'ting', items: 'ting', editBox: 'Rediger eske', label: 'Etikett',
+  addItem: 'Legg til ting', addSeveral: 'Legg til flere', addThingChoice: 'Legg til ting', addMultipleChoice: 'Legg til flere', addBoxChoice: 'Legg til eske', item: 'ting', items: 'ting', editBox: 'Rediger eske', label: 'Etikett',
   findStuff: 'FINN TINGENE DINE!', typeKeyword: 'Skriv et søkeord', searchIn: 'Søk i', everywhere: 'Overalt', allOf: p => `Hele ${p}`,
   boxesH: 'Esker', similar: 'Lignende ting', noMatch: q => `Ingenting passer med «${q}». Prøv et annet ord.`, nothingHere: 'Ingenting her ennå.',
   welcome: 'Hold oversikt over hva som står hvor: esker, ting, bilder og kvitteringer. Finn alt ved å søke eller bare spørre.',
@@ -19406,13 +19597,29 @@ Object.assign(STR.fi, {f_warranty: 'Takuu päättyy', warrantyLeft: n => n < 0 ?
   gotBack: 'Sain takaisin', remindLoan: 'Muistuta', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Onko ${item} vielä sinulla? Haluaisin sen takaisin, kun olet valmis 🙂${me ? ' /' + me : ''}`, loansOld: 'Lainassa yli kuukauden'});
 Object.assign(STR.da, {n_many: (n, first) => `${n} ting skal tjekkes. Først: ${first}`, notifTitle: 'Notifikationer', notifSetting: 'Send notifikationer til denne telefon', notifHint: 'Påmindelser, garantier der udløber, ting der burde være tilbage, og ændringer andre i husstanden laver.', notifBlocked: 'Notifikationer er blokeret. Tillad dem for Storrrage i telefonens indstillinger.', notifUnsupported: 'Denne browser kan ikke vise notifikationer.', notifOnToast: 'Notifikationer er slået til.',
   n_dueT: 'Tid til at tjekke', n_due: n => `${n} er ikke brugt længe. Beholde eller sælge?`, n_loan: (n, w) => `${w} har stadig din ${n}. Tid til at bede om den tilbage?`, n_out: (n, w) => `Er ${n} tilbage i ${w}?`, n_hh: (w, list) => `${w} har lavet ændringer: ${list}`,
-  loanSinceL: 'Lånt ud siden', remindBack: 'Mind mig om at bede om den tilbage om', w1: '1 uge', w2: '2 uger', m1: '1 måned', m3: '3 måneder', pickDate: 'Vælg dato', remindOn: d => `Påmindelse ${d}`, addInto: c => `Tilføj til ${c}`, boxInsideX: c => `Kasse inden i ${c}`});
+  loanSinceL: 'Lånt ud siden', remindBack: 'Mind mig om at bede om den tilbage om', w1: '1 uge', w2: '2 uger', m1: '1 måned', m3: '3 måneder', pickDate: 'Vælg dato', remindOn: d => `Påmindelse ${d}`, addInto: c => `Tilføj til kassen ${c}`, boxInsideX: c => `Kasse inden i ${c}`});
 Object.assign(STR.nb, {n_many: (n, first) => `${n} ting bør sjekkes. Først: ${first}`, notifTitle: 'Varsler', notifSetting: 'Send varsler til denne telefonen', notifHint: 'Påminnelser, garantier som går ut, ting som burde være tilbake, og endringer andre i husstanden gjør.', notifBlocked: 'Varsler er blokkert. Tillat dem for Storrrage i telefonens innstillinger.', notifUnsupported: 'Denne nettleseren kan ikke vise varsler.', notifOnToast: 'Varsler er på.',
   n_dueT: 'På tide å sjekke', n_due: n => `${n} er ikke brukt på lenge. Beholde eller selge?`, n_loan: (n, w) => `${w} har fortsatt ${n} din. På tide å be om den tilbake?`, n_out: (n, w) => `Er ${n} tilbake i ${w}?`, n_hh: (w, list) => `${w} har gjort endringer: ${list}`,
-  loanSinceL: 'Lånt ut siden', remindBack: 'Minn meg på å be om den tilbake om', w1: '1 uke', w2: '2 uker', m1: '1 måned', m3: '3 måneder', pickDate: 'Velg dato', remindOn: d => `Påminnelse ${d}`, addInto: c => `Legg til i ${c}`, boxInsideX: c => `Eske inni ${c}`});
+  loanSinceL: 'Lånt ut siden', remindBack: 'Minn meg på å be om den tilbake om', w1: '1 uke', w2: '2 uker', m1: '1 måned', m3: '3 måneder', pickDate: 'Velg dato', remindOn: d => `Påminnelse ${d}`, addInto: c => `Legg til i esken ${c}`, boxInsideX: c => `Eske inni ${c}`});
 Object.assign(STR.fi, {n_many: (n, first) => `${n} asiaa kaipaa huomiota. Ensin: ${first}`, notifTitle: 'Ilmoitukset', notifSetting: 'Lähetä ilmoituksia tähän puhelimeen', notifHint: 'Muistutukset, päättyvät takuut, tavarat joiden pitäisi olla palautettu ja muiden kotitalouden jäsenten muutokset.', notifBlocked: 'Ilmoitukset on estetty. Salli ne Storrragelle puhelimen asetuksista.', notifUnsupported: 'Tämä selain ei voi näyttää ilmoituksia.', notifOnToast: 'Ilmoitukset ovat päällä.',
   n_dueT: 'Aika tarkistaa', n_due: n => `${n} on ollut pitkään käyttämättä. Säilytetäänkö vai myydäänkö?`, n_loan: (n, w) => `${w}: ${n} on yhä lainassa. Pyydetäänkö takaisin?`, n_out: (n, w) => `Onko ${n} palautettu kohteeseen ${w}?`, n_hh: (w, list) => `${w} teki muutoksia: ${list}`,
-  loanSinceL: 'Lainassa alkaen', remindBack: 'Muistuta pyytämään takaisin', w1: '1 viikko', w2: '2 viikkoa', m1: '1 kuukausi', m3: '3 kuukautta', pickDate: 'Valitse päivä', remindOn: d => `Muistutus ${d}`, addInto: c => `Lisää kohteeseen ${c}`, boxInsideX: c => `Laatikko laatikon ${c} sisään`});
+  loanSinceL: 'Lainassa alkaen', remindBack: 'Muistuta pyytämään takaisin', w1: '1 viikko', w2: '2 viikkoa', m1: '1 kuukausi', m3: '3 kuukautta', pickDate: 'Valitse päivä', remindOn: d => `Muistutus ${d}`, addInto: c => `Lisää laatikkoon ${c}`, boxInsideX: c => `Laatikko laatikon ${c} sisään`});
+
+Object.assign(STR.en, {discardNewItemQ: 'Discard this new item?'});
+Object.assign(STR.sv, {discardNewItemQ: 'Vill du slänga den nya saken?'});
+Object.assign(STR.da, {discardNewItemQ: 'Vil du kassere den nye ting?'});
+Object.assign(STR.nb, {discardNewItemQ: 'Vil du forkaste den nye tingen?'});
+Object.assign(STR.fi, {discardNewItemQ: 'Haluatko hylätä tämän uuden tavaran?'});
+Object.assign(STR.en, {itemSaveQ: 'Save changes to this item before leaving?', saveChanges: 'Save changes', discardChanges: 'Discard changes', keepEditing: 'Keep editing'});
+Object.assign(STR.sv, {itemSaveQ: 'Vill du spara ändringarna innan du lämnar saken?', saveChanges: 'Spara ändringar', discardChanges: 'Släng ändringar', keepEditing: 'Fortsätt redigera'});
+Object.assign(STR.da, {itemSaveQ: 'Vil du gemme ændringerne, før du forlader tingen?', saveChanges: 'Gem ændringer', discardChanges: 'Kassér ændringer', keepEditing: 'Fortsæt redigering'});
+Object.assign(STR.nb, {itemSaveQ: 'Vil du lagre endringene før du går ut av tingen?', saveChanges: 'Lagre endringer', discardChanges: 'Forkast endringer', keepEditing: 'Fortsett redigering'});
+Object.assign(STR.fi, {itemSaveQ: 'Tallennetaanko muutokset ennen kuin poistut tavarasta?', saveChanges: 'Tallenna muutokset', discardChanges: 'Hylkää muutokset', keepEditing: 'Jatka muokkausta'});
+Object.assign(STR.en, {saveAnother: 'Save + add new'});
+Object.assign(STR.sv, {saveAnother: 'Spara + lägg till ny'});
+Object.assign(STR.da, {saveAnother: 'Gem + tilføj ny'});
+Object.assign(STR.nb, {saveAnother: 'Lagre + legg til ny'});
+Object.assign(STR.fi, {saveAnother: 'Tallenna + lisää uusi'});
 
 /* ---------- start ---------- */
 async function init(){
