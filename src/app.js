@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-23.4';
+const APP_VERSION = '2026-10-23.5';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -972,10 +972,6 @@ function placeIcon(p){
   if (/garderob|wardrobe|closet|klädkammare/.test(n)) return '🗄️'; if (/bod|shed/.test(n)) return '🛖'; if (/förråd|storage|unit/.test(n)) return '🔒';
   if (/båt|boat/.test(n)) return '⛵'; if (/kontor|office/.test(n)) return '🏢'; return '🚪';
 }
-function placeBar(){
-  const sel = places.length === 1 ? places[0].id : currentPlace;
-  return ''; `<div class="placebar" aria-label="${esc(tr('storagePlaces'))}">${places.length > 1 ? `<button class="pchip${sel === 'all' ? ' on' : ''}" data-goplace="all">${tr('allPlaces')}</button>` : ''}${places.map(p => `<button class="pchip${sel === p.id ? ' on' : ''}" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span>${esc(p.name)}${dot(dueCount(b => b.placeId === p.id))}</button>`).join('')}<button class="pchip add" data-act="addplace">${tr('addPlace')}</button></div>`;
-}
 let viewMode = 'grid';
 const viewCls = () => viewMode === 'grid' ? '' : ' ' + viewMode;
 let shelfMode = 'grid';
@@ -1096,31 +1092,32 @@ function renderSpace(){
 let placePress = null, placeDrag = null;
 app.addEventListener('pointerdown', e => {
   const head = e.target.closest('.spacehead'), card = head && head.closest('[data-place-card]');
-  if (!head || !card || places.length < 2 || e.button > 0) return;
+  if (!head || !card || places.length < 2 || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
   e.stopImmediatePropagation();
   const press = placePress = {head, card, x: e.clientX, y: e.clientY, pointerId: e.pointerId};
   press.timer = setTimeout(() => {
-    if (placePress !== press) return;
-    const r = card.getBoundingClientRect(), ghost = card.cloneNode(true);
+    if (placePress !== press || !head.isConnected) return;
+    const r = head.getBoundingClientRect(), ghost = head.cloneNode(true);
     ghost.classList.add('place-drag-ghost');
     Object.assign(ghost.style, {left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'});
     document.body.appendChild(ghost);
+    document.body.classList.add('reordering-places');
     card.classList.add('place-dragging');
-    placeDrag = {card, ghost, head, pointerId: press.pointerId, dy: press.y - r.top, original: [...app.querySelectorAll('[data-place-card]')]};
+    placeDrag = {card, ghost, head, pointerId: press.pointerId, dy: press.y - r.top};
     placePress = null;
-    try { head.setPointerCapture(press.pointerId); } catch {}
-    lpFired = true;
+    head.setPointerCapture(press.pointerId);
     if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
-  }, 220);
+  }, 300);
 });
 document.addEventListener('pointermove', e => {
   if (placePress && !placeDrag){
-    if (Math.hypot(e.clientX - placePress.x, e.clientY - placePress.y) > 8){
+    if (e.pointerId !== placePress.pointerId) return;
+    if (Math.hypot(e.clientX - placePress.x, e.clientY - placePress.y) > 12){
       clearTimeout(placePress.timer); placePress = null;
     }
     return;
   }
-  const d = placeDrag; if (!d) return;
+  const d = placeDrag; if (!d || e.pointerId !== d.pointerId) return;
   e.preventDefault();
   d.ghost.style.top = `${e.clientY - d.dy}px`;
   d.ghost.style.visibility = 'hidden';
@@ -1128,23 +1125,28 @@ document.addEventListener('pointermove', e => {
   d.ghost.style.visibility = '';
   if (!target || target === d.card) return;
   const r = target.getBoundingClientRect();
-  app.insertBefore(d.card, e.clientY < r.top + r.height / 2 ? target : target.nextSibling);
+  const before = e.clientY < r.top + r.height / 2;
+  if ((before && d.card.nextElementSibling === target) || (!before && d.card.previousElementSibling === target)) return;
+  app.insertBefore(d.card, before ? target : target.nextSibling);
 }, {passive: false});
-document.addEventListener('pointerup', async () => {
-  if (placePress){ clearTimeout(placePress.timer); placePress = null; return; }
-  const d = placeDrag; if (!d) return;
-  placeDrag = null; d.ghost.remove(); d.card.classList.remove('place-dragging');
+document.addEventListener('pointerup', async e => {
+  if (placePress && e.pointerId === placePress.pointerId){ clearTimeout(placePress.timer); placePress = null; return; }
+  const d = placeDrag; if (!d || e.pointerId !== d.pointerId) return;
+  placeDrag = null; d.ghost.remove(); d.card.classList.remove('place-dragging'); document.body.classList.remove('reordering-places');
+  lpFired = true;
+  setTimeout(() => { lpFired = false; }, 0);
   const ordered = [...app.querySelectorAll('[data-place-card]')].map(el => findPlace(el.dataset.placeCard)).filter(Boolean);
   if (ordered.length === places.length && ordered.some((p, i) => p.id !== places[i].id)){
     places = ordered;
     render();
     await metaPut('places', places).catch(err => toast(saveErr(err)));
   }
-  setTimeout(() => { lpFired = false; }, 400);
 });
-document.addEventListener('pointercancel', () => {
-  if (placePress){ clearTimeout(placePress.timer); placePress = null; }
-  if (placeDrag){ placeDrag.ghost.remove(); placeDrag.card.classList.remove('place-dragging'); placeDrag.original.forEach(card => app.appendChild(card)); placeDrag = null; }
+document.addEventListener('pointercancel', e => {
+  if (placePress && e.pointerId === placePress.pointerId){ clearTimeout(placePress.timer); placePress = null; }
+  const d = placeDrag; if (!d || e.pointerId !== d.pointerId) return;
+  placeDrag = null; d.ghost.remove(); document.body.classList.remove('reordering-places');
+  render();
 });
 function nudgeBar(pid){ const n = nudges(pid)[0]; return n ? nudgeCard(n, true) : ''; }
 function renderPlace(pid, focus){
