@@ -817,9 +817,14 @@ dialog::backdrop{background:rgba(25,18,45,.45)}
 .lstar.on{color:var(--dot)}
 .lmore{padding:10px 10px 10px 4px}
 .ldrag-ghost{position:fixed;z-index:50;pointer-events:none;opacity:.92;box-shadow:0 8px 24px rgba(40,25,90,.25);background:var(--bg);border-radius:8px;overflow:hidden;margin:0}
+.ldrag-group-ghost>:not(.lgroup-h){display:none!important}
+.ldrag-group-ghost .lgroup-h{border:0}
+.ldrag-group-ghost .lgh-add,.ldrag-group-ghost .lgh-fold{display:none}
+.ldrag-group-ghost .lgh-main{width:100%}
 .ldrag-src{opacity:.3}
 .ldrop-line{position:fixed;z-index:49;height:3px;border-radius:2px;background:var(--dot);pointer-events:none;display:none}
 body.ldragging{-webkit-user-select:none;user-select:none}
+.ldragging-groups .lgroups .lgroup>:not(.lgroup-h){display:none!important}
 .lgroups .lrow,.lgroups .lgroup-h{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 
 /* add sheets: smaller */

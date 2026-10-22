@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-23.11';
+const APP_VERSION = '2026-10-23.15';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -1102,7 +1102,7 @@ function renderSpace(){
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
 }
-let placePress = null, placeDrag = null;
+let placePress = null, placeDrag = null, suppressPlaceClick = false;
 app.addEventListener('pointerdown', e => {
   const row = e.target.closest('.spacehead-row'), card = row && row.closest('[data-place-card]');
   if (!row || e.target.closest('[data-place-edit], [data-space-fold]') || !card || places.length < 2 || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -1148,12 +1148,18 @@ document.addEventListener('pointerup', async e => {
   placeDrag = null; d.ghost.remove(); d.card.classList.remove('place-dragging'); document.body.classList.remove('reordering-places');
   lpFired = true;
   setTimeout(() => { lpFired = false; }, 0);
+  suppressPlaceClick = true;
+  setTimeout(() => { suppressPlaceClick = false; }, 600);
   const ordered = [...app.querySelectorAll('[data-place-card]')].map(el => findPlace(el.dataset.placeCard)).filter(Boolean);
   if (ordered.length === places.length && ordered.some((p, i) => p.id !== places[i].id)){
     places = ordered;
     render();
     await metaPut('places', places).catch(err => toast(saveErr(err)));
   }
+  requestAnimationFrame(() => {
+    const card = [...app.querySelectorAll('[data-place-card]')].find(el => el.dataset.placeCard === d.card.dataset.placeCard);
+    if (card) card.scrollIntoView({behavior: 'smooth', block: 'center'});
+  });
 });
 document.addEventListener('pointercancel', e => {
   if (placePress && e.pointerId === placePress.pointerId){ clearTimeout(placePress.timer); placePress = null; }
@@ -2602,12 +2608,14 @@ function startListDrag(src, x, y, pid){
   const el = isGroup ? src.closest('.lgroup') : src.closest('.lrow-wrap');
   const r = el.getBoundingClientRect();
   const ghost = el.cloneNode(true); ghost.classList.add('ldrag-ghost');
+  if (isGroup) ghost.classList.add('ldrag-group-ghost');
   Object.assign(ghost.style, {width: r.width + 'px', left: r.left + 'px', top: r.top + 'px'});
   document.body.appendChild(ghost); el.classList.add('ldrag-src');
   const line = document.createElement('div'); line.className = 'ldrop-line'; document.body.appendChild(line);
   ldrag = {isGroup, el, ghost, line, dy: y - r.top, y, target: null, pid};
   lpFired = true; if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
   document.body.classList.add('ldragging');
+  if (isGroup) document.body.classList.add('ldragging-groups');
   moveListDrag(x, y);
 }
 function moveListDrag(x, y){
@@ -2633,6 +2641,7 @@ function moveListDrag(x, y){
 function endListDrag(){
   const d = ldrag; if (!d) return; ldrag = null;
   clearInterval(d.scroll); d.ghost.remove(); d.line.remove(); d.el.classList.remove('ldrag-src'); document.body.classList.remove('ldragging');
+  document.body.classList.remove('ldragging-groups');
   setTimeout(() => { lpFired = false; }, 300);
   const t = d.target; if (!t) return;
   track('drag', {what: d.isGroup ? 'box' : 'item'});
@@ -3075,6 +3084,7 @@ function settingsAction(k){
 }
 
 app.addEventListener('click', e => {
+  if (suppressPlaceClick && e.target.closest('[data-place-card]')){ e.preventDefault(); e.stopImmediatePropagation(); suppressPlaceClick = false; return; }
   if (suppressFavoriteClick && e.target.closest('[data-fav-order]')){ e.preventDefault(); e.stopImmediatePropagation(); suppressFavoriteClick = false; return; }
   if (lpFired){ lpFired = false; e.preventDefault(); return; }
   const pe = e.target.closest('[data-place-edit]'); if (pe){ e.preventDefault(); e.stopPropagation(); return lpMenu('place:' + pe.dataset.placeEdit); }
