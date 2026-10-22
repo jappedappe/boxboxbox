@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-20.1';
+const APP_VERSION = '2026-10-23.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -33,23 +33,31 @@ function tx(store, mode, fn){
   });
 }
 const dbAll = () => tx('boxes', 'readonly', s => s.getAll());
-const dbPut = b => tx('boxes', 'readwrite', s => s.put(b));
-const dbDel = id => tx('boxes', 'readwrite', s => s.delete(id));
-const phPut = (k, b) => tx('photos', 'readwrite', s => s.put(b, k));
+/* the *Raw versions only touch the phone; the normal ones also mark the change for syncing */
+const dbPutRaw = b => tx('boxes', 'readwrite', s => s.put(b));
+const dbDelRaw = id => tx('boxes', 'readwrite', s => s.delete(id));
+const phPutRaw = (k, b) => tx('photos', 'readwrite', s => s.put(b, k));
+const phDelRaw = k => tx('photos', 'readwrite', s => s.delete(k));
+const metaPutRaw = (k, v) => tx('meta', 'readwrite', s => s.put(v, k));
+const dbPut = b => dbPutRaw(b).then(r => { markDirty('b:' + b.id); return r; });
+const dbDel = id => dbDelRaw(id).then(r => { markDirty('b:' + id); return r; });
+const phPut = (k, b) => phPutRaw(k, b).then(r => { markDirty('p:' + k); return r; });
 const phGet = k => tx('photos', 'readonly', s => s.get(k));
-const phDel = k => tx('photos', 'readwrite', s => s.delete(k));
+const phDel = k => phDelRaw(k).then(r => { markDirty('p:' + k); return r; });
 const metaGet = k => tx('meta', 'readonly', s => s.get(k));
-const metaPut = (k, v) => tx('meta', 'readwrite', s => s.put(v, k));
+const SYNC_META = ['places', 'household', 'trash', 'boxOrder', 'move'];
+const metaPut = (k, v) => metaPutRaw(k, v).then(r => { if (SYNC_META.includes(k)) markDirty('m:' + k); if (k === 'me') markMe(); return r; });
 const noteAll = () => tx('notes', 'readonly', s => s.getAll());
 const notePut = n => tx('notes', 'readwrite', s => s.put(n));
 const noteDel = id => tx('notes', 'readwrite', s => s.delete(id));
 
 /* ---------- helpers ---------- */
 let toastTimer;
+const toastHost = () => { const d = document.getElementById('sheet'); return d && d.open ? d : document.body; };
 function toast(msg){
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status'); t.textContent = msg;
-  document.body.appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3800);
+  toastHost().appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 3800);
 }
 function age(dateStr){
   if (!dateStr) return '';
@@ -73,7 +81,7 @@ function qrSvg(text, cell = 4){
   try { const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({cellSize: cell, margin: 0, scalable: true}); }
   catch { return ''; }
 }
-const labelText = b => 'BOXES:id:' + b.id;
+const labelText = b => { const l = b.label || (b.labelGone ? '' : 'id:' + b.id); return l.startsWith('id:') ? 'BOXES:id:' + l.slice(3) : l ? 'STRG:L:' + l : 'BOXES:id:' + b.id; };
 const findBox = id => boxes.find(b => b.id === id);
 /* ---------- storage places: places hold boxes, and items can sit in a place without a box ---------- */
 const findPlace = id => places.find(p => p.id === id);
@@ -314,7 +322,7 @@ function putBox(box, quiet){
   if (box.autoName && !box.loose) box.name = autoBoxName(box);
   const i = boxes.findIndex(b => b.id === box.id);
   if (i < 0) boxes.push(box); else boxes[i] = box;
-  dbPut(clone(box)).catch(e => toast(saveErr(e)));
+  if (!itemEdit || (box.id !== itemEdit.boxId && !(box.items || []).some(i => i.id === itemEdit.itemId))) dbPut(clone(box)).catch(e => toast(saveErr(e)));
   if (!quiet) render();
 }
 function removeBox(id){
@@ -349,13 +357,16 @@ async function storePhoto(file){
 const urls = new Map();
 async function photoURL(ref){
   if (urls.has(ref)) return urls.get(ref);
-  const b = await phGet(ref).catch(() => null); if (!b) return '';
+  let b = await phGet(ref).catch(() => null);
+  if (!b) b = await cloudPhoto(ref).catch(() => null);
+  if (!b) return '';
   const u = URL.createObjectURL(b); urls.set(ref, u); return u;
 }
 function hydrate(root = document){
   root.querySelectorAll('img[data-ph]:not([src])').forEach(async img => {
     const fail = () => { img.remove(); };
     img.onerror = fail;
+    img.onload = () => { if (img.parentElement) img.parentElement.classList.add('hasimg'); };
     const u = await photoURL(img.dataset.ph); if (u) img.src = u; else fail();
   });
 }
@@ -381,6 +392,7 @@ function purgeTrash(){
 }
 function restoreTrash(id){
   const t = trash.find(x => x.id === id); if (!t) return;
+  track('trash_restore');
   let b = findBox(t.boxId);
   if (!b) b = ensureLoose(findPlace(t.placeId) ? t.placeId : places[0].id);
   const nb = clone(b); nb.items = (nb.items || []).filter(i => i.id !== t.item.id).concat(t.item); putBox(nb, true);
@@ -455,7 +467,7 @@ const STR = {
   en: {
     space: 'SPACE', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
     box_n: n => `BOX ${n}`, allPlaces: 'All places', addPlace: '+ Place', notInBox: 'Not in a box', notInBoxShort: 'not in a box',
-    emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', item: 'item', items: 'items',
+    emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', addThingChoice: 'Add thing', addMultipleChoice: 'Add multiple', addBoxChoice: 'Add box', item: 'item', items: 'items',
     editBox: 'Edit box', label: 'Label', findStuff: 'FIND YOUR STUFF!', typeKeyword: 'Type keyword', searchIn: 'Search in', everywhere: 'Everywhere', allOf: p => `All of ${p}`,
     boxesH: 'Boxes', similar: 'Similar things', noMatch: q => `Nothing matches “${q}”. Try another word, in Swedish or English.`, nothingHere: 'Nothing stored here yet.',
     welcome: 'Keep track of what’s stored where: boxes, things, photos and receipts. Find anything by searching or just asking.', yourName: 'Your name', getStarted: 'Get started',
@@ -491,7 +503,7 @@ const STR = {
   sv: {
     space: 'FÖRVARING', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
     box_n: n => `LÅDA ${n}`, allPlaces: 'Alla platser', addPlace: '+ Plats', notInBox: 'Utan låda', notInBoxShort: 'utan låda',
-    emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', item: 'sak', items: 'saker',
+    emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', addThingChoice: 'Lägg till sak', addMultipleChoice: 'Lägg till flera', addBoxChoice: 'Lägg till låda', item: 'sak', items: 'saker',
     editBox: 'Ändra låda', label: 'Etikett', findStuff: 'HITTA DINA GREJER!', typeKeyword: 'Skriv ett sökord', searchIn: 'Sök i', everywhere: 'Överallt', allOf: p => `Hela ${p}`,
     boxesH: 'Lådor', similar: 'Liknande saker', noMatch: q => `Inget matchar ”${q}”. Prova ett annat ord, på svenska eller engelska.`, nothingHere: 'Inget sparat här än.',
     welcome: 'Håll koll på vad som förvaras var: lådor, saker, foton och kvitton. Hitta allt genom att söka eller bara fråga.', yourName: 'Ditt namn', getStarted: 'Kom igång',
@@ -755,6 +767,13 @@ function askText(title, {placeholder = '', value = '', ok} = {}){
     setTimeout(() => { const el = $('#atIn'); if (el){ el.focus(); el.select(); } }, 60);
   });
 }
+function askChoice(text, yes, no){
+  return new Promise(res => {
+    let done = false; const fin = v => { if (done) return; done = true; res(v); };
+    openSheet(`<p style="margin:0 0 16px">${esc(text)}</p><div class="sheet-foot"><button class="btn quiet" id="chNo">${esc(no)}</button><button class="btn primary" id="chYes">${esc(yes)}</button></div>`, () => fin(false));
+    $('#chYes').onclick = () => { fin(true); closeSheet(); }; $('#chNo').onclick = () => { fin(false); closeSheet(); };
+  });
+}
 function askConfirm(text, ok){
   ok = ok || tr('del');
   return new Promise(res => {
@@ -774,6 +793,16 @@ const ICON = {
   mic: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>',
   pin: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
   starO: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.2 2.7 5.5 6 .9-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2 6-.9z"/></svg>',
+  chat: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 3.5v-3.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/></svg>',
+  scan: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg>',
+  install: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2"/><path d="M12 7v7M9 11.5l3 3 3-3"/></svg>',
+  chart: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>',
+  logout: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h10"/></svg>',
+  login: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M9 8l4 4-4 4M4 12h9"/></svg>',
+  lend: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/></svg>',
+  truck: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>',
+  barcode: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6v12M7 6v12M10 6v8M13 6v12M16 6v8M19 6v12M10 17h0M16 17h0"/></svg>',
+  cloud: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .6-8 6 6 0 0 0-11.6 1.6A3.3 3.3 0 0 0 7 18.5z"/></svg>',
   trash: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg>',
   grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.6 2.5H20a1.5 1.5 0 0 1 1.5 1.5v10.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>',
@@ -815,7 +844,7 @@ function parentView(v){
   if (v.name === 'mapfocus') return v.back || {name: 'home', place: v.place};
   if (v.name === 'collection') return {name: 'search'};
   if (v.name === 'profile' && v.sub) return {name: 'profile'};
-  if (v.name === 'search' || v.name === 'profile') return {name: 'home', place: currentPlace};
+  if (v.name === 'search' || v.name === 'profile' || v.name === 'settings' || v.name === 'move' || v.name === 'loans') return {name: 'home', place: currentPlace};
   if (v.name === 'home' && places.length > 1 && (v.place || currentPlace) !== 'all') return {name: 'home', place: 'all'};
   return null;
 }
@@ -833,25 +862,34 @@ function viewValid(v){
 function pushBack(){ if (!view || view.name === 'welcome') return; const v = Object.assign({}, view); delete v.asked; backStack.push(v); if (backStack.length > 40) backStack.shift(); }
 function prevView(){ for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)) return backStack[i]; return null; }
 function goBack(){
-  while (backStack.length){ const v = backStack.pop(); if (viewValid(v) && !sameView(v, view)){ go(v); return true; } }
+  for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)){ go(backStack[i], {backIndex: i}); return true; }
   return goUp();
 }
 function arm(){ if (armed || !(prevView() || parentView())) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
-function go(v){
+async function go(v, options = {}){
+  if (sameView(v, view)) return true;
+  if (view.name === 'item' && !(await prepareItemLeave())){ arm(); return false; }
+  if (options.pushBack) pushBack();
+  if (options.backIndex !== undefined) backStack = backStack.slice(0, options.backIndex);
+  if (options.navigation){
+    if (v.name === 'box'){ const b = findBox(v.boxId); if (b && currentPlace !== b.placeId) setPlace(b.placeId); remember('box', v.boxId); touchOpened(b); if (view.name === 'search' && v.hl) v.fromSearch = true; }
+    if (v.name === 'item' && v.itemId !== itemDraft) remember('item', v.itemId, v.boxId);
+    if (v.name !== 'search') query = '';
+  }
   leaveItemPage();
+  if (typeof presenceSoon === 'function') presenceSoon();
+  if (v.name !== view.name) track('view', {v: v.name});
   quickAddFor = null;
   if (selecting && !(v.name === view.name && v.boxId === view.boxId && v.tag === view.tag)) selecting = null;
   if ((v.name === 'home' || v.name === 'mapfocus') && v.place) setPlace(v.place);
-  view = v; if (v.name !== 'search') query = view.name === 'search' ? query : '';
+  view = v;
+  if (v.name === 'item' && itemDraft !== v.itemId){ const [it, b] = curItem(); itemEdit = it ? {boxId: v.boxId, itemId: v.itemId, original: clone(it), boxUpdatedAt: b.updatedAt, removedRefs: new Set()} : null; }
+  if (v.name !== 'search') query = view.name === 'search' ? query : '';
   render(); window.scrollTo(0, 0); arm();
 }
 function goUp(){ const p = parentView(); if (!p) return false; go(p); return true; }
 function navigate(v){
-  if (v.name === 'box'){ remember('box', v.boxId); touchOpened(findBox(v.boxId)); if (view.name === 'search' && v.hl) v.fromSearch = true; }
-  if (v.name === 'item' && v.itemId !== itemDraft) remember('item', v.itemId, v.boxId);
-  if (v.name !== 'search') query = '';
-  if (!sameView(v, view)) pushBack();
-  go(v);
+  go(v, {pushBack: !sameView(v, view), navigation: true});
 }
 window.addEventListener('popstate', () => {
   armed = false;
@@ -860,11 +898,10 @@ window.addEventListener('popstate', () => {
   if (sheet.open){ closeSheet(); arm(); return; }
   if (goBack()) arm();
 });
-function goHome(pid){ setPlace(pid || 'all'); navigate({name: 'home', place: pid || 'all'}); }
+function goHome(pid){ navigate({name: 'home', place: pid || 'all'}); }
 function openSpace(){ goHome(currentPlace !== 'all' ? currentPlace : null); }
 function openBox(id){
   const b = findBox(id); if (!b) return;
-  if (currentPlace !== b.placeId) setPlace(b.placeId);
   navigate({name: 'box', boxId: id});
 }
 function showSearch(q){ query = q || ''; if (view.name !== 'search') navigate({name: 'search'}); else render(); const s = $('#q'); if (s && s.value !== query) s.value = query; }
@@ -897,17 +934,23 @@ function render(){
   else if (view.name === 'collection') renderCollection(view.tag);
   else if (view.name === 'mapfocus') renderPlace(view.place, true);
   else if (view.name === 'profile') renderProfile();
+  else if (view.name === 'settings') renderSettings();
+  else if (view.name === 'move') renderMove();
+  else if (view.name === 'loans') renderLoans();
   else if (currentPlace !== 'all' && findPlace(currentPlace)) renderPlace(currentPlace);
   else renderSpace();
-  const tab = view.name === 'search' ? 'search' : view.name === 'profile' ? 'profile' : 'home';
+  const tab = view.name === 'search' ? 'search' : ['profile', 'settings', 'move', 'loans'].includes(view.name) ? '' : 'home';
   if (!['box', 'search', 'collection'].includes(view.name)) document.body.classList.remove('selecting');
   document.querySelectorAll('.tabbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); const l = b.querySelector('.tl'); if (l) l.textContent = tr('tab_' + b.dataset.tab); });
-  const pdot = $('#profileDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length;
+  { const at = document.querySelector('.tabbar .addtab'); if (at) at.classList.toggle('nudge', ready && view.name !== 'welcome' && !boxes.some(b => (b.items || []).length) && !realBoxes().some(b => !b.kit)); }
+  document.body.dataset.view = view.name;
+  { const f = $('#talkBtn'); if (f && !f.dataset.pill){ f.dataset.pill = 1; f.classList.add('pill'); f.insertAdjacentHTML('beforeend', `<span class="fabtxt"></span>`); } const ft = f && f.querySelector('.fabtxt'); if (ft) ft.textContent = tr('askAI'); }
+  const pdot = $('#menuDot'); if (pdot) pdot.hidden = !dueCount() && !outItems().some(([it]) => outOverdue(it)) && !realBoxes().some(boxOutLate) && !nudges().length && !attention();
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
 }
-STR.en.tab_home = 'Active'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Profile'; STR.en.tab_add = 'Add'; STR.sv.tab_add = 'Lägg till';
-STR.sv.tab_home = 'Aktiv'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
+STR.en.tab_home = 'Home'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Profile'; STR.en.tab_add = 'Add'; STR.sv.tab_add = 'Lägg till';
+STR.sv.tab_home = 'Hem'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
 
 /* tiles */
 const addTile = (act, label, extra = '') => `<button class="tile add" data-act="${act}" ${extra} aria-label="${esc(label)}">+</button>`;
@@ -917,7 +960,7 @@ function itemTile(it, b, caption){
   const sel = selecting && selecting.has('i:' + b.id + ':' + it.id);
   const hl = view.name === 'box' && view.hl === it.id;
   return `<button class="itile${sel ? ' sel' : ''}${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
-    <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
+    <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${it.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
     <span class="ttext"><span class="tname">${esc(it.name || tr('unnamed'))}</span>${caption ? `<span class="tcap">${caption}</span>` : ''}</span></button>`;
 }
 const whereCaption = b => b.loose ? `${esc(placeName(b.placeId))}` : `${ICON.box}${esc(b.code)} · ${esc(placeName(b.placeId))}`;
@@ -1003,10 +1046,11 @@ function shelfTile(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
   return `<button class="itile btile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">
-    <span class="timg">${boxArt(boxNum(b))}<span class="bcount">${n}</span>${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
+    <span class="timg">${boxArt(boxNum(b))}${b.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
     <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span></span></button>`;
 }
 /* the freshness dot only shows when a box is about to stop being "fresh" (not checked for ~5 months) */
+const PLUS_SVG = '<svg class="plusic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg>';
 const tileFresh = b => { const d = freshDays(b); return d !== Infinity && d > 150 ? freshDot(b) : ''; };
 function shelfTileOld(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
@@ -1024,35 +1068,89 @@ function tokenHTML(it, l, opts = {}){
 function looseCarousel(pid, opts = {}){
   const l = looseOf(pid), li = looseItems(pid).filter(opts.filter || (() => true));
   if (!li.length && !opts.always) return '';
-  return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length ? `<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
+  return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length ? `${li.some(i => i.isNew) ? `<span class="newrib inline">${tr('newTag')}</span>` : ''}<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
     ${opts.hint ? `<p class="maphint">${opts.hint}</p>` : ''}
     <div class="lstrip">${li.map(it => itemTile(it, l, opts.showZone && it.zone ? esc(it.zone) : '')).join('')}
-      <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('add')}</span></span></button></div></section>`;
+      <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newThing')}</span></span></button></div></section>`;
 }
 function shelfHTML(pid){
   const bx = topBoxesIn(pid).sort(byCode);
-  return `<div class="shelf">${bx.map(shelfTile).join('')}<button class="itile add" data-act="addhere" data-pid="${esc(pid)}" aria-label="${esc(tr('addTo', placeName(pid)))}"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('add')}</span></span></button></div>
+  return `<div class="shelf">${bx.map(shelfTile).join('')}<button class="itile add" data-act="newboxin" data-pid="${esc(pid)}" aria-label="${esc(tr('newBox'))}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newBox')}</span></span></button></div>
     ${looseCarousel(pid, {showZone: true})}`;
 }
 function placeHead(pid){
   const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
-  return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}</p></div>
+  return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(b => b.placeId === pid).toUpperCase())}</p></div>
     <div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button></div></div>`;
 }
 function renderSpace(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
-  app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}</p></div>
-    ${topStrips()}
+  app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(() => true).toUpperCase())}</p></div>
+    ${installBanner()}${moveBanner()}${topStrips()}
     ${places.map(p => { const pb = boxesIn(p.id).length, pi = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.items || []).length, 0);
       const [cc, cn] = checkedThisYear(p.id);
-      return `<section class="spacesec card">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
+      return `<section class="spacesec card" data-place-card="${esc(p.id)}">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
 }
+let placePress = null, placeDrag = null;
+app.addEventListener('pointerdown', e => {
+  const head = e.target.closest('.spacehead'), card = head && head.closest('[data-place-card]');
+  if (!head || !card || places.length < 2 || e.button > 0) return;
+  e.stopImmediatePropagation();
+  const press = placePress = {head, card, x: e.clientX, y: e.clientY, pointerId: e.pointerId};
+  press.timer = setTimeout(() => {
+    if (placePress !== press) return;
+    const r = card.getBoundingClientRect(), ghost = card.cloneNode(true);
+    ghost.classList.add('place-drag-ghost');
+    Object.assign(ghost.style, {left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'});
+    document.body.appendChild(ghost);
+    card.classList.add('place-dragging');
+    placeDrag = {card, ghost, head, pointerId: press.pointerId, dy: press.y - r.top, original: [...app.querySelectorAll('[data-place-card]')]};
+    placePress = null;
+    try { head.setPointerCapture(press.pointerId); } catch {}
+    lpFired = true;
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+  }, 220);
+});
+document.addEventListener('pointermove', e => {
+  if (placePress && !placeDrag){
+    if (Math.hypot(e.clientX - placePress.x, e.clientY - placePress.y) > 8){
+      clearTimeout(placePress.timer); placePress = null;
+    }
+    return;
+  }
+  const d = placeDrag; if (!d) return;
+  e.preventDefault();
+  d.ghost.style.top = `${e.clientY - d.dy}px`;
+  d.ghost.style.visibility = 'hidden';
+  const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-place-card]');
+  d.ghost.style.visibility = '';
+  if (!target || target === d.card) return;
+  const r = target.getBoundingClientRect();
+  app.insertBefore(d.card, e.clientY < r.top + r.height / 2 ? target : target.nextSibling);
+}, {passive: false});
+document.addEventListener('pointerup', async () => {
+  if (placePress){ clearTimeout(placePress.timer); placePress = null; return; }
+  const d = placeDrag; if (!d) return;
+  placeDrag = null; d.ghost.remove(); d.card.classList.remove('place-dragging');
+  const ordered = [...app.querySelectorAll('[data-place-card]')].map(el => findPlace(el.dataset.placeCard)).filter(Boolean);
+  if (ordered.length === places.length && ordered.some((p, i) => p.id !== places[i].id)){
+    places = ordered;
+    render();
+    await metaPut('places', places).catch(err => toast(saveErr(err)));
+  }
+  setTimeout(() => { lpFired = false; }, 400);
+});
+document.addEventListener('pointercancel', () => {
+  if (placePress){ clearTimeout(placePress.timer); placePress = null; }
+  if (placeDrag){ placeDrag.ghost.remove(); placeDrag.card.classList.remove('place-dragging'); placeDrag.original.forEach(card => app.appendChild(card)); placeDrag = null; }
+});
 function nudgeBar(pid){ const n = nudges(pid)[0]; return n ? nudgeCard(n, true) : ''; }
 function renderPlace(pid, focus){
   const what = focus ? [...(view.hlBoxes || []).map(findBox).filter(Boolean).map(b => (view.hlBoxes.length === 1 ? `${b.code} ${b.name}` : b.code)), ...looseItems(pid).filter(i => (view.hlItems || []).includes(i.id)).map(i => i.name)] : [];
   app.innerHTML = `${focus ? `<div class="findhint"><span>${ICON.pin} <b>${esc(what.join(', '))}</b></span></div>` : placeHead(pid)}
+    ${focus ? '' : installBanner() + moveBanner()}
     ${focus || placeView === 'map' ? '' : topStrips(pid)}
     ${focus ? '' : nudgeBar(pid)}
     ${focus || placeView === 'map' ? mapHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
@@ -1063,6 +1161,7 @@ function renderPlace(pid, focus){
 }
 let selecting = null;
 function renderBox(b){
+  if (b.isNew) setTimeout(() => { const nb = clone(findBox(b.id)); if (nb && nb.isNew){ delete nb.isNew; putBox(nb, true); } }, 1500);
   const items = [...(b.items || [])].sort(byName), kids = b.loose ? [] : childBoxes(b.id).sort(byCode);
   const chain = b.loose ? [] : boxChain(b);
   const path = [placeName(b.placeId), ...chain.map(x => x.code)].join(' › ');
@@ -1070,10 +1169,12 @@ function renderBox(b){
   const hlIt = view.hl && items.find(i => i.id === view.hl);
   const nOut = items.filter(isOut).length;
   const askOut = hlIt && view.fromSearch && !view.asked && !isOut(hlIt);
-  const needCheck = !b.loose && items.length && daysSince(b.checkedAt) > 30 && !view.checkDismissed;
+  const needCheck = !b.loose && items.length && daysSince(b.checkedAt || b.createdAt) > 60 && view.checkReady && !view.checkDismissed;
+  if (!b.loose && items.length && !view.checkReady && daysSince(b.checkedAt || b.createdAt) > 60){ clearTimeout(window._ckT); const vid = b.id; window._ckT = setTimeout(() => { if (view.name === 'box' && view.boxId === vid){ view.checkReady = true; render(); } }, 25000); }
   app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>↗ <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
     ${askOut ? `<div class="askout"><span>${esc(tr('askOut', hlIt.name))}</span><span class="fhbtns"><button class="btn primary small" data-askout="temp">${tr('yesTemp')}</button><button class="btn quiet small" data-askout="gone">${tr('yesGone')}</button><button class="btn quiet small" data-askout="no">${tr('no')}</button></span></div>` : ''}
     ${hlIt ? `<div class="findhint"><span>🔎 <b>${esc(hlIt.name)}</b> ${tr('isHere')}</span><span class="fhbtns"><button class="btn primary small" data-item="${esc(hlIt.id)}" data-box="${esc(b.id)}" data-open-item="1">${tr('openItem')}</button><button class="btn quiet small" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? hlIt.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button></span></div>` : ''}
+    ${presenceNote(b.id)}
     <div class="bhead">
       ${b.loose ? `<h1 class="btitle"><span class="bname">${tr('notInBox')}</span></h1>` : `<h1 class="btitle"><span class="bcode">${esc(b.code)}</span><span class="bname">${esc(b.name)}</span></h1>`}
       <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}${nOut ? ` · <b class="outsum">↗ ${esc(tr('outOfN', nOut, items.length))}</b>` : ''}</p>
@@ -1092,10 +1193,10 @@ function renderBox(b){
     </div>`}
     ${kids.length ? `<div class="kids${shelfCls()}">${kids.map(shelfTile).join('')}</div>` : ''}
     ${viewMode === 'list' ? rowsHTML(items.map(it => [it, b])) + `<p class="swipehint">${tr('swipeHint')}</p>` : ''}
-    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">+</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
+    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
       <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
-      ${b.loose ? '' : `<button class="itile add" data-act="subbox"><span class="timg">${ICON.box}</span><span class="ttext"><span class="tname">${tr('boxInBox')}</span></span></button>`}`}</div>`}
-    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addShort')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('severalShort')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">${ICON.box} ${tr('subShort')}</button>`}</div>` : ''}
+      ${b.loose ? '' : `<button class="itile add" data-act="addinbox"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}`}</div>`}
+    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addThingChoice')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('addMultipleChoice')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">+ ${tr('addBoxChoice')}</button>`}</div>` : ''}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
@@ -1357,12 +1458,33 @@ function scopeChips(){
     </div>${one && boxesIn(one).length > 1 ? `<div class="chips"><button class="chipbtn small${!B.size ? ' on' : ''}" data-scope="allboxes">${esc(tr('allOf', placeName(one)))}</button>${boxesIn(one).sort(byCode).map(b => `<button class="chipbtn small${B.has(b.id) ? ' on' : ''}" data-scope="b:${esc(b.id)}">${esc(b.code)} ${esc(b.name)}</button>`).join('')}</div>` : ''}</div>`;
 }
 let recentQ = [];
-function rememberQuery(q){ q = (q || '').trim(); if (q.length < 2) return; recentQ = [q, ...recentQ.filter(x => x.toLowerCase() !== q.toLowerCase())].slice(0, 8); metaPut('recentQ', recentQ).catch(() => {}); }
+function rememberQuery(q){ q = (q || '').trim(); if (q.length < 2) return; { const r = searchItems(q); track('search', {hits: r.exact.length ? 'yes' : r.related.length ? 'similar' : 'none', words: q.split(/\s+/).length}); } recentQ = [q, ...recentQ.filter(x => x.toLowerCase() !== q.toLowerCase())].slice(0, 8); metaPut('recentQ', recentQ).catch(() => {}); }
 function rowsOrTiles(entries){
   const bx = entries.filter(e => e[0] === 'box').map(e => e[1]), its = entries.filter(e => e[0] === 'item').map(e => [e[1], e[2]]);
   return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
 }
 let searchQuick = null;
+let searchOpen = false, askOpen = false;
+const looksLikeQuestion = t => /\?\s*$/.test(t) || /^(var|vart|vad|hur|när|vem|har|finns|kan|visa|öppna|lägg|ta|flytta|where|what|how|when|who|do|is|are|can|show|open|add|put|move|take)\b/i.test((t || '').trim());
+function scopeChip(){
+  if (places.length < 2 && realBoxes().length < 2) return '';
+  const P = searchScope.places, B = searchScope.boxes;
+  const label = B.size ? (B.size === 1 ? (findBox([...B][0]) || {}).code || '' : tr('boxes_n', B.size).toLowerCase()) : P.size === 1 ? placeName([...P][0]) : places.length > 1 ? tr('everywhere') : placeName(places[0].id);
+  return `<button class="chipbtn${P.size || B.size ? ' on' : ''}" id="scopeBtn">📍 ${esc(label)} ▾</button>`;
+}
+function scopeSheet(){
+  openSheet(`<h3>${tr('searchIn')}</h3><div id="scopeBody">${scopeChips().replace(/<span class="lab">.*?<\/span>/, '')}</div><div class="sheet-foot"><button class="btn primary" id="scX">${tr('ok')}</button></div>`);
+  const wire = () => sheet.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
+    const P = searchScope.places, B = searchScope.boxes, v = c.dataset.scope;
+    if (v === 'all'){ P.clear(); B.clear(); } else if (v === 'allboxes') B.clear();
+    else if (v.startsWith('p:')){ const id = v.slice(2); P.has(id) ? P.delete(id) : P.add(id); B.clear(); }
+    else if (v.startsWith('b:')){ const id = v.slice(2); B.has(id) ? B.delete(id) : B.add(id); }
+    $('#scopeBody').innerHTML = scopeChips().replace(/<span class="lab">.*?<\/span>/, ''); wire();
+  });
+  wire();
+  $('#scX').onclick = () => { closeSheet(); render(); };
+}
+function quickChipsInner(){ return quickChips().replace(/^<div class="chips quick">/, '').replace(/<\/div>$/, ''); }
 function quickChips(){
   const nOut = outItems().length + realBoxes().filter(b => b.out).length, nLoose = boxes.filter(b => b.loose).reduce((s, b) => s + (b.items || []).length, 0);
   const c = (k, label, n) => `<button class="chipbtn${searchQuick === k ? ' on' : ''}" data-quick="${k}">${label}${n !== undefined ? ` <small>${n}</small>` : ''}</button>`;
@@ -1403,21 +1525,34 @@ function renderSearch(){
       ${(r => r.length ? `<h2 class="section">${tr('recent')}</h2>` + rowsOrTiles(r) : '')(recentEntries())}`;
   }
   const had = $('#q'), focused = had && document.activeElement === had, pos = had ? had.selectionStart : 0;
-  app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div>${viewToggle()}</div>
-    <input class="input search" id="q" type="search" placeholder="${esc(tr('typeKeyword'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">
-    ${quickChips()}
-    ${scopeChips()}
+  app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div></div>
+    <div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('searchOrAsk'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">${SR ? `<button class="micin" id="micBtn" aria-label="${esc(tr('tapTalk'))}">${ICON.mic}</button>` : ''}</div>
+    ${q.length >= 2 ? `<button class="askbtn" id="askGo"><span class="spark">✨</span><span>${esc(tr('askAbout', q))}</span><small>beta</small></button>` : ''}
+    <div class="chips quick">${quickChipsInner()}${scopeChip()}</div>
+    ${askOpen ? `<div class="askpanel"><div class="askhead"><b>✨ Storrrage</b><small>beta · ${ai.provider === 'off' ? tr('simpleMode') : 'AI'}</small><button class="linkbtn" id="askX" aria-label="${esc(tr('close'))}">✕</button></div><div class="vlog chat" id="vlog"></div><div class="vlive" id="vLive" hidden></div></div>` : ''}
     ${collectionChips(q)}
     ${(q || P.size || B.size) && !selecting && /itile/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
     <div id="results">${body}</div>
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
+  if ($('#scopeBtn')) $('#scopeBtn').onclick = scopeSheet;
   const s = $('#q');
+  const ask = text => { text = (text || '').trim(); if (!text) return; askOpen = true; query = ''; track('ask', {from: 'search'}); render(); handleBatch(text); };
+  if ($('#askGo')) $('#askGo').onclick = () => ask(q);
+  if ($('#micBtn')) $('#micBtn').onclick = () => { track('voice'); if (!askOpen){ askOpen = true; render(); } listen(); };
+  if ($('#askX')) $('#askX').onclick = () => { askOpen = false; stopListening(); if (window.speechSynthesis) speechSynthesis.cancel(); render(); };
+  if ($('#vlog')){ drawLog(); $('#vlog').addEventListener('click', e => { const b = e.target.closest('[data-vact]'); if (!b) return; const l = voiceLog[+b.dataset.vact]; if (l && l.action){ const run = l.action.run; l.action = null; drawLog(); run(); } }); }
+  s.addEventListener('keydown', e => { if (e.key === 'Enter' && looksLikeQuestion(s.value)){ e.preventDefault(); e.stopImmediatePropagation(); ask(s.value); } }, true);
   if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
   let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
-  app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; render(); });
+  bindSearchExtras();
+}
+function bindSearchExtras(){
+  const P = searchScope.places, B = searchScope.boxes;
+  app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { track('search_quick', {f: c.dataset.quick}); searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; render(); });
   app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => { query = c.dataset.suggest; rememberQuery(query); render(); });
-  s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
+  const s = $('#q');
+  if (s) s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
   app.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
     const v = c.dataset.scope;
     if (v === 'all'){ P.clear(); B.clear(); }
@@ -1427,87 +1562,128 @@ function renderSearch(){
     render();
   });
 }
+const PLACE_SUG = {sv: ['Källaren', 'Förrådet', 'Garaget', 'Vinden', 'Hemma'], en: ['Basement', 'Storage unit', 'Garage', 'Attic', 'Home'], da: ['Kælderen', 'Depotrummet', 'Garagen', 'Loftet', 'Hjemme'], nb: ['Kjelleren', 'Boden', 'Garasjen', 'Loftet', 'Hjemme'], fi: ['Kellari', 'Varasto', 'Autotalli', 'Ullakko', 'Koti']};
+const KITS = {
+  basement: {zones: ['zoneLeft', 'zoneBack', 'zoneRight'], boxes: [['kitXmas', 0], ['kitEaster', 0], ['kitTools', 1], ['kitCamping', 1], ['kitSport', 1], ['kitKidsClothes', 2], ['kitBooks', 2], ['kitCables', 2], ['kitKitchen', 0], ['kitMisc', 1]]},
+};
+function applyKit(pid){
+  const p = findPlace(pid); if (!p) return;
+  const k = KITS.basement, zones = k.zones.map(z => tr(z));
+  p.zones = [...new Set([...(p.zones || []), ...zones])]; metaPut('places', places).catch(() => {});
+  const now = new Date().toISOString();
+  k.boxes.forEach(([nameKey, zi]) => putBox({id: newId(), code: nextCode(pid), name: tr(nameKey), placeId: pid, location: zones[zi], items: [], kit: true, createdAt: now, updatedAt: now, checkedAt: now}, true));
+  track('start_kit');
+}
 function renderWelcome(){
-  app.innerHTML = `<div class="welcome">
-    <div class="langsw">${langSwitch()}</div>
-    <div class="logobig">${logoSVG()}</div>
-    <h1>Storrrage</h1>
-    <p>${tr('welcome')}</p>
-    <input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name">
-    <button class="btn primary block" id="wGo">${tr('getStarted')}</button>
-    <p class="hint center">${tr('noAccount')}</p></div>`;
+  const step = view.step || 1;
+  const head = `<div class="langsw">${langSwitch()}</div><div class="logobig">${logoSVG()}</div><h1>Storrrage</h1>`;
+  if (step === 2){
+    const sug = PLACE_SUG[lang] || PLACE_SUG.en;
+    app.innerHTML = `<div class="welcome">${head}
+      <div class="wcard"><h2>${esc(tr('hiName', me))}</h2><p class="hint">${tr('placeQ')}</p>
+      <input class="input" id="wPlace" placeholder="${esc(sug[0])}" autocapitalize="sentences">
+      <div class="chips center">${sug.map(n => `<button class="chipbtn" data-sug="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <p class="hint" style="margin-top:6px">${tr('kitQ')}</p>
+      <button class="btn primary block kitbtn" id="wKit"><b>${tr('kitYes')}</b><small>${tr('kitYesSub')}</small></button>
+      <button class="btn block" id="wEmpty">${tr('kitNo')}</button></div></div>`;
+    app.querySelectorAll('[data-sug]').forEach(c => c.onclick = () => { $('#wPlace').value = c.dataset.sug; app.querySelectorAll('[data-sug]').forEach(x => x.classList.toggle('on', x === c)); });
+    const finish = kit => {
+      const n = $('#wPlace').value.trim() || sug[0];
+      let p = places.find(x => !x.inbox && boxesIn(x.id).length === 0 && !(looseOf(x.id) || {items: []}).items.length) || null;
+      if (p){ p.name = n; } else { p = {id: newId(), name: n, createdAt: new Date().toISOString()}; places.push(p); }
+      metaPut('places', places).catch(() => {});
+      if (kit) applyKit(p.id);
+      metaPut('onboarded', true).catch(() => {});
+      currentPlace = p.id; metaPut('currentPlace', p.id).catch(() => {});
+      navigate({name: 'home', place: p.id}, true);
+      if (kit) setTimeout(() => toast(tr('kitDone')), 300);
+    };
+    $('#wKit').onclick = () => finish(true); $('#wEmpty').onclick = () => finish(false);
+    return;
+  }
+  app.innerHTML = `<div class="welcome">${head}
+    <p class="slogan">${tr('slogan')}</p>
+    ${pendingJoinCode ? `<div class="wcard"><h2>${tr('invitedTitle')}</h2><p class="hint">${tr('invitedIntro')}</p>${loginForm(true)}</div>`
+    : `<div class="wcard">
+      <button class="btn primary block" id="wNew">${tr('startNew')}</button>
+      <div class="wform" id="wNewF" hidden><p class="hint">${tr('nameQ')}</p><input class="input" id="wName" placeholder="${esc(tr('yourName'))}" autocapitalize="words" autocomplete="given-name"><button class="btn primary block" id="wGo">${tr('next')}</button></div>
+      <p class="hint" id="wNewHint">${tr('startNewHint')}</p></div>
+    <div class="wor"><span>${tr('or')}</span></div>
+    <div class="wcard">
+      <button class="btn block" id="wLog">${tr('logInOrCreate')}</button>
+      <div class="wform" id="wLogF" hidden>${loginForm(true)}</div>
+      <p class="hint" id="wLogHint">${tr('loginHint')}</p></div>`}</div>`;
+  wireLogin();
+  if (pendingJoinCode) return;
+  $('#wNew').onclick = () => { $('#wNew').hidden = true; $('#wNewHint').hidden = true; $('#wNewF').hidden = false; $('#wName').focus(); };
+  $('#wLog').onclick = () => { $('#wLog').hidden = true; $('#wLogHint').hidden = true; $('#wLogF').hidden = false; $('#clEmail').focus(); };
   const go = () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
-    me = addPerson(n); metaPut('me', me).catch(() => {}); metaPut('onboarded', true).catch(() => {});
-    navigate({name: 'home', place: 'all'}, true);
+    me = addPerson(n); metaPut('me', me).catch(() => {});
+    view = {name: 'welcome', step: 2}; render();
   };
   $('#wGo').onclick = go; $('#wName').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 }
-const langSwitch = () => `<div class="seg" role="group" aria-label="Language / Språk"><button class="${lang === 'sv' ? 'on' : ''}" data-lang-ui="sv">Svenska</button><button class="${lang === 'en' ? 'on' : ''}" data-lang-ui="en">English</button></div>`;
+/* language: Auto (follows the phone), Svenska or English */
+let langPref = 'auto';
+const LANGS = [['sv', 'Svenska'], ['en', 'English'], ['da', 'Dansk'], ['nb', 'Norsk'], ['fi', 'Suomi']];
+const VOICE = {sv: 'sv-SE', en: 'en-US', da: 'da-DK', nb: 'nb-NO', fi: 'fi-FI'};
+const AUTO_LABEL = {sv: 'Auto (telefonens språk)', en: 'Auto (phone language)', da: 'Auto (telefonens sprog)', nb: 'Auto (telefonens språk)', fi: 'Automaattinen (puhelimen kieli)'};
+const phoneLang = () => {
+  for (const raw of (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'])){
+    const l = String(raw).toLowerCase();
+    if (l.startsWith('sv')) return 'sv'; if (l.startsWith('da')) return 'da'; if (l.startsWith('nb') || l.startsWith('nn') || l.startsWith('no')) return 'nb'; if (l.startsWith('fi')) return 'fi'; if (l.startsWith('en')) return 'en';
+  }
+  return 'en';
+};
+const langSwitch = () => `<select class="langsel" data-lang-select aria-label="Language / Språk"><option value="auto"${langPref === 'auto' ? ' selected' : ''}>Auto (${(LANGS.find(x => x[0] === lang) || LANGS[1])[1]})</option>${LANGS.map(([k, n]) => `<option value="${k}"${langPref === k ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+document.addEventListener('change', e => { const s = e.target.closest && e.target.closest('[data-lang-select]'); if (!s) return; setLang(s.value); if (sheet.open && sheet.querySelector('[data-lang-select]')) menuSheet(); });
 function setLang(l){
-  lang = l; metaPut('lang', l).catch(() => {});
-  voiceLang = l === 'sv' ? 'sv-SE' : 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
+  langPref = LANGS.some(x => x[0] === l) ? l : 'auto';
+  lang = langPref === 'auto' ? phoneLang() : langPref;
+  metaPut('langPref', langPref).catch(() => {}); metaPut('lang', lang).catch(() => {});
+  if (typeof saveLangToAccount === 'function') saveLangToAccount();
+  voiceLang = VOICE[lang] || 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
   render();
 }
+window.addEventListener('languagechange', () => { if (langPref === 'auto' && phoneLang() !== lang) setLang('auto'); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-lang-ui]'); if (b){ setLang(b.dataset.langUi); if (sheet.open && sheet.querySelector('[data-lang-ui]')) menuSheet(); } });
 
 function renderProfile(){
   const sub = view.sub || '', due = dueItems();
+  const back = [{label: tr('profile').toUpperCase(), nav: {name: 'profile'}}];
   if (!sub){
-    app.innerHTML = `${crumbs([{label: possessive() + ' ' + tr('storrrage')}])}
+    const nN = due.length + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length + attention();
+    app.innerHTML = `${crumbs([{label: tr('profile').toUpperCase()}])}
+      <div class="fl" style="margin-top:14px"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
+      <p class="proof">${tr('nameShown')}</p>
+      ${cloud.session ? `<div class="fl"><input value="${esc(cloud.email || '')}" disabled><label class="always">${tr('loginEmail')}</label></div>
+        <div class="pfacts">${pfacts()}</div>
+        <label class="check"><input type="checkbox" id="pfMail" ${prof.notify_email ? 'checked' : ''}> ${tr('mailReminders')}</label>
+        <div class="fl" id="pfAltWrap" ${prof.notify_email ? '' : 'hidden'}><input id="pfAlt" type="email" inputmode="email" value="${esc(prof.contact_email || '')}" placeholder="${esc(cloud.email || '')}"><label class="always">${tr('otherEmail')}</label></div>
+        <p class="proof">${tr('mailHint')}</p>`
+      : `<div class="loginbox">${accountPitch()}${loginForm()}</div>`}
       <div class="list">
-        <button class="row" data-sub="profile">${ICON.user}<span>${tr('profile')}</span></button>
-        <button class="row" data-sub="settings">${ICON.gear}<span>${tr('settings')}</span></button>
-        <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}${due.length ? '<i class="dot inline"></i>' : ''}</span>${due.length ? `<b class="count">${due.length}</b>` : ''}</button>
+        <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}</span>${nN ? `<b class="count">${nN}</b>` : ''}</button>
         <button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>
       </div>
-      <div class="field"><span>${tr('language')}</span>${langSwitch()}</div>
-      <p class="proof center">${tr('version', APP_VERSION)}</p>`;
-    return;
-  }
-  const back = [{label: possessive() + ' ' + tr('storrrage'), nav: {name: 'profile'}}];
-  if (sub === 'profile'){
-    app.innerHTML = `${crumbs([...back, {label: tr('profile').toUpperCase()}])}
-      <div class="fl"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
-      <h2 class="section">${tr('household')}</h2>
-      <div id="plist2"></div>
-      <div class="vtype"><input class="input" id="pName2" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn primary" id="pAdd2">${tr('add')}</button></div>
-      <p class="proof">${tr('householdHint')}</p>`;
-    const draw = () => { $('#plist2').innerHTML = household.length ? household.map((n, i) => `<div class="prow"><span>${esc(n)}${n === me ? ' ' + tr('you') : ''}</span>${n === me ? '' : `<button class="linkbtn" data-pdel="${i}">${tr('remove')}</button>`}</div>`).join('') : `<p class="hint">${tr('noOne')}</p>`; };
-    draw();
-    $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); draw(); });
-    const add = () => { const n = addPerson($('#pName2').value); $('#pName2').value = ''; if (n) draw(); };
-    $('#pAdd2').onclick = add; $('#pName2').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
-    $('#plist2').onclick = e => { const d = e.target.closest('[data-pdel]'); if (!d) return; household.splice(+d.dataset.pdel, 1); metaPut('household', household).catch(() => {}); draw(); };
-    return;
-  }
-  if (sub === 'settings'){
-    app.innerHTML = `${crumbs([...back, {label: tr('settings').toUpperCase()}])}
-      <div class="field" style="margin-top:14px"><span>${tr('language')}</span>${langSwitch()}</div>
-      <div class="list">
-        <button class="row" data-m="ai"><span>${tr('aiAssistant')}</span><em>${ai.provider === 'off' ? tr('off') : esc(AI_LABEL[ai.provider])}</em></button>
-        <button class="row" data-m="places"><span>${tr('storagePlaces')}</span><em>${places.length}</em></button>
-        <button class="row" data-m="backup"><span>${tr('backupNow')}</span><em>${lastBackup ? esc(fmtDate(lastBackup)) : tr('never')}</em></button>
-        <button class="row" data-m="import"><span>${tr('restore')}</span></button>
-        <button class="row" data-m="export"><span>${tr('export')}</span><em>Excel · Word · PDF</em></button>
-        <button class="row" data-m="report"><span>${tr('insurance')}</span></button>
-        <button class="row" data-m="labels"><span>${tr('labelsAll')}</span></button>
-        <button class="row" data-m="scan"><span>${tr('scanLabel')}</span></button>
-      </div>
-      <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
-      <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
-      <p class="proof center" id="usage"></p>`;
-    $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
-    $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
-    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr('usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
+      ${cloud.session ? `<div class="list"><button class="btn block" id="pfOut">${tr('logout')}</button><button class="btn danger block" id="pfOutAll">${tr('logoutAll')}</button></div><p class="proof">${tr('logoutAllHint')}</p>` : ''}`;
+    if ($('#pfOut')){ $('#pfOut').onclick = () => askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); }); $('#pfOutAll').onclick = () => askConfirm(tr('logoutAllQ'), tr('logoutAll')).then(y => { if (y) logout(true); }); }
+    wireLogin();
+    $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); });
+    if ($('#pfMail')){
+      $('#pfMail').onchange = e => { prof.notify_email = e.target.checked; $('#pfAltWrap').hidden = !prof.notify_email; saveProfile(); };
+      $('#pfAlt').onchange = e => { prof.contact_email = e.target.value.trim() || null; saveProfile(); };
+    }
     return;
   }
   if (sub === 'notifications'){
     const late = outItems().filter(([it]) => outOverdue(it));
     const lateBoxes = realBoxes().filter(boxOutLate), sug = nudges();
     app.innerHTML = `${crumbs([...back, {label: tr('notifications').toUpperCase()}])}
-      ${backupBanner()}
       ${sug.length ? `<h2 class="section">${tr('suggestions')}</h2>${sug.map(n => nudgeCard(n)).join('')}` : ''}
+      ${warrantySoon().length ? `<h2 class="section">${tr('warrantyH')}</h2><div class="dues">${warrantySoon().map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}<div class="dueact"><span class="hint">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</span></div></div>`).join('')}</div>` : ''}
+      ${loanOld().length ? `<h2 class="section">${tr('loansOld')}</h2><div class="dues">${loanOld().map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}<div class="dueact"><span class="hint">${esc((it.loanTo || '') + ' · ' + tr('lentSince', loanDays(it)))}</span><button class="btn quiet small" data-m="loans">${tr('loansTitle')}</button></div></div>`).join('')}</div>` : ''}
       ${lateBoxes.length ? `<h2 class="section">${tr('backQ')}</h2><div class="shelf">${lateBoxes.map(shelfTile).join('')}</div>` : ''}
       ${late.length ? `<h2 class="section">${tr('backQ')}</h2><div class="dues">${late.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
         <div class="dueact"><span class="hint">${esc(tr('backBy', it.out.until))}</span><button class="btn primary small" data-backok="${esc(b.id)}:${esc(it.id)}">↩ ${tr('isBack')}</button><button class="btn quiet small" data-more="${esc(b.id)}:${esc(it.id)}">${tr('stillOut')}</button></div></div>`).join('')}</div>` : ''}
@@ -1516,7 +1692,7 @@ function renderProfile(){
           <div class="dueact"><span class="hint">${esc(tr('lastUsedOn', it.lastUsed || it.storedOn || ''))}</span>
           <button class="btn quiet small" data-used="${esc(b.id)}:${esc(it.id)}">${tr('usedRecently')}</button>
           <button class="btn quiet small" data-sell="${esc(b.id)}:${esc(it.id)}">${tr('markSale')}</button></div></div>`).join('')}</div>`
-      : `<p class="hint">${tr('nothingDue')}</p>`}`;
+      : attention() || sug.length || late.length || lateBoxes.length ? '' : `<p class="hint">${tr('nothingDue')}</p>`}`;
     return;
   }
   if (sub === 'premium'){
@@ -1527,8 +1703,125 @@ function renderProfile(){
       <p class="hint center">${tr('premLater')}</p>`;
   }
 }
+/* settings: one place for everything that isn't profile or household */
+let theme = 'system';
+function applyTheme(){
+  const r = document.documentElement;
+  if (theme === 'system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', theme);
+  const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#17151F' : '#FFFFFF';
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+function renderSettings(){
+  const seg = (cur, opts, attr) => `<div class="seg">${opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" ${attr}="${v}">${l}</button>`).join('')}</div>`;
+  app.innerHTML = `${crumbs([{label: tr('settings').toUpperCase()}])}
+    <div class="field" style="margin-top:14px"><span>${tr('appearance')}</span>${seg(theme, [['light', tr('light')], ['dark', tr('dark')], ['system', tr('auto')]], 'data-theme-set')}</div>
+    <div class="list">
+      <button class="row" data-m="ai"><span>${tr('aiAssistant')}</span><em>${ai.provider === 'off' ? tr('off') : esc(AI_LABEL[ai.provider])}</em></button>
+      <button class="row" data-m="export"><span>${tr('export')}</span><em>Excel · Word · PDF</em></button>
+      <button class="row" data-m="report"><span>${tr('insurance')}</span></button>
+      <button class="row" data-m="labels"><span>${tr('labelsAll')}</span></button>
+      <button class="row" data-m="blanklabels"><span>${tr('blankLabels')}</span></button>
+    </div>
+    <div class="field"><span>${tr('numbering')}</span><select class="input" id="numSel"><option value="place" ${numbering === 'place' ? 'selected' : ''}>${tr('numPlace')}</option><option value="account" ${numbering === 'account' ? 'selected' : ''}>${tr('numAccount')}</option></select></div>
+    <label class="check"><input type="checkbox" id="notifChk" ${notifOn && 'Notification' in window && Notification.permission === 'granted' ? 'checked' : ''}> ${tr('notifSetting')}</label><p class="proof">${tr('notifHint')}</p>
+    <label class="check"><input type="checkbox" id="statsChk" ${statsOn ? 'checked' : ''}> ${tr('statsSetting')}</label><p class="proof">${tr('statsHint')}</p>
+    <label class="check"><input type="checkbox" id="adsChk" ${adsPreview ? 'checked' : ''}> ${tr('adsSetting')}</label>
+    <details class="more"><summary>${tr('advanced')}</summary><div class="list"><button class="row" data-m="import"><span>${tr('restore')}</span></button></div><p class="proof">${tr('restoreHint')}</p></details>
+    <p class="proof center" id="usage"></p>`;
+  app.querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => { theme = b.dataset.themeSet; metaPutRaw('theme', theme).catch(() => {}); applyTheme(); track('theme', {v: theme}); render(); });
+  $('#notifChk').onchange = async e => { if (e.target.checked){ const ok = await turnOnNotifications(); e.target.checked = ok; if (ok) toast(tr('notifOnToast')); } else { notifOn = false; metaPutRaw('notifOn', false).catch(() => {}); } };
+  $('#statsChk').onchange = e => { statsOn = e.target.checked; metaPutRaw('statsOn', statsOn).catch(() => {}); if (!statsOn) evq = []; };
+  $('#adsChk').onchange = e => { adsPreview = e.target.checked; metaPut('adsPreview', adsPreview).catch(() => {}); };
+  $('#numSel').onchange = e => { numbering = e.target.value; metaPut('numbering', numbering).catch(() => {}); };
+  if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr(cloud.hid ? 'usageSync' : 'usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
+}
 /* ---------- item page: name under the photo, place as a field, optional details ---------- */
-let itemDraft = null, flushItem = null, shownOpt = new Set(), shownFor = null;
+let itemDraft = null, itemEdit = null, itemLeavePending = false, flushItem = null, shownOpt = new Set(), shownFor = null;
+function itemLocation(id){ return boxes.find(b => (b.items || []).some(i => i.id === id)) || null; }
+function itemRefs(it){ return [...(it.photos || []), ...(it.files || [])].map(x => x.ref).filter(Boolean); }
+function persistEditedBoxes(state, currentBoxId){
+  itemEdit = null;
+  [state.boxId, currentBoxId].filter((id, i, all) => id && all.indexOf(id) === i).forEach(id => {
+    const b = findBox(id); if (b) putBox(clone(b), true);
+  });
+}
+function itemEditChanged(){
+  if (!itemEdit) return false;
+  const b = itemLocation(itemEdit.itemId), it = b && b.items.find(i => i.id === itemEdit.itemId);
+  if (!it) return true;
+  const original = clone(itemEdit.original), current = clone(it);
+  delete original.updatedAt; delete current.updatedAt;
+  return b.id !== itemEdit.boxId || JSON.stringify(original) !== JSON.stringify(current);
+}
+function commitItemEdit(){
+  if (!itemEdit) return;
+  const state = itemEdit, b = itemLocation(state.itemId), it = b && b.items.find(i => i.id === state.itemId);
+  const currentRefs = new Set(it ? itemRefs(it) : []);
+  const removedRefs = new Set(state.removedRefs);
+  if (it) itemRefs(state.original).filter(ref => !currentRefs.has(ref)).forEach(ref => removedRefs.add(ref));
+  if (state.isNew) itemDraft = null;
+  persistEditedBoxes(state, b && b.id);
+  [...removedRefs].filter(ref => !currentRefs.has(ref)).forEach(dropPhoto);
+}
+function discardItemEdit(){
+  if (!itemEdit) return;
+  const state = itemEdit, originalRefs = new Set(itemRefs(state.original));
+  const currentBox = itemLocation(state.itemId), current = currentBox && currentBox.items.find(i => i.id === state.itemId);
+  const newRefs = new Set(current ? itemRefs(current).filter(ref => !originalRefs.has(ref)) : []);
+  for (const ref of state.removedRefs) if (!originalRefs.has(ref)) newRefs.add(ref);
+  if (state.isNew){
+    if (currentBox){ const removed = clone(currentBox); removed.items = removed.items.filter(i => i.id !== state.itemId); putBox(removed, true); }
+    itemDraft = null;
+  } else if (currentBox && currentBox.id !== state.boxId){
+    const movedFrom = clone(currentBox); movedFrom.items = movedFrom.items.filter(i => i.id !== state.itemId); putBox(movedFrom, true);
+  }
+  const origin = state.isNew ? null : findBox(state.boxId);
+  if (origin){
+    const restored = clone(origin), index = restored.items.findIndex(i => i.id === state.itemId);
+    if (index < 0) restored.items.push(clone(state.original)); else restored.items[index] = clone(state.original);
+    putBox(restored, true);
+    if (state.boxUpdatedAt !== undefined && findBox(state.boxId)) findBox(state.boxId).updatedAt = state.boxUpdatedAt;
+  } else if (state.isNew && currentBox && state.boxUpdatedAt !== undefined){
+    const restored = findBox(currentBox.id); if (restored) restored.updatedAt = state.boxUpdatedAt;
+  }
+  itemEdit = null;
+  newRefs.forEach(dropPhoto);
+}
+function askItemSaveDecision(){
+  return new Promise(resolve => {
+    let done = false;
+    const finish = choice => { if (done) return; done = true; resolve(choice); };
+    openSheet(`<p style="margin:0 0 16px">${esc(tr('itemSaveQ'))}</p><div class="sheet-foot">
+      <button class="btn quiet" data-itemleave="stay">${esc(tr('keepEditing'))}</button>
+      <button class="btn danger" data-itemleave="discard">${esc(tr('discardChanges'))}</button>
+      <button class="btn primary" data-itemleave="save">${esc(tr('saveChanges'))}</button></div>`, () => finish('stay'));
+    sheet.querySelectorAll('[data-itemleave]').forEach(button => button.onclick = () => { finish(button.dataset.itemleave); closeSheet(); });
+  });
+}
+async function prepareItemLeave(){
+  if (!itemEdit || itemEdit.itemId !== view.itemId) return true;
+  if (itemLeavePending) return false;
+  if (flushItem) flushItem();
+  if (!itemEditChanged()){ discardItemEdit(); flushItem = null; return true; }
+  itemLeavePending = true;
+  try {
+    const choice = await askItemSaveDecision();
+    if (choice === 'stay') return false;
+    if (choice === 'discard') discardItemEdit();
+    else {
+      const [it] = curItem();
+      if (!(it && (it.name || '').trim())){ toast(tr('nameFirst')); return false; }
+      commitItemEdit();
+    }
+    flushItem = null;
+    return true;
+  } finally { itemLeavePending = false; }
+}
+function dropEditedAttachment(ref){
+  if (itemEdit && itemEdit.itemId === view.itemId){ itemEdit.removedRefs.add(ref); return; }
+  dropPhoto(ref);
+}
 function leaveItemPage(){
   const v = view;
   if (v.name === 'item' && flushItem){ try { flushItem(); } catch {} }
@@ -1538,26 +1831,27 @@ function leaveItemPage(){
   if (it && !(it.name || '').trim()){ const nb = clone(b); nb.items = nb.items.filter(i => i.id !== it.id); putBox(nb, true); (it.photos || []).forEach(p => dropPhoto(p.ref)); (it.files || []).forEach(f => dropPhoto(f.ref)); if ((it.photos || []).length) toast(tr('discarded')); }
   itemDraft = null;
 }
-function newItem(boxId, replace){
+async function newItem(boxId, replace){
+  if (view.name === 'item' && !(await prepareItemLeave())) return;
+  leaveItemPage();
   const b = findBox(boxId); if (!b) return;
   const it = {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
-  const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
-  leaveItemPage();
   itemDraft = it.id;
+  itemEdit = {boxId, itemId: it.id, original: clone(it), boxUpdatedAt: b.updatedAt, removedRefs: new Set(), isNew: true};
+  const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
   if (!replace) pushBack();
   view = {name: 'item', boxId, itemId: it.id};
   render(); window.scrollTo(0, 0); arm();
   setTimeout(() => { const n = $('#fName'); if (n) n.focus(); }, 80);
 }
 function itemSheet(boxId, itemId){ if (itemId) navigate({name: 'item', boxId, itemId}); else newItem(boxId); }
-const OPT = ['size', 'brand', 'value', 'model', 'qty', 'owner', 'color', 'season', 'serial', 'category', 'spot', 'notes'];
+const OPT = ['size', 'brand', 'value', 'warranty', 'model', 'qty', 'owner', 'color', 'season', 'serial', 'category', 'spot', 'notes'];
 const STATUSES = Object.keys(STATUS_KEYS);
 function curItem(){ const b = findBox(view.boxId); const it = b && (b.items || []).find(i => i.id === view.itemId); return it ? [it, b] : [null, null]; }
 function saveItem(mut, rerender){
   const [it, b] = curItem(); if (!it) return;
   const nb = clone(b), x = nb.items.find(i => i.id === it.id);
   mut(x); x.updatedAt = new Date().toISOString();
-  if (x.name && itemDraft === x.id) itemDraft = null;
   putBox(nb, !rerender);
 }
 function hasVal(it, k){ return k === 'owner' ? !!(it.owner || it.status || it.loanTo) : (it[k] !== undefined && it[k] !== null && String(it[k]).trim() !== ''); }
@@ -1565,12 +1859,45 @@ function finishItem(again){
   if (flushItem) flushItem();
   const [it, b] = curItem(); if (!it) return;
   if (!(it.name || '').trim()){ const nm = $('#fName'); if (nm){ nm.focus(); nm.classList.add('need'); } return toast(tr('nameFirst')); }
+  flushItem = null;
+  commitItemEdit();
   itemDraft = null;
+  track('item_save', {photo: !!(it.photos || []).length, fields: Object.keys(it).length});
   toast(again ? tr('savedNext', it.name) : tr('saved'));
   if (again) return newItem(b.id, true);
   goBack();
 }
+async function cancelNewItem(){
+  if (flushItem) flushItem();
+  const [it, b] = curItem(); if (!it || itemDraft !== it.id) return;
+  const hasDetails = Object.entries(it).some(([k, v]) => {
+    if (['id', 'addedAt', 'addedBy', 'updatedAt', 'isNew'].includes(k)) return false;
+    if (k === 'storedOn') return !!v && v !== today();
+    if (Array.isArray(v)) return v.length > 0;
+    if (v && typeof v === 'object') return Object.keys(v).length > 0;
+    return v !== null && v !== undefined && v !== false && v !== '';
+  });
+  if (hasDetails && !(await askConfirm(tr('discardNewItemQ'), tr('del')))) return;
+  if (itemEdit && itemEdit.isNew) discardItemEdit();
+  else {
+    const nb = clone(b); nb.items = (nb.items || []).filter(x => x.id !== it.id); putBox(nb, true);
+    [...(it.photos || []), ...(it.files || [])].forEach(p => dropPhoto(p.ref));
+    itemDraft = null; itemEdit = null;
+  }
+  flushItem = null;
+  goBack();
+}
+function cancelItem(){
+  const [it] = curItem(); if (!it) return;
+  if (itemDraft === it.id) return cancelNewItem();
+  if (flushItem) flushItem();
+  discardItemEdit();
+  flushItem = null;
+  goBack();
+}
 function moveItemTo(boxId, itemId, sel){
+  const isCurrentItem = view.name === 'item' && view.itemId === itemId;
+  if (isCurrentItem && itemEdit){ if (flushItem) flushItem(); flushItem = null; commitItemEdit(); }
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return null;
   const destId = sel.startsWith('loose:') ? ensureLoose(sel.slice(6)).id : sel;
   if (destId === b.id) return b;
@@ -1578,7 +1905,11 @@ function moveItemTo(boxId, itemId, sel){
   const from = clone(findBox(b.id)); from.items = from.items.filter(i => i.id !== itemId); putBox(from, true);
   const to = clone(findBox(destId)), moved = Object.assign(clone(it), {updatedAt: new Date().toISOString()}); if (!to.loose){ delete moved.spot; delete moved.zone; delete moved.stack; delete moved.level; }
   to.items = (to.items || []).concat(moved); putBox(to, true);
-  if (view.name === 'item' && view.itemId === itemId) view = {name: 'item', boxId: destId, itemId};
+  if (isCurrentItem){
+    view = {name: 'item', boxId: destId, itemId};
+    const current = findBox(destId), movedItem = current && current.items.find(i => i.id === itemId);
+    itemEdit = movedItem ? {boxId: destId, itemId, original: clone(movedItem), boxUpdatedAt: current.updatedAt, removedRefs: new Set()} : null;
+  }
   toast(tr('movedTo', to.loose ? placeName(to.placeId) : to.code));
   return to;
 }
@@ -1588,6 +1919,7 @@ function moveTargetsHTML(cur){
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
 function renderItem(){
+  { const [it0, b0] = curItem(); if (it0 && it0.isNew) setTimeout(() => { const nb = clone(findBox(b0.id)), x = nb && (nb.items || []).find(i => i.id === it0.id); if (x && x.isNew){ delete x.isNew; putBox(nb, true); } }, 1500); }
   const [it, b] = curItem();
   if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; }
   const isNew = itemDraft === it.id;
@@ -1603,17 +1935,19 @@ function renderItem(){
     if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
     if (k === 'season') return input(k, {value: showSeason(it.season), attrs: 'list="seasons"'});
     if (k === 'serial') return input(k, {attrs: 'autocapitalize="characters"'});
+    if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
     if (k === 'spot') return b.loose ? input(k) : '';
     if (k === 'notes') return `<div class="fl"><textarea data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea><label>${tr('f_notes')}</label></div>`;
     if (k === 'owner') return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
       <div class="pair"><input data-f="owner" value="${esc(showOwner(it.owner))}" placeholder="${esc(tr('whose'))}" list="people" autocapitalize="words">
       <select data-f="status" aria-label="${esc(tr('status'))}"><option value="">${tr('status')}…</option>${STATUSES.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${status && !STATUS_KEYS[status] ? `<option value="${esc(status)}" selected>${esc(status)}</option>` : ''}</select></div>
-      ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">` : ''}</div>`;
+      ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">${loanFields(it)}` : ''}</div>`;
     return input(k);
   };
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
   app.innerHTML = `${crumbs(crumbParts)}
+    ${presenceNote(b.id, it.id)}
     <div class="hero">
       ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
       <label class="cam" aria-label="Photo">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
@@ -1624,11 +1958,11 @@ function renderItem(){
       ${isOut(it) ? '' : `<button class="iconbtn outbtn" data-act="itemout" aria-label="${esc(tr('takeOut'))}" title="${esc(tr('takeOut'))}">↗</button>`}<button class="iconbtn star" data-act="favitem" aria-label="${esc(it.fav ? tr('unfav') : tr('fav'))}" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? '★' : '☆'}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     <div class="whereline"><button class="pinbtn" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button><span class="wtxt">${esc(b.loose ? placeName(b.placeId) + ' · ' + tr('notInBoxShort') : `${placeName(b.placeId)} · ${b.code} ${b.name}`)}</span><button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
+    <button class="linkbtn barcodebtn" data-act="scanbarcode">${ICON.barcode} ${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button>
     ${OPT.map(field).join('')}
     ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="chips">${addable.map(k => `<button class="chipbtn" data-addopt="${k}">+ ${esc(tr('f_' + k))}</button>`).join('')}</div></div>` : ''}
     <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
-    <div class="fl"><select data-f="remindMonths" aria-label="${esc(tr('remind'))}">${[0, 6, 12, 24].map(v => `<option value="${v}" ${+(it.remindMonths || 0) === v ? 'selected' : ''}>${v ? tr('remindM', v) : tr('noRemind')}</option>`).join('')}</select><label class="always">${tr('remind')}</label></div>
-    <div class="fl"><input data-f="remindAt" type="date" value="${esc(it.remindAt || '')}"><label class="always">${tr('remindDate')}</label></div>
+    ${remindFields(it)}
     ${n ? `<p class="notifyrow"><span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span><button class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="fl att"><label class="always">${tr('attachments')}</label>
       ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
@@ -1637,8 +1971,8 @@ function renderItem(){
     <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
     ${adSlot('card')}
     <p class="proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
-    <button class="btn danger block" data-act="delitem">${tr('delItem')}</button>
-    <div class="donebar">${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${isNew ? tr('save') : tr('done')}</button></div>
+    ${isNew ? '' : `<button class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
+    <div class="donebar${isNew ? ' newitembar' : ' edititembar'}"><button class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${tr('save')}</button></div>
     <datalist id="people">${household.map(p => `<option value="${esc(p)}">`).join('')}<option value="${esc(tr('shared'))}"></datalist>
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
     <datalist id="seasons">${SEASONS.map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
@@ -1658,10 +1992,12 @@ function renderItem(){
     if (k === 'value' || k === 'qty'){ if (v === '' || isNaN(+v)) delete x[k]; else x[k] = Math.max(0, +v); return; }
     if (k === 'remindMonths'){ if (+v) x.remindMonths = +v; else delete x.remindMonths; return; }
     v = conv(k, v);
-    if (k === 'status' && v !== 'On loan') delete x.loanTo;
+    if (k === 'status' && v !== 'On loan'){ delete x.loanTo; delete x.loanSince; }
+    if (k === 'status' && v === 'On loan'){ if (!x.loanSince) x.loanSince = today(); if (!x.loanDue) x.loanDue = addDays(x.loanSince, 30); }
+    if (k === 'status' && v !== 'On loan') delete x.loanDue;
     if (v === '' || v == null) delete x[k]; else x[k] = v;
   }, false);
-  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status'];
+  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty', 'loanSince', 'loanDue'];
   flushItem = () => {
     Object.keys(timers).forEach(k => clearTimeout(timers[k]));
     const [x] = curItem(); if (!x) return;
@@ -2110,7 +2446,7 @@ function groupHeader(b){
   return `<div class="lgroup-h${b.loose ? ' loose' : ''}${b.out ? ' out' : ''}" data-gid="${esc(b.id)}"><button class="lgh-main" data-open="${esc(b.id)}">
       ${icon}<span class="lgh-text"><span class="lgh-name">${b.loose ? tr('notInBox') : esc((chain.length ? chain.map(boxNum).join(' › ') + ' › ' : '') + (b.name || boxLabel(b)))}</span><span class="lgh-in">${esc(inside || tr('boxEmpty'))}</span></span>
       <span class="lgh-count">${b.out ? '↗ ' : ''}${n}${nOut ? ` · ↗${nOut}` : ''}</span></button>
-    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">+</button></div>`;
+    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">+</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}">⌄</button></div>`;
 }
 let quickAddFor = null;
 function quickAddRow(b){
@@ -2119,7 +2455,8 @@ function quickAddRow(b){
 }
 /* the whole place as one grouped list */
 /* sorting the list: your own order (drag), A–Ö, last changed, last added, last used */
-let listSort = 'manual', boxOrder = {};
+let listSort = 'manual', boxOrder = {}, folded = new Set();
+function saveFolded(){ metaPutRaw('folded', [...folded]).catch(() => {}); }
 const SORTS = ['manual', 'az', 'changed', 'added', 'used'];
 const itStamp = (it, k) => k === 'changed' ? (it.updatedAt || it.addedAt || '') : k === 'added' ? (it.addedAt || it.storedOn || '') : k === 'used' ? [it.lastUsed || '', it.out ? it.out.since : '', ...(it.outLog || []).map(l => l.out || '')].sort().pop() || '' : '';
 function sortItems(list){
@@ -2141,13 +2478,14 @@ function orderedGroups(pid){
   return all;
 }
 function sortBar(){
-  return `<div class="sortbar"><span class="lab">${tr('sortBy')}</span><div class="chips">${SORTS.map(k => `<button class="chipbtn small${listSort === k ? ' on' : ''}" data-sort="${k}">${tr('sort_' + k)}</button>`).join('')}</div></div>`;
+  const ids = orderedGroups(currentPlace).map(b => b.id), anyOpen = ids.some(i => !folded.has(i));
+  return `<div class="sortbar"><span class="lab">${tr('sortBy')}</span><button class="linkbtn foldall" data-foldall="${anyOpen ? 1 : 0}">${anyOpen ? tr('foldAll') : tr('unfoldAll')}</button><div class="chips">${SORTS.map(k => `<button class="chipbtn small${listSort === k ? ' on' : ''}" data-sort="${k}">${tr('sort_' + k)}</button>`).join('')}</div></div>`;
 }
 function listHTML(pid){
   const all = orderedGroups(pid);
   const loose = looseOf(pid);
   const outs = outItems(b => b.placeId === pid);
-  return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}
+  return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => folded.has(b.id) ? `<section class="lgroup folded" data-gid="${esc(b.id)}">${groupHeader(b)}</section>` : `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}
       ${!(b.items || []).filter(it => !isOut(it)).length && quickAddFor !== b.id ? `<p class="lempty">${tr('boxEmpty')}</p>` : ''}</section>`).join('')}</div>
     ${all.length > 1 || all.some(b => (b.items || []).length > 1) ? `<p class="swipehint">${tr('listDragHint')}</p>` : ''}
     ${!all.length ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}
@@ -2172,7 +2510,7 @@ function toastAction(msg, label, fn, after){
   if (toastAct && toastAct.after) toastAct.after();
   const t = document.createElement('div'); t.className = 'toast act'; t.setAttribute('role', 'status');
   t.innerHTML = `<span>${esc(msg)}</span><button class="linkbtn">${esc(label)}</button>`;
-  document.body.appendChild(t);
+  toastHost().appendChild(t);
   const me = toastAct = {after};
   t.querySelector('button').onclick = () => { me.after = null; t.remove(); fn(); };
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.remove(); if (me.after) me.after(); me.after = null; }, 5000);
@@ -2241,7 +2579,7 @@ app.addEventListener('pointerdown', e => {
   document.addEventListener('pointermove', cancel, {passive: true});
   const off = () => { clearTimeout(ldragT); document.removeEventListener('pointermove', cancel); document.removeEventListener('pointerup', off); document.removeEventListener('pointercancel', off); };
   document.addEventListener('pointerup', off); document.addEventListener('pointercancel', off);
-  ldragT = setTimeout(() => { off(); if (swipe && swipe.on) return; swipe = null; startListDrag(src, x0, y0, id); }, 420);
+  ldragT = setTimeout(() => { off(); if (swipe && swipe.on) return; swipe = null; startListDrag(src, x0, y0, id); }, 220);
 });
 function startListDrag(src, x, y, pid){
   const isGroup = src.classList.contains('lgroup-h');
@@ -2281,6 +2619,7 @@ function endListDrag(){
   clearInterval(d.scroll); d.ghost.remove(); d.line.remove(); d.el.classList.remove('ldrag-src'); document.body.classList.remove('ldragging');
   setTimeout(() => { lpFired = false; }, 300);
   const t = d.target; if (!t) return;
+  track('drag', {what: d.isGroup ? 'box' : 'item'});
   const pid = currentPlace;
   if (d.isGroup){
     const ids = orderedGroups(pid).map(b => b.id), from = d.el.dataset.gid;
@@ -2316,6 +2655,7 @@ document.addEventListener('pointerdown', e => {
 }, true);
 function quickAdd(boxId, name){
   name = (name || '').trim(); if (!name) return;
+  track('item_add', {via: 'quick'});
   let b = findBox(boxId); if (!b) return;
   const it = {id: newId(), name: cap(name), category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
   const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb);
@@ -2464,29 +2804,39 @@ function doNudge(key, yes, pid){
 /* ---------- sheets: add, move, long press ---------- */
 function addHereSheet(pid, boxId){
   const b = boxId && findBox(boxId);
-  openSheet(`<h3>${esc(b ? tr('addHereBox', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
-    <div class="choice">${b ? `<button class="btn primary big" id="adItem">${ICON.star}<span>${tr('addItem')}</span></button><button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxInBox')}</span></button>`
+  openSheet(`<h3>${esc(b ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
+    <div class="choice">${b ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>`
       : `<button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button>`}</div>
-    <button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>
+    ${b ? '' : `<button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>`}
     <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
   $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid, b ? b.id : null); };
   $('#adItem').onclick = () => { closeSheet(); newItem(b ? b.id : ensureLoose(pid).id); };
   $('#adBatch').onclick = () => { closeSheet(); openBatch(b ? b.id : ensureLoose(pid).id); };
   $('#adX').onclick = closeSheet;
 }
+function ensureInbox(){
+  let p = places.find(x => x.inbox);
+  if (!p){ p = {id: newId(), name: tr('unsorted'), icon: '📥', inbox: true, createdAt: new Date().toISOString()}; places.push(p); metaPut('places', places).catch(() => {}); }
+  return p;
+}
 function addNavSheet(){
   const v = view;
-  if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); return b.loose ? addHereSheet(b.placeId) : addHereSheet(b.placeId, b.id); }
-  const pid = scopePlace();
-  if (pid) return addHereSheet(pid);
-  openSheet(`<h3>${tr('whichPlace')}</h3><div class="menu">${places.map(p => `<button class="btn quiet" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}
-    <button class="btn quiet" data-ap="new">${tr('addPlace')}</button><button class="btn" data-ap="x">${tr('close')}</button></div>`);
-  sheet.querySelector('.menu').onclick = e => {
-    const t = e.target.closest('[data-ap]'); if (!t) return;
-    if (t.dataset.ap === 'x') return closeSheet();
-    if (t.dataset.ap === 'new') return askText(tr('newPlace'), {placeholder: tr('newPlaceHint'), ok: tr('add')}).then(n => { const p = n && addPlace(n); if (p){ goHome(p.id); addHereSheet(p.id); } });
-    addHereSheet(t.dataset.ap);
-  };
+  if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); if (!b.loose) return addHereSheet(b.placeId, b.id); }
+  let pid = (v.name === 'box' || v.name === 'item') && findBox(v.boxId) ? findBox(v.boxId).placeId : scopePlace() || '';
+  const chips = () => `${places.filter(p => !p.inbox).map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${pid === 'inbox' || (findPlace(pid) || {}).inbox ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
+  openSheet(`<div class="addnav-sheet"><h3>${tr('addWhat')}</h3>
+    <div class="choice"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('storageWord')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button></div>
+    <button class="btn block icontext" id="adBatch">${ICON.camera}<span>${tr('severalPhotos')}</span></button>
+    <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips" id="adPlaces">${chips()}</div>
+    <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div></div>`);
+  if (!pid) pid = places.filter(p => !p.inbox).length === 1 ? places.find(p => !p.inbox).id : 'inbox';
+  $('#adPlaces').innerHTML = chips();
+  $('#adPlaces').onclick = e => { const c = e.target.closest('[data-ap]'); if (!c) return; pid = c.dataset.ap; $('#adPlaces').innerHTML = chips(); };
+  const target = () => pid === 'inbox' ? ensureInbox().id : pid;
+  $('#adBox').onclick = () => { const p = target(); closeSheet(); boxSheet(null, p, null); };
+  $('#adItem').onclick = () => { const p = target(); closeSheet(); newItem(ensureLoose(p).id); };
+  $('#adBatch').onclick = () => { const p = target(); closeSheet(); openBatch(ensureLoose(p).id); };
+  $('#adX').onclick = closeSheet;
 }
 function moveItemSheet(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
@@ -2498,10 +2848,11 @@ function moveItemSheet(boxId, itemId){
 async function deleteItem(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
   if (!(await askConfirm(tr('delQ', it.name || tr('unnamed'))))) return;
+  if (view.name === 'item' && view.itemId === itemId){ itemEdit = null; flushItem = null; itemDraft = null; }
   toTrash([[it, b]]);
   const cur = findBox(boxId); const nb = clone(cur); nb.items = nb.items.filter(i => i.id !== itemId); putBox(nb, true);
   toast(tr('inTrash'));
-  if (view.name === 'item'){ flushItem = null; itemDraft = null; goBack(); } else render();
+  if (view.name === 'item'){ goBack(); } else render();
 }
 function lpMenu(key){
   const [kind, a, c] = key.split(':');
@@ -2563,7 +2914,8 @@ app.addEventListener('pointerdown', e => {
 app.addEventListener('pointermove', e => { if (lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) clearTimeout(lpTimer); });
 app.addEventListener('contextmenu', e => { if (e.target.closest('[data-lp], .crate, .ltoken, .mtoken')) e.preventDefault(); });
 
-function backupBanner(){
+function backupBanner(){ return ''; }
+function backupBannerOld(){
   const items = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   if (!items) return '';
   const days = lastBackup ? (Date.now() - new Date(lastBackup)) / 864e5 : Infinity;
@@ -2631,11 +2983,19 @@ function settingsAction(k){
   if (k === 'scan') return scanSheet();
   if (k === 'export') return exportSheet();
   if (k === 'trash') return trashSheet();
+  if (k === 'blanklabels') return blankLabels();
+  if (k === 'move'){ closeSheet(); return navigate({name: 'move'}); }
+  if (k === 'loans'){ closeSheet(); return navigate({name: 'loans'}); }
+  if (k === 'cloud') return cloudSheet();
+  if (k === 'login') return cloudSheet();
+  if (k === 'feedback') return feedbackSheet();
+  if (k === 'admin') return adminSheet();
+  if (k === 'install') return installApp();
 }
 
 app.addEventListener('click', e => {
   if (lpFired){ lpFired = false; e.preventDefault(); return; }
-  const pv = e.target.closest('[data-pview]'); if (pv){ placeView = pv.dataset.pview; metaPut('placeView', placeView).catch(() => {}); return render(); }
+  const pv = e.target.closest('[data-pview]'); if (pv){ placeView = pv.dataset.pview; track('place_view', {v: placeView}); metaPut('placeView', placeView).catch(() => {}); return render(); }
   const zm = e.target.closest('[data-zmove]'); if (zm) return moveZone(currentPlace, zm.dataset.zmove, +zm.dataset.dir);
   const zr = e.target.closest('[data-zrename]'); if (zr) return renameZone(currentPlace, zr.dataset.zrename);
   const zd = e.target.closest('[data-zdel]'); if (zd) return deleteZone(currentPlace, zd.dataset.zdel);
@@ -2647,7 +3007,9 @@ app.addEventListener('click', e => {
   const ao = e.target.closest('[data-askout]'); if (ao){ const k = ao.dataset.askout, itId = view.hl, bid = view.boxId; view.asked = true; if (k === 'temp') return setOut(bid, itId, true); if (k === 'gone') return deleteWithUndo(bid, itId); return render(); }
   const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
   const bo = e.target.closest('[data-backok]'); if (bo){ const [bid, iid] = bo.dataset.backok.split(':'); return setOut(bid, iid, false); }
-  const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; metaPut('listSort', listSort).catch(() => {}); return render(); }
+  const fo = e.target.closest('[data-fold]'); if (fo){ const id = fo.dataset.fold; folded.has(id) ? folded.delete(id) : folded.add(id); saveFolded(); return render(); }
+  const fa = e.target.closest('[data-foldall]'); if (fa){ const ids = orderedGroups(currentPlace).map(b => b.id); if (fa.dataset.foldall === '1') ids.forEach(i => folded.add(i)); else ids.forEach(i => folded.delete(i)); saveFolded(); track('fold_all'); return render(); }
+  const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; track('sort', {by: listSort}); metaPut('listSort', listSort).catch(() => {}); return render(); }
   const ft = e.target.closest('[data-favtoggle]'); if (ft){ const [bid, iid] = ft.dataset.favtoggle.split(':'); const nb = clone(findBox(bid)), x = nb && nb.items.find(i => i.id === iid); if (!x) return; x.fav = !x.fav; putBox(nb); return; }
   const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
   const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
@@ -2664,9 +3026,9 @@ app.addEventListener('click', e => {
   if (d.m) return settingsAction(d.m);
   if (d.viewph) return openViewer(d.viewph);
   if (d.addopt){ if (flushItem) flushItem(); shownOpt.add(d.addopt); render(); setTimeout(() => { const el = app.querySelector(`[data-f="${d.addopt}"]`); if (el) el.focus(); }, 50); return; }
-  if (d.rmph !== undefined){ const [it] = curItem(); const p = it.photos[+d.rmph]; askConfirm(tr('rmPhotoQ'), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.photos = x.photos.filter(q => q.ref !== p.ref); }, true); dropPhoto(p.ref); }); return; }
+  if (d.rmph !== undefined){ const [it] = curItem(); const p = it.photos[+d.rmph]; askConfirm(tr('rmPhotoQ'), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.photos = x.photos.filter(q => q.ref !== p.ref); }, true); dropEditedAttachment(p.ref); }); return; }
   if (d.viewfile !== undefined){ const [it] = curItem(); return openFile(it.files[+d.viewfile]); }
-  if (d.rmfile !== undefined){ const [it] = curItem(); const f = it.files[+d.rmfile]; askConfirm(tr('rmQ', f.name), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.files = x.files.filter(q => q.ref !== f.ref); }, true); dropPhoto(f.ref); }); return; }
+  if (d.rmfile !== undefined){ const [it] = curItem(); const f = it.files[+d.rmfile]; askConfirm(tr('rmQ', f.name), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.files = x.files.filter(q => q.ref !== f.ref); }, true); dropEditedAttachment(f.ref); }); return; }
   if (d.rmtag !== undefined){ const [it] = curItem(); const tg = it.tags[+d.rmtag]; askConfirm(tr('rmTagQ', tg), tr('remove')).then(y => { if (y) saveItem(x => { x.tags = x.tags.filter(q => q !== tg); }, true); }); return; }
   if (d.used || d.sell){
     const [bid, iid] = (d.used || d.sell).split(':'); const b = findBox(bid); if (!b) return;
@@ -2684,7 +3046,7 @@ app.addEventListener('click', e => {
     case 'batchcancel': finishBatch(false); break;
     case 'batchadd': finishBatch(true); break;
     case 'editbox': boxSheet(b.id); break;
-    case 'label': labels([b]); break;
+    case 'label': labelMenu(b); break;
     case 'boxphoto': openViewer(b.photo.ref); break;
     case 'backup': backup(); break;
     case 'moveitem': moveItemSheet(view.boxId, view.itemId); break;
@@ -2707,18 +3069,26 @@ app.addEventListener('click', e => {
     case 'collback': { const c = collectionsAll().find(x => x.tag === view.tag); if (c) setOutMany(c.list, false, null, '#' + tagLabel(c.tag)); break; }
     case 'clearrq': recentQ = []; metaPut('recentQ', recentQ).catch(() => {}); render(); break;
     case 'pickicon': iconSheet(); break;
+    case 'install': installApp(); break;
+    case 'movestart': case 'movenew': case 'moveadd': case 'movelabels': case 'moverooms': case 'moveend': moveAction(d.act); break;
+    case 'gomove': navigate({name: 'move'}); break;
+    case 'scanbarcode': scanItemBarcode(); break;
+    case 'newboxin': boxSheet(null, d.pid || scopePlace(), null); break;
+    case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
     case 'itemout': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, true); break;
     case 'itemback': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, false); break;
     case 'qadone': { const i = $('#qaIn'); if (i && i.value.trim()) quickAdd(i.dataset.qa, i.value); quickAddFor = null; render(); break; }
     case 'subbox': boxSheet(null, b.placeId, b.id); break;
+    case 'addinbox': addHereSheet(b.placeId, b.id); break;
     case 'placement': placementSheet(b.id); break;
     case 'doorside': doorSheet(currentPlace); break;
     case 'newzone': addZone(currentPlace); break;
     case 'addloose': newItem(ensureLoose(d.pid || currentPlace).id); break;
     case 'addzone': boxSheet(null, currentPlace !== 'all' ? currentPlace : places[0].id, null, d.zone); break;
     case 'saveagain': finishItem(true); break;
+    case 'cancelitem': cancelItem(); break;
     case 'addtag': if (flushItem) flushItem(); askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { if (tg) saveItem(x => { x.tags = [...new Set([...(x.tags || []), tg.toLowerCase()])]; }, true); }); break;
   }
 });
@@ -2726,9 +3096,10 @@ document.querySelector('.tabbar').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
   if (b.dataset.tab === 'add') return addNavSheet();
   if (b.dataset.tab === 'home') return goHome(currentPlace !== 'all' ? currentPlace : null);
-  if (b.dataset.tab === 'search'){ navigate({name: 'search'}); setTimeout(() => { const s = $('#q'); if (s) s.focus(); }, 50); return; }
+  if (b.dataset.tab === 'search'){ navigate({name: 'search'}); return; }
   navigate({name: 'profile'});
 });
+/* the dot on the menu button: something needs attention */
 $('#logoBtn').innerHTML = logoSVG();
 $('#logoBtn').onclick = () => goHome(null);
 $('#backBtn').onclick = () => goBack();
@@ -2744,6 +3115,7 @@ function openSheet(html, onClose){
   sheet.innerHTML = `<div class="sheet">${html}</div>`;
   onSheetClose = onClose || null;
   sheet.showModal();
+  const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && sheet.contains(ae)) ae.blur();
 }
 function closeSheet(){ if (sheet.open) sheet.close(); }
 sheet.addEventListener('close', () => { if (sheet.open) return; const f = onSheetClose; onSheetClose = null; if (f) f(); });
@@ -2943,8 +3315,8 @@ function scanSheet(){
         const w = 480, h = Math.round(w * video.videoHeight / video.videoWidth);
         cv.width = w; cv.height = h; ctx.drawImage(video, 0, 0, w, h);
         const r = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, {inversionAttempts: 'dontInvert'});
-        if (r && r.data && r.data.startsWith('BOXES:id:')){ const bx = findBox(r.data.slice(9)); if (bx){ closeSheet(); openBox(bx.id); return; } }
-        else if (r && r.data && r.data.startsWith('BOXES:') && go(r.data.slice(6))) return;
+        if (r && r.data && handleScan(r.data)) return;
+        if (r && r.data && r.data.startsWith('BOXES:') && go(r.data.slice(6))) return;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -3106,7 +3478,7 @@ function logLine(who, text, action){
 function drawLog(){
   const el = $('#vlog'); if (!el) return;
   el.innerHTML = voiceLog.map((l, i) => `<div class="vl ${l.who}">${l.src ? `<span class="src ${l.src}">${l.src === 'ai' ? 'AI' : 'Simple'}</span>` : ''}${esc(l.text)}${l.action ? `<br><button class="btn quiet" data-vact="${i}">${esc(l.action.label)}</button>` : ''}</div>`).join('')
-    || `<p class="hint">${L() === 'sv' ? 'Tryck på knappen och säg vad du gör, till exempel “öppna låda 3”.' : 'Tap the button and say what you’re doing, for example “open box 3”.'}</p>`;
+    || `<p class="hint">${L() === 'sv' ? 'Tryck på mikrofonen och prata, eller skriv. Till exempel “öppna låda 3” eller “var är tältet?”.' : 'Tap the microphone and talk, or type. For example “open box 3” or “where is the tent?”.'}</p>`;
   el.scrollTop = el.scrollHeight;
 }
 let speakOn = true;
@@ -3615,7 +3987,8 @@ const SILENCE_CHOICES = [[2000, '2 s'], [4000, '4 s'], [7000, '7 s'], [0, 'When 
 function setMic(state){
   const btn = $('#micBtn'); if (!btn) return;
   btn.classList.toggle('on', state === 'on');
-  btn.textContent = state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck när du är klar' : 'Listening… tap when you’re done') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak');
+  btn.setAttribute('aria-label', state === 'on' ? (L() === 'sv' ? 'Lyssnar… tryck när du är klar' : 'Listening… tap when you’re done') : (L() === 'sv' ? 'Tryck och prata' : 'Tap and speak'));
+  if (state === 'on') showLive(L() === 'sv' ? 'Lyssnar…' : 'Listening…');
 }
 function showLive(text){ const el = $('#vLive'); if (!el) return; el.textContent = text; el.hidden = !text; }
 function stopListening(){
@@ -3757,42 +4130,29 @@ async function toggleRecord(){
 }
 
 function voiceSheet(){
-  openSheet(`<h3>${tr('talkH')}</h3>
+  openSheet(`<div class="chathead"><h3>${tr('talkH')}</h3><span class="chips" style="margin:0"><button type="button" class="chipbtn small" data-lang="sv-SE">SV</button><button type="button" class="chipbtn small" data-lang="en-US">EN</button></span></div>
     <p class="hint" id="vCtx"></p>
-    <p class="aistat" id="vAI"></p>
-    <div class="vlog" id="vlog" aria-live="polite"></div>
+    <div class="vlog chat" id="vlog" aria-live="polite"></div>
     <div class="vlive" id="vLive" hidden></div>
-    ${SR ? '<button class="mic" id="micBtn"></button>' : `<p class="hint">${tr('noSR')}</p>`}
-    <div class="vtype"><input id="vText" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend">${tr('send')}</button></div>
-    <div class="vrow">
-      <button class="btn quiet" id="recBtn"></button>
-      <span class="chips" style="margin:0"><button type="button" class="chipbtn" data-lang="sv-SE">Svenska</button><button type="button" class="chipbtn" data-lang="en-US">English</button></span>
-    </div>
-    <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> ${tr('readAloud')}</label>
-    ${SR ? `<div class="field"><span>${tr('pause')}</span><div class="chips" id="vPause">${SILENCE_CHOICES.map(([ms, l]) => `<button type="button" class="chipbtn${ms === silenceMs ? ' on' : ''}" data-ms="${ms}">${l}</button>`).join('')}</div></div>` : ''}
-    <details class="more"><summary>${tr('whatSay')}</summary><ul class="help" id="vHelp"></ul></details>
-    <details class="more"><summary>${tr('noSignal')}</summary><p class="hint">${tr('noSignalTxt')}</p></details>
-    <div class="sheet-foot"><button class="btn" id="vClose">${tr('close')}</button></div>`, () => { stopListening(); if (rec) rec.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); });
+    <div class="chatbar">${SR ? `<button class="micround" id="micBtn" aria-label="${esc(tr('tapTalk'))}">${ICON.mic}</button>` : ''}<input id="vText" class="input" enterkeyhint="send" autocomplete="off"><button class="btn primary" id="vSend" aria-label="${esc(tr('send'))}">➤</button></div>
+    <p class="aistat" id="vAI"></p>
+    <details class="more"><summary>${tr('whatSay')}</summary><ul class="help" id="vHelp"></ul><p class="hint"><b>${tr('noSignal')}</b> ${tr('noSignalTxt2')}</p>
+      <label class="check"><input type="checkbox" id="vSpeak" ${speakOn ? 'checked' : ''}> ${tr('readAloud')}</label></details>
+    <div class="sheet-foot"><button class="btn" id="vClose">${tr('close')}</button></div>`, () => { stopListening(); if (window.speechSynthesis) speechSynthesis.cancel(); });
   const drawLang = () => {
     sheet.querySelectorAll('[data-lang]').forEach(c => c.classList.toggle('on', c.dataset.lang === voiceLang));
     $('#vHelp').innerHTML = HELP[L()].map(h => `<li>“${esc(h)}”</li>`).join('');
-    $('#vText').placeholder = vPlaceholder(); setMic('off'); drawLog();
+    $('#vText').placeholder = tr('chatPh'); setMic('off'); drawLog();
   };
-  drawLang(); updateCtx(); updRecBtn();
-  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? `${lang === 'sv' ? 'Enkla kommandon.' : 'Simple commands.'} <button class="linkbtn" id="vAIset">${lang === 'sv' ? 'Slå på AI' : 'Turn on AI'}</button>` : `AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : (lang === 'sv' ? ' (offline, enkla kommandon)' : ' (offline, using simple commands)')}. <button class="linkbtn" id="vAIset">${tr('settings')}</button>`; $('#vAIset').onclick = aiSheet; };
+  drawLang(); updateCtx();
+  const drawAI = () => { $('#vAI').innerHTML = ai.provider === 'off' ? `${tr('simpleMode')} · <button class="linkbtn" id="vAIset">${tr('aiOn')}</button>` : `✨ AI: ${esc(AI_LABEL[ai.provider])}${navigator.onLine ? '' : ' · ' + tr('offlineSimple')} · <button class="linkbtn" id="vAIset">${tr('settings')}</button>`; $('#vAIset').onclick = aiSheet; };
   drawAI();
-  if (SR) $('#micBtn').onclick = listen;
-  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()) handleBatch(x); };
-  if (SR) $('#vPause').onclick = e => {
-    const c = e.target.closest('[data-ms]'); if (!c) return;
-    silenceMs = +c.dataset.ms; metaPut('silenceMs', silenceMs).catch(() => {});
-    $('#vPause').querySelectorAll('[data-ms]').forEach(x => x.classList.toggle('on', +x.dataset.ms === silenceMs));
-  };
+  if (SR) $('#micBtn').onclick = () => { track('voice'); listen(); };
+  const send = () => { const v = $('#vText'); const x = v.value; v.value = ''; if (x.trim()){ track('chat'); handleBatch(x); } };
   $('#vSend').onclick = send;
   $('#vText').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
-  $('#recBtn').onclick = toggleRecord;
-  $('#vSpeak').onchange = e => { speakOn = e.target.checked; if (!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
-  sheet.querySelector('.vrow').addEventListener('click', e => {
+  $('#vSpeak').onchange = e => { speakOn = e.target.checked; metaPutRaw('speakOn', speakOn).catch(() => {}); if (!speakOn && window.speechSynthesis) speechSynthesis.cancel(); };
+  sheet.querySelector('.chathead').addEventListener('click', e => {
     const c = e.target.closest('[data-lang]'); if (!c) return;
     voiceLang = c.dataset.lang; metaPut('voiceLang', voiceLang).catch(() => {}); stopListening(); drawLang();
   });
@@ -4139,11 +4499,11 @@ function deliver(filename, blob, title, onDone){
   };
 }
 function labels(list){
-  const ls = [...list].sort(byCode).map(b => `<div class="l"><div class="q">${qrSvg(labelText(b), 6)}</div><div><div class="c">${esc(b.code)}</div><div class="n">${esc(b.name)}</div></div></div>`).join('');
+  const ls = [...list].sort(byCode).map(b => `<div class="l"><div class="q">${qrSvg(labelText(b), 6)}</div><div>${b.moveRoom ? `<div class="r">${esc(b.moveRoom)}</div>` : ''}<div class="c">${esc(b.code)}</div><div class="n">${esc(b.name)}</div></div></div>`).join('');
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Box labels</title><style>
     body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
     .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
-    .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.c{font:900 30pt/1 Impact,Arial Black,sans-serif}.n{font-size:12pt;margin-top:2mm}
+    .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.c{font:900 30pt/1 Impact,Arial Black,sans-serif}.r{font:900 22pt/1.05 Arial Black,Arial,sans-serif;text-transform:uppercase;margin-bottom:2mm}.n{font-size:12pt;margin-top:2mm}
     p{color:#555}@media print{p{display:none}}</style></head><body><p>Print this page, cut out the labels and tape them to the boxes.</p><div class="g">${ls}</div></body></html>`;
   deliver(list.length === 1 ? `label-${list[0].code}.html` : 'box-labels.html', new Blob([html], {type: 'text/html'}), list.length === 1 ? `${tr('label')} ${list[0].code}` : tr('labelsAllH'));
 }
@@ -4220,24 +4580,1567 @@ $('#importFile').addEventListener('change', async e => {
   } catch { toast('That file isn’t a Storrrage backup.'); }
 });
 function menuSheet(){
-  openSheet(`<h3>${tr('menu')}</h3><div class="menu">
-    <div class="field" style="margin:0 0 6px"><span>${tr('language')}</span>${langSwitch()}</div>
-    <button class="btn quiet" data-m="scan">${tr('scanLabel')}</button>
-    <button class="btn quiet" data-m="backup">${tr('backupNow')}</button>
-    <button class="btn quiet" data-m="export">${tr('export')}</button>
-    <button class="btn quiet" data-m="ai">${tr('aiAssistant')}${ai.provider !== 'off' ? `: ${esc(AI_LABEL[ai.provider])}` : ''}</button>
-    <button class="btn quiet" data-m="trash">${ICON.trash} ${tr('trash')}${trash.length ? ` (${trash.length})` : ''}</button>
-    <button class="btn quiet" data-m="settings">${tr('allSettings')}</button>
-    <button class="btn" data-m="close">${tr('close')}</button>
-    <p class="proof center" style="margin:8px 0 0">${tr('version', APP_VERSION)}</p></div>`);
-  sheet.querySelector('.menu').onclick = e => {
+  const nN = dueCount() + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length + attention();
+  const row = (m, icon, label, extra = '') => `<button class="mrow" data-m="${m}"><span class="mi">${icon}</span><span class="ml">${label}</span>${extra}</button>`;
+  openSheet(`<div class="menuhead"><h3>${tr('menu')}</h3>${langSwitch()}</div><div class="menu mlist">
+    ${row('profile', ICON.user, esc(me || tr('profile')), nN ? `<b class="count">${nN}</b>` : '')}
+    ${row('cloud', ICON.cloud, tr('cloudMenu'))}
+    ${row('scan', ICON.scan, tr('scanLabel'))}
+    ${row('feedback', ICON.chat, tr('feedback'))}
+    ${canInstall() ? row('install', ICON.install, tr('installTitle')) : ''}
+    ${row('loans', ICON.lend, tr('loansTitle'), loans().length ? `<b class="count${loanOld().length ? '' : ' muted'}">${loans().length}</b>` : '')}
+    ${row('move', ICON.truck, tr('moveTitle'), move.active ? `<b class="count muted">${moveBoxes().filter(b => b.moveState !== 'unpacked').length}</b>` : '')}
+    ${row('settings', ICON.gear, tr('settings'))}
+    ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
+    ${cloud.admin ? row('admin', ICON.chart, tr('adminTitle')) : ''}
+    ${cloud.session ? row('logout', ICON.logout, tr('logout'), cloud.email ? `<small class="mmail">${esc(cloud.email)}</small>` : '') : row('cloud', ICON.login, tr('logIn'))}
+    <p class="proof center" style="margin:10px 0 0">${tr('version', APP_VERSION)}</p></div>`);
+  sheet.querySelector('.mlist').onclick = e => {
     const m = e.target.closest('[data-m]'); if (!m) return; const k = m.dataset.m;
-    if (k === 'close') return closeSheet();
-    if (k === 'settings'){ closeSheet(); return navigate({name: 'profile', sub: 'settings'}); }
+    if (k === 'settings'){ closeSheet(); return navigate({name: 'settings'}); }
+    if (k === 'profile'){ closeSheet(); return navigate({name: 'profile'}); }
+    if (k === 'move'){ closeSheet(); return navigate({name: 'move'}); }
+    if (k === 'loans'){ closeSheet(); return navigate({name: 'loans'}); }
+    if (k === 'logout') return askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); });
     if (k === 'import') closeSheet();
     settingsAction(k);
   };
 }
+
+/* ====================================================================
+   Cloud: login (e-mail link), household, end-to-end encrypted sync,
+   anonymous usage statistics and feedback. Supabase is only a mailbox:
+   everything about the inventory is encrypted on the phone first.
+   ==================================================================== */
+const SB_URL = 'https://lqzfkhactizvzfzmigcz.supabase.co';
+const SB_KEY = 'sb_publishable_vn4-GzgYonITq3cV1S5euQ_-ophAXvW';
+const APP_URL = location.origin + location.pathname;
+let cloud = {};            // {session, hid, key, cursor, lastSync, email}
+let cryptoKey = null, dirty = new Set(), syncing = false, syncTimer = null, syncErr = '';
+let memberNames = {}, prof = {}, others = [], hhInfo = {}, pendingJoinCode = null;
+async function askMyName(){ const n = await askText(tr('whatName'), {placeholder: tr('yourName'), ok: tr('save')}); if (n){ me = addPerson(n); metaPut('me', me).catch(() => {}); metaPutRaw('onboarded', true).catch(() => {}); render(); } }
+const myId = () => cloud.session && cloud.session.user && cloud.session.user.id;
+function markMe(){ if (myId()) markDirty('u:' + myId()); }
+
+/* ---------- helpers ---------- */
+function bytesToB64(u8){ let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function b64ToBytes(b64){ const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+const toUrl64 = b => b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromUrl64 = b => { b = b.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '='; return b; };
+async function saveCloud(){ await metaPutRaw('cloud', cloud).catch(() => {}); }
+
+/* ---------- encryption (AES-GCM 256, key only on the household's phones) ---------- */
+async function loadKey(){ cryptoKey = cloud.key ? await crypto.subtle.importKey('raw', b64ToBytes(cloud.key), 'AES-GCM', false, ['encrypt', 'decrypt']) : null; }
+async function newKey(){ const k = crypto.getRandomValues(new Uint8Array(32)); cloud.key = bytesToB64(k); await loadKey(); }
+async function encBytes(u8){ const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv}, cryptoKey, u8)); const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out; }
+async function decBytes(u8){ return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv: u8.subarray(0, 12)}, cryptoKey, u8.subarray(12))); }
+async function encJSON(o){ return bytesToB64(await encBytes(new TextEncoder().encode(JSON.stringify(o)))); }
+async function decJSON(s){ return JSON.parse(new TextDecoder().decode(await decBytes(b64ToBytes(s)))); }
+const toPayload = v => 'j:' + JSON.stringify(v);
+async function fromPayload(p){ if (!p) return null; if (p.startsWith('j:')) return JSON.parse(p.slice(2)); if (!cryptoKey) await loadKey(); return cryptoKey ? decJSON(p) : null; }
+async function encBlob(blob){
+  const type = new TextEncoder().encode((blob.type || '').slice(0, 100)), data = new Uint8Array(await blob.arrayBuffer());
+  const plain = new Uint8Array(1 + type.length + data.length); plain[0] = type.length; plain.set(type, 1); plain.set(data, 1 + type.length);
+  return new Blob([await encBytes(plain)], {type: 'application/octet-stream'});
+}
+async function decBlob(ab){ const p = await decBytes(new Uint8Array(ab)); const n = p[0]; return new Blob([p.subarray(1 + n)], {type: new TextDecoder().decode(p.subarray(1, 1 + n))}); }
+
+/* ---------- talking to Supabase ---------- */
+async function sb(path, o = {}){
+  const h = Object.assign({apikey: SB_KEY}, o.headers || {});
+  if (o.auth !== false){ const t = await accessToken(); if (!t) throw new Error('auth'); h.Authorization = 'Bearer ' + t; }
+  let body = o.body;
+  if (body !== undefined && !(body instanceof Blob)){ h['Content-Type'] = 'application/json'; body = JSON.stringify(body); }
+  const r = await fetch(SB_URL + path, {method: o.method || 'GET', headers: h, body, keepalive: !!o.keepalive});
+  if (r.status === 401 && o.auth !== false && !o.retried){ cloud.session.expires_at = 0; return sb(path, Object.assign({}, o, {retried: true})); }
+  if (!r.ok){ const txt = await r.text().catch(() => ''); const e = new Error(r.status + ' ' + txt.slice(0, 200)); e.status = r.status; throw e; }
+  if (o.raw) return r;
+  const txt = await r.text(); return txt ? JSON.parse(txt) : null;
+}
+let refreshing = null;
+async function accessToken(){
+  const s = cloud.session; if (!s) return null;
+  if (Date.now() / 1000 < (s.expires_at || 0) - 60) return s.access_token;
+  if (!refreshing) refreshing = doRefresh(s).finally(() => { refreshing = null; });
+  return refreshing;
+}
+async function doRefresh(s){
+  try {
+    const n = await sb('/auth/v1/token?grant_type=refresh_token', {method: 'POST', auth: false, body: {refresh_token: s.refresh_token}});
+    cloud.session = {access_token: n.access_token, refresh_token: n.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (n.expires_in || 3600), user: s.user};
+    await saveCloud(); return cloud.session.access_token;
+  } catch (e){
+    // the login was revoked ("Log out everywhere" on another device): remove everything from this phone
+    if ((e.status === 400 || e.status === 401) && /refresh|token|session/i.test(e.message)){ try { sessionStorage.setItem('wiped', '1'); } catch {} await wipeLocal(); location.replace(APP_URL); }
+    return null;
+  }
+}
+const rpc = (fn, args) => sb('/rest/v1/rpc/' + fn, {method: 'POST', body: args || {}});
+
+/* ---------- login with a link in the e-mail ---------- */
+async function sendLoginLink(email){
+  await sb('/auth/v1/otp?redirect_to=' + encodeURIComponent(APP_URL + (lang === 'sv' ? '' : '?lang=' + lang)), {method: 'POST', auth: false, body: {email, create_user: true, data: {lang}}});
+  track('login_link');
+}
+async function takeAuthFromUrl(){
+  { const qs = new URLSearchParams(location.search); if (qs.get('lang')){ if (!location.hash) try { history.replaceState(null, '', APP_URL); } catch {} } if (qs.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + qs.get('error_description')); return; } }
+  const h = location.hash.slice(1); if (!h) return;
+  const p = new URLSearchParams(h);
+  if (p.get('error_description')){ try { history.replaceState(null, '', APP_URL); } catch {} toast(tr('loginFailed') + ' ' + p.get('error_description')); return; }
+  if (p.get('join')){ await metaPutRaw('pendingJoin', p.get('join')).catch(() => {}); try { history.replaceState(null, '', APP_URL); } catch {} return; }
+  if (!p.get('access_token')) return;
+  try { history.replaceState(null, '', APP_URL); } catch {}
+  await completeLogin({access_token: p.get('access_token'), refresh_token: p.get('refresh_token'), expires_at: +p.get('expires_at') || Math.floor(Date.now() / 1000) + (+p.get('expires_in') || 3600)});
+}
+async function completeLogin(sess){
+  cloud.session = sess;
+  try { const u = await sb('/auth/v1/user'); cloud.session.user = {id: u.id}; cloud.email = u.email || ''; } catch {}
+  saveLangToAccount();
+  syncErr = '';
+  await saveCloud();
+  track('login');
+  checkAdmin(); loadProfile(); markMe();
+  toast(tr('loggedIn'));
+  if (!cloud.hid) await connectAccount();
+}
+/* the 6-digit code from the e-mail: same as the link, but works inside the installed app (iPhone) */
+async function verifyCode(email, code){
+  const n = await sb('/auth/v1/verify', {method: 'POST', auth: false, body: {type: 'email', email, token: code}});
+  await completeLogin({access_token: n.access_token, refresh_token: n.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (n.expires_in || 3600)});
+}
+/* the login e-mail is written in the language chosen in the app */
+function saveLangToAccount(){ if (cloud.session) sb('/auth/v1/user', {method: 'PUT', body: {data: {lang}}}).catch(() => {}); }
+const KEEP_META = ['folded', 'langPref', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
+async function wipeLocal(){
+  for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
+  const keys = await tx('meta', 'readonly', s => s.getAllKeys()).catch(() => []) || [];
+  for (const k of keys) if (!KEEP_META.includes(k)) await tx('meta', 'readwrite', s => s.delete(k)).catch(() => {});
+}
+async function logout(everywhere){
+  if (cloud.hid && navigator.onLine) await syncNow();
+  if (dirty.size && !(await askConfirm(tr('unsyncedQ', dirty.size), tr('logout')))) return;
+  try { await sb('/auth/v1/logout' + (everywhere ? '?scope=global' : ''), {method: 'POST'}); } catch {}
+  track(everywhere ? 'logout_all' : 'logout');
+  await flushEvents(true);
+  await wipeLocal();
+  try { sessionStorage.setItem('loggedOut', '1'); } catch {}
+  location.replace(APP_URL);
+}
+
+/* ---------- household: create, invite, join ---------- */
+/* after login: your account's storage comes to this device; what was only on this device is added to it */
+async function connectAccount(){
+  const pj = await metaGet('pendingJoin').catch(() => null);
+  if (pj) return;                                            // the invite decides which household
+  let mine = null;
+  try { mine = await sb('/rest/v1/members?select=household_id,joined_at&user_id=eq.' + myId() + '&order=joined_at.asc'); } catch { return; }
+  if (mine && mine[0]){
+    const local = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
+    const nLocal = local.boxes.reduce((s, b) => s + (b.loose ? 0 : 1) + (b.items || []).length, 0);
+    // put the phone's own things aside, bring in the account, then let the user decide
+    for (const b of boxes) await dbDelRaw(b.id).catch(() => {});
+    boxes = []; places = []; dirty = new Set(); await saveDirty();
+    cloud.hid = mine[0].household_id; cloud.plain = true; cloud.cursor = null; cloud.lockedHid = null; await saveCloud();
+    if (cloud.key) await loadKey();
+    await pull(true);
+    if (!me && memberNames[myId()]){ me = memberNames[myId()]; await metaPutRaw('me', me).catch(() => {}); await metaPutRaw('onboarded', true).catch(() => {}); }
+    if (nLocal){
+      const keep = await askChoice(tr('moveLocalQ', nLocal), tr('moveLocalYes'), tr('moveLocalNo'));
+      if (keep){ await mergeLocal(local, true); toast(tr('mergedIntoAccount')); track('merge_local', {n: nLocal}); }
+    }
+    if (!places.length && local.places.length){ places = local.places.slice(0, 1); await metaPut('places', places); }
+    markMe(); await syncNow();
+  } else {
+    try { await createHousehold(); } catch {}
+  }
+}
+async function createHousehold(){
+  cloud.hid = await rpc('create_household');
+  cloud.plain = true; cloud.cursor = null; await saveCloud();
+  markEverything(); markMe();
+  track('household_create');
+  await syncNow();
+}
+async function inviteLink(note){
+  let code;
+  try { code = await rpc('create_invite', {hid: cloud.hid, note: note ? toPayload(note) : null}); }
+  catch (e){ if (e.status === 404 || /PGRST202|function/i.test(e.message)) code = await rpc('create_invite', {hid: cloud.hid}); else throw e; }
+  return APP_URL + '#join=' + code;
+}
+async function joinFromLink(text){
+  const m = /#join=([0-9a-f]+)(?:\.([\w-]+))?/.exec(text || ''); if (!m) return toast(tr('badInvite'));
+  const pj = m[1] + (m[2] ? '.' + m[2] : '');
+  if (!cloud.session){ await metaPutRaw('pendingJoin', pj).catch(() => {}); pendingJoinCode = pj; if (view.name === 'welcome') return render(); toast(tr('loginToJoin')); return cloudSheet(); }
+  if (cloud.hid && boxes.some(b => !b.loose || (b.items || []).length) && !(await askConfirm(tr('switchHouseholdQ'), tr('join')))) return;
+  const keep = (boxes.some(b => (b.items || []).length) || realBoxes().length) ? await askChoice(tr('mergeQ'), tr('mergeYes'), tr('mergeNo')) : false;
+  try {
+    const hid = await rpc('join_household', {c: m[1]});
+    cloud.hid = hid; cloud.lockedHid = null; cloud.key = m[2] ? fromUrl64(m[2]) : cloud.key; cloud.cursor = null; await loadKey(); await saveCloud();
+    const mine = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
+    if (!keep){ for (const b of boxes) await dbDelRaw(b.id).catch(() => {}); boxes = []; }
+    dirty = new Set(); await saveDirty();
+    await pull(true);
+    if (keep) await mergeLocal(mine);
+    else if (!places.length){ places = mine.places.slice(0, 1); await metaPut('places', places); }
+    markMe();
+    track('household_join', {kept: keep});
+    if (view.name === 'welcome'){ metaPutRaw('onboarded', true).catch(() => {}); view = {name: 'home', place: 'all'}; }
+    toast(tr('joined'));
+    await syncNow(); render(); loadProfile();
+    if (!me) setTimeout(askMyName, 600);
+  } catch (e){ toast(tr('joinFailed') + (e.status ? ' (' + e.status + ')' : '')); }
+}
+/* put what was on this phone into the household without overwriting the others */
+async function mergeLocal(mine, markNew){
+  const byName = new Map(places.map(p => [p.name.trim().toLowerCase(), p.id]));
+  const remap = {};
+  for (const p of mine.places){
+    if (findPlace(p.id)) continue;
+    const same = byName.get(p.name.trim().toLowerCase());
+    if (same) remap[p.id] = same; else { places.push(p); byName.set(p.name.trim().toLowerCase(), p.id); }
+  }
+  for (const b0 of mine.boxes){
+    if (findBox(b0.id)) continue;
+    const b = clone(b0); if (remap[b.placeId]) b.placeId = remap[b.placeId];
+    if (markNew){ if (!b.loose) b.isNew = true; (b.items || []).forEach(i => { if (b.loose) i.isNew = true; }); }
+    if (b.loose){ const l = looseOf(b.placeId); if (l){ const nl = clone(l); nl.items = (nl.items || []).concat(b.items || []); putBox(nl, true); continue; } }
+    else if (boxes.some(x => !x.loose && x.placeId === b.placeId && x.code === b.code)) b.code = nextCode(b.placeId);
+    putBox(b, true);
+  }
+  household = [...new Set([...(household || []), ...(mine.household || [])])];
+  trash = [...trash, ...mine.trash.filter(t => !trash.some(x => x.id === t.id))];
+  await metaPut('places', places); await metaPut('household', household); await metaPut('trash', trash);
+}
+
+/* ---------- sync ---------- */
+function markDirty(k){
+  if (!cloud || !cloud.hid) return;
+  dirty.add(k); saveDirty(); scheduleSync(2500);
+}
+let dirtyT; function saveDirty(){ clearTimeout(dirtyT); return new Promise(r => { dirtyT = setTimeout(() => { metaPutRaw('syncDirty', [...dirty]).catch(() => {}).then(r); }, 200); }); }
+function markEverything(){
+  boxes.forEach(b => dirty.add('b:' + b.id));
+  SYNC_META.forEach(k => dirty.add('m:' + k));
+  const refs = new Set(); const add = r => r && refs.add(r);
+  boxes.forEach(b => { if (b.photo) add(b.photo.ref); (b.items || []).forEach(i => { (i.photos || []).forEach(p => add(p.ref)); (i.files || []).forEach(f => add(f.ref)); }); });
+  trash.forEach(t => { (t.item.photos || []).forEach(p => add(p.ref)); (t.item.files || []).forEach(f => add(f.ref)); });
+  refs.forEach(r => dirty.add('p:' + r));
+  saveDirty();
+}
+function scheduleSync(ms){ clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms || 0); }
+async function syncNow(){
+  if (syncing || !cloud.hid || !cloud.session || !navigator.onLine) return;
+  syncing = true;
+  try {
+    // one-time move from the old encrypted format: upload everything again in the new one
+    if (!cloud.plain){ markEverything(); cloud.plain = true; await saveCloud(); }
+    await push(); await pull(false);
+    cloud.lastSync = new Date().toISOString(); syncErr = ''; await saveCloud();
+  } catch (e){
+    syncErr = e.message === 'auth' ? tr('loginAgain') : tr('syncFailed');
+    if (e.status === 403 || /42501|row-level/.test(e.message)) syncErr = tr('notMember');
+  } finally { syncing = false; updateCloudLine(); }
+}
+const metaVal = k => k === 'places' ? places : k === 'household' ? household : k === 'trash' ? trash : k === 'boxOrder' ? boxOrder : k === 'move' ? move : null;
+async function push(){
+  const keys = [...dirty]; if (!keys.length) return;
+  const rows = [], done = [];
+  for (const k of keys){
+    const [t, id] = [k.slice(0, 1), k.slice(2)];
+    if (t === 'p'){
+      const blob = await phGet(id).catch(() => null), path = `/storage/v1/object/photos/${cloud.hid}/${encodeURIComponent(id)}`;
+      try {
+        if (blob) await sb(path, {method: 'POST', headers: {'x-upsert': 'true', 'Content-Type': blob.type || 'application/octet-stream'}, body: blob});
+        else await sb(path, {method: 'DELETE'}).catch(e => { if (e.status !== 404 && e.status !== 400) throw e; });
+        done.push(k);
+      } catch (e){ if (e.status === 413) done.push(k); else throw e; }
+      continue;
+    }
+    if (t === 'b'){ const b = findBox(id); rows.push({household_id: cloud.hid, id: k, kind: 'box', payload: b ? toPayload(b) : '', deleted: !b}); }
+    if (t === 'u'){ if (id === myId()) rows.push({household_id: cloud.hid, id: k, kind: 'member', payload: toPayload({name: me || ''}), deleted: false}); }
+    if (t === 'm'){ const v = metaVal(id); rows.push({household_id: cloud.hid, id: k, kind: 'meta', payload: toPayload(v ?? null), deleted: false}); }
+    done.push(k);
+  }
+  for (let i = 0; i < rows.length; i += 200) await sb('/rest/v1/records', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: rows.slice(i, i + 200)});
+  done.forEach(k => { if (keys.includes(k)) dirty.delete(k); });
+  await saveDirty();
+}
+async function pull(force){
+  let changed = false;
+  for (let page = 0; page < 50; page++){
+    const q = `/rest/v1/records?select=id,kind,payload,deleted,updated_at,updated_by&household_id=eq.${cloud.hid}&order=updated_at.asc,id.asc&limit=500` + (cloud.cursor ? '&updated_at=gt.' + encodeURIComponent(cloud.cursor) : '');
+    const rows = await sb(q); if (!rows || !rows.length) break;
+    for (const r of rows){
+      if (!force && dirty.has(r.id)) continue;   // a newer local change is waiting to go up
+      try { await applyRecord(r); changed = true; if (!force && r.id.startsWith('b:')) noteHouseholdChange(r.updated_by, findBox(r.id.slice(2))); } catch {}
+    }
+    cloud.cursor = rows[rows.length - 1].updated_at; await saveCloud();
+    if (rows.length < 500) break;
+  }
+  if (changed && ready) render();
+  flushHouseholdChanges();
+}
+async function applyRecord(r){
+  const t = r.id.slice(0, 1), id = r.id.slice(2);
+  if (t === 'b'){
+    if (r.deleted){ boxes = boxes.filter(b => b.id !== id); await dbDelRaw(id).catch(() => {}); return; }
+    const b = await fromPayload(r.payload); if (!b) return; const i = boxes.findIndex(x => x.id === b.id);
+    if (i < 0) boxes.push(b); else boxes[i] = b;
+    await dbPutRaw(b);
+  } else if (t === 'u'){
+    const v = await fromPayload(r.payload); memberNames[id] = (v && v.name) || ''; await metaPutRaw('memberNames', memberNames);
+  } else if (t === 'm'){
+    const v = await fromPayload(r.payload); if (v == null) return;
+    if (id === 'places') places = v; else if (id === 'household') household = v; else if (id === 'trash') trash = v; else if (id === 'boxOrder') boxOrder = v; else if (id === 'move') move = v; else return;
+    await metaPutRaw(id, v);
+  }
+}
+async function cloudPhoto(ref){
+  if (!cloud.hid || !cloud.session || !navigator.onLine) return null;
+  const r = await sb(`/storage/v1/object/authenticated/photos/${cloud.hid}/${encodeURIComponent(ref)}`, {raw: true});
+  let blob = await r.blob();
+  if (/octet-stream/.test(r.headers.get('content-type') || '')){ if (!cryptoKey) await loadKey(); if (cryptoKey) try { blob = await decBlob(await blob.arrayBuffer()); } catch {} }
+  await phPutRaw(ref, blob);
+  return blob;
+}
+async function cloudInit(){
+  cloud = await metaGet('cloud').catch(() => null) || {};
+  dirty = new Set(await metaGet('syncDirty').catch(() => null) || []);
+  statsOn = (await metaGet('statsOn').catch(() => undefined)) !== false;
+  evq = await metaGet('evq').catch(() => null) || [];
+  memberNames = await metaGet('memberNames').catch(() => null) || {};
+  await takeAuthFromUrl();
+  await loadKey().catch(() => {});
+  const pj = await metaGet('pendingJoin').catch(() => null); pendingJoinCode = pj || null;
+  if (pj){
+    if (cloud.session){ await metaPutRaw('pendingJoin', null).catch(() => {}); setTimeout(() => joinFromLink('#join=' + pj), 300); }
+    else if (me || boxes.some(b => !b.loose)) setTimeout(() => { toast(tr('loginToJoin')); cloudSheet(); }, 300);
+  }
+  if (cloud.hid && cloud.session) scheduleSync(500);
+  checkAdmin(); loadProfile(); presenceTick();
+}
+setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(300); else { flushEvents(true); if (dirty.size) syncNow(); } });
+window.addEventListener('online', () => scheduleSync(500));
+window.addEventListener('hashchange', () => { if (location.hash.includes('join=')){ const h = location.hash; try { history.replaceState(null, '', APP_URL); } catch {} joinFromLink(h); } });
+
+/* ---------- the "Household & sync" sheet ---------- */
+function syncText(){
+  if (!navigator.onLine) return tr('offlineSync');
+  if (syncErr) return syncErr;
+  if (syncing) return tr('syncing');
+  if (dirty.size) return tr('waitingN', dirty.size);
+  return cloud.lastSync ? tr('syncedAt', fmtStamp(cloud.lastSync)) : '';
+}
+function updateCloudLine(){ const el = $('#cloudLine'); if (el) el.textContent = syncText(); }
+function loginForm(compact){
+  return `<input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="${esc(tr('yourEmail'))}" value="${esc(cloud.email || '')}">
+    <button class="btn primary block" id="clSend" style="margin-top:8px">${tr('sendCode')}</button>${compact ? '' : `<p class="proof">${tr('loginHint')}</p>`}`;
+}
+function accountPitch(){
+  return `<div class="pitch"><b>${tr('pitchTitle')}</b><ul>${['pitch1', 'pitch2', 'pitch3', 'pitch4'].map(k => `<li>${tr(k)}</li>`).join('')}</ul></div>`;
+}
+function codeSheet(email){
+  openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))} <button class="linkbtn" id="cdWrong">${tr('wrongAddress')}</button></p>
+    <input class="input codein" id="cdIn" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+    ${navigator.clipboard && navigator.clipboard.readText ? `<button class="btn block icontext" id="cdPaste">📋 <span>${tr('pasteCode')}</span></button>` : ''}
+    <button class="btn primary block" id="cdGo">${tr('logIn')}</button>
+    <p class="hint">${tr('orTapLink')}</p>
+    <div class="sheet-foot"><button class="btn" id="cdAgain">${tr('sendAgain')}</button><button class="btn" id="cdX">${tr('close')}</button></div>`);
+  const go = async () => {
+    const c = $('#cdIn').value.replace(/\D/g, ''); if (c.length < 6) return $('#cdIn').focus();
+    $('#cdGo').disabled = true;
+    try { await verifyCode(email, c); closeSheet(); location.replace(APP_URL); }
+    catch (e){ $('#cdGo').disabled = false; toast(e.status === 403 || e.status === 400 ? tr('codeWrong') : tr('sendFailed')); }
+  };
+  $('#cdGo').onclick = go;
+  const clean = v => (v || '').replace(/\D/g, '');
+  $('#cdIn').addEventListener('input', e => { const d = clean(e.target.value); if (d !== e.target.value) e.target.value = d; if (e.inputType === 'insertFromPaste' && (d.length === 6 || d.length === 8)) go(); });
+  if ($('#cdPaste')) $('#cdPaste').onclick = async () => { try { const d = clean(await navigator.clipboard.readText()); if (d.length >= 6){ $('#cdIn').value = d.slice(0, 10); go(); } else toast(tr('noCodeCopied')); } catch { $('#cdIn').focus(); toast(tr('pasteManually')); } };
+  $('#cdIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  $('#cdWrong').onclick = () => { closeSheet(); cloudSheet(); };
+  $('#cdAgain').onclick = async () => { try { await sendLoginLink(email); toast(tr('sentAgain')); } catch (er){ toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); } };
+  $('#cdX').onclick = closeSheet;
+}
+function sendErrorSheet(msg, status, detail){
+  openSheet(`<h3>${tr('mailNotSent')}</h3><p>${esc(msg)}</p>${status || detail ? `<p class="proof">${esc(tr('errorCode'))}: ${esc(String(status || ''))} ${esc(detail)}</p>` : ''}
+    <div class="sheet-foot"><button class="btn primary" id="seOk">${tr('ok')}</button></div>`);
+  $('#seOk').onclick = closeSheet;
+}
+function wireLogin(){
+  const b = $('#clSend'); if (!b) return;
+  b.onclick = async () => {
+    const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)){ $('#clEmail').focus(); return toast(tr('badEmail')); }
+    if (!navigator.onLine) return toast(tr('offlineSend'));
+    const label = b.textContent; b.disabled = true; b.textContent = tr('sending');
+    try {
+      await Promise.race([sendLoginLink(e), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), {status: 'timeout'})), 25000))]);
+      cloud.email = e; await saveCloud(); b.disabled = false; b.textContent = label; codeSheet(e);
+    } catch (er){
+      b.disabled = false; b.textContent = label;
+      const detail = er.status === 'timeout' ? '' : (String(er.message || '').match(/"(?:msg|message|error_description)":"([^"]+)"/) || [])[1] || '';
+      track('login_send_fail', {status: String(er.status || 'net')});
+      sendErrorSheet(er.status === 429 ? tr('tooMany') : er.status === 'timeout' ? tr('sendTimeout') : tr('sendFailed'), er.status, detail);
+    }
+  };
+}
+async function cloudSheet(){
+  const placeRows = places.map(p => `<div class="prow"><span>${placeIcon(p)} ${esc(p.name)}</span><small>${tr('boxes_n', boxesIn(p.id).length).toLowerCase()}</small></div>`).join('');
+  openSheet(`<h3>${ICON.cloud} ${tr('cloudMenu')}</h3>
+    <h4 class="adh">${tr('yourAccount')}</h4>
+    ${cloud.session ? `<div class="prow"><span>👤 ${esc(me || tr('you'))}</span><small>${esc(cloud.email || '')}</small></div>${cloud.hid ? `<p class="proof" id="cloudLine">${esc(syncText())}</p>` : ''}`
+      : `${accountPitch()}${loginForm()}`}
+    <h4 class="adh">${tr('peopleTitle')}</h4><p class="proof" style="margin-top:0">${tr('peopleHint')}</p>
+    <div id="hhPeople"><p class="hint">…</p></div>
+    <div class="vtype"><input class="input" id="hhName" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn" id="hhAdd">${tr('add')}</button></div>
+    <div id="clQR"></div>
+    <h4 class="adh">${tr('storagePlaces')}</h4>${placeRows}<button class="btn block" data-m2="places">${tr('editPlaces')}</button>
+    ${cloud.hid && cloud.session ? `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button><button class="btn block" id="clJoin">${tr('joinOther')}</button>` : ''}
+    <div class="sheet-foot"><button class="btn" id="clX">${tr('close')}</button></div>`);
+  let members = [], invites = [];
+  const drawPeople = () => {
+    const rows = [];
+    members.filter(r => r.user_id !== myId()).forEach(r => rows.push(`<div class="prow"><span>👤 ${esc(memberNames[r.user_id] || tr('someone'))}</span><small class="online">${others.some(o => o.user_id === r.user_id) ? '● ' + tr('activeNow') : '✓ ' + tr('inAppTag')}</small></div>`));
+    const memberSet = new Set(members.map(r => memberNames[r.user_id]).filter(Boolean));
+    household.filter(n => n !== me && !memberSet.has(n)).forEach(n => {
+      const inv = invites.find(i => i.who === n && !i.used_at && new Date(i.expires_at) > new Date());
+      rows.push(`<div class="prow"><span>${esc(n)}</span><span class="pact">${inv ? `<small>${tr('invitePending')}</small>` : ''}<button class="linkbtn" data-inv="${esc(n)}">${inv ? tr('inviteAgain') : tr('inviteToApp')}</button><button class="linkbtn muted" data-pdel="${esc(n)}" aria-label="${esc(tr('remove'))}">✕</button></span></div>`);
+    });
+    $('#hhPeople').innerHTML = `<div class="prow"><span>👤 ${esc(me || tr('you'))} <small>${tr('youTag')}</small></span></div>` + rows.join('');
+  };
+  drawPeople();
+  const add = () => { const n = addPerson($('#hhName').value); $('#hhName').value = ''; if (n) drawPeople(); };
+  $('#hhAdd').onclick = add; $('#hhName').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  $('#hhPeople').onclick = async e => {
+    const d = e.target.closest('[data-pdel]'); if (d){ household = household.filter(n => n !== d.dataset.pdel); metaPut('household', household).catch(() => {}); return drawPeople(); }
+    const iv = e.target.closest('[data-inv]'); if (!iv) return;
+    const who = iv.dataset.inv, box = $('#clQR');
+    if (!cloud.session){ box.innerHTML = `<div class="invitebox"><b>${esc(tr('inviteFor', who))}</b><p class="hint">${tr('loginToInvite')}</p></div>`; const em = $('#clEmail'); if (em){ em.scrollIntoView({block: 'center'}); em.focus(); } return; }
+    if (!cloud.hid){ box.innerHTML = `<div class="invitebox"><p class="hint">${tr('notSharedYet')}</p><button class="btn primary block" id="clConn">${tr('connectNow')}</button></div>`; $('#clConn').onclick = async () => { try { await connectAccount(); cloudSheet(); } catch { toast(tr('syncFailed')); } }; return; }
+    iv.disabled = true; box.innerHTML = `<div class="invitebox"><p class="hint">${tr('creatingInvite')}</p></div>`; box.scrollIntoView({block: 'nearest'});
+    try {
+      const link = await inviteLink(who); track('invite');
+      $('#clQR').innerHTML = `<div class="invitebox"><b>${esc(tr('inviteFor', who))}</b><button class="btn primary block" id="clShare">${tr('sendInvite')}</button>
+        <div class="inviteqr">${qrSvg(link, 4)}</div><p class="hint center">${tr('inviteHint2')}</p><p class="proof center">${tr('inviteSafe')}</p></div>`;
+      $('#clShare').onclick = () => { const txt = tr('inviteMsg', me || 'Storrrage'); if (navigator.share) navigator.share({title: 'Storrrage', text: txt, url: link}).catch(() => {}); else navigator.clipboard.writeText(txt + ' ' + link).then(() => toast(tr('copied'))).catch(() => {}); };
+      $('#clQR').scrollIntoView({block: 'nearest'});
+      await loadInvites(); drawPeople();
+    } catch (er){ box.innerHTML = `<div class="invitebox"><b>${tr('inviteFailed')}</b><p class="proof">${esc(String(er.status || ''))} ${esc(String(er.message || '').slice(0, 160))}</p></div>`; }
+    iv.disabled = false;
+  };
+  sheet.querySelector('[data-m2="places"]').onclick = () => placesSheet();
+  $('#clX').onclick = closeSheet;
+  wireLogin();
+  if ($('#clJoin')) $('#clJoin').onclick = () => scanSheet();
+  if ($('#clSync')) $('#clSync').onclick = async () => { $('#cloudLine').textContent = tr('syncing'); await syncNow(); render(); updateCloudLine(); };
+  async function loadInvites(){
+    try { const rows = await rpc('household_invites', {hid: cloud.hid}) || []; invites = []; for (const r of rows){ let who = ''; try { who = r.note ? await fromPayload(r.note) : ''; } catch {} invites.push(Object.assign({who}, r)); } } catch {}
+  }
+  if (cloud.hid && cloud.session){
+    try { members = await sb('/rest/v1/members?select=user_id,role,joined_at&household_id=eq.' + cloud.hid) || []; hhInfo.n = members.length; } catch {}
+    await loadInvites();
+    if ($('#hhPeople')) drawPeople();
+  }
+}
+async function drawInvites(){
+  const el = $('#hhInvites'); if (!el) return;
+  try {
+    const rows = await rpc('household_invites', {hid: cloud.hid}) || [];
+    const out = [];
+    for (const r of rows){
+      let who = ''; try { who = r.note ? await fromPayload(r.note) : ''; } catch {}
+      const st = r.used_at ? `✓ ${tr('joinedOn', fmtDate(r.used_at))}${r.used_by && memberNames[r.used_by] && memberNames[r.used_by] !== who ? ' · ' + esc(memberNames[r.used_by]) : ''}` : new Date(r.expires_at) < new Date() ? tr('expired') : tr('waitingUntil', fmtStamp(r.expires_at));
+      out.push(`<div class="prow"><span>${esc(who || tr('invite1'))}</span><small class="${r.used_at ? 'online' : ''}">${st}</small></div>`);
+    }
+    el.innerHTML = out.join('') || `<p class="hint">${tr('noInvites')}</p>`;
+  } catch { el.innerHTML = `<p class="hint">${tr('noInvites')}</p>`; }
+}
+function pfacts(){
+  const nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
+  const rows = [];
+  if (cloud.hid) rows.push([tr('household'), `${tr('membersN', hhInfo.n || 1)}${hhInfo.role === 'owner' ? ' · ' + tr('ownerTag') : ''}`]);
+  else rows.push([tr('household'), tr('noHousehold')]);
+  if (hhInfo.joined) rows.push([tr('memberSince'), fmtDate(hhInfo.joined)]);
+  rows.push([tr('inStorage'), `${tr('places_n', places.length).toLowerCase()} · ${tr('boxes_n', realBoxes().length).toLowerCase()} · ${tr('items_n', nI).toLowerCase()}`]);
+  if (cloud.lastSync) rows.push([tr('lastSynced'), fmtStamp(cloud.lastSync)]);
+  return rows.map(([k, v]) => `<div class="prow"><span>${esc(k)}</span><small>${esc(v)}</small></div>`).join('');
+}
+/* ---------- profile on the server: only the e-mail reminder choice ---------- */
+async function loadProfile(){
+  if (!cloud.session) return;
+  try { const r = await sb('/rest/v1/profiles?select=notify_email,contact_email&user_id=eq.' + myId()); prof = (r && r[0]) || {}; } catch {}
+  try { const r = await sb('/rest/v1/members?select=role,joined_at,household_id&user_id=eq.' + myId()); const m = (r || []).find(x => x.household_id === (cloud.hid || cloud.lockedHid)); if (m){ hhInfo.role = m.role; hhInfo.joined = m.joined_at; } } catch {}
+  if (view.name === 'profile') render();
+}
+async function saveProfile(){
+  if (!cloud.session) return;
+  try { await sb('/rest/v1/profiles', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: {user_id: myId(), notify_email: !!prof.notify_email, contact_email: prof.contact_email || null}}); toast(tr('saved')); }
+  catch { toast(tr('syncFailed')); }
+}
+
+/* ---------- who is here right now: lets you see if someone else is in the same box ---------- */
+let presT = null, presSig = '';
+async function presenceTick(){
+  clearTimeout(presT);
+  const inBox = view.name === 'box' || view.name === 'item';
+  presT = setTimeout(presenceTick, inBox ? 12000 : 45000);
+  if (!cloud.hid || !cloud.session || !navigator.onLine || document.visibilityState !== 'visible') return;
+  try {
+    await sb('/rest/v1/presence', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: {household_id: cloud.hid, user_id: myId(), box_id: inBox ? view.boxId : null, item_id: view.name === 'item' ? view.itemId : null, seen_at: new Date().toISOString()}});
+    const since = new Date(Date.now() - 40000).toISOString();
+    others = await sb(`/rest/v1/presence?select=user_id,box_id,item_id&household_id=eq.${cloud.hid}&user_id=neq.${myId()}&seen_at=gt.${encodeURIComponent(since)}`) || [];
+    const sig = JSON.stringify(others);
+    if (sig !== presSig){
+      presSig = sig;
+      if (view.name === 'item'){ const old = app.querySelector('.presence'), [it, b] = curItem(); const html = it ? presenceNote(b.id, it.id) : ''; if (old) old.outerHTML = html || ''; else if (html){ const c = app.querySelector('.crumbs'); if (c) c.insertAdjacentHTML('afterend', html); } }
+      else if (['box', 'home'].includes(view.name)) render();
+      if (others.length) scheduleSync(200);
+    }
+  } catch {}
+}
+let presKick = null;
+function presenceSoon(){ clearTimeout(presKick); presKick = setTimeout(presenceTick, 600); }
+const whoName = uid => memberNames[uid] || tr('someone');
+function presenceNote(boxId, itemId){
+  const here = others.filter(o => o.box_id === boxId); if (!here.length) return '';
+  const sameItem = itemId && here.filter(o => o.item_id === itemId);
+  const names = [...new Set(here.map(o => whoName(o.user_id)))].join(', ');
+  return `<p class="presence">✏️ ${esc(sameItem && sameItem.length ? tr('editingItem', [...new Set(sameItem.map(o => whoName(o.user_id)))].join(', ')) : tr('inThisBox', names))}</p>`;
+}
+const presenceBadge = boxId => { const h = others.filter(o => o.box_id === boxId); return h.length ? `<span class="herebadge" title="${esc(h.map(o => whoName(o.user_id)).join(', '))}">${esc((whoName(h[0].user_id)[0] || '•').toUpperCase())}</span>` : ''; };
+
+/* ---------- anonymous usage statistics: what people do, never what they have ---------- */
+let statsOn = true, evq = [], evT = null;
+function deviceTag(){
+  const month = new Date().toISOString().slice(0, 7);
+  let d = null; try { d = JSON.parse(sessionStorage.getItem('sdev') || 'null'); } catch {}
+  if (!d || d.m !== month){ d = {m: month, id: (cloud.dev && cloud.dev.m === month) ? cloud.dev.id : newId()}; cloud.dev = d; saveCloud(); try { sessionStorage.setItem('sdev', JSON.stringify(d)); } catch {} }
+  return d.id;
+}
+function track(name, props){
+  if (!statsOn) return;
+  try {
+    const clean = {}; Object.entries(props || {}).forEach(([k, v]) => { if (['string', 'number', 'boolean'].includes(typeof v)) clean[k] = typeof v === 'string' ? v.slice(0, 30) : v; });
+    evq.push({name: String(name).slice(0, 40), props: clean, device: deviceTag(), app_version: APP_VERSION});
+    if (evq.length > 300) evq = evq.slice(-300);
+    clearTimeout(evT); evT = setTimeout(() => flushEvents(false), 20000);
+  } catch {}
+}
+async function flushEvents(leaving){
+  if (!statsOn || !evq.length) return;
+  if (!navigator.onLine){ metaPutRaw('evq', evq).catch(() => {}); return; }
+  const batch = evq; evq = [];
+  try { await sb('/rest/v1/events', {method: 'POST', auth: false, keepalive: leaving, headers: {Prefer: 'return=minimal'}, body: batch}); metaPutRaw('evq', []).catch(() => {}); }
+  catch { evq = batch.concat(evq).slice(-300); metaPutRaw('evq', evq).catch(() => {}); }
+}
+async function statsNotice(){
+  if (await metaGet('statsNoticed').catch(() => false)) return;
+  metaPutRaw('statsNoticed', true).catch(() => {});
+  setTimeout(() => toastAction(tr('statsToast'), tr('statsWhat'), () => navigate({name: 'settings'})), 2500);
+}
+
+/* ---------- feedback ---------- */
+function feedbackSheet(){
+  openSheet(`<h3>${ICON.chat} ${tr('feedback')}</h3><p class="hint">${tr('feedbackIntro')}</p>
+    <div class="chips" id="fbKind"><button class="chipbtn on" data-k="idea">💡 ${tr('fbIdea')}</button><button class="chipbtn" data-k="bug">🐞 ${tr('fbBug')}</button><button class="chipbtn" data-k="love">❤️ ${tr('fbLove')}</button></div>
+    <textarea class="input" id="fbText" rows="5" maxlength="4000" placeholder="${esc(tr('fbPh'))}" style="margin-top:10px"></textarea>
+    <label class="field"><span>${tr('fbContact')}</span><input class="input" id="fbContact" type="email" inputmode="email" placeholder="${esc(tr('optional'))}" value=""></label>
+    <p class="proof">${tr('fbPrivacy')}</p>
+    <div class="sheet-foot"><button class="btn quiet" id="fbX">${tr('cancel')}</button><button class="btn primary" id="fbSend">${tr('send')}</button></div>`);
+  let kind = 'idea';
+  $('#fbKind').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; kind = b.dataset.k; $('#fbKind').querySelectorAll('.chipbtn').forEach(x => x.classList.toggle('on', x === b)); };
+  $('#fbX').onclick = closeSheet;
+  $('#fbSend').onclick = async () => {
+    const msg = $('#fbText').value.trim(); if (!msg) return $('#fbText').focus();
+    $('#fbSend').disabled = true;
+    try {
+      await sb('/rest/v1/feedback', {method: 'POST', auth: false, headers: {Prefer: 'return=minimal'}, body: {message: msg, kind, screen: view.name + (view.name === 'home' ? ':' + placeView : ''), app_version: APP_VERSION, contact: $('#fbContact').value.trim() || null}});
+      closeSheet(); toast(tr('fbThanks')); track('feedback', {kind});
+    } catch { $('#fbSend').disabled = false; toast(navigator.onLine ? tr('sendFailed') : tr('offlineSend')); }
+  };
+}
+
+Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
+  email: 'E-mail', emailWhy: 'Only used to log in. No password, no newsletters.', sendLink: 'Send login link', checkMail: 'Check your e-mail', linkSent: e => `We sent a login link to ${e}.`, linkSamePhone: 'Open the link on this phone. It can take a minute – check the spam folder too.',
+  tooMany: 'Too many links sent just now – try again in a while.', sendFailed: 'Couldn’t send. Try again.', loginFailed: 'Login didn’t work.', loggedIn: 'You’re logged in.', loggedOut: 'Logged out. Your things are still on this phone.', loginAgain: 'Log in again to keep syncing.',
+  loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded encrypted. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
+  householdCreated: 'Household created – now invite the others.', yourHousehold: 'Your household', membersN: n => n === 1 ? '1 member' : `${n} members`, e2eNote: 'Encrypted on your phones. The server only stores scrambled data.',
+  invite: 'Invite someone', inviteHint: 'Let them scan this with the phone camera or inside Storrrage (☰ → Scan label).', shareLink: 'Share link instead', inviteSafe: 'The code works once, for 24 hours. The key is in the link itself and never passes our server.', inviteText: 'Join our storage in Storrrage', copied: 'Copied.',
+  syncNow: 'Sync now', syncing: 'Syncing…', syncedAt: t => `Synced ${t}`, waitingN: n => `${n} changes waiting to sync`, offlineSync: 'Offline – syncs when you have signal.', syncFailed: 'Couldn’t sync right now.', notMember: 'You’re no longer in this household.',
+  badInvite: 'That invite doesn’t look right.', loginToJoin: 'Log in first, then the invite is used automatically.', switchHouseholdQ: 'You’re already in a household. Switch to the new one?', join: 'Join',
+  mergeQ: 'Bring along what’s already on this phone? Otherwise only the household’s things are kept here.', mergeYes: 'Yes, bring it', mergeNo: 'No', haveHousehold: 'Already have a household or an invite? Log in', joined: 'You’re in the household!', joinFailed: 'Couldn’t join. The code may be used or too old.',
+  statsSetting: 'Share anonymous usage statistics', statsHint: 'Only what is used (e.g. “list view opened”), never what you own, names or places. Not linked to your account. Helps us make Storrrage better.',
+  statsToast: 'Storrrage sends anonymous usage stats – never your things.', statsWhat: 'Settings',
+  feedback: 'Give feedback', feedbackIntro: 'What’s good, what’s annoying, what’s missing? We read everything.', fbIdea: 'Idea', fbBug: 'Something’s wrong', fbLove: 'I like', fbPh: 'Write here…', fbContact: 'E-mail, if you want an answer', optional: 'optional',
+  fbPrivacy: 'Sent without your account. App version and which screen you were on are included.', send: 'Send', fbThanks: 'Thanks! 💜', offlineSend: 'No signal – try again when you’re online.', ok: 'OK'});
+Object.assign(STR.sv, {cloudMenu: 'Konto & delning', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
+  email: 'E-post', emailWhy: 'Används bara för inloggning. Inget lösenord, inga nyhetsbrev.', sendLink: 'Skicka inloggningslänk', checkMail: 'Kolla din e-post', linkSent: e => `Vi har skickat en inloggningslänk till ${e}.`, linkSamePhone: 'Öppna länken på den här telefonen. Det kan ta en minut – kolla skräpposten också.',
+  tooMany: 'För många länkar skickade just nu – försök igen om en stund.', sendFailed: 'Kunde inte skicka. Försök igen.', loginFailed: 'Inloggningen fungerade inte.', loggedIn: 'Du är inloggad.', loggedOut: 'Utloggad. Dina saker finns kvar på telefonen.', loginAgain: 'Logga in igen för att fortsätta synka.',
+  loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp krypterat. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
+  householdCreated: 'Hushållet är skapat – bjud in de andra.', yourHousehold: 'Ditt hushåll', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmar`, e2eNote: 'Krypterat på era telefoner. Servern sparar bara oläslig data.',
+  invite: 'Bjud in någon', inviteHint: 'Låt dem skanna med telefonens kamera eller i Storrrage (☰ → Skanna etikett).', shareLink: 'Dela länk i stället', inviteSafe: 'Koden fungerar en gång i 24 timmar. Nyckeln ligger i själva länken och passerar aldrig vår server.', inviteText: 'Gå med i vår förvaring i Storrrage', copied: 'Kopierat.',
+  syncNow: 'Synka nu', syncing: 'Synkar…', syncedAt: t => `Synkat ${t}`, waitingN: n => `${n} ändringar väntar på att synkas`, offlineSync: 'Offline – synkar när du har täckning.', syncFailed: 'Kunde inte synka just nu.', notMember: 'Du är inte längre med i det här hushållet.',
+  badInvite: 'Inbjudan ser inte rätt ut.', loginToJoin: 'Logga in först, sedan används inbjudan automatiskt.', switchHouseholdQ: 'Du är redan med i ett hushåll. Byta till det nya?', join: 'Gå med',
+  mergeQ: 'Ta med det som redan finns på den här telefonen? Annars behålls bara hushållets saker här.', mergeYes: 'Ja, ta med', mergeNo: 'Nej', haveHousehold: 'Har du redan ett hushåll eller en inbjudan? Logga in', joined: 'Du är med i hushållet!', joinFailed: 'Kunde inte gå med. Koden kan vara använd eller för gammal.',
+  statsSetting: 'Dela anonym användningsstatistik', statsHint: 'Bara vad som används (t.ex. ”listvyn öppnades”), aldrig vad du äger, namn eller platser. Inte kopplat till ditt konto. Hjälper oss göra Storrrage bättre.',
+  statsToast: 'Storrrage skickar anonym användningsstatistik – aldrig dina saker.', statsWhat: 'Inställningar',
+  feedback: 'Tyck till', feedbackIntro: 'Vad är bra, vad stör, vad saknas? Vi läser allt.', fbIdea: 'Idé', fbBug: 'Något är fel', fbLove: 'Gillar', fbPh: 'Skriv här…', fbContact: 'E-post, om du vill ha svar', optional: 'valfritt',
+  fbPrivacy: 'Skickas utan koppling till ditt konto. Appversion och vilken skärm du var på följer med.', send: 'Skicka', fbThanks: 'Tack! 💜', offlineSend: 'Ingen täckning – försök igen när du är online.', ok: 'OK'});
+
+
+/* ---------- admin: statistics and feedback, only for accounts in the admins table ---------- */
+async function checkAdmin(){ if (!cloud.session) return; try { cloud.admin = !!(await rpc('is_admin')); await saveCloud(); } catch { cloud.admin = false; } }
+async function adminSheet(){
+  openSheet(`<h3>📊 ${tr('adminTitle')}</h3><p class="hint">${tr('loading')}</p>`);
+  let s, fb;
+  try { [s, fb] = await Promise.all([rpc('admin_stats'), rpc('admin_feedback', {lim: 100})]); }
+  catch { sheet.querySelector('.sheet').innerHTML = `<h3>📊 ${tr('adminTitle')}</h3><p class="hint">${tr('adminFail')}</p><div class="sheet-foot"><button class="btn" id="adX">${tr('close')}</button></div>`; $('#adX').onclick = closeSheet; return; }
+  const num = (v, l) => `<div class="kpi"><b>${nf.format(v || 0)}</b><span>${esc(l)}</span></div>`;
+  const bars = (rows, label, val) => { const max = Math.max(1, ...rows.map(val)); return `<div class="bars">${rows.map(r => `<div class="bar"><span class="bl">${esc(label(r))}</span><span class="bt"><i style="width:${Math.round(val(r) / max * 100)}%"></i></span><span class="bv">${nf.format(val(r))}</span></div>`).join('')}</div>`; };
+  const EV = {open: tr('evOpen'), view: tr('evView'), item_add: tr('evItemAdd'), item_save: tr('evItemSave'), search: tr('evSearch'), search_quick: tr('evSearchQuick'), place_view: tr('evPlaceView'), sort: tr('evSort'), drag: tr('evDrag'), trash_restore: tr('evRestore'), feedback: tr('feedback'), login: tr('evLogin'), login_link: tr('evLoginLink'), household_create: tr('evHhCreate'), household_join: tr('evHhJoin'), invite: tr('evInvite')};
+  const groups = {}; (s.details || []).forEach(d => { (groups[d.name] = groups[d.name] || []).push(d); });
+  sheet.querySelector('.sheet').innerHTML = `<h3>📊 ${tr('adminTitle')}</h3>
+    <div class="kpis">${num(s.active7, tr('active7'))}${num(s.active30, tr('active30'))}${num(s.accounts, tr('accounts'))}${num(s.households, tr('households'))}${num(s.shared, tr('sharedHh'))}${num(s.feedbackN, tr('feedback'))}</div>
+    <h4 class="adh">${tr('perWeek')}</h4>${(s.weeks || []).length ? bars(s.weeks.slice(0, 12), r => fmtDate(r.week), r => r.active) : `<p class="hint">${tr('noData')}</p>`}
+    <h4 class="adh">${tr('used30')}</h4>${(s.events || []).length ? bars(s.events, r => EV[r.name] || r.name, r => r.n) : `<p class="hint">${tr('noData')}</p>`}
+    ${Object.entries(groups).map(([k, rows]) => `<h4 class="adh">${esc(EV[k] || k)}</h4>${bars(rows, r => r.value ?? '–', r => r.n)}`).join('')}
+    <h4 class="adh">${tr('versions')}</h4>${bars(s.versions || [], r => r.app_version || '?', r => r.n)}
+    <h4 class="adh">${tr('feedback')} (${(fb || []).length})</h4>
+    <div class="fblist">${(fb || []).map(f => `<div class="fbrow"><small>${esc(fmtStamp(f.created_at))} · ${esc({idea: '💡', bug: '🐞', love: '❤️'}[f.kind] || f.kind || '')} · ${esc(f.screen || '')} · ${esc(f.app_version || '')}</small><p>${esc(f.message)}</p>${f.contact ? `<a href="mailto:${esc(f.contact)}">${esc(f.contact)}</a>` : ''}</div>`).join('') || `<p class="hint">${tr('noData')}</p>`}</div>
+    <p class="proof">${tr('adminNote')}</p>
+    <div class="sheet-foot"><button class="btn" id="adX">${tr('close')}</button></div>`;
+  $('#adX').onclick = closeSheet;
+}
+
+/* ---------- install as an app (no app store needed) ---------- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (ready) render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; track('installed'); toast(tr('installedToast')); if (ready) render(); });
+const canInstall = () => !isStandalone() && (installEvt || isIOS());
+async function installApp(){
+  if (installEvt){ installEvt.prompt(); const r = await installEvt.userChoice.catch(() => ({})); track('install_prompt', {result: r.outcome || '?'}); installEvt = null; render(); return; }
+  openSheet(`<h3>📲 ${tr('installTitle')}</h3>${isIOS() ? `<ol class="steps"><li>${tr('iosStep1')}</li><li>${tr('iosStep2')}</li><li>${tr('iosStep3')}</li></ol><p class="hint">${tr('iosNote')}</p>`
+    : `<ol class="steps"><li>${tr('andStep1')}</li><li>${tr('andStep2')}</li></ol>`}<div class="sheet-foot"><button class="btn primary" id="inOk">${tr('ok')}</button></div>`);
+  $('#inOk').onclick = closeSheet;
+}
+function installBanner(){
+  if (!canInstall() || view.name === 'welcome' || sessionStorage.getItem('noInstall')) return '';
+  return `<div class="installbar"><span>📲 ${tr('installBanner')}</span><span class="fhbtns"><button class="btn primary small" data-act="install">${tr('install')}</button><button class="linkbtn" data-act="noinstall" aria-label="${esc(tr('close'))}">✕</button></span></div>`;
+}
+
+Object.assign(STR.en, {adminTitle: 'Statistics & feedback', loading: 'Loading…', adminFail: 'Couldn’t load. Are you logged in as admin?', active7: 'active phones, 7 days', active30: 'active phones, 30 days', accounts: 'accounts', households: 'households', sharedHh: 'shared households',
+  perWeek: 'Active phones per week', used30: 'Used the last 30 days', versions: 'App versions (14 days)', noData: 'No data yet.', adminNote: 'Phones are counted with an anonymous id that changes every month. People who turned statistics off aren’t counted.',
+  evOpen: 'App opened', evView: 'Screen changes', evItemAdd: 'Quick add', evItemSave: 'Item saved', evSearch: 'Searches', evSearchQuick: 'Search filters', evPlaceView: 'Shelf / list / map', evSort: 'Sorting', evDrag: 'Drag & drop', evRestore: 'Restored from Deleted', evLogin: 'Logins', evLoginLink: 'Login links sent', evHhCreate: 'Households created', evHhJoin: 'Joined a household', evInvite: 'Invites',
+  installTitle: 'Install Storrrage', install: 'Install', installBanner: 'Install Storrrage as an app on your phone', installedToast: 'Storrrage is on your home screen.',
+  iosStep1: 'Tap the Share button (square with an arrow) at the bottom of Safari.', iosStep2: 'Choose “Add to Home Screen”.', iosStep3: 'Tap “Add”. Then always open Storrrage from the home screen.', iosNote: 'On iPhone it has to be Safari. The installed app has its own storage, so log in and join the household inside the app.',
+  andStep1: 'Tap ⋮ at the top right in Chrome.', andStep2: 'Choose “Install app” or “Add to Home screen”.'});
+Object.assign(STR.sv, {adminTitle: 'Statistik & feedback', loading: 'Laddar…', adminFail: 'Kunde inte hämta. Är du inloggad som admin?', active7: 'aktiva telefoner, 7 dagar', active30: 'aktiva telefoner, 30 dagar', accounts: 'konton', households: 'hushåll', sharedHh: 'delade hushåll',
+  perWeek: 'Aktiva telefoner per vecka', used30: 'Använt senaste 30 dagarna', versions: 'Appversioner (14 dagar)', noData: 'Ingen data än.', adminNote: 'Telefoner räknas med ett anonymt id som byts varje månad. De som stängt av statistiken räknas inte.',
+  evOpen: 'Appen öppnad', evView: 'Byten av skärm', evItemAdd: 'Snabbtillägg', evItemSave: 'Sak sparad', evSearch: 'Sökningar', evSearchQuick: 'Sökfilter', evPlaceView: 'Hylla / lista / karta', evSort: 'Sortering', evDrag: 'Dra och släpp', evRestore: 'Tagits tillbaka från Borttaget', evLogin: 'Inloggningar', evLoginLink: 'Inloggningslänkar skickade', evHhCreate: 'Hushåll skapade', evHhJoin: 'Gått med i hushåll', evInvite: 'Inbjudningar',
+  installTitle: 'Installera Storrrage', install: 'Installera', installBanner: 'Installera Storrrage som app på telefonen', installedToast: 'Storrrage finns nu på hemskärmen.',
+  iosStep1: 'Tryck på Dela-knappen (fyrkant med pil) längst ner i Safari.', iosStep2: 'Välj ”Lägg till på hemskärmen”.', iosStep3: 'Tryck ”Lägg till”. Öppna sedan alltid Storrrage från hemskärmen.', iosNote: 'På iPhone måste det vara Safari. Den installerade appen har eget minne, så logga in och gå med i hushållet inne i appen.',
+  andStep1: 'Tryck på ⋮ uppe till höger i Chrome.', andStep2: 'Välj ”Installera app” eller ”Lägg till på startskärmen”.'});
+
+
+
+Object.assign(STR.en, {usageSync: n => `Storrrage uses about ${n} MB on this phone. Everything is also synced, encrypted, with your household.`, nameShown: 'Shown to the others in your household.', loginEmail: 'Logged in with', mailReminders: 'E-mail me reminders (things to bring back, things not used for a long time)', otherEmail: 'Send to another address (optional)',
+  mailHint: 'Coming soon. The e-mail only says that something needs attention – what it is stays encrypted in the app.', loginForMore: 'Log in to share with your household and get reminders by e-mail.', logIn: 'Log in',
+  appearance: 'Appearance', light: 'Light', dark: 'Dark', auto: 'Automatic', advanced: 'More', restoreHint: 'Only needed for old backup files. Your things are kept safe by syncing with your household.',
+  inApp: 'In the app', youTag: '(you)', morePeople: 'Others in the household', morePeopleHint: 'People who don’t use the app but own things, e.g. kids. Pick them as owner of a thing.', editPlaces: 'Edit places', shareTitle: 'Share between phones',
+  someone: 'Someone', activeNow: 'in the app now', inThisBox: n => `${n} is in this box right now.`, editingItem: n => `${n} has this thing open right now – wait a moment so your changes don’t clash.`,
+  talkH: 'Talk or write to Storrrage', tapTalk: 'Tap and talk', chatPh: 'Write, e.g. “where is the tent?”', simpleMode: 'Simple commands, works offline', aiOn: 'Turn on AI', offlineSimple: 'offline – simple commands',
+  whatSay: 'What can I say? (also without signal)', noSignal: 'Without signal:', noSignalTxt2: 'all the commands above work offline. If the microphone needs signal on your phone, use the microphone on your keyboard instead.'});
+Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på telefonen. Allt synkas också, krypterat, med hushållet.`, nameShown: 'Visas för de andra i hushållet.', loginEmail: 'Inloggad med', mailReminders: 'Mejla mig påminnelser (saker som ska tillbaka, saker som inte använts på länge)', otherEmail: 'Skicka till en annan adress (valfritt)',
+  mailHint: 'Kommer snart. Mejlet säger bara att något behöver kollas – vad det är stannar krypterat i appen.', loginForMore: 'Logga in för att dela med hushållet och få påminnelser via e-post.', logIn: 'Logga in',
+  appearance: 'Utseende', light: 'Ljust', dark: 'Mörkt', auto: 'Automatiskt', advanced: 'Mer', restoreHint: 'Behövs bara för gamla säkerhetskopior. Dina saker skyddas nu av synken med hushållet.',
+  inApp: 'I appen', youTag: '(du)', morePeople: 'Fler i hushållet', morePeopleHint: 'Personer som inte använder appen men äger saker, t.ex. barn. Välj dem som ägare på en sak.', editPlaces: 'Ändra platser', shareTitle: 'Dela mellan telefoner',
+  someone: 'Någon', activeNow: 'i appen nu', inThisBox: n => `${n} är i den här lådan just nu.`, editingItem: n => `${n} har den här saken öppen just nu – vänta en stund så era ändringar inte krockar.`,
+  talkH: 'Prata eller skriv med Storrrage', tapTalk: 'Tryck och prata', chatPh: 'Skriv, t.ex. ”var är tältet?”', simpleMode: 'Enkla kommandon, funkar offline', aiOn: 'Slå på AI', offlineSimple: 'offline – enkla kommandon',
+  whatSay: 'Vad kan jag säga? (även utan täckning)', noSignal: 'Utan täckning:', noSignalTxt2: 'alla kommandon ovan fungerar offline. Om mikrofonen kräver täckning på din telefon, använd mikrofonen på tangentbordet i stället.'});
+
+Object.assign(STR.en, {noPlaceYet: 'No place yet', unsorted: 'Unsorted', addWhat: 'Add', where: 'Where?', notLoggedIn: 'You’re not logged in. Log in to share with your household and get reminders.',
+  household: 'Household', ownerTag: 'you started it', lockedHere: 'Locked on this phone – scan a QR code from another phone', noHousehold: 'Not shared yet', memberSince: 'Member since', inStorage: 'Stored', lastSynced: 'Last synced',
+  inviteWho: 'Who? (optional, e.g. Anna)', invitesSent: 'Invites', joinedOn: d => `joined ${d}`, expired: 'expired', waitingUntil: t => `waiting · valid until ${t}`, invite1: 'Invite', noInvites: 'No invites yet.',
+  unlockTitle: 'Unlock on this phone', unlockHint: 'You’re in a household, but the key only lives on your phones. On another phone in the household: ☰ → Household & sync → Invite someone. Then scan the code here.', scanQR: 'Scan QR code',
+  whatName: 'What’s your name?', startNew: 'Start a new storage', loginWelcome: 'We’ll send a link to your e-mail. Open it on this phone and you’re in – no password.', invitedIntro: 'You’ve been invited to a household! Log in with your e-mail and you’ll come straight into it.'});
+Object.assign(STR.sv, {noPlaceYet: 'Ingen plats än', unsorted: 'Osorterat', addWhat: 'Lägg till', where: 'Var?', notLoggedIn: 'Du är inte inloggad. Logga in för att dela med hushållet och få påminnelser.',
+  household: 'Hushåll', ownerTag: 'du startade det', lockedHere: 'Låst på den här telefonen – skanna en QR-kod från en annan telefon', noHousehold: 'Inte delat än', memberSince: 'Medlem sedan', inStorage: 'Förvarat', lastSynced: 'Senast synkat',
+  inviteWho: 'Vem? (valfritt, t.ex. Anna)', invitesSent: 'Inbjudningar', joinedOn: d => `gick med ${d}`, expired: 'gick ut', waitingUntil: t => `väntar · giltig till ${t}`, invite1: 'Inbjudan', noInvites: 'Inga inbjudningar än.',
+  unlockTitle: 'Lås upp på den här telefonen', unlockHint: 'Du är med i ett hushåll, men nyckeln finns bara på era telefoner. På en annan telefon i hushållet: ☰ → Hushåll & synk → Bjud in någon. Skanna sedan koden här.', scanQR: 'Skanna QR-kod',
+  whatName: 'Vad heter du?', startNew: 'Starta ett nytt förråd', loginWelcome: 'Vi skickar en länk till din e-post. Öppna den på den här telefonen så är du inne – inget lösenord.', invitedIntro: 'Du har blivit inbjuden till ett hushåll! Logga in med din e-post så kommer du direkt in i det.'});
+
+Object.assign(STR.en, {cloudIntro: 'Log in with your e-mail to keep your storage in your account. Then you can use it on your computer and other phones, share it with your household and log out if your phone gets lost.',
+  e2eNote: 'Stored in your account on servers in the EU. Only you and the people you invite can see it.', inviteSafe: 'The code works once, for 24 hours.', connectNow: 'Save in my account',
+  joinOther: 'Join another household (QR)', mergedIntoAccount: 'What was on this phone was added to your account.', logoutQ: 'Log out? Your storage is removed from this device but stays in your account – log in again to get it back.',
+  unsyncedQ: n => `${n} changes haven’t been saved to your account yet (no signal?). Log out anyway? They will be lost.`, logoutAll: 'Log out on all devices', logoutAllQ: 'Log out on all your devices? Use this if a phone is lost. Each device removes your storage the next time it’s online.',
+  logoutAllHint: 'Lost a phone? Log in here or on your computer and choose “Log out on all devices”.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.'});
+Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förrådet i ditt konto. Då kommer du åt det från datorn och andra telefoner, kan dela med hushållet och logga ut om telefonen kommer bort.',
+  e2eNote: 'Sparas i ditt konto på servrar i EU. Bara du och de du bjuder in kan se det.', inviteSafe: 'Koden fungerar en gång i 24 timmar.', connectNow: 'Spara i mitt konto',
+  joinOther: 'Gå med i ett annat hushåll (QR)', mergedIntoAccount: 'Det som fanns på telefonen lades till i ditt konto.', logoutQ: 'Logga ut? Förrådet tas bort från den här enheten men finns kvar i ditt konto – logga in igen så kommer det tillbaka.',
+  unsyncedQ: n => `${n} ändringar har inte sparats i kontot än (ingen täckning?). Logga ut ändå? De försvinner då.`, logoutAll: 'Logga ut på alla enheter', logoutAllQ: 'Logga ut på alla dina enheter? Använd det om en telefon kommit bort. Varje enhet tar bort förrådet nästa gång den är online.',
+  logoutAllHint: 'Tappat telefonen? Logga in här eller på datorn och välj ”Logga ut på alla enheter”.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
+
+Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, wrongAddress: 'Wrong address?', orTapLink: 'Or tap the button in the e-mail (on this device).', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
+Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, wrongAddress: 'Fel adress?', orTapLink: 'Eller tryck på knappen i mejlet (på den här enheten).', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
+
+Object.assign(STR.en, {slogan: 'Know what you have – and where it is.', startNew: 'Start my storage', startNewHint: 'New here? Just enter your name and start. No account needed – everything is saved on your phone.',
+  or: 'or', loginHint: 'Already have an account, or want one? We e-mail you a code – no password. You can share with others and reach everything from your computer.', yourEmail: 'Your e-mail', sendCode: 'Send code',
+  invitedTitle: 'You’re invited!', invitedIntro: 'Enter your e-mail and we’ll send you a code. Then you’re straight into the shared storage.',
+  pitchTitle: 'Create a free account – all you need is your e-mail', pitch1: 'Share with the people you live with', pitch2: 'Reach everything from your computer and other phones', pitch3: 'Safe if your phone gets lost', pitch4: 'More features coming for account holders',
+  fold: 'Fold', unfold: 'Unfold', foldAll: 'Fold all', unfoldAll: 'Unfold all'});
+Object.assign(STR.sv, {slogan: 'Ha koll på allt du har – och var det finns.', startNew: 'Starta mitt förråd', startNewHint: 'Ny här? Skriv bara ditt namn och kör igång. Inget konto behövs – allt sparas på telefonen.',
+  or: 'eller', loginHint: 'Har du redan ett konto, eller vill skapa ett? Vi mejlar en kod – inget lösenord. Då kan du dela med andra och nå allt från datorn.', yourEmail: 'Din e-post', sendCode: 'Skicka kod',
+  invitedTitle: 'Du är inbjuden!', invitedIntro: 'Skriv din e-post så mejlar vi en kod. Sedan kommer du direkt in i det delade förrådet.',
+  pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt från datorn och andra telefoner', pitch3: 'Tryggt om telefonen kommer bort', pitch4: 'Fler funktioner på väg för kontoinnehavare',
+  fold: 'Fäll ihop', unfold: 'Fäll ut', foldAll: 'Fäll ihop alla', unfoldAll: 'Fäll ut alla'});
+
+Object.assign(STR.en, {badEmail: 'Check the e-mail address.', sending: 'Sending…', sendTimeout: 'The mail server didn’t answer in time. Try again in a minute.', mailNotSent: 'The e-mail wasn’t sent', errorCode: 'Details'});
+Object.assign(STR.sv, {badEmail: 'Kolla e-postadressen.', sending: 'Skickar…', sendTimeout: 'Mejlservern svarade inte i tid. Försök igen om en minut.', mailNotSent: 'Mejlet skickades inte', errorCode: 'Detaljer'});
+
+Object.assign(STR.en, {moveLocalQ: n => `This phone has boxes and things (${n}) that aren’t in your account. Move them into your account? They’ll be marked “New” so you can find them.`, moveLocalYes: 'Yes, move them in', moveLocalNo: 'No, remove them', newTag: 'New',
+  logInOrCreate: 'Log in or create an account', yourAccount: 'Your account', peopleTitle: 'People in the household', peopleHint: 'Add everyone who has things here. Invite those who want to use the app themselves.',
+  inAppTag: 'uses the app', invitePending: 'invited', inviteAgain: 'Invite again', inviteToApp: 'Invite', loginToInvite: 'Log in first – then you can invite.', inviteFor: n => `Invite ${n}`, sendInvite: 'Send invite',
+  inviteHint2: 'Or let them scan the code with their phone camera.', inviteMsg: n => `${n} invites you to share our storage in Storrrage:`, storageWord: 'Storage'});
+Object.assign(STR.sv, {moveLocalQ: n => `Telefonen har lådor och saker (${n} st) som inte finns i ditt konto. Flytta in dem i kontot? De markeras ”Ny” så du hittar dem.`, moveLocalYes: 'Ja, flytta in', moveLocalNo: 'Nej, ta bort dem', newTag: 'Ny',
+  logInOrCreate: 'Logga in eller skapa konto', yourAccount: 'Ditt konto', peopleTitle: 'Personer i hushållet', peopleHint: 'Lägg till alla som har saker här. Bjud in dem som själva vill använda appen.',
+  inAppTag: 'använder appen', invitePending: 'inbjuden', inviteAgain: 'Bjud in igen', inviteToApp: 'Bjud in', loginToInvite: 'Logga in först – sedan kan du bjuda in.', inviteFor: n => `Bjud in ${n}`, sendInvite: 'Skicka inbjudan',
+  inviteHint2: 'Eller låt hen skanna koden med telefonens kamera.', inviteMsg: n => `${n} bjuder in dig att dela vårt förråd i Storrrage:`, storageWord: 'Förvaring'});
+
+Object.assign(STR.en, {notSharedYet: 'Your storage isn’t saved in your account yet.', creatingInvite: 'Creating the invite…', inviteFailed: 'Couldn’t create the invite.'});
+Object.assign(STR.sv, {notSharedYet: 'Ditt förråd är inte sparat i kontot än.', creatingInvite: 'Skapar inbjudan…', inviteFailed: 'Kunde inte skapa inbjudan.'});
+
+Object.assign(STR.en, {pasteCode: 'Paste code', noCodeCopied: 'No code copied – copy the digits in the e-mail first.', pasteManually: 'Long-press the field and choose Paste.',
+  nameQ: 'What’s your name?', next: 'Next', hiName: n => `Hi ${n}!`, placeQ: 'What do you call the place where you store things?', kitQ: 'How do you want to start?',
+  kitYes: 'Start kit', kitYesSub: '10 common boxes along three walls – rename or remove as you like', kitNo: 'Start empty', kitDone: 'Your start kit is ready. Tap a box to fill it.',
+  zoneLeft: 'Left wall', zoneBack: 'Back wall', zoneRight: 'Right wall',
+  kitXmas: 'Christmas', kitEaster: 'Easter & holidays', kitTools: 'Tools', kitCamping: 'Camping', kitSport: 'Sports', kitKidsClothes: 'Kids’ clothes', kitBooks: 'Books', kitCables: 'Cables & electronics', kitKitchen: 'Kitchen & china', kitMisc: 'Miscellaneous'});
+Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod kopierad – kopiera siffrorna i mejlet först.', pasteManually: 'Håll inne i fältet och välj Klistra in.',
+  nameQ: 'Vad heter du?', next: 'Nästa', hiName: n => `Hej ${n}!`, placeQ: 'Vad kallar du platsen där du förvarar saker?', kitQ: 'Hur vill du börja?',
+  kitYes: 'Startkit', kitYesSub: '10 vanliga lådor längs tre väggar – byt namn eller ta bort som du vill', kitNo: 'Börja tomt', kitDone: 'Ditt startkit är klart. Tryck på en låda för att fylla den.',
+  zoneLeft: 'Vänster vägg', zoneBack: 'Bakre väggen', zoneRight: 'Höger vägg',
+  kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
+
+Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
+Object.assign(STR.sv, {newThing: 'Ny sak', askAI: 'Fråga · beta', searchWord: 'Sök', newBox: 'Ny låda'});
+
+Object.assign(STR.en, {searchOrAsk: 'Search, or ask Storrrage…', askAbout: q => `Ask Storrrage: “${q}”`});
+Object.assign(STR.sv, {searchOrAsk: 'Sök, eller fråga Storrrage…', askAbout: q => `Fråga Storrrage: ”${q}”`});
+/* ====================================================================
+   Labels that can be re-used, barcodes on things, and moving house
+   ==================================================================== */
+/* ---- labels: a label belongs to a box, but can be moved to another one ---- */
+const labelOf = b => b.label || (b.labelGone ? '' : 'id:' + b.id);
+const boxByLabel = lid => boxes.find(b => !b.loose && labelOf(b) === lid);
+let assignLabelTo = null;   // box id waiting for a label to be scanned
+function newLabelId(){ const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; const r = crypto.getRandomValues(new Uint8Array(6)); r.forEach(x => s += a[x % a.length]); return s; }
+function giveLabel(boxId, lid){
+  boxes.filter(b => b.id !== boxId && labelOf(b) === lid).forEach(o => { const no = clone(o); delete no.label; if (lid === 'id:' + o.id) no.labelGone = true; putBox(no, true); });
+  const nb = clone(findBox(boxId)); if (!nb) return;
+  nb.label = lid; delete nb.labelGone; putBox(nb, true);
+  track('label_assign');
+  toast(tr('labelLinked', nb.code));
+}
+/* everything the camera can read on a box label */
+function handleScan(data){
+  data = String(data || '');
+  if (data.includes('#join=')){ closeSheet(); joinFromLink(data); return true; }
+  let lid = null;
+  if (data.startsWith('STRG:L:')) lid = data.slice(7);
+  else if (data.startsWith('BOXES:id:')) lid = 'id:' + data.slice(9);
+  if (!lid) return false;
+  closeSheet();
+  if (assignLabelTo){ const to = assignLabelTo; assignLabelTo = null; giveLabel(to, lid); openBox(to); return true; }
+  const b = boxByLabel(lid) || (lid.startsWith('id:') ? findBox(lid.slice(3)) : null);
+  if (b && !(b.labelGone && labelOf(b) !== lid)){ openBox(b.id); return true; }
+  newLabelSheet(lid);
+  return true;
+}
+function newLabelSheet(lid){
+  openSheet(`<h3>${ICON.scan} ${tr('newLabelH')}</h3><p class="hint">${tr('newLabelHint')}</p>
+    <div class="menu"><button class="btn primary block" id="nlNew">${tr('newLabelBox')}</button>
+    <button class="btn block" id="nlLink">${tr('newLabelLink')}</button></div>
+    <div class="sheet-foot"><button class="btn" id="nlX">${tr('cancel')}</button></div>`);
+  $('#nlX').onclick = closeSheet;
+  $('#nlNew').onclick = async () => {
+    closeSheet();
+    const n = await askText(tr('boxNameQ'), {placeholder: tr('boxNamePh'), ok: tr('saveBox')}); if (n === null || n === undefined) return;
+    const pid = scopePlace() || places.find(p => !p.inbox)?.id || ensureInbox().id, now = new Date().toISOString();
+    const b = {id: newId(), code: nextCode(pid), name: (n || '').trim() || tr('unnamed'), placeId: pid, items: [], label: lid, createdAt: now, updatedAt: now, checkedAt: now};
+    if (move.active){ b.moveState = 'packed'; }
+    putBox(b, true); track('label_newbox'); openBox(b.id);
+  };
+  $('#nlLink').onclick = () => pickBoxSheet(tr('newLabelLink'), id => { giveLabel(id, lid); openBox(id); });
+}
+function pickBoxSheet(title, cb, filter){
+  const list = realBoxes().filter(filter || (() => true)).sort((x, y) => placeName(x.placeId).localeCompare(placeName(y.placeId)) || byCode(x, y));
+  openSheet(`<h3>${esc(title)}</h3><input class="input" id="pbQ" placeholder="${esc(tr('typeKeyword'))}"><div class="pblist" id="pbL"></div><div class="sheet-foot"><button class="btn" id="pbX">${tr('cancel')}</button></div>`);
+  const draw = () => { const q = $('#pbQ').value.trim().toLowerCase(); $('#pbL').innerHTML = list.filter(b => !q || (b.code + ' ' + b.name + ' ' + placeName(b.placeId)).toLowerCase().includes(q)).map(b => `<button class="prow pick" data-pb="${esc(b.id)}"><span><b>${esc(b.code)}</b> ${esc(b.name)}</span><small>${esc(placeName(b.placeId))}</small></button>`).join('') || `<p class="hint">${tr('nothingHere')}</p>`; };
+  draw(); $('#pbQ').oninput = draw; $('#pbX').onclick = closeSheet;
+  $('#pbL').onclick = e => { const p = e.target.closest('[data-pb]'); if (!p) return; closeSheet(); cb(p.dataset.pb); };
+}
+function labelMenu(b){
+  openSheet(`<h3>${tr('label')} ${esc(b.code)}</h3><div class="labelprev">${qrSvg(labelText(b), 3)}</div>
+    <div class="menu"><button class="btn primary block" id="lmPrint">${tr('printLabel')}</button>
+    <button class="btn block" id="lmScan">${tr('useOtherLabel')}</button>
+    ${labelOf(b) ? `<button class="btn block" id="lmMove">${tr('moveLabel')}</button>` : ''}</div>
+    <p class="proof">${tr('labelMenuHint')}</p>
+    <div class="sheet-foot"><button class="btn" id="lmX">${tr('close')}</button></div>`);
+  $('#lmX').onclick = closeSheet;
+  $('#lmPrint').onclick = () => { closeSheet(); labels([findBox(b.id)]); };
+  $('#lmScan').onclick = () => { assignLabelTo = b.id; scanSheet(); };
+  if ($('#lmMove')) $('#lmMove').onclick = () => { const lid = labelOf(findBox(b.id)); pickBoxSheet(tr('moveLabel'), id => { giveLabel(id, lid); openBox(id); }, x => x.id !== b.id); };
+}
+async function blankLabels(){
+  const v = await askText(tr('blankHowMany'), {value: '12', placeholder: '12', ok: tr('printLabel')}); if (!v) return;
+  const n = Math.max(1, Math.min(60, parseInt(v, 10) || 12));
+  const ls = Array.from({length: n}, () => `<div class="l"><div class="q">${qrSvg('STRG:L:' + newLabelId(), 6)}</div><div class="w"><div class="ln"></div><div class="ln"></div></div></div>`).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storrrage labels</title><style>
+    body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
+    .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
+    .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.w{flex:1}.ln{border-bottom:1.5px solid #999;height:12mm}
+    p{color:#555}@media print{p{display:none}}</style></head><body><p>${esc(tr('blankPrintHint'))}</p><div class="g">${ls}</div></body></html>`;
+  track('labels_blank', {n});
+  deliver('storrrage-labels.html', new Blob([html], {type: 'text/html'}), tr('blankLabels'));
+}
+
+/* ---- barcodes on things: fill in name and brand ---- */
+async function lookupBarcode(code){
+  const tries = [
+    async () => { const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,brands`); const j = await r.json(); const p = j && j.product; return p && p.product_name ? {name: p.product_name, brand: (p.brands || '').split(',')[0].trim()} : null; },
+    async () => { const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`); const j = await r.json(); const p = j && j.items && j.items[0]; return p && p.title ? {name: p.title, brand: p.brand || '', model: p.model || ''} : null; }
+  ];
+  for (const t of tries){ try { const r = await t(); if (r) return r; } catch {} }
+  return null;
+}
+function barcodeSheet(onCode){
+  let stream = null, done = false, det = null;
+  const stop = () => { done = true; if (stream) stream.getTracks().forEach(t => t.stop()); };
+  openSheet(`<h3>${tr('scanBarcode')}</h3><video id="bcCam" playsinline muted></video><p class="hint" id="bcMsg">${tr('pointBarcode')}</p>
+    <div class="vtype"><input class="input" id="bcIn" inputmode="numeric" placeholder="7310500000000"><button class="btn primary" id="bcGo">${tr('ok')}</button></div>
+    <div class="sheet-foot"><button class="btn" id="bcX">${tr('close')}</button></div>`, stop);
+  $('#bcX').onclick = closeSheet;
+  const finish = code => { code = String(code || '').replace(/\D/g, ''); if (code.length < 6) return; stop(); closeSheet(); onCode(code); };
+  $('#bcGo').onclick = () => finish($('#bcIn').value);
+  $('#bcIn').addEventListener('keydown', e => { if (e.key === 'Enter') finish(e.target.value); });
+  const video = $('#bcCam');
+  if (!('BarcodeDetector' in window) || !navigator.mediaDevices){ video.hidden = true; $('#bcMsg').textContent = tr('noBarcodeCam'); return; }
+  try { det = new BarcodeDetector({formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128']}); } catch { video.hidden = true; $('#bcMsg').textContent = tr('noBarcodeCam'); return; }
+  navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(s => {
+    if (done){ s.getTracks().forEach(t => t.stop()); return; }
+    stream = s; video.srcObject = s; video.play();
+    const tick = async () => {
+      if (done) return;
+      try { if (video.readyState >= 2){ const r = await det.detect(video); if (r && r[0] && r[0].rawValue){ finish(r[0].rawValue); return; } } } catch {}
+      setTimeout(tick, 180);
+    };
+    tick();
+  }).catch(() => { video.hidden = true; $('#bcMsg').textContent = tr('camBlocked'); });
+}
+function scanItemBarcode(){
+  if (flushItem) flushItem();
+  barcodeSheet(async code => {
+    toast(tr('lookingUp'));
+    const p = navigator.onLine ? await lookupBarcode(code) : null;
+    saveItem(x => {
+      x.ean = code;
+      if (p){ if (!x.name || x.name === tr('unnamed')) x.name = p.name.slice(0, 80); if (p.brand && !x.brand) x.brand = p.brand.slice(0, 60); if (p.model && !x.model) x.model = p.model.slice(0, 60); }
+    }, true);
+    track('barcode', {found: !!p});
+    toast(p ? tr('barcodeFound', p.name.slice(0, 40)) : tr('barcodeSaved'));
+    render();
+  });
+}
+
+/* ---- moving house: runs next to the normal storage, boxes get a room and a state ---- */
+let move = {active: false, rooms: []};
+const MOVE_STATES = ['packed', 'moved', 'unpacked'];
+const DEFAULT_ROOMS = {sv: ['Kök', 'Vardagsrum', 'Sovrum', 'Barnrum', 'Badrum', 'Hall', 'Förråd'], en: ['Kitchen', 'Living room', 'Bedroom', 'Kids’ room', 'Bathroom', 'Hall', 'Storage'], da: ['Køkken', 'Stue', 'Soveværelse', 'Børneværelse', 'Badeværelse', 'Entré', 'Depot'], nb: ['Kjøkken', 'Stue', 'Soverom', 'Barnerom', 'Bad', 'Gang', 'Bod'], fi: ['Keittiö', 'Olohuone', 'Makuuhuone', 'Lastenhuone', 'Kylpyhuone', 'Eteinen', 'Varasto']};
+const moveBoxes = () => realBoxes().filter(b => b.moveState);
+function saveMove(){ metaPut('move', move).catch(() => {}); }
+let moveFilter = '';
+function renderMove(){
+  if (!move.active){
+    app.innerHTML = `${crumbs([{label: tr('moveTitle').toUpperCase()}])}<div class="moveintro"><div class="mvicon">${ICON.truck}</div><h2>${tr('moveIntroH')}</h2><p class="hint">${tr('moveIntro')}</p>
+      <button class="btn primary block" data-act="movestart">${tr('moveStart')}</button></div>`;
+    return;
+  }
+  const all = moveBoxes(), cnt = s => all.filter(b => b.moveState === s).length, done = cnt('unpacked');
+  const list = all.filter(b => !moveFilter || (moveFilter === '-' ? !b.moveRoom : b.moveRoom === moveFilter)).sort((x, y) => MOVE_STATES.indexOf(x.moveState) - MOVE_STATES.indexOf(y.moveState) || byCode(x, y));
+  const rooms = [...new Set([...(move.rooms || []), ...all.map(b => b.moveRoom).filter(Boolean)])];
+  app.innerHTML = `${crumbs([{label: tr('moveTitle').toUpperCase()}])}
+    <div class="moveprog"><div class="mpbar"><i style="width:${all.length ? Math.round(done / all.length * 100) : 0}%"></i></div>
+      <div class="mpcounts">${MOVE_STATES.map(s => `<span class="mpc ${s}"><b>${cnt(s)}</b> ${tr('mv_' + s)}</span>`).join('')}</div></div>
+    <div class="chips quick"><button class="chipbtn${!moveFilter ? ' on' : ''}" data-mvf="">${tr('allRooms')}</button>${rooms.map(r => `<button class="chipbtn${moveFilter === r ? ' on' : ''}" data-mvf="${esc(r)}">${esc(r)} <small>${all.filter(b => b.moveRoom === r).length}</small></button>`).join('')}</div>
+    <div class="mvlist">${list.map(b => `<div class="mvrow ${b.moveState}"><button class="mvopen" data-open="${esc(b.id)}"><span class="mvico">${boxArt(boxNum(b))}</span><span class="mvtx"><b>${esc(b.name || b.code)}</b><small>${esc(b.code)} · ${(b.items || []).length} ${tr('items').toLowerCase()}</small></span></button>
+      <button class="mvroom" data-mvroom="${esc(b.id)}">${esc(b.moveRoom || tr('pickRoom'))}</button>
+      <button class="mvstate ${b.moveState}" data-mvnext="${esc(b.id)}">${tr('mv_' + b.moveState)}</button></div>`).join('') || `<p class="hint center">${tr('moveEmpty')}</p>`}</div>
+    <div class="mvactions"><button class="btn primary block" data-act="movenew">${tr('moveNewBox')}</button>
+      <button class="btn block" data-act="moveadd">${tr('moveAddExisting')}</button>
+      <button class="btn block" data-act="movelabels">${tr('moveLabels')}</button>
+      <button class="btn block" data-act="moverooms">${tr('editRooms')}</button>
+      <button class="btn danger block" data-act="moveend">${tr('moveEnd')}</button></div>`;
+  app.querySelectorAll('[data-mvf]').forEach(c => c.onclick = () => { moveFilter = c.dataset.mvf; render(); });
+  app.querySelectorAll('[data-mvnext]').forEach(c => c.onclick = () => { const nb = clone(findBox(c.dataset.mvnext)); nb.moveState = MOVE_STATES[(MOVE_STATES.indexOf(nb.moveState) + 1) % 3]; putBox(nb); track('move_state', {s: nb.moveState}); });
+  app.querySelectorAll('[data-mvroom]').forEach(c => c.onclick = () => roomPick(c.dataset.mvroom));
+}
+function roomPick(boxId){
+  const b = findBox(boxId); const rooms = move.rooms || [];
+  openSheet(`<h3>${tr('pickRoom')} – ${esc(b.code)}</h3><div class="chips">${rooms.map(r => `<button class="chipbtn${b.moveRoom === r ? ' on' : ''}" data-rp="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+    <div class="vtype" style="margin-top:10px"><input class="input" id="rpNew" placeholder="${esc(tr('newRoom'))}"><button class="btn" id="rpAdd">${tr('add')}</button></div>
+    <div class="sheet-foot"><button class="btn" id="rpX">${tr('close')}</button></div>`);
+  const set = r => { const nb = clone(findBox(boxId)); nb.moveRoom = r; putBox(nb); closeSheet(); };
+  sheet.querySelectorAll('[data-rp]').forEach(c => c.onclick = () => set(c.dataset.rp));
+  $('#rpAdd').onclick = () => { const r = $('#rpNew').value.trim(); if (!r) return; if (!rooms.includes(r)){ move.rooms = [...rooms, r]; saveMove(); } set(r); };
+  $('#rpX').onclick = closeSheet;
+}
+function moveAction(a){
+  if (a === 'movestart'){ move = {active: true, rooms: DEFAULT_ROOMS[lang] || DEFAULT_ROOMS.en, startedAt: new Date().toISOString()}; saveMove(); track('move_start'); return render(); }
+  if (a === 'movenew') return (async () => {
+    const n = await askText(tr('boxNameQ'), {placeholder: tr('boxNamePh'), ok: tr('saveBox')}); if (n === null || n === undefined) return;
+    const pid = scopePlace() || places.find(p => !p.inbox)?.id || ensureInbox().id, now = new Date().toISOString();
+    const b = {id: newId(), code: nextCode(pid), name: (n || '').trim() || tr('unnamed'), placeId: pid, items: [], moveState: 'packed', createdAt: now, updatedAt: now, checkedAt: now};
+    putBox(b, true); render(); roomPick(b.id);
+  })();
+  if (a === 'moveadd') return pickBoxSheet(tr('moveAddExisting'), id => { const nb = clone(findBox(id)); nb.moveState = 'packed'; putBox(nb); }, b => !b.moveState);
+  if (a === 'movelabels'){ const l = moveBoxes(); if (!l.length) return toast(tr('moveEmpty')); return labels(l); }
+  if (a === 'moverooms') return (async () => { const v = await askText(tr('moveRooms'), {value: (move.rooms || []).join(', '), ok: tr('save')}); if (v === null || v === undefined) return; move.rooms = v.split(',').map(x => x.trim()).filter(Boolean); saveMove(); render(); })();
+  if (a === 'moveend') return askConfirm(tr('moveEndQ'), tr('moveEnd')).then(y => { if (!y) return; moveBoxes().forEach(b => { const nb = clone(b); delete nb.moveState; delete nb.moveRoom; putBox(nb, true); }); move = {active: false, rooms: move.rooms}; saveMove(); track('move_end'); toast(tr('moveEnded')); render(); });
+}
+function moveBanner(){
+  if (!move.active) return '';
+  const all = moveBoxes(), done = all.filter(b => b.moveState === 'unpacked').length;
+  return `<button class="movebanner" data-act="gomove">${ICON.truck}<span>${tr('moveOngoing', done, all.length)}</span><b>›</b></button>`;
+}
+
+Object.assign(STR.en, {editRooms: 'Edit rooms', labelLinked: c => `The label now belongs to ${c}.`, newLabelH: 'New label', newLabelHint: 'This label isn’t used yet. What should it belong to?', newLabelBox: 'Create a new box', newLabelLink: 'Link to an existing box', boxNameQ: 'What’s in the box?',
+  printLabel: 'Print label', useOtherLabel: 'Use another label (scan it)', moveLabel: 'Move this label to another box', labelMenuHint: 'Labels can be moved between boxes. Pre-printed blank labels are linked the first time you scan them.',
+  blankLabels: 'Blank labels', blankHowMany: 'How many blank labels?', blankPrintHint: 'Print, cut out and stick them on boxes. The first scan links each label to a box.',
+  scanBarcode: 'Scan barcode', pointBarcode: 'Point the camera at the barcode.', noBarcodeCam: 'Barcode scanning isn’t available in this browser. Type the number instead.', lookingUp: 'Looking up the product…', barcodeFound: n => `Found: ${n}`, barcodeSaved: 'Barcode saved. No product info found – write the name yourself.',
+  moveTitle: 'Moving', moveIntroH: 'Moving house?', moveIntro: 'Give boxes a room in your new home and follow them from packed to moved to unpacked. Your normal storage keeps working as usual.', moveStart: 'Start a move',
+  mv_packed: 'Packed', mv_moved: 'Moved', mv_unpacked: 'Unpacked', allRooms: 'All rooms', pickRoom: 'Choose room', newRoom: 'New room', moveEmpty: 'No boxes in the move yet.', moveNewBox: 'New moving box', moveAddExisting: 'Add existing boxes',
+  moveLabels: 'Print labels for the move', moveRooms: 'Rooms (separate with commas)', moveEnd: 'Finish the move', moveEndQ: 'Finish the move? The boxes stay where they are, without room and moving status.', moveEnded: 'Move finished. Welcome home!', moveOngoing: (d, n) => `Moving: ${d} of ${n} boxes unpacked`});
+Object.assign(STR.sv, {editRooms: 'Ändra rum', labelLinked: c => `Etiketten hör nu till ${c}.`, newLabelH: 'Ny etikett', newLabelHint: 'Den här etiketten används inte än. Vad ska den höra till?', newLabelBox: 'Skapa en ny låda', newLabelLink: 'Koppla till en befintlig låda', boxNameQ: 'Vad finns i lådan?',
+  printLabel: 'Skriv ut etikett', useOtherLabel: 'Använd en annan etikett (skanna den)', moveLabel: 'Flytta etiketten till en annan låda', labelMenuHint: 'Etiketter kan flyttas mellan lådor. Förtryckta tomma etiketter kopplas första gången du skannar dem.',
+  blankLabels: 'Tomma etiketter', blankHowMany: 'Hur många tomma etiketter?', blankPrintHint: 'Skriv ut, klipp och sätt på lådorna. Första skanningen kopplar etiketten till en låda.',
+  scanBarcode: 'Skanna streckkod', pointBarcode: 'Rikta kameran mot streckkoden.', noBarcodeCam: 'Streckkodsläsning finns inte i den här webbläsaren. Skriv in numret i stället.', lookingUp: 'Söker produkten…', barcodeFound: n => `Hittade: ${n}`, barcodeSaved: 'Streckkoden sparad. Ingen produktinfo hittades – skriv namnet själv.',
+  moveTitle: 'Flytt', moveIntroH: 'Ska du flytta?', moveIntro: 'Ge lådorna ett rum i nya hemmet och följ dem från packad till flyttad till uppackad. Ditt vanliga förråd fungerar som vanligt under tiden.', moveStart: 'Starta en flytt',
+  mv_packed: 'Packad', mv_moved: 'Flyttad', mv_unpacked: 'Uppackad', allRooms: 'Alla rum', pickRoom: 'Välj rum', newRoom: 'Nytt rum', moveEmpty: 'Inga lådor i flytten än.', moveNewBox: 'Ny flyttlåda', moveAddExisting: 'Lägg till befintliga lådor',
+  moveLabels: 'Skriv ut etiketter för flytten', moveRooms: 'Rum (separera med komma)', moveEnd: 'Avsluta flytten', moveEndQ: 'Avsluta flytten? Lådorna stannar där de är, utan rum och flyttstatus.', moveEnded: 'Flytten är klar. Välkommen hem!', moveOngoing: (d, n) => `Flytt: ${d} av ${n} lådor uppackade`});
+
+/* ---- warranties, total value and lending ---- */
+const daysTo = d => Math.round((new Date(d + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 864e5);
+const warrantySoon = () => boxes.flatMap(b => (b.items || []).filter(it => it.warranty && daysTo(it.warranty) >= -7 && daysTo(it.warranty) <= 30).map(it => [it, b]));
+const valueOf = filter => boxes.filter(filter).reduce((s, b) => s + (b.items || []).reduce((t, i) => t + (+i.value || 0) * Math.max(1, +i.qty || 1), 0), 0);
+const valueLine = filter => { const v = valueOf(filter); return v ? ` · ${tr('worth', kr(v))}` : ''; };
+const loans = () => boxes.flatMap(b => (b.items || []).filter(it => it.status === 'On loan').map(it => [it, b]));
+const loanDays = it => { const s = it.loanSince || (it.updatedAt || '').slice(0, 10); return s ? -daysTo(s) : 0; };
+const loanOld = () => loans().filter(([it]) => loanIsDue(it));
+const attention = () => warrantySoon().length + loanOld().length;
+function renderLoans(){
+  const all = loans(), groups = new Map();
+  all.forEach(e => { const k = (e[0].loanTo || '').trim() || tr('unknownPerson'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(e); });
+  app.innerHTML = `${crumbs([{label: tr('loansTitle').toUpperCase()}])}<p class="hint" style="margin-top:10px">${tr('loansHint')}</p>
+    ${all.length ? [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'sv')).map(([who, list]) => `<section class="loangrp"><h3>👤 ${esc(who)} <small>${list.length}</small></h3>
+      ${list.map(([it, b]) => { const d = loanDays(it); return `<div class="loanrow${d > 30 ? ' old' : ''}"><button class="mvopen" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-open-item="1"><span class="mvtx"><b>${esc(it.name)}</b><small>${esc(tr('lentSince', d))} · ${esc(b.loose ? placeName(b.placeId) : b.code + ' ' + b.name)}</small></span></button>
+        <button class="btn small" data-loanask="${esc(b.id)}:${esc(it.id)}">${tr('remindLoan')}</button><button class="btn primary small" data-loanback="${esc(b.id)}:${esc(it.id)}">${tr('gotBack')}</button></div>`; }).join('')}</section>`).join('')
+      : `<p class="hint center">${tr('loansEmpty')}</p>`}`;
+  app.querySelectorAll('[data-loanback]').forEach(c => c.onclick = () => { const [bid, iid] = c.dataset.loanback.split(':'); const nb = clone(findBox(bid)), x = nb.items.find(i => i.id === iid); if (!x) return; delete x.status; delete x.loanTo; delete x.loanSince; x.updatedAt = new Date().toISOString(); putBox(nb); track('loan_back'); toast(tr('putBackDone', x.name, nb.loose ? placeName(nb.placeId) : nb.code)); });
+  app.querySelectorAll('[data-loanask]').forEach(c => c.onclick = () => { const [bid, iid] = c.dataset.loanask.split(':'); const x = (findBox(bid).items || []).find(i => i.id === iid); if (!x) return; const txt = tr('loanMsg', (x.loanTo || '').trim(), x.name, me); track('loan_remind'); if (navigator.share) navigator.share({text: txt}).catch(() => {}); else navigator.clipboard.writeText(txt).then(() => toast(tr('copied'))).catch(() => {}); });
+  app.querySelectorAll('[data-open-item]').forEach(c => c.onclick = () => navigate({name: 'item', boxId: c.dataset.box, itemId: c.dataset.item}));
+}
+Object.assign(STR.en, {f_warranty: 'Warranty until', warrantyLeft: n => n < 0 ? `Warranty ended ${-n} days ago` : n === 0 ? 'Warranty ends today' : `Warranty ends in ${n} days`, warrantyH: 'Warranty ending soon', worth: v => `worth ${v}`,
+  loansTitle: 'Lent out', loansHint: 'Things you’ve lent, by person. Set a thing’s status to “On loan” and write who has it.', loansEmpty: 'Nothing is lent out. 🎉', unknownPerson: 'Someone', lentSince: d => d <= 0 ? 'lent today' : d === 1 ? 'lent 1 day ago' : `lent ${d} days ago`,
+  gotBack: 'Got it back', remindLoan: 'Remind', loanMsg: (who, item, me) => `Hi${who ? ' ' + who : ''}! Do you still have my ${item}? I’d like it back when you’re done 🙂${me ? ' /' + me : ''}`, loansOld: 'Lent out for over a month'});
+Object.assign(STR.sv, {f_warranty: 'Garanti till', warrantyLeft: n => n < 0 ? `Garantin gick ut för ${-n} dagar sedan` : n === 0 ? 'Garantin går ut i dag' : `Garantin går ut om ${n} dagar`, warrantyH: 'Garanti går ut snart', worth: v => `värt ${v}`,
+  loansTitle: 'Utlånat', loansHint: 'Saker du lånat ut, per person. Sätt status ”Utlånad” på en sak och skriv vem som har den.', loansEmpty: 'Inget är utlånat. 🎉', unknownPerson: 'Någon', lentSince: d => d <= 0 ? 'utlånad i dag' : d === 1 ? 'utlånad för 1 dag sedan' : `utlånad för ${d} dagar sedan`,
+  gotBack: 'Fått tillbaka', remindLoan: 'Påminn', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du kvar min ${item}? Vill gärna ha tillbaka den när du är klar 🙂${me ? ' /' + me : ''}`, loansOld: 'Utlånat i över en månad'});
+
+/* ---- notifications on the phone: reminders, warranty, loans, things that should be back ---- */
+let notifOn = false, notified = {};
+function alertsNow(){
+  const out = [], t = today();
+  boxes.forEach(b => (b.items || []).forEach(it => {
+    const where = b.loose ? placeName(b.placeId) : `${b.code} ${b.name}`;
+    if (isDue(it)) out.push({key: `due:${it.id}:${notifyAt(it)}`, title: tr('n_dueT'), body: tr('n_due', it.name), box: b.id, item: it.id});
+    if (it.warranty){ const d = daysTo(it.warranty); if (d <= 30 && d >= -1) out.push({key: `w:${it.id}:${it.warranty}:${d <= 7 ? 7 : 30}`, title: tr('warrantyH'), body: `${it.name}: ${tr('warrantyLeft', d)}`, box: b.id, item: it.id}); }
+    if (it.status === 'On loan' && loanIsDue(it)) out.push({key: `loan:${it.id}:${it.loanDue || ''}`, title: tr('loansTitle'), body: tr('n_loan', it.name, (it.loanTo || '').trim() || tr('unknownPerson')), box: b.id, item: it.id});
+    if (isOut(it) && outOverdue(it)) out.push({key: `out:${it.id}:${it.out.until}`, title: tr('backQ'), body: tr('n_out', it.name, where), box: b.id, item: it.id});
+  }));
+  return out;
+}
+/* Rules (see NOTISER.md): nothing changed in the last 24 h triggers anything, at most one notification
+   per check (several = one summary), at least 6 h between notifications, and none between 21 and 08. */
+const NOTIF_GAP_H = 6, QUIET_FROM = 21, QUIET_TO = 8, GRACE_H = 24;
+const quietNow = () => { const h = new Date().getHours(); return h >= QUIET_FROM || h < QUIET_TO; };
+const recentlyChanged = it => it.updatedAt && (Date.now() - Date.parse(it.updatedAt)) < GRACE_H * 3600e3;
+async function notifyAlerts(){
+  if (!notifOn || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (quietNow()) return;
+  const last = +(notified._last || 0);
+  if (Date.now() - last < NOTIF_GAP_H * 3600e3) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const byKey = new Map(boxes.flatMap(b => (b.items || []).map(it => [it.id, it])));
+  const fresh = alertsNow().filter(a => !notified[a.key] && !recentlyChanged(byKey.get(a.item) || {}));
+  if (fresh.length){
+    const a = fresh[0], many = fresh.length > 1;
+    const title = many ? 'Storrrage' : a.title, body = many ? tr('n_many', fresh.length, a.body) : a.body;
+    const opts = {body, tag: 'storrrage', renotify: true, icon: 'icon-192.png', badge: 'icon-192.png', data: many ? {} : {box: a.box, item: a.item}};
+    try { if (reg && reg.showNotification) await reg.showNotification(title, opts); else new Notification(title, opts); } catch {}
+    fresh.forEach(x => { notified[x.key] = today(); });
+    notified._last = Date.now();
+  }
+  if (fresh.length){ const keep = {_last: notified._last}; Object.entries(notified).forEach(([k, d]) => { if (k !== '_last' && daysSince(d) < 120) keep[k] = d; }); notified = keep; metaPutRaw('notified', notified).catch(() => {}); track('notified', {n: fresh.length}); }
+}
+async function turnOnNotifications(){
+  if (!('Notification' in window)){ toast(tr('notifUnsupported')); return false; }
+  let p = Notification.permission;
+  if (p !== 'granted') p = await Notification.requestPermission().catch(() => 'denied');
+  if (p !== 'granted'){ toast(tr('notifBlocked')); return false; }
+  notifOn = true; metaPutRaw('notifOn', true).catch(() => {});
+  try { const reg = await navigator.serviceWorker.ready; if (reg.periodicSync) await reg.periodicSync.register('storrrage-check', {minInterval: 12 * 3600 * 1000}); } catch {}
+  track('notif_on');
+  notifyAlerts();
+  return true;
+}
+/* something changed by someone else in the household while the app was in the background */
+let hhChanges = {};
+function noteHouseholdChange(updatedBy, box){
+  if (!updatedBy || updatedBy === myId() || !box || box.loose) return;
+  const who = memberNames[updatedBy] || tr('someone');
+  (hhChanges[who] = hhChanges[who] || new Set()).add(box.name || box.code);
+}
+async function flushHouseholdChanges(){
+  const entries = Object.entries(hhChanges); hhChanges = {};
+  if (!entries.length || !notifOn || document.visibilityState === 'visible' || Notification.permission !== 'granted' || quietNow()) return;
+  if (Date.now() - (+(notified._hh || 0)) < 2 * 3600e3) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const who = entries.map(e => e[0]).join(', '), list = [...new Set(entries.flatMap(e => [...e[1]]))];
+  try { if (reg) await reg.showNotification('Storrrage', {body: tr('n_hh', who, list.slice(0, 3).join(', ') + (list.length > 3 ? ' …' : '')), tag: 'storrrage-hh', icon: 'icon-192.png'}); } catch {}
+  notified._hh = Date.now(); metaPutRaw('notified', notified).catch(() => {});
+}
+navigator.serviceWorker?.addEventListener?.('message', e => { const d = e.data || {}; if (d.open && d.box) navigate(d.item ? {name: 'item', boxId: d.box, itemId: d.item} : {name: 'box', boxId: d.box}); });
+
+/* ---- loans: since when, and when to ask for it back ---- */
+const addDays = (d, n) => { const x = new Date((d || today()) + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const loanIsDue = it => it.loanDue ? it.loanDue <= today() : loanDays(it) > 30;
+function loanFields(it){
+  const since = it.loanSince || today(), due = it.loanDue || '';
+  const opts = [[7, tr('w1')], [14, tr('w2')], [30, tr('m1')], [90, tr('m3')]];
+  const cur = due ? Math.round((new Date(due) - new Date(since)) / 864e5) : null;
+  return `<div class="fl"><input data-f="loanSince" type="date" value="${esc(since)}"><label class="always">${tr('loanSinceL')}</label></div>
+    <div class="fl group"><label class="always">${tr('remindBack')}</label><div class="chips tight">${opts.map(([n, l]) => `<button class="chipbtn small${cur === n ? ' on' : ''}" data-loandue="${n}">${l}</button>`).join('')}<button class="chipbtn small${due && !opts.some(o => o[0] === cur) ? ' on' : ''}" data-loandue="pick">${tr('pickDate')}</button></div>
+    ${due && !opts.some(o => o[0] === cur) || showLoanPick ? `<input data-f="loanDue" type="date" value="${esc(due)}" style="margin-top:8px">` : ''}${due ? `<p class="wnote">${esc(tr('remindOn', due))}</p>` : ''}</div>`;
+}
+let showLoanPick = false, showRemindPick = false;
+function remindFields(it){
+  const m = +(it.remindMonths || 0), at = it.remindAt || '';
+  const opts = [[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]];
+  return `<div class="fl group"><label class="always">${tr('remind')}</label><div class="chips tight"><button class="chipbtn small${!m && !at ? ' on' : ''}" data-remind="0">${tr('noRemind')}</button>${opts.map(([v, l]) => `<button class="chipbtn small${m === v && !at ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="chipbtn small${at ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button></div>
+    ${at || showRemindPick ? `<input data-f="remindAt" type="date" value="${esc(at)}" style="margin-top:8px">` : ''}</div>`;
+}
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-remind]'), l = e.target.closest('[data-loandue]');
+  if (!r && !l) return;
+  if (flushItem) flushItem();
+  if (r){ const v = r.dataset.remind; if (v === 'pick'){ showRemindPick = true; saveItem(x => { delete x.remindMonths; }, true); return; } showRemindPick = false; saveItem(x => { delete x.remindAt; if (+v) x.remindMonths = +v; else delete x.remindMonths; }, true); return; }
+  const v = l.dataset.loandue;
+  if (v === 'pick'){ showLoanPick = true; render(); return; }
+  showLoanPick = false; saveItem(x => { x.loanDue = addDays(x.loanSince || today(), +v); }, true);
+});
+
+Object.assign(STR.en, {n_many: (n, first) => `${n} things need a look. First: ${first}`, notifTitle: 'Notifications', notifSetting: 'Notify me on this phone', notifHint: 'Reminders, warranties that end, things that should be back, and changes others in your household make.', notifBlocked: 'Notifications are blocked. Allow them for Storrrage in the phone’s settings.', notifUnsupported: 'This browser can’t show notifications.', notifOnToast: 'Notifications are on.',
+  n_dueT: 'Time to check', n_due: n => `${n} hasn’t been used in a while. Keep it, or sell it?`, n_loan: (n, w) => `${w} still has your ${n}. Time to ask for it back?`, n_out: (n, w) => `Is ${n} back in ${w}?`, n_hh: (w, list) => `${w} made changes: ${list}`,
+  loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to box ${c}`, boxInsideX: c => `Box inside ${c}`});
+Object.assign(STR.sv, {n_many: (n, first) => `${n} saker behöver kollas. Först: ${first}`, notifTitle: 'Notiser', notifSetting: 'Skicka notiser till den här telefonen', notifHint: 'Påminnelser, garantier som går ut, saker som borde vara tillbaka och ändringar som andra i hushållet gör.', notifBlocked: 'Notiser är blockerade. Tillåt dem för Storrrage i telefonens inställningar.', notifUnsupported: 'Den här webbläsaren kan inte visa notiser.', notifOnToast: 'Notiser är på.',
+  n_dueT: 'Dags att kolla', n_due: n => `${n} har inte använts på länge. Behålla eller sälja?`, n_loan: (n, w) => `${w} har fortfarande din ${n}. Dags att be om den tillbaka?`, n_out: (n, w) => `Är ${n} tillbaka i ${w}?`, n_hh: (w, list) => `${w} har gjort ändringar: ${list}`,
+  loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i lådan ${c}`, boxInsideX: c => `Låda inuti ${c}`});
+
+STR.da = {
+  space: 'RUM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 KASSE' : `${n} KASSER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `KASSE ${n}`,
+  allPlaces: 'Alle steder', addPlace: '+ Sted', notInBox: 'Ikke i en kasse', notInBoxShort: 'ikke i en kasse',
+  emptyPlace: 'Tryk på + for at tilføje en kasse eller noget, der ikke ligger i en kasse, fx en cykel.',
+  addItem: 'Tilføj ting', addSeveral: 'Tilføj flere', addThingChoice: 'Tilføj ting', addMultipleChoice: 'Tilføj flere', addBoxChoice: 'Tilføj kasse', item: 'ting', items: 'ting', editBox: 'Rediger kasse', label: 'Etiket',
+  findStuff: 'FIND DINE TING!', typeKeyword: 'Skriv et søgeord', searchIn: 'Søg i', everywhere: 'Overalt', allOf: p => `Hele ${p}`,
+  boxesH: 'Kasser', similar: 'Lignende ting', noMatch: q => `Intet matcher “${q}”. Prøv et andet ord.`, nothingHere: 'Der er intet her endnu.',
+  welcome: 'Hold styr på, hvad der står hvor: kasser, ting, fotos og kvitteringer. Find alt ved at søge eller bare spørge.',
+  yourName: 'Dit navn', getStarted: 'Kom i gang', noAccount: 'Ingen konto nødvendig. Alt bliver på telefonen.', writeName: 'Skriv dit navn først.',
+  storrrage: 'STORRRAGE', profile: 'Profil', settings: 'Indstillinger', notifications: 'Notifikationer', premium: 'Premium',
+  version: v => `Storrrage version ${v}`, household: 'Husstand', addName: 'Tilføj et navn', add: 'Tilføj', you: '(dig)', remove: 'Fjern',
+  householdHint: 'Bruges til “hvis er det” på ting, og når du taler med Storrrage (“Elsas støvler”).', noOne: 'Ingen tilføjet endnu.',
+  aiAssistant: 'AI-assistent', off: 'Fra', storagePlaces: 'Opbevaringssteder', backupNow: 'Tag backup nu', never: 'Aldrig',
+  restore: 'Gendan fra backup', insurance: 'Forsikringsrapport', labelsAll: 'Etiketter til alle kasser', scanLabel: 'Scan en etiket', language: 'Sprog',
+  usage: mb => `Alt gemmes kun på denne telefon. Storrrage bruger ca. ${mb} MB.`,
+  dueIntro: 'Dem her har du ikke brugt i et stykke tid. Værd at beholde, eller tid til at sælge?', lastUsedOn: d => `Sidst brugt ${d}`,
+  usedRecently: 'Brugt for nylig', markSale: 'Sæt til salg', nothingDue: 'Intet kræver din opmærksomhed. Sæt “Påmind mig hvis ubrugt” på en ting for at få et puf.',
+  prem1: 'Del opbevaring med husstanden', prem2: 'Sælg på DBA, Tradera og Vinted', prem3: 'Login og synk mellem telefoner', premLater: 'Kommer senere. Alt du bruger nu er gratis.',
+  whatIsIt: 'Hvad er det?', whereIs: 'Hvor den er', addDetail: 'Tilføj detaljer', lastUsed: 'Sidst brugt', remind: 'Påmind mig hvis ubrugt', noRemind: 'Ingen påmindelse',
+  remindM: m => m === 12 ? 'Efter 1 år' : m === 24 ? 'Efter 2 år' : `Efter ${m} måneder`, notify: d => `påmind ${d}`,
+  attachments: 'Bilag', addAttach: '+ Tilføj kvittering, garanti eller manual', tags: 'Tags',
+  registered: (d, by) => `Registreret ${d}${by ? ` af ${by}` : ''}.`, storedSince: d => `Opbevaret siden ${d}.`, changed: d => `Sidst ændret ${d}.`,
+  delItem: 'Slet ting', done: 'Færdig', save: 'Gem', saveAnother: 'Gem + tilføj en til', saved: 'Gemt.', savedNext: n => `${n} gemt. Tilføj den næste.`, nameFirst: 'Giv den et navn først.',
+  f_size: 'Størrelse', f_brand: 'Mærke', f_value: 'Pris / værdi (kr)', f_model: 'Model', f_qty: 'Antal', f_owner: 'Ejer & status', f_color: 'Farve', f_season: 'Sæson',
+  f_serial: 'Serienummer', f_category: 'Kategori', f_spot: 'Præcis hvor', f_notes: 'Noter', whose: 'Hvis er den', status: 'Status', loanTo: 'Lånt ud til', shared: 'Fælles',
+  st_store: 'Opbevares', st_loan: 'Udlånt', st_sale: 'Til salg', st_sold: 'Solgt', st_given: 'Givet væk',
+  addTo: p => `Tilføj til ${p}`, boxStorage: 'Kasse / opbevaring', itemNoBox: 'Ting uden kasse', severalPhotos: 'Flere ting fra fotos',
+  cancel: 'Annuller', close: 'Luk', ok: 'OK', moveX: n => `Flyt ${n}`, to: 'Til', move: 'Flyt', movedTo: w => `Flyttet til ${w}.`, rename: 'Omdøb', del: 'Slet', edit: 'Rediger',
+  moveToPlace: 'Flyt til sted', emptyFirst: 'Tøm stedet for at slette det.', delQ: n => `Slet “${n}”? Det kan ikke fortrydes.`, delNoteQ: 'Slet denne stemmenote?',
+  rmPhotoQ: 'Fjern dette foto?', rmQ: n => `Fjern “${n}”?`, rmTagQ: n => `Fjern tagget “${n}”?`, newPlace: 'Nyt opbevaringssted', newPlaceHint: 'Fx Kælderen, Loftet eller Garagen',
+  renameX: n => `Omdøb ${n}`, newTag: 'Ny', tagHint: 'Fx vandring eller vinter', voiceNotes: 'Stemmenoter', voiceNotesBox: 'Stemmenoter til denne kasse',
+  menu: 'Menu', allSettings: 'Alle indstillinger', usedNoted: 'Noteret. Påmindelsen starter forfra.', markedSale: 'Sat til salg.',
+  placesHint: 'Fx kælderrummet, loftet, garagen eller sommerhuset. Kun et navn gemmes, aldrig en adresse.', placeNameHint: 'Navn, fx Loftet',
+  fileMissing: 'Filen mangler.', savingPhoto: 'Gemmer foto…', unnamed: 'Uden navn', batchTitle: 'Tilføj flere ting', batchWhere: w => `De kommer i ${w}.`,
+  modeEach: 'Et foto pr. ting', modeEachHint: 'Tag eller vælg et foto af hver ting.', modeMulti: 'Flere ting på ét foto', modeMultiHint: 'Læg tingene frem og tag ét foto. Hver ting bliver sin egen.',
+  batchAI: 'AI foreslår navne og detaljer ud fra fotoene. Du tjekker dem, før de tilføjes.', batchNoAI: 'Slå AI-assistenten til for at få forslag automatisk. Uden den navngiver du selv hver ting.',
+  batchPrivacy: 'Fotos sendes til AI-tjenesten for at blive genkendt.', thinking: 'Genkender…', aiFailed: e => `Kunne ikke genkende: ${e}`,
+  addN: n => n === 1 ? 'Tilføj 1 ting' : `Tilføj ${n} ting`, batchAdded: n => n === 1 ? 'Tilføjede 1 ting.' : `Tilføjede ${n} ting.`, namePh: 'Navn', include: 'Medtag',
+  morePhotos: '+ Flere fotos', noneYet: 'Ingen fotos endnu.', batchFound: n => n === 1 ? 'Fandt 1 ting.' : `Fandt ${n} ting.`, aiSuggest: 'Foreslå ud fra foto', testTag: 'TEST',
+  aiLooking: 'Kigger på fotoet…', aiNothing: 'AI’en genkendte intet på fotoet.', aiSuggestH: 'Forslag fra fotoet', aiSuggestHint: 'Sæt hak ved det, du vil bruge. Afkrydsede detaljer erstatter det nuværende.',
+  aiNow: v => `nu: ${v}`, apply: 'Brug valgte', aiApplied: n => n === 1 ? 'Opdaterede 1 detalje.' : `Opdaterede ${n} detaljer.`, aiNeedPhoto: 'Tilføj et foto først.',
+  rmPhoto: 'Fjern foto', addPhoto: 'Tilføj foto', editBoxH: 'Rediger kasse', newBox: 'Ny kasse', name: 'Navn', boxNamePh: 'Vintertøj', storagePlace: 'Opbevaringssted',
+  whereInPlace: 'Hvor på stedet', wherePh: 'Bagvæggen, øverste hylde', boxPhoto: 'Foto af kassen', delBox: 'Slet kasse', saveBox: 'Gem kasse', addBox: 'Tilføj kasse',
+  waitPhoto: 'Vent til fotoet er gemt.', nameBox: 'Giv kassen et navn.', whoPhone: 'Hvem bruger denne telefon?', whoPhoneHint: 'Så “min” og “mine” betyder denne person, når du taler med Storrrage. Det viser også, hvem der registrerede hver ting.',
+  notSet: 'Ikke valgt', scanH: 'Scan en etiket', pointCam: 'Ret kameraet mod QR-koden på kassen.', typeCode: 'Eller skriv kassens kode', openBox: 'Åbn kasse',
+  noCam: 'Kameraet er ikke tilgængeligt her. Skriv koden fra etiketten i stedet.', camBlocked: 'Kameraet blev blokeret. Skriv koden fra etiketten, eller tillad kameraet for appen i browserens indstillinger.',
+  offline: 'Offline. Alt du gør gemmes på telefonen.', shareTo: 'Del til Drive, e-mail eller en anden app', saveToPhone: 'Gem på telefonen (Overførsler)', savedDl: 'Gemt i mappen Overførsler.',
+  shareFail: 'Deling virkede ikke. Brug Gem på telefonen i stedet.', labelsAllH: 'Etiketter til alle kasser', talkH: 'Tal eller skriv med Storrrage', send: 'Send',
+  pause: 'Handl på det jeg sagde efter en pause på', whatSay: 'Hvad kan jeg sige? (også uden dækning)', noSignal: 'Uden dækning:',
+  noSR: 'Talegenkendelse findes ikke i denne browser. Brug mikrofonen på tastaturet i stedet.', readAloud: 'Læs svar højt',
+  aiIntro: 'Med AI slået til kan du tale frit. Storrrage forstår opfølgninger og spørger om detaljer, der betyder noget. Uden dækning bruges de enkle kommandoer.',
+  provider: 'Udbyder', gemFree: 'Google Gemini (gratis, til test)', claudePaid: 'Claude (betalt)', simpleOnly: 'Kun enkle kommandoer. Intet sendes nogen steder.', testOnly: 'Brug kun opdigtede testting.',
+  freeTier: 'På Googles gratis niveau kan det, du sender, bruges til at forbedre Googles produkter og læses af mennesker. Send ikke din rigtige opbevaring, før du skifter til en betalt løsning.',
+  apiKey: 'API-nøgle', checkKey: 'Tjek nøglen', checkToChoose: 'Tjek nøglen for at vælge',
+  aiSends: 'Når du taler, sender Storrrage det du sagde, den seneste del af samtalen og navne og detaljer på dine steder, kasser og ting. Stemmenoter sendes aldrig.',
+  pasteKey: 'Indsæt nøglen først.', checking: 'Tjekker…', works: 'Virker.', pasteToTurnOn: 'Indsæt API-nøglen for at slå AI til.', aiIsOff: 'AI er slået fra.', cantSave: 'Kunne ikke gemme indstillingen.',
+  getGem: 'Få en gratis nøgle: åbn aistudio.google.com, log ind og vælg “Get API key”.', getClaude: 'Få en nøgle: åbn console.anthropic.com, indbetal et lille beløb under Billing og opret en nøgle under API keys.',
+  keyLocal: 'Nøglen gemmes kun på denne telefon og er ikke med i backups.', inside: 'Indeni', topLevel: p => `${p}, direkte`, nameOptional: 'Lad stå tom for at navngive efter indholdet',
+  boxInBox: 'Kasse i denne kasse', boxesInside: 'Kasser indeni', addHereBox: b => `Tilføj til ${b}`, notes: 'Noter', recent: 'Senest set', favorites: 'Favoritter', fav: 'Favorit', unfav: 'Fjern favorit',
+  viewLarge: 'Store felter', viewSmall: 'Små felter', viewList: 'Liste', select: 'Vælg', selected: n => `${n} valgt`, moveSel: 'Flyt til…', delSel: 'Slet',
+  delSelQ: n => n === 1 ? 'Slet 1 ting? Det kan ikke fortrydes.' : `Slet ${n} ting? Det kan ikke fortrydes.`, movedN: (n, w) => `Flyttede ${n} til ${w}.`, deletedN: n => `Slettede ${n}.`,
+  didYouMean: 'Mente du', share: 'Del hvor den er', copied: 'Kopieret.', shareCopy: 'Del en kopi af dette sted', icon: 'Billede', numbering: 'Kassenumre',
+  numPlace: 'Separat for hvert sted (B-001 på hvert sted)', numAccount: 'Én serie for alle steder', export: 'Eksportér en liste', exportH: 'Eksportér en liste over dine ting',
+  exportHint: 'Pænt i rækker: sted, kasse, ting og detaljer.', excel: 'Excel (.xlsx)', word: 'Word (.doc)', pdf: 'PDF', scope: 'Hvad skal med', exportAll: 'Alt',
+  loadingLib: 'Forbereder filen…', needNet: 'Det kræver dækning første gang.', backupHint: d => d ? `Seneste backup ${d}.` : 'Ingen backup endnu.', backupDo: 'Tag backup',
+  addNav: 'Tilføj', whichPlace: 'Tilføj til hvilket sted?', nameNeeded: 'Alle ting skal have et navn.', discarded: 'Kasseret: tingen havde intet navn.',
+  col_place: 'Sted', col_box: 'Kasse', col_inbox: 'Indeni', col_item: 'Ting', col_cat: 'Kategori', col_brand: 'Mærke', col_model: 'Model', col_size: 'Størrelse', col_color: 'Farve',
+  col_owner: 'Ejer', col_status: 'Status', col_qty: 'Antal', col_value: 'Værdi (kr)', col_stored: 'Opbevaret siden', col_used: 'Sidst brugt', col_tags: 'Tags', col_notes: 'Noter', col_serial: 'Serienr.',
+  listTitle: 'Opbevaringsliste', total: 'Total', showAll: 'Vis alle', dragLooseHint: 'Hold på en rund markør og træk den ind i en zone.', addZone: 'Tilføj zone', zoneExists: 'Der findes allerede en zone med det navn.',
+  doorSide: 'Dør og bagende', doorHint: 'Vælg hvilken side døren er på, og hvor bagenden er.', door_top: 'Top', door_bottom: 'Bund', door_left: 'Venstre', door_right: 'Højre',
+  dragHint: 'Hold på en kasse eller rund markør og træk den til en stabel eller zone.', back: 'Tilbage', switchSpace: 'Vælg sted', shelf: 'Hylde', map: 'Kort', door: 'Dør', farIn: 'Bagest',
+  noZone: 'Ingen zone', placement: 'Placering', placementHint: 'Hvor kassen står: zonen (fx “Ved døren”, “Hylde 2”) og hvilken stabel.', zone: 'Zone', zoneHint: 'Fx Ved døren, Hylde 2, Bagest',
+  stack: 'Stabel', newStack: 'En ny stabel', level: 'Niveau', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
+  closerDoor: 'Flyt op', furtherIn: 'Flyt ned', collections: 'Samlinger', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kort',
+  insideBox: 'indeni', toCollection: 'Samling', collHint: 'Ting med samme tag udgør en samling, også når de ligger i forskellige kasser.', collPh: 'Fx Jul eller Vinter',
+  addedToColl: (n, t) => `Føjede ${n} til #${t}.`, isHere: 'er her', openItem: 'Åbn ting', foundIn: 'Fundet i', list: 'Liste', takeOut: 'Tag frem', putBack: 'Læg tilbage', outTag: 'Fremme',
+  outSince: d => `fremme siden ${d}`, backBy: d => `tilbage senest ${d}`, outSection: 'Fremme lige nu', outUntil: 'Fremme til (valgfrit)',
+  tookOut: (n, w) => `${n} taget frem fra ${w}. Pladsen beholdes.`, putBackDone: (n, w) => `${n} er tilbage i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Fortryd', more: 'Mere',
+  quickAddPh: w => `Tilføj til ${w}…`, boxEmpty: 'Intet her endnu.', backQ: 'Er den tilbage på plads?', stillOut: 'Stadig fremme', isBack: 'Den er tilbage',
+  adLabel: 'Annonce · testplads', adTitle: 'Storrrage uden reklamer', adText: 'Premium fjerner reklamer.', readMore: 'Læs mere', adsSetting: 'Vis annoncepladser (test)',
+  swipeHint: 'Swipe til højre for at tage frem eller lægge tilbage, til venstre for at slette.', addShort: 'Ting', severalShort: 'Flere', subShort: 'Kasse indeni',
+  recentSearches: 'Seneste søgninger', clear: 'Ryd', pickIcon: 'Skift ikon', pickIconHint: 'Bruges når tingen ikke har et foto.', autoIcon: 'Automatisk',
+  askOut: n => `Tager du ${n} frem?`, yesTemp: 'Ja, et stykke tid', yesGone: 'Ja, for altid', no: 'Nej', allOutAlready: 'Alt er allerede fremme.', allBackAlready: 'Alt er allerede tilbage.',
+  tookOutN: (n, w) => `Tog ${n} frem fra ${w}. Pladserne beholdes.`, putBackN: (n, w) => `Lagde ${n} tilbage i ${w}.`, boxOutDone: c => `${c} er fremme. Pladsen på kortet beholdes.`, boxBackDone: c => `${c} er tilbage på plads.`,
+  takeOutBox: 'Tag hele kassen frem', putBackBox: 'Sæt kassen tilbage', boxIsOut: 'Hele kassen er fremme', outOfN: (o, n) => `${o} af ${n} fremme`, takeOutAll: 'Tag alt frem', putBackAll: 'Læg alt tilbage',
+  today: 'i dag', yesterday: 'i går', daysAgo: n => `for ${n} dage siden`, weeksAgo: n => n === 1 ? 'for 1 uge siden' : `for ${n} uger siden`, monthsAgo: n => n === 1 ? 'for 1 måned siden' : `for ${n} måneder siden`,
+  yearsAgo: n => n === 1 ? 'for 1 år siden' : `for ${n} år siden`, checked: 'tjekket', neverChecked: 'aldrig tjekket', openedApp: 'åbnet i appen', changedAgo: 'ændret',
+  checkQ: 'Er alt i kassen stadig rigtigt?', checkYes: '✓ Ja, alt passer', checkNo: 'Noget er ændret', checkedThanks: 'Tak! Markeret som tjekket i dag.', checkFix: 'Opdater det der er ændret, og markér den som tjekket.',
+  checkedYear: (c, n) => `${c} af ${n} kasser tjekket eller opdateret i år`, nudgeCollOut: c => `Det er den tid på året. Tager du ${c} frem?`, nudgeCollBack: c => `Er ${c} tilbage på plads?`,
+  nudgePattern: (n, d) => `Du plejer at tage ${n} frem ca. hver ${d}. dag. Gør du det nu?`, nudgeYearly: n => `Du tog ${n} frem omkring dette tidspunkt sidste år. Igen?`, notNow: 'Ikke nu', suggestions: 'Forslag',
+  sortBy: 'Sortér', sort_manual: 'Egen rækkefølge', sort_az: 'A–Å', sort_changed: 'Senest ændret', sort_added: 'Senest tilføjet', sort_used: 'Senest brugt',
+  listDragHint: 'Hold på en kasse eller ting for at trække den – op, ned eller til en anden kasse.', editItem: 'Rediger', trash: 'Slettet', trashHint: 'Slettede ting gemmes her i 30 dage.',
+  daysLeft: n => n === 1 ? '1 dag tilbage' : `${n} dage tilbage`, restoreItem: 'Gendan', trashEmpty: 'Intet slettet.', emptyTrash: 'Tøm nu', emptyTrashQ: n => `Slet ${n} ting for altid?`,
+  restoredTo: (n, w) => `${n} er tilbage i ${w}.`, inTrash: 'Gemmes i Slettet i 30 dage.', remindDate: 'Eller vælg en dato', toCalendar: 'Føj til kalender',
+  outNow: 'Fremme nu', allBoxes: 'Alle kasser', allItems: 'Alle ting', itemsH: 'Ting', nothingOut: 'Intet er fremme lige nu.',
+  cloudMenu: 'Konto & deling', cloudTitle: 'Del med din husstand', cloudIntro: 'Log ind med din e-mail, så gemmes dit opbevaringssted på kontoen. Så kan du bruge det på computeren og andre telefoner, dele med husstanden og logge ud, hvis telefonen bliver væk.',
+  email: 'E-mail', emailWhy: 'Bruges kun til login. Ingen adgangskode, ingen nyhedsbreve.', sendLink: 'Send login-link', checkMail: 'Tjek din e-mail', linkSent: e => `Vi har sendt et login-link til ${e}.`,
+  linkSamePhone: 'Åbn linket på denne telefon. Det kan tage et minut – tjek også spam.', tooMany: 'For mange links sendt lige nu – prøv igen om lidt.', sendFailed: 'Kunne ikke sende. Prøv igen.',
+  loginFailed: 'Login virkede ikke.', loggedIn: 'Du er logget ind.', loggedOut: 'Logget ud. Dine ting er trygt gemt på kontoen.', loginAgain: 'Log ind igen for at fortsætte synkroniseringen.',
+  loggedInAs: e => `Logget ind som ${e}`, joinHousehold: 'Deltag med en QR-kode', joinHint: 'Scan koden på den andens telefon.', logout: 'Log ud',
+  logoutQ: 'Log ud? Dine ting fjernes fra denne enhed, men bliver på kontoen – log ind igen for at få dem tilbage.', yourHousehold: 'Din husstand', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmer`,
+  e2eNote: 'Gemt på din konto på servere i EU. Kun du og dem, du inviterer, kan se det.', invite: 'Invitér nogen', inviteHint: 'Lad dem scanne med telefonens kamera eller i Storrrage (☰ → Scan en etiket).',
+  shareLink: 'Del link i stedet', inviteSafe: 'Koden virker én gang i 24 timer.', inviteText: 'Del vores opbevaring i Storrrage', syncNow: 'Synk nu', syncing: 'Synkroniserer…', syncedAt: t => `Synket ${t}`,
+  waitingN: n => `${n} ændringer venter på at blive synket`, offlineSync: 'Offline – synker når du har dækning.', syncFailed: 'Kunne ikke synke lige nu.', notMember: 'Du er ikke længere med i denne husstand.',
+  badInvite: 'Invitationen ser forkert ud.', loginToJoin: 'Log ind først, så bruges invitationen automatisk.', switchHouseholdQ: 'Du er allerede med i en husstand. Skift til den nye?', join: 'Deltag',
+  mergeQ: 'Tag det med, som allerede ligger på telefonen?', mergeYes: 'Ja, tag det med', mergeNo: 'Nej', joined: 'Du er med i husstanden!', joinFailed: 'Kunne ikke deltage. Koden kan være brugt eller for gammel.',
+  statsSetting: 'Del anonym brugsstatistik', statsHint: 'Kun hvad der bruges, aldrig hvad du ejer, navne eller steder. Ikke koblet til din konto.', statsToast: 'Storrrage sender anonym brugsstatistik – aldrig dine ting.', statsWhat: 'Indstillinger',
+  feedback: 'Giv feedback', feedbackIntro: 'Hvad er godt, hvad irriterer, hvad mangler? Vi læser alt.', fbIdea: 'Idé', fbBug: 'Noget er galt', fbLove: 'Jeg kan lide', fbPh: 'Skriv her…', fbContact: 'E-mail, hvis du vil have svar', optional: 'valgfrit',
+  fbPrivacy: 'Sendes uden din konto. Appversion og skærm følger med.', fbThanks: 'Tak! 💜', offlineSend: 'Ingen dækning – prøv igen, når du er online.', loading: 'Indlæser…',
+  installTitle: 'Installér Storrrage', install: 'Installér', installBanner: 'Installér Storrrage som app på telefonen', installedToast: 'Storrrage ligger nu på hjemmeskærmen.',
+  iosStep1: 'Tryk på Del-knappen nederst i Safari.', iosStep2: 'Vælg “Føj til hjemmeskærm”.', iosStep3: 'Tryk “Tilføj”. Åbn derefter altid Storrrage fra hjemmeskærmen.', iosNote: 'På iPhone skal det være Safari. Den installerede app har sin egen hukommelse, så log ind inde i appen.',
+  andStep1: 'Tryk på ⋮ øverst til højre i Chrome.', andStep2: 'Vælg “Installér app” eller “Føj til startskærm”.', usageSync: n => `Storrrage bruger ca. ${n} MB på telefonen. Alt synkes også med din konto.`,
+  nameShown: 'Vises for de andre i husstanden.', loginEmail: 'Logget ind med', mailReminders: 'Send mig påmindelser på e-mail', otherEmail: 'Send til en anden adresse (valgfrit)',
+  mailHint: 'Kommer snart. Mailen siger kun, at noget skal tjekkes.', logIn: 'Log ind', appearance: 'Udseende', light: 'Lyst', dark: 'Mørkt', auto: 'Automatisk', advanced: 'Mere',
+  restoreHint: 'Kun nødvendig for gamle backupfiler.', inApp: 'I appen', youTag: '(dig)', editPlaces: 'Rediger steder', shareTitle: 'Del mellem telefoner', someone: 'Nogen', activeNow: 'i appen nu',
+  inThisBox: n => `${n} er i denne kasse lige nu.`, editingItem: n => `${n} har denne ting åben lige nu – vent lidt, så jeres ændringer ikke støder sammen.`,
+  tapTalk: 'Tryk og tal', chatPh: 'Skriv, fx “hvor er teltet?”', simpleMode: 'Enkle kommandoer, virker offline', aiOn: 'Slå AI til', offlineSimple: 'offline – enkle kommandoer',
+  noSignalTxt2: 'kommandoerne ovenfor virker offline. Kræver mikrofonen dækning, så brug mikrofonen på tastaturet.', noPlaceYet: 'Intet sted endnu', unsorted: 'Usorteret', addWhat: 'Tilføj', where: 'Hvor?',
+  notLoggedIn: 'Du er ikke logget ind.', ownerTag: 'du startede den', noHousehold: 'Ikke delt endnu', memberSince: 'Medlem siden', inStorage: 'Opbevaret', lastSynced: 'Senest synket',
+  inviteWho: 'Hvem? (valgfrit, fx Anna)', invitesSent: 'Invitationer', joinedOn: d => `deltog ${d}`, expired: 'udløbet', waitingUntil: t => `venter · gyldig til ${t}`, invite1: 'Invitation', noInvites: 'Ingen invitationer endnu.',
+  scanQR: 'Scan QR-kode', whatName: 'Hvad hedder du?', startNew: 'Start mit opbevaringssted', loginWelcome: 'Vi sender en kode til din e-mail – ingen adgangskode.',
+  invitedIntro: 'Skriv din e-mail, så sender vi en kode. Så kommer du direkte ind i det delte opbevaringssted.', connectNow: 'Gem på min konto', joinOther: 'Deltag i en anden husstand (QR)',
+  mergedIntoAccount: 'Det der lå på telefonen blev føjet til din konto.', unsyncedQ: n => `${n} ændringer er ikke gemt på kontoen endnu. Log ud alligevel? De går tabt.`,
+  logoutAll: 'Log ud på alle enheder', logoutAllQ: 'Log ud på alle dine enheder? Brug det, hvis en telefon er blevet væk.', logoutAllHint: 'Mistet telefonen? Log ind på computeren og vælg “Log ud på alle enheder”.',
+  wipedRemote: 'Du blev logget ud fra en anden enhed, så dine ting blev fjernet herfra.', codeSent: e => `Vi har sendt en e-mail til ${e}. Skriv koden her:`, wrongAddress: 'Forkert adresse?',
+  orTapLink: 'Eller tryk på knappen i mailen (på denne enhed).', sendAgain: 'Send igen', sentAgain: 'Sendt igen.', codeWrong: 'Koden er forkert eller for gammel. Prøv igen eller send en ny.',
+  slogan: 'Hav styr på alt, du har – og hvor det er.', startNewHint: 'Ny her? Skriv bare dit navn og kom i gang. Ingen konto nødvendig – alt gemmes på telefonen.', or: 'eller',
+  loginHint: 'Har du en konto, eller vil du oprette en? Vi mailer en kode – ingen adgangskode. Så kan du dele og nå alt fra computeren.', yourEmail: 'Din e-mail', sendCode: 'Send kode',
+  invitedTitle: 'Du er inviteret!', pitchTitle: 'Opret en gratis konto – det kræver kun din e-mail', pitch1: 'Del med dem, du bor med', pitch2: 'Nå alt fra computeren og andre telefoner', pitch3: 'Trygt, hvis telefonen bliver væk', pitch4: 'Flere funktioner på vej',
+  fold: 'Fold sammen', unfold: 'Fold ud', foldAll: 'Fold alle sammen', unfoldAll: 'Fold alle ud', badEmail: 'Tjek e-mailadressen.', sending: 'Sender…', sendTimeout: 'Mailserveren svarede ikke. Prøv igen om et minut.',
+  mailNotSent: 'Mailen blev ikke sendt', errorCode: 'Detaljer', moveLocalQ: n => `Telefonen har kasser og ting (${n}), som ikke er på din konto. Flyt dem ind? De markeres “Ny”.`, moveLocalYes: 'Ja, flyt dem ind', moveLocalNo: 'Nej, fjern dem',
+  logInOrCreate: 'Log ind eller opret konto', yourAccount: 'Din konto', peopleTitle: 'Personer i husstanden', peopleHint: 'Tilføj alle, der har ting her. Invitér dem, der selv vil bruge appen.',
+  inAppTag: 'bruger appen', invitePending: 'inviteret', inviteAgain: 'Invitér igen', inviteToApp: 'Invitér', loginToInvite: 'Log ind først – så kan du invitere.', inviteFor: n => `Invitér ${n}`, sendInvite: 'Send invitation',
+  inviteHint2: 'Eller lad dem scanne koden med telefonens kamera.', inviteMsg: n => `${n} inviterer dig til at dele vores opbevaring i Storrrage:`, storageWord: 'Opbevaring',
+  notSharedYet: 'Dit opbevaringssted er ikke gemt på kontoen endnu.', creatingInvite: 'Opretter invitationen…', inviteFailed: 'Kunne ikke oprette invitationen.',
+  pasteCode: 'Indsæt koden', noCodeCopied: 'Ingen kode kopieret – kopiér tallene i mailen først.', pasteManually: 'Hold fingeren på feltet og vælg Indsæt.', nameQ: 'Hvad hedder du?', next: 'Næste', hiName: n => `Hej ${n}!`,
+  placeQ: 'Hvad kalder du stedet, hvor du opbevarer ting?', kitQ: 'Hvordan vil du starte?', kitYes: 'Startsæt', kitYesSub: '10 almindelige kasser langs tre vægge – omdøb eller fjern som du vil', kitNo: 'Start tomt',
+  kitDone: 'Dit startsæt er klar. Tryk på en kasse for at fylde den.', zoneLeft: 'Venstre væg', zoneBack: 'Bagvæggen', zoneRight: 'Højre væg',
+  kitXmas: 'Julepynt', kitEaster: 'Påske & højtider', kitTools: 'Værktøj', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Børnetøj', kitBooks: 'Bøger', kitCables: 'Ledninger & elektronik', kitKitchen: 'Køkken & porcelæn', kitMisc: 'Diverse',
+  newThing: 'Ny ting', askAI: 'Spørg · beta', searchWord: 'Søg', searchOrAsk: 'Søg, eller spørg Storrrage…', askAbout: q => `Spørg Storrrage: “${q}”`,
+  tab_home: 'Hjem', tab_search: 'Søg', tab_profile: 'Profil', tab_add: 'Tilføj'
+};
+
+STR.fi = {
+  space: 'TILA', places_n: n => n === 1 ? '1 PAIKKA' : `${n} PAIKKAA`, boxes_n: n => n === 1 ? '1 LAATIKKO' : `${n} LAATIKKOA`, items_n: n => n === 1 ? '1 TAVARA' : `${n} TAVARAA`, box_n: n => `LAATIKKO ${n}`,
+  allPlaces: 'Kaikki paikat', addPlace: '+ Paikka', notInBox: 'Ei laatikossa', notInBoxShort: 'ei laatikossa',
+  emptyPlace: 'Napauta + lisätäksesi laatikon tai jotain, mikä ei ole laatikossa, kuten pyörän.',
+  addItem: 'Lisää tavara', addSeveral: 'Lisää useita', addThingChoice: 'Lisää tavara', addMultipleChoice: 'Lisää useita', addBoxChoice: 'Lisää laatikko', item: 'tavara', items: 'tavarat', editBox: 'Muokkaa laatikkoa', label: 'Tarra',
+  findStuff: 'LÖYDÄ TAVARASI!', typeKeyword: 'Kirjoita hakusana', searchIn: 'Hae kohteesta', everywhere: 'Kaikkialta', allOf: p => `Koko ${p}`,
+  boxesH: 'Laatikot', similar: 'Samankaltaiset', noMatch: q => `Mikään ei vastaa hakua ”${q}”. Kokeile toista sanaa.`, nothingHere: 'Täällä ei ole vielä mitään.',
+  welcome: 'Pidä kirjaa siitä, mitä missäkin on: laatikot, tavarat, kuvat ja kuitit. Löydät kaiken hakemalla tai kysymällä.',
+  yourName: 'Nimesi', getStarted: 'Aloita', noAccount: 'Tiliä ei tarvita. Kaikki pysyy puhelimessa.', writeName: 'Kirjoita ensin nimesi.',
+  storrrage: 'STORRRAGE', profile: 'Profiili', settings: 'Asetukset', notifications: 'Ilmoitukset', premium: 'Premium',
+  version: v => `Storrrage-versio ${v}`, household: 'Kotitalous', addName: 'Lisää nimi', add: 'Lisää', you: '(sinä)', remove: 'Poista',
+  householdHint: 'Käytetään tavaran omistajana ja kun puhut Storrragelle (”Elsan saappaat”).', noOne: 'Ketään ei ole vielä lisätty.',
+  aiAssistant: 'Tekoälyavustaja', off: 'Pois', storagePlaces: 'Säilytyspaikat', backupNow: 'Varmuuskopioi nyt', never: 'Ei koskaan',
+  restore: 'Palauta varmuuskopiosta', insurance: 'Vakuutusraportti', labelsAll: 'Tarrat kaikille laatikoille', scanLabel: 'Skannaa laatikon tarra', language: 'Kieli',
+  usage: mb => `Kaikki tallennetaan vain tähän puhelimeen. Storrrage käyttää noin ${mb} Mt.`,
+  dueIntro: 'Näitä et ole käyttänyt vähään aikaan. Kannattaako säilyttää vai myydä?', lastUsedOn: d => `Viimeksi käytetty ${d}`,
+  usedRecently: 'Käytetty äskettäin', markSale: 'Merkitse myyntiin', nothingDue: 'Mikään ei vaadi huomiota. Aseta tavaralle ”Muistuta, jos käyttämättä” saadaksesi muistutuksen.',
+  prem1: 'Jaa säilytys kotitalouden kanssa', prem2: 'Myy Torissa, Traderalla ja Vintedissä', prem3: 'Kirjautuminen ja synkronointi puhelinten välillä', premLater: 'Tulossa myöhemmin. Kaikki mitä nyt käytät on ilmaista.',
+  whatIsIt: 'Mikä se on?', whereIs: 'Missä se on', addDetail: 'Lisää tietoja', lastUsed: 'Viimeksi käytetty', remind: 'Muistuta, jos käyttämättä', noRemind: 'Ei muistutusta',
+  remindM: m => m === 12 ? '1 vuoden kuluttua' : m === 24 ? '2 vuoden kuluttua' : `${m} kuukauden kuluttua`, notify: d => `muistutus ${d}`,
+  attachments: 'Liitteet', addAttach: '+ Lisää kuitti, takuu tai ohje', tags: 'Tunnisteet',
+  registered: (d, by) => `Rekisteröity ${d}${by ? `, ${by}` : ''}.`, storedSince: d => `Säilytetty ${d} alkaen.`, changed: d => `Muutettu viimeksi ${d}.`,
+  delItem: 'Poista tavara', done: 'Valmis', save: 'Tallenna', saveAnother: 'Tallenna + lisää toinen', saved: 'Tallennettu.', savedNext: n => `${n} tallennettu. Lisää seuraava.`, nameFirst: 'Anna ensin nimi.',
+  f_size: 'Koko', f_brand: 'Merkki', f_value: 'Hinta / arvo (kr)', f_model: 'Malli', f_qty: 'Määrä', f_owner: 'Omistaja & tila', f_color: 'Väri', f_season: 'Kausi',
+  f_serial: 'Sarjanumero', f_category: 'Luokka', f_spot: 'Tarkka paikka', f_notes: 'Muistiinpanot', whose: 'Kenen se on', status: 'Tila', loanTo: 'Lainattu kenelle', shared: 'Yhteinen',
+  st_store: 'Säilössä', st_loan: 'Lainassa', st_sale: 'Myynnissä', st_sold: 'Myyty', st_given: 'Annettu pois',
+  addTo: p => `Lisää kohteeseen ${p}`, boxStorage: 'Laatikko / säilytys', itemNoBox: 'Tavara ilman laatikkoa', severalPhotos: 'Useita tavaroita kuvista',
+  cancel: 'Peruuta', close: 'Sulje', ok: 'OK', moveX: n => `Siirrä ${n}`, to: 'Kohde', move: 'Siirrä', movedTo: w => `Siirretty: ${w}.`, rename: 'Nimeä uudelleen', del: 'Poista', edit: 'Muokkaa',
+  moveToPlace: 'Siirrä paikkaan', emptyFirst: 'Tyhjennä paikka ennen poistamista.', delQ: n => `Poistetaanko ”${n}”? Tätä ei voi perua.`, delNoteQ: 'Poistetaanko tämä äänimuistio?',
+  rmPhotoQ: 'Poistetaanko kuva?', rmQ: n => `Poistetaanko ”${n}”?`, rmTagQ: n => `Poistetaanko tunniste ”${n}”?`, newPlace: 'Uusi säilytyspaikka', newPlaceHint: 'Esimerkiksi Kellari, Ullakko tai Autotalli',
+  renameX: n => `Nimeä ${n} uudelleen`, newTag: 'Uusi', tagHint: 'Esimerkiksi retkeily tai talvi', voiceNotes: 'Äänimuistiot', voiceNotesBox: 'Tämän laatikon äänimuistiot',
+  menu: 'Valikko', allSettings: 'Kaikki asetukset', usedNoted: 'Merkitty. Muistutus alkaa alusta.', markedSale: 'Merkitty myyntiin.',
+  placesHint: 'Esimerkiksi kellarivarasto, ullakko, autotalli tai mökki. Vain nimi tallennetaan, ei koskaan osoitetta.', placeNameHint: 'Nimi, esim. Ullakko',
+  fileMissing: 'Tiedosto puuttuu.', savingPhoto: 'Tallennetaan kuvaa…', unnamed: 'Nimetön', batchTitle: 'Lisää useita tavaroita', batchWhere: w => `Ne menevät kohteeseen ${w}.`,
+  modeEach: 'Yksi kuva per tavara', modeEachHint: 'Ota tai valitse kuva jokaisesta tavarasta.', modeMulti: 'Useita tavaroita yhdessä kuvassa', modeMultiHint: 'Aseta tavarat esille ja ota yksi kuva. Jokaisesta tulee oma tavaransa.',
+  batchAI: 'Tekoäly ehdottaa nimiä ja tietoja kuvista. Tarkistat ne ennen lisäämistä.', batchNoAI: 'Ota tekoälyavustaja käyttöön saadaksesi ehdotuksia. Ilman sitä nimeät tavarat itse.',
+  batchPrivacy: 'Kuvat lähetetään tekoälypalveluun tunnistettaviksi.', thinking: 'Tunnistetaan…', aiFailed: e => `Tunnistus epäonnistui: ${e}`,
+  addN: n => n === 1 ? 'Lisää 1 tavara' : `Lisää ${n} tavaraa`, batchAdded: n => n === 1 ? 'Lisättiin 1 tavara.' : `Lisättiin ${n} tavaraa.`, namePh: 'Nimi', include: 'Ota mukaan',
+  morePhotos: '+ Lisää kuvia', noneYet: 'Ei vielä kuvia.', batchFound: n => n === 1 ? 'Löytyi 1 tavara.' : `Löytyi ${n} tavaraa.`, aiSuggest: 'Ehdota kuvasta', testTag: 'TESTI',
+  aiLooking: 'Katsotaan kuvaa…', aiNothing: 'Tekoäly ei tunnistanut kuvasta mitään.', aiSuggestH: 'Ehdotukset kuvasta', aiSuggestHint: 'Valitse mitä haluat käyttää. Valitut tiedot korvaavat nykyiset.',
+  aiNow: v => `nyt: ${v}`, apply: 'Käytä valittuja', aiApplied: n => n === 1 ? 'Päivitettiin 1 tieto.' : `Päivitettiin ${n} tietoa.`, aiNeedPhoto: 'Lisää ensin kuva.',
+  rmPhoto: 'Poista kuva', addPhoto: 'Lisää kuva', editBoxH: 'Muokkaa laatikkoa', newBox: 'Uusi laatikko', name: 'Nimi', boxNamePh: 'Talvivaatteet', storagePlace: 'Säilytyspaikka',
+  whereInPlace: 'Missä kohtaa paikkaa', wherePh: 'Takaseinä, ylähylly', boxPhoto: 'Kuva laatikosta', delBox: 'Poista laatikko', saveBox: 'Tallenna laatikko', addBox: 'Lisää laatikko',
+  waitPhoto: 'Odota, että kuva tallentuu.', nameBox: 'Anna laatikolle nimi.', whoPhone: 'Kuka käyttää tätä puhelinta?', whoPhoneHint: 'Silloin ”minun” tarkoittaa tätä henkilöä, kun puhut Storrragelle. Näkyy myös kuka lisäsi minkäkin tavaran.',
+  notSet: 'Ei asetettu', scanH: 'Skannaa laatikon tarra', pointCam: 'Osoita kameralla laatikon QR-koodia.', typeCode: 'Tai kirjoita laatikon koodi', openBox: 'Avaa laatikko',
+  noCam: 'Kamera ei ole käytettävissä. Kirjoita tarran koodi.', camBlocked: 'Kameran käyttö estettiin. Kirjoita tarran koodi tai salli kamera selaimen asetuksista.',
+  offline: 'Ei yhteyttä. Kaikki tallentuu puhelimeen.', shareTo: 'Jaa Driveen, sähköpostiin tai muuhun sovellukseen', saveToPhone: 'Tallenna puhelimeen (Lataukset)', savedDl: 'Tallennettu Lataukset-kansioon.',
+  shareFail: 'Jakaminen ei onnistunut. Tallenna puhelimeen.', labelsAllH: 'Tarrat kaikille laatikoille', talkH: 'Puhu tai kirjoita Storrragelle', send: 'Lähetä',
+  pause: 'Toimi sanomani perusteella tauon jälkeen:', whatSay: 'Mitä voin sanoa? (myös ilman yhteyttä)', noSignal: 'Ilman yhteyttä:',
+  noSR: 'Puheentunnistus ei ole käytettävissä tässä selaimessa. Käytä näppäimistön mikrofonia.', readAloud: 'Lue vastaukset ääneen',
+  aiIntro: 'Kun tekoäly on päällä, voit puhua vapaasti. Storrrage ymmärtää jatkokysymyksiä ja kysyy tärkeistä yksityiskohdista. Ilman yhteyttä käytetään yksinkertaisia komentoja.',
+  provider: 'Palveluntarjoaja', gemFree: 'Google Gemini (ilmainen, testaukseen)', claudePaid: 'Claude (maksullinen)', simpleOnly: 'Vain yksinkertaiset komennot. Mitään ei lähetetä.', testOnly: 'Käytä vain keksittyjä testitavaroita.',
+  freeTier: 'Googlen ilmaisversiossa lähettämääsi voidaan käyttää Googlen tuotteiden parantamiseen ja ihmiset voivat lukea sen. Älä lähetä oikeaa varastoasi ennen maksullista vaihtoehtoa.',
+  apiKey: 'API-avain', checkKey: 'Tarkista avain', checkToChoose: 'Tarkista avain valitaksesi',
+  aiSends: 'Kun puhut, Storrrage lähettää sanomasi, keskustelun viimeisen osan sekä paikkojesi, laatikoidesi ja tavaroidesi nimet ja tiedot. Äänimuistioita ei koskaan lähetetä.',
+  pasteKey: 'Liitä ensin avain.', checking: 'Tarkistetaan…', works: 'Toimii.', pasteToTurnOn: 'Liitä API-avain ottaaksesi tekoälyn käyttöön.', aiIsOff: 'Tekoäly on pois päältä.', cantSave: 'Asetusta ei voitu tallentaa.',
+  getGem: 'Hanki ilmainen avain: avaa aistudio.google.com, kirjaudu ja valitse ”Get API key”.', getClaude: 'Hanki avain: avaa console.anthropic.com, lisää pieni summa kohdassa Billing ja luo avain kohdassa API keys.',
+  keyLocal: 'Avain tallennetaan vain tähän puhelimeen eikä sitä sisällytetä varmuuskopioihin.', inside: 'Sisällä', topLevel: p => `${p}, suoraan`, nameOptional: 'Jätä tyhjäksi, niin nimi tulee sisällöstä',
+  boxInBox: 'Laatikko tämän laatikon sisällä', boxesInside: 'Laatikot sisällä', addHereBox: b => `Lisää kohteeseen ${b}`, notes: 'Muistiinpanot', recent: 'Viimeksi katsotut', favorites: 'Suosikit', fav: 'Suosikki', unfav: 'Poista suosikeista',
+  viewLarge: 'Suuret ruudut', viewSmall: 'Pienet ruudut', viewList: 'Lista', select: 'Valitse', selected: n => `${n} valittu`, moveSel: 'Siirrä…', delSel: 'Poista',
+  delSelQ: n => n === 1 ? 'Poistetaanko 1 tavara? Tätä ei voi perua.' : `Poistetaanko ${n} tavaraa? Tätä ei voi perua.`, movedN: (n, w) => `Siirrettiin ${n} kohteeseen ${w}.`, deletedN: n => `Poistettiin ${n}.`,
+  didYouMean: 'Tarkoititko', share: 'Jaa sijainti', copied: 'Kopioitu.', shareCopy: 'Jaa kopio tästä paikasta', icon: 'Kuva', numbering: 'Laatikkonumerot',
+  numPlace: 'Oma sarja jokaiselle paikalle (B-001 joka paikassa)', numAccount: 'Yksi sarja kaikille paikoille', export: 'Vie lista', exportH: 'Vie lista tavaroistasi',
+  exportHint: 'Siististi riveittäin: paikka, laatikko, tavara ja tiedot.', excel: 'Excel (.xlsx)', word: 'Word (.doc)', pdf: 'PDF', scope: 'Mitä otetaan mukaan', exportAll: 'Kaikki',
+  loadingLib: 'Valmistellaan tiedostoa…', needNet: 'Vaatii yhteyden ensimmäisellä kerralla.', backupHint: d => d ? `Viimeisin varmuuskopio ${d}.` : 'Ei vielä varmuuskopiota.', backupDo: 'Varmuuskopioi',
+  addNav: 'Lisää', whichPlace: 'Mihin paikkaan lisätään?', nameNeeded: 'Jokaisella tavaralla pitää olla nimi.', discarded: 'Hylätty: tavaralla ei ollut nimeä.',
+  col_place: 'Paikka', col_box: 'Laatikko', col_inbox: 'Sisällä', col_item: 'Tavara', col_cat: 'Luokka', col_brand: 'Merkki', col_model: 'Malli', col_size: 'Koko', col_color: 'Väri',
+  col_owner: 'Omistaja', col_status: 'Tila', col_qty: 'Määrä', col_value: 'Arvo (kr)', col_stored: 'Säilytetty alkaen', col_used: 'Viimeksi käytetty', col_tags: 'Tunnisteet', col_notes: 'Muistiinpanot', col_serial: 'Sarjanro',
+  listTitle: 'Varastolista', total: 'Yhteensä', showAll: 'Näytä kaikki', dragLooseHint: 'Pidä pyöreää merkkiä painettuna ja vedä se vyöhykkeelle.', addZone: 'Lisää vyöhyke', zoneExists: 'Samanniminen vyöhyke on jo olemassa.',
+  doorSide: 'Ovi ja perä', doorHint: 'Valitse millä puolella ovi on ja missä perä on.', door_top: 'Ylhäällä', door_bottom: 'Alhaalla', door_left: 'Vasemmalla', door_right: 'Oikealla',
+  dragHint: 'Pidä laatikkoa tai pyöreää merkkiä painettuna ja vedä se pinoon tai vyöhykkeelle.', back: 'Takaisin', switchSpace: 'Valitse paikka', shelf: 'Hylly', map: 'Kartta', door: 'Ovi', farIn: 'Perällä',
+  noZone: 'Ei vyöhykettä', placement: 'Sijoitus', placementHint: 'Missä laatikko on: vyöhyke (esim. ”Oven vieressä”, ”Hylly 2”) ja mikä pino.', zone: 'Vyöhyke', zoneHint: 'Esim. Oven vieressä, Hylly 2, Perällä',
+  stack: 'Pino', newStack: 'Uusi pino', level: 'Taso', onTop: 'Päällimmäisenä', atBottom: 'Alimmaisena', stackOf: (n, codes) => codes ? `Pino ${n}: päällä ${codes}` : `Pino ${n}`,
+  closerDoor: 'Siirrä ylös', furtherIn: 'Siirrä alas', collections: 'Kokoelmat', collection: 'Kokoelma', inBoxes: n => n === 1 ? '1 paikassa' : `${n} paikassa`, showOnMap: 'Näytä kartalla',
+  insideBox: 'sisällä', toCollection: 'Kokoelma', collHint: 'Saman tunnisteen tavarat muodostavat kokoelman, vaikka ne olisivat eri laatikoissa.', collPh: 'Esim. Joulu tai Talvi',
+  addedToColl: (n, t) => `Lisättiin ${n} kokoelmaan #${t}.`, isHere: 'on täällä', openItem: 'Avaa tavara', foundIn: 'Löytyy', list: 'Lista', takeOut: 'Ota esiin', putBack: 'Palauta', outTag: 'Esillä',
+  outSince: d => `esillä ${d} alkaen`, backBy: d => `takaisin viimeistään ${d}`, outSection: 'Esillä juuri nyt', outUntil: 'Esillä asti (valinnainen)',
+  tookOut: (n, w) => `${n} otettu esiin kohteesta ${w}. Paikka säilyy.`, putBackDone: (n, w) => `${n} on taas kohteessa ${w}.`, deletedX: n => `${n} poistettu.`, undo: 'Kumoa', more: 'Lisää',
+  quickAddPh: w => `Lisää kohteeseen ${w}…`, boxEmpty: 'Täällä ei ole vielä mitään.', backQ: 'Onko se palautettu?', stillOut: 'Yhä esillä', isBack: 'Se on palautettu',
+  adLabel: 'Mainos · testipaikka', adTitle: 'Storrrage ilman mainoksia', adText: 'Premium poistaa mainokset.', readMore: 'Lue lisää', adsSetting: 'Näytä mainospaikat (testi)',
+  swipeHint: 'Pyyhkäise oikealle ottaaksesi esiin tai palauttaaksesi, vasemmalle poistaaksesi.', addShort: 'Tavara', severalShort: 'Useita', subShort: 'Laatikko sisään',
+  recentSearches: 'Viimeisimmät haut', clear: 'Tyhjennä', pickIcon: 'Vaihda kuvake', pickIconHint: 'Käytetään, kun tavaralla ei ole kuvaa.', autoIcon: 'Automaattinen',
+  askOut: n => `Otatko ${n} esiin?`, yesTemp: 'Kyllä, hetkeksi', yesGone: 'Kyllä, pysyvästi', no: 'Ei', allOutAlready: 'Kaikki on jo esillä.', allBackAlready: 'Kaikki on jo palautettu.',
+  tookOutN: (n, w) => `Otettiin ${n} esiin kohteesta ${w}. Paikat säilyvät.`, putBackN: (n, w) => `Palautettiin ${n} kohteeseen ${w}.`, boxOutDone: c => `${c} on esillä. Paikka kartalla säilyy.`, boxBackDone: c => `${c} on taas paikallaan.`,
+  takeOutBox: 'Ota koko laatikko esiin', putBackBox: 'Palauta laatikko', boxIsOut: 'Koko laatikko on esillä', outOfN: (o, n) => `${o}/${n} esillä`, takeOutAll: 'Ota kaikki esiin', putBackAll: 'Palauta kaikki',
+  today: 'tänään', yesterday: 'eilen', daysAgo: n => `${n} päivää sitten`, weeksAgo: n => n === 1 ? '1 viikko sitten' : `${n} viikkoa sitten`, monthsAgo: n => n === 1 ? '1 kuukausi sitten' : `${n} kuukautta sitten`,
+  yearsAgo: n => n === 1 ? '1 vuosi sitten' : `${n} vuotta sitten`, checked: 'tarkistettu', neverChecked: 'ei koskaan tarkistettu', openedApp: 'avattu sovelluksessa', changedAgo: 'muutettu',
+  checkQ: 'Onko laatikon sisältö yhä oikein?', checkYes: '✓ Kyllä, kaikki oikein', checkNo: 'Jotain on muuttunut', checkedThanks: 'Kiitos! Merkitty tarkistetuksi tänään.', checkFix: 'Päivitä muuttuneet ja merkitse tarkistetuksi.',
+  checkedYear: (c, n) => `${c}/${n} laatikkoa tarkistettu tai päivitetty tänä vuonna`, nudgeCollOut: c => `On taas se aika vuodesta. Otatko esiin: ${c}?`, nudgeCollBack: c => `Onko ${c} palautettu?`,
+  nudgePattern: (n, d) => `Otat yleensä ${n} esiin noin ${d} päivän välein. Otatko nyt?`, nudgeYearly: n => `Otit ${n} esiin suunnilleen tähän aikaan viime vuonna. Taas?`, notNow: 'Ei nyt', suggestions: 'Ehdotukset',
+  sortBy: 'Lajittele', sort_manual: 'Oma järjestys', sort_az: 'A–Ö', sort_changed: 'Viimeksi muutettu', sort_added: 'Viimeksi lisätty', sort_used: 'Viimeksi käytetty',
+  listDragHint: 'Pidä laatikkoa tai tavaraa painettuna vetääksesi sen – ylös, alas tai toiseen laatikkoon.', editItem: 'Muokkaa', trash: 'Poistetut', trashHint: 'Poistetut tavarat säilyvät täällä 30 päivää.',
+  daysLeft: n => n === 1 ? '1 päivä jäljellä' : `${n} päivää jäljellä`, restoreItem: 'Palauta', trashEmpty: 'Ei poistettuja.', emptyTrash: 'Tyhjennä nyt', emptyTrashQ: n => `Poistetaanko ${n} pysyvästi?`,
+  restoredTo: (n, w) => `${n} on taas kohteessa ${w}.`, inTrash: 'Säilyy Poistetuissa 30 päivää.', remindDate: 'Tai valitse päivä', toCalendar: 'Lisää kalenteriin',
+  outNow: 'Esillä nyt', allBoxes: 'Kaikki laatikot', allItems: 'Kaikki tavarat', itemsH: 'Tavarat', nothingOut: 'Mikään ei ole nyt esillä.',
+  cloudMenu: 'Tili & jakaminen', cloudTitle: 'Jaa kotitaloutesi kanssa', cloudIntro: 'Kirjaudu sähköpostilla, niin varastosi tallentuu tilillesi. Voit käyttää sitä tietokoneella ja muilla puhelimilla, jakaa sen kotitaloutesi kanssa ja kirjautua ulos, jos puhelin katoaa.',
+  email: 'Sähköposti', emailWhy: 'Käytetään vain kirjautumiseen. Ei salasanaa, ei uutiskirjeitä.', sendLink: 'Lähetä kirjautumislinkki', checkMail: 'Tarkista sähköpostisi', linkSent: e => `Lähetimme kirjautumislinkin osoitteeseen ${e}.`,
+  linkSamePhone: 'Avaa linkki tällä puhelimella. Saapuminen voi kestää minuutin – tarkista myös roskaposti.', tooMany: 'Liian monta linkkiä juuri nyt – yritä hetken päästä.', sendFailed: 'Lähetys epäonnistui. Yritä uudelleen.',
+  loginFailed: 'Kirjautuminen epäonnistui.', loggedIn: 'Olet kirjautunut.', loggedOut: 'Kirjauduttu ulos. Varastosi on tallessa tililläsi.', loginAgain: 'Kirjaudu uudelleen jatkaaksesi synkronointia.',
+  loggedInAs: e => `Kirjautunut: ${e}`, joinHousehold: 'Liity QR-koodilla', joinHint: 'Skannaa koodi toisen puhelimesta.', logout: 'Kirjaudu ulos',
+  logoutQ: 'Kirjaudutaanko ulos? Varasto poistetaan tältä laitteelta, mutta se säilyy tililläsi – kirjaudu uudelleen saadaksesi sen takaisin.', yourHousehold: 'Kotitaloutesi', membersN: n => n === 1 ? '1 jäsen' : `${n} jäsentä`,
+  e2eNote: 'Tallennettu tilillesi EU:ssa sijaitseville palvelimille. Vain sinä ja kutsumasi näkevät sen.', invite: 'Kutsu joku', inviteHint: 'Anna heidän skannata koodi puhelimen kameralla tai Storrragessa (☰ → Skannaa laatikon tarra).',
+  shareLink: 'Jaa linkki', inviteSafe: 'Koodi toimii kerran 24 tunnin ajan.', inviteText: 'Liity yhteiseen varastoomme Storrragessa', syncNow: 'Synkronoi nyt', syncing: 'Synkronoidaan…', syncedAt: t => `Synkronoitu ${t}`,
+  waitingN: n => `${n} muutosta odottaa synkronointia`, offlineSync: 'Ei yhteyttä – synkronoidaan, kun yhteys palaa.', syncFailed: 'Synkronointi ei onnistunut nyt.', notMember: 'Et ole enää tämän kotitalouden jäsen.',
+  badInvite: 'Kutsu ei näytä oikealta.', loginToJoin: 'Kirjaudu ensin, niin kutsu käytetään automaattisesti.', switchHouseholdQ: 'Olet jo kotitaloudessa. Vaihdetaanko uuteen?', join: 'Liity',
+  mergeQ: 'Otetaanko mukaan se, mitä puhelimessa jo on?', mergeYes: 'Kyllä, ota mukaan', mergeNo: 'Ei', joined: 'Olet nyt kotitaloudessa!', joinFailed: 'Liittyminen epäonnistui. Koodi voi olla käytetty tai vanhentunut.',
+  statsSetting: 'Jaa nimetöntä käyttötilastoa', statsHint: 'Vain mitä käytetään, ei koskaan mitä omistat, nimiä tai paikkoja. Ei liitetä tiliisi.', statsToast: 'Storrrage lähettää nimetöntä käyttötilastoa – ei koskaan tavaroitasi.', statsWhat: 'Asetukset',
+  feedback: 'Anna palautetta', feedbackIntro: 'Mikä on hyvää, mikä ärsyttää, mitä puuttuu? Luemme kaiken.', fbIdea: 'Idea', fbBug: 'Jokin on vialla', fbLove: 'Pidän', fbPh: 'Kirjoita tähän…', fbContact: 'Sähköposti, jos haluat vastauksen', optional: 'valinnainen',
+  fbPrivacy: 'Lähetetään ilman tiliäsi. Sovelluksen versio ja näkymä tulevat mukaan.', fbThanks: 'Kiitos! 💜', offlineSend: 'Ei yhteyttä – yritä uudelleen verkossa.', loading: 'Ladataan…',
+  installTitle: 'Asenna Storrrage', install: 'Asenna', installBanner: 'Asenna Storrrage sovellukseksi puhelimeen', installedToast: 'Storrrage on nyt aloitusnäytöllä.',
+  iosStep1: 'Napauta Safarin alareunan Jaa-painiketta.', iosStep2: 'Valitse ”Lisää Koti-valikkoon”.', iosStep3: 'Napauta ”Lisää”. Avaa Storrrage jatkossa aina aloitusnäytöltä.', iosNote: 'iPhonessa on käytettävä Safaria. Asennetulla sovelluksella on oma muistinsa, joten kirjaudu sovelluksen sisällä.',
+  andStep1: 'Napauta Chromen oikean yläkulman ⋮.', andStep2: 'Valitse ”Asenna sovellus” tai ”Lisää aloitusnäyttöön”.', usageSync: n => `Storrrage käyttää noin ${n} Mt puhelimessa. Kaikki synkronoidaan myös tilillesi.`,
+  nameShown: 'Näkyy muille kotitaloudessa.', loginEmail: 'Kirjautunut osoitteella', mailReminders: 'Lähetä minulle muistutuksia sähköpostiin', otherEmail: 'Lähetä toiseen osoitteeseen (valinnainen)',
+  mailHint: 'Tulossa pian. Viesti kertoo vain, että jokin vaatii huomiota.', logIn: 'Kirjaudu', appearance: 'Ulkoasu', light: 'Vaalea', dark: 'Tumma', auto: 'Automaattinen', advanced: 'Lisää',
+  restoreHint: 'Tarvitaan vain vanhoille varmuuskopioille.', inApp: 'Sovelluksessa', youTag: '(sinä)', editPlaces: 'Muokkaa paikkoja', shareTitle: 'Jaa puhelinten välillä', someone: 'Joku', activeNow: 'sovelluksessa nyt',
+  inThisBox: n => `${n} on tässä laatikossa juuri nyt.`, editingItem: n => `${n} on avannut tämän tavaran juuri nyt – odota hetki, etteivät muutokset mene päällekkäin.`,
+  tapTalk: 'Napauta ja puhu', chatPh: 'Kirjoita, esim. ”missä teltta on?”', simpleMode: 'Yksinkertaiset komennot, toimii ilman yhteyttä', aiOn: 'Ota tekoäly käyttöön', offlineSimple: 'ei yhteyttä – yksinkertaiset komennot',
+  noSignalTxt2: 'yllä olevat komennot toimivat ilman yhteyttä. Jos mikrofoni tarvitsee yhteyden, käytä näppäimistön mikrofonia.', noPlaceYet: 'Ei vielä paikkaa', unsorted: 'Lajittelematon', addWhat: 'Lisää', where: 'Minne?',
+  notLoggedIn: 'Et ole kirjautunut.', ownerTag: 'sinä aloitit sen', noHousehold: 'Ei vielä jaettu', memberSince: 'Jäsen alkaen', inStorage: 'Säilössä', lastSynced: 'Viimeksi synkronoitu',
+  inviteWho: 'Kuka? (valinnainen, esim. Anna)', invitesSent: 'Kutsut', joinedOn: d => `liittyi ${d}`, expired: 'vanhentunut', waitingUntil: t => `odottaa · voimassa ${t} asti`, invite1: 'Kutsu', noInvites: 'Ei vielä kutsuja.',
+  scanQR: 'Skannaa QR-koodi', whatName: 'Mikä on nimesi?', startNew: 'Aloita oma varasto', loginWelcome: 'Lähetämme koodin sähköpostiisi – ei salasanaa.',
+  invitedIntro: 'Kirjoita sähköpostisi, niin lähetämme koodin. Sitten pääset suoraan yhteiseen varastoon.', connectNow: 'Tallenna tililleni', joinOther: 'Liity toiseen kotitalouteen (QR)',
+  mergedIntoAccount: 'Puhelimessa olleet tiedot lisättiin tilillesi.', unsyncedQ: n => `${n} muutosta ei ole vielä tallennettu tilille. Kirjaudutaanko silti ulos? Ne katoavat.`,
+  logoutAll: 'Kirjaudu ulos kaikilta laitteilta', logoutAllQ: 'Kirjaudutaanko ulos kaikilta laitteilta? Käytä tätä, jos puhelin on kadonnut.', logoutAllHint: 'Katosiko puhelin? Kirjaudu tietokoneella ja valitse ”Kirjaudu ulos kaikilta laitteilta”.',
+  wipedRemote: 'Sinut kirjattiin ulos toiselta laitteelta, joten varasto poistettiin tästä laitteesta.', codeSent: e => `Lähetimme viestin osoitteeseen ${e}. Kirjoita koodi tähän:`, wrongAddress: 'Väärä osoite?',
+  orTapLink: 'Tai napauta viestin painiketta (tällä laitteella).', sendAgain: 'Lähetä uudelleen', sentAgain: 'Lähetetty uudelleen.', codeWrong: 'Koodi on väärä tai vanhentunut. Yritä uudelleen tai pyydä uusi.',
+  slogan: 'Tiedä mitä sinulla on – ja missä se on.', startNewHint: 'Uusi täällä? Kirjoita nimesi ja aloita. Tiliä ei tarvita – kaikki tallentuu puhelimeen.', or: 'tai',
+  loginHint: 'Onko sinulla tili, tai haluatko luoda sellaisen? Lähetämme koodin sähköpostiin – ei salasanaa. Voit jakaa ja käyttää kaikkea tietokoneelta.', yourEmail: 'Sähköpostisi', sendCode: 'Lähetä koodi',
+  invitedTitle: 'Sinut on kutsuttu!', pitchTitle: 'Luo ilmainen tili – tarvitset vain sähköpostin', pitch1: 'Jaa asuinkumppaneidesi kanssa', pitch2: 'Käytä kaikkea tietokoneella ja muilla puhelimilla', pitch3: 'Turvassa, jos puhelin katoaa', pitch4: 'Lisää ominaisuuksia tulossa',
+  fold: 'Pienennä', unfold: 'Laajenna', foldAll: 'Pienennä kaikki', unfoldAll: 'Laajenna kaikki', badEmail: 'Tarkista sähköpostiosoite.', sending: 'Lähetetään…', sendTimeout: 'Sähköpostipalvelin ei vastannut ajoissa. Yritä minuutin päästä.',
+  mailNotSent: 'Viestiä ei lähetetty', errorCode: 'Tiedot', moveLocalQ: n => `Puhelimessa on laatikoita ja tavaroita (${n}), jotka eivät ole tililläsi. Siirretäänkö ne tilille? Ne merkitään ”Uusi”.`, moveLocalYes: 'Kyllä, siirrä', moveLocalNo: 'Ei, poista ne',
+  logInOrCreate: 'Kirjaudu tai luo tili', yourAccount: 'Tilisi', peopleTitle: 'Kotitalouden ihmiset', peopleHint: 'Lisää kaikki, joilla on tavaroita täällä. Kutsu ne, jotka haluavat käyttää sovellusta itse.',
+  inAppTag: 'käyttää sovellusta', invitePending: 'kutsuttu', inviteAgain: 'Kutsu uudelleen', inviteToApp: 'Kutsu', loginToInvite: 'Kirjaudu ensin – sitten voit kutsua.', inviteFor: n => `Kutsu ${n}`, sendInvite: 'Lähetä kutsu',
+  inviteHint2: 'Tai anna hänen skannata koodi puhelimen kameralla.', inviteMsg: n => `${n} kutsuu sinut jakamaan varastomme Storrragessa:`, storageWord: 'Säilytys',
+  notSharedYet: 'Varastoasi ei ole vielä tallennettu tilille.', creatingInvite: 'Luodaan kutsua…', inviteFailed: 'Kutsun luominen epäonnistui.',
+  pasteCode: 'Liitä koodi', noCodeCopied: 'Koodia ei ole kopioitu – kopioi ensin numerot viestistä.', pasteManually: 'Paina kenttää pitkään ja valitse Liitä.', nameQ: 'Mikä on nimesi?', next: 'Seuraava', hiName: n => `Hei ${n}!`,
+  placeQ: 'Mitä kutsut paikkaa, jossa säilytät tavaroita?', kitQ: 'Miten haluat aloittaa?', kitYes: 'Aloituspaketti', kitYesSub: '10 tavallista laatikkoa kolmen seinän vierellä – nimeä uudelleen tai poista halutessasi', kitNo: 'Aloita tyhjästä',
+  kitDone: 'Aloituspaketti on valmis. Napauta laatikkoa täyttääksesi sen.', zoneLeft: 'Vasen seinä', zoneBack: 'Takaseinä', zoneRight: 'Oikea seinä',
+  kitXmas: 'Joulukoristeet', kitEaster: 'Pääsiäinen & juhlat', kitTools: 'Työkalut', kitCamping: 'Retkeily', kitSport: 'Urheilu', kitKidsClothes: 'Lastenvaatteet', kitBooks: 'Kirjat', kitCables: 'Johdot & elektroniikka', kitKitchen: 'Keittiö & astiat', kitMisc: 'Sekalaista',
+  newThing: 'Uusi tavara', askAI: 'Kysy · beta', searchWord: 'Hae', searchOrAsk: 'Hae tai kysy Storrragelta…', askAbout: q => `Kysy Storrragelta: ”${q}”`,
+  tab_home: 'Koti', tab_search: 'Hae', tab_profile: 'Profiili', tab_add: 'Lisää'
+};
+
+STR.nb = {
+  space: 'ROM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 ESKE' : `${n} ESKER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `ESKE ${n}`,
+  allPlaces: 'Alle steder', addPlace: '+ Sted', notInBox: 'Ikke i en eske', notInBoxShort: 'ikke i en eske',
+  emptyPlace: 'Trykk på + for å legge til en eske, eller noe som ikke ligger i en eske, som en sykkel.',
+  addItem: 'Legg til ting', addSeveral: 'Legg til flere', addThingChoice: 'Legg til ting', addMultipleChoice: 'Legg til flere', addBoxChoice: 'Legg til eske', item: 'ting', items: 'ting', editBox: 'Rediger eske', label: 'Etikett',
+  findStuff: 'FINN TINGENE DINE!', typeKeyword: 'Skriv et søkeord', searchIn: 'Søk i', everywhere: 'Overalt', allOf: p => `Hele ${p}`,
+  boxesH: 'Esker', similar: 'Lignende ting', noMatch: q => `Ingenting passer med «${q}». Prøv et annet ord.`, nothingHere: 'Ingenting her ennå.',
+  welcome: 'Hold oversikt over hva som står hvor: esker, ting, bilder og kvitteringer. Finn alt ved å søke eller bare spørre.',
+  yourName: 'Navnet ditt', getStarted: 'Kom i gang', noAccount: 'Ingen konto trengs. Alt blir på telefonen.', writeName: 'Skriv navnet ditt først.',
+  storrrage: 'STORRRAGE', profile: 'Profil', settings: 'Innstillinger', notifications: 'Varsler', premium: 'Premium',
+  version: v => `Storrrage versjon ${v}`, household: 'Husstand', addName: 'Legg til et navn', add: 'Legg til', you: '(deg)', remove: 'Fjern',
+  householdHint: 'Brukes til «hvem eier den» på ting, og når du snakker med Storrrage («Elsas støvler»).', noOne: 'Ingen lagt til ennå.',
+  aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Lagringssteder', backupNow: 'Ta sikkerhetskopi nå', never: 'Aldri',
+  restore: 'Gjenopprett fra sikkerhetskopi', insurance: 'Forsikringsrapport', labelsAll: 'Etiketter for alle esker', scanLabel: 'Skann en etikett', language: 'Språk',
+  usage: mb => `Alt lagres bare på denne telefonen. Storrrage bruker omtrent ${mb} MB.`,
+  dueIntro: 'Disse har du ikke brukt på en stund. Verdt å beholde, eller på tide å selge?', lastUsedOn: d => `Sist brukt ${d}`,
+  usedRecently: 'Brukt nylig', markSale: 'Merk for salg', nothingDue: 'Ingenting trenger oppmerksomhet. Sett «Påminn meg hvis ubrukt» på en ting for å få et dytt.',
+  prem1: 'Del lagring med husstanden', prem2: 'Selg på Finn, Tradera og Vinted', prem3: 'Innlogging og synk mellom telefoner', premLater: 'Kommer senere. Alt du bruker nå er gratis.',
+  whatIsIt: 'Hva er det?', whereIs: 'Hvor den er', addDetail: 'Legg til detaljer', lastUsed: 'Sist brukt', remind: 'Påminn meg hvis ubrukt', noRemind: 'Ingen påminnelse',
+  remindM: m => m === 12 ? 'Etter 1 år' : m === 24 ? 'Etter 2 år' : `Etter ${m} måneder`, notify: d => `påminn ${d}`,
+  attachments: 'Vedlegg', addAttach: '+ Legg til kvittering, garanti eller bruksanvisning', tags: 'Stikkord',
+  registered: (d, by) => `Registrert ${d}${by ? ` av ${by}` : ''}.`, storedSince: d => `Lagret siden ${d}.`, changed: d => `Sist endret ${d}.`,
+  delItem: 'Slett ting', done: 'Ferdig', save: 'Lagre', saveAnother: 'Lagre + legg til en til', saved: 'Lagret.', savedNext: n => `${n} lagret. Legg til den neste.`, nameFirst: 'Gi den et navn først.',
+  f_size: 'Størrelse', f_brand: 'Merke', f_value: 'Pris / verdi (kr)', f_model: 'Modell', f_qty: 'Antall', f_owner: 'Eier & status', f_color: 'Farge', f_season: 'Sesong',
+  f_serial: 'Serienummer', f_category: 'Kategori', f_spot: 'Nøyaktig hvor', f_notes: 'Notater', whose: 'Hvem eier den', status: 'Status', loanTo: 'Lånt ut til', shared: 'Felles',
+  st_store: 'Lagret', st_loan: 'Utlånt', st_sale: 'Til salgs', st_sold: 'Solgt', st_given: 'Gitt bort',
+  addTo: p => `Legg til i ${p}`, boxStorage: 'Eske / oppbevaring', itemNoBox: 'Ting uten eske', severalPhotos: 'Flere ting fra bilder',
+  cancel: 'Avbryt', close: 'Lukk', ok: 'OK', moveX: n => `Flytt ${n}`, to: 'Til', move: 'Flytt', movedTo: w => `Flyttet til ${w}.`, rename: 'Gi nytt navn', del: 'Slett', edit: 'Rediger',
+  moveToPlace: 'Flytt til sted', emptyFirst: 'Tøm stedet for å slette det.', delQ: n => `Slette «${n}»? Det kan ikke angres.`, delNoteQ: 'Slette dette talenotatet?',
+  rmPhotoQ: 'Fjerne dette bildet?', rmQ: n => `Fjerne «${n}»?`, rmTagQ: n => `Fjerne stikkordet «${n}»?`, newPlace: 'Nytt lagringssted', newPlaceHint: 'For eksempel Kjelleren, Loftet eller Garasjen',
+  renameX: n => `Gi nytt navn til ${n}`, newTag: 'Ny', tagHint: 'For eksempel tur eller vinter', voiceNotes: 'Talenotater', voiceNotesBox: 'Talenotater for denne esken',
+  menu: 'Meny', allSettings: 'Alle innstillinger', usedNoted: 'Notert. Påminnelsen starter på nytt.', markedSale: 'Merket for salg.',
+  placesHint: 'For eksempel kjellerboden, loftet, garasjen eller hytta. Bare et navn lagres, aldri en adresse.', placeNameHint: 'Navn, f.eks. Loftet',
+  fileMissing: 'Filen mangler.', savingPhoto: 'Lagrer bilde…', unnamed: 'Uten navn', batchTitle: 'Legg til flere ting', batchWhere: w => `De havner i ${w}.`,
+  modeEach: 'Ett bilde per ting', modeEachHint: 'Ta eller velg et bilde av hver ting.', modeMulti: 'Flere ting på ett bilde', modeMultiHint: 'Legg tingene fram og ta ett bilde. Hver ting blir sin egen.',
+  batchAI: 'AI foreslår navn og detaljer fra bildene. Du sjekker dem før de legges til.', batchNoAI: 'Slå på AI-assistenten for å få forslag automatisk. Uten den navngir du hver ting selv.',
+  batchPrivacy: 'Bilder sendes til AI-tjenesten for å bli gjenkjent.', thinking: 'Gjenkjenner…', aiFailed: e => `Kunne ikke gjenkjenne: ${e}`,
+  addN: n => n === 1 ? 'Legg til 1 ting' : `Legg til ${n} ting`, batchAdded: n => n === 1 ? 'La til 1 ting.' : `La til ${n} ting.`, namePh: 'Navn', include: 'Ta med',
+  morePhotos: '+ Flere bilder', noneYet: 'Ingen bilder ennå.', batchFound: n => n === 1 ? 'Fant 1 ting.' : `Fant ${n} ting.`, aiSuggest: 'Foreslå fra bilde', testTag: 'TEST',
+  aiLooking: 'Ser på bildet…', aiNothing: 'AI-en kjente ikke igjen noe på bildet.', aiSuggestH: 'Forslag fra bildet', aiSuggestHint: 'Huk av det du vil bruke. Avhukede detaljer erstatter det som står nå.',
+  aiNow: v => `nå: ${v}`, apply: 'Bruk valgte', aiApplied: n => n === 1 ? 'Oppdaterte 1 detalj.' : `Oppdaterte ${n} detaljer.`, aiNeedPhoto: 'Legg til et bilde først.',
+  rmPhoto: 'Fjern bilde', addPhoto: 'Legg til bilde', editBoxH: 'Rediger eske', newBox: 'Ny eske', name: 'Navn', boxNamePh: 'Vinterklær', storagePlace: 'Lagringssted',
+  whereInPlace: 'Hvor på stedet', wherePh: 'Bakveggen, øverste hylle', boxPhoto: 'Bilde av esken', delBox: 'Slett eske', saveBox: 'Lagre eske', addBox: 'Legg til eske',
+  waitPhoto: 'Vent til bildet er lagret.', nameBox: 'Gi esken et navn.', whoPhone: 'Hvem bruker denne telefonen?', whoPhoneHint: 'Så «min» og «mine» betyr denne personen når du snakker med Storrrage. Det viser også hvem som registrerte hver ting.',
+  notSet: 'Ikke valgt', scanH: 'Skann en etikett', pointCam: 'Rett kameraet mot QR-koden på esken.', typeCode: 'Eller skriv eskens kode', openBox: 'Åpne eske',
+  noCam: 'Kameraet er ikke tilgjengelig her. Skriv koden fra etiketten i stedet.', camBlocked: 'Kameraet ble blokkert. Skriv koden fra etiketten, eller tillat kameraet i nettleserens innstillinger.',
+  offline: 'Frakoblet. Alt du gjør lagres på telefonen.', shareTo: 'Del til Drive, e-post eller en annen app', saveToPhone: 'Lagre på telefonen (Nedlastinger)', savedDl: 'Lagret i Nedlastinger.',
+  shareFail: 'Deling fungerte ikke. Bruk Lagre på telefonen i stedet.', labelsAllH: 'Etiketter for alle esker', talkH: 'Snakk eller skriv med Storrrage', send: 'Send',
+  pause: 'Gjør det jeg sa etter en pause på', whatSay: 'Hva kan jeg si? (også uten dekning)', noSignal: 'Uten dekning:',
+  noSR: 'Talegjenkjenning finnes ikke i denne nettleseren. Bruk mikrofonen på tastaturet i stedet.', readAloud: 'Les svar høyt',
+  aiIntro: 'Med AI på kan du snakke fritt. Storrrage forstår oppfølgingsspørsmål og spør om detaljer som betyr noe. Uten dekning brukes de enkle kommandoene.',
+  provider: 'Leverandør', gemFree: 'Google Gemini (gratis, for testing)', claudePaid: 'Claude (betalt)', simpleOnly: 'Bare enkle kommandoer. Ingenting sendes noe sted.', testOnly: 'Bruk bare oppdiktede testting.',
+  freeTier: 'På Googles gratisnivå kan det du sender brukes til å forbedre Googles produkter og leses av mennesker. Ikke send ditt ekte lager før du bytter til en betalt løsning.',
+  apiKey: 'API-nøkkel', checkKey: 'Sjekk nøkkelen', checkToChoose: 'Sjekk nøkkelen for å velge',
+  aiSends: 'Når du snakker, sender Storrrage det du sa, siste del av samtalen og navn og detaljer på steder, esker og ting. Talenotater sendes aldri.',
+  pasteKey: 'Lim inn nøkkelen først.', checking: 'Sjekker…', works: 'Fungerer.', pasteToTurnOn: 'Lim inn API-nøkkelen for å slå på AI.', aiIsOff: 'AI er av.', cantSave: 'Kunne ikke lagre innstillingen.',
+  getGem: 'Få en gratis nøkkel: åpne aistudio.google.com, logg inn og velg «Get API key».', getClaude: 'Få en nøkkel: åpne console.anthropic.com, sett inn et lite beløp under Billing og lag en nøkkel under API keys.',
+  keyLocal: 'Nøkkelen lagres bare på denne telefonen og er ikke med i sikkerhetskopier.', inside: 'Inni', topLevel: p => `${p}, direkte`, nameOptional: 'La stå tom for å kalle den opp etter innholdet',
+  boxInBox: 'Eske i denne esken', boxesInside: 'Esker inni', addHereBox: b => `Legg til i ${b}`, notes: 'Notater', recent: 'Nylig sett', favorites: 'Favoritter', fav: 'Favoritt', unfav: 'Fjern favoritt',
+  viewLarge: 'Store ruter', viewSmall: 'Små ruter', viewList: 'Liste', select: 'Velg', selected: n => `${n} valgt`, moveSel: 'Flytt til…', delSel: 'Slett',
+  delSelQ: n => n === 1 ? 'Slette 1 ting? Det kan ikke angres.' : `Slette ${n} ting? Det kan ikke angres.`, movedN: (n, w) => `Flyttet ${n} til ${w}.`, deletedN: n => `Slettet ${n}.`,
+  didYouMean: 'Mente du', share: 'Del hvor den er', copied: 'Kopiert.', shareCopy: 'Del en kopi av dette stedet', icon: 'Bilde', numbering: 'Eskenumre',
+  numPlace: 'Egen serie for hvert sted (B-001 på hvert sted)', numAccount: 'Én serie for alle steder', export: 'Eksporter en liste', exportH: 'Eksporter en liste over tingene dine',
+  exportHint: 'Pent i rader: sted, eske, ting og detaljer.', excel: 'Excel (.xlsx)', word: 'Word (.doc)', pdf: 'PDF', scope: 'Hva skal med', exportAll: 'Alt',
+  loadingLib: 'Gjør klar filen…', needNet: 'Dette krever dekning første gang.', backupHint: d => d ? `Siste sikkerhetskopi ${d}.` : 'Ingen sikkerhetskopi ennå.', backupDo: 'Ta sikkerhetskopi',
+  addNav: 'Legg til', whichPlace: 'Legg til på hvilket sted?', nameNeeded: 'Alle ting trenger et navn.', discarded: 'Forkastet: tingen hadde ikke navn.',
+  col_place: 'Sted', col_box: 'Eske', col_inbox: 'Inni', col_item: 'Ting', col_cat: 'Kategori', col_brand: 'Merke', col_model: 'Modell', col_size: 'Størrelse', col_color: 'Farge',
+  col_owner: 'Eier', col_status: 'Status', col_qty: 'Antall', col_value: 'Verdi (kr)', col_stored: 'Lagret siden', col_used: 'Sist brukt', col_tags: 'Stikkord', col_notes: 'Notater', col_serial: 'Serienr.',
+  listTitle: 'Lagerliste', total: 'Totalt', showAll: 'Vis alle', dragLooseHint: 'Hold på en rund markør og dra den inn i en sone.', addZone: 'Legg til sone', zoneExists: 'Det finnes allerede en sone med det navnet.',
+  doorSide: 'Dør og innerste del', doorHint: 'Velg hvilken side døren er på, og hvor innerst er.', door_top: 'Topp', door_bottom: 'Bunn', door_left: 'Venstre', door_right: 'Høyre',
+  dragHint: 'Hold på en eske eller rund markør og dra den til en stabel eller sone.', back: 'Tilbake', switchSpace: 'Velg sted', shelf: 'Hylle', map: 'Kart', door: 'Dør', farIn: 'Innerst',
+  noZone: 'Ingen sone', placement: 'Plassering', placementHint: 'Hvor esken står: sonen (f.eks. «Ved døren», «Hylle 2») og hvilken stabel.', zone: 'Sone', zoneHint: 'F.eks. Ved døren, Hylle 2, Innerst',
+  stack: 'Stabel', newStack: 'En ny stabel', level: 'Nivå', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
+  closerDoor: 'Flytt opp', furtherIn: 'Flytt ned', collections: 'Samlinger', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kart',
+  insideBox: 'inni', toCollection: 'Samling', collHint: 'Ting med samme stikkord blir en samling, også når de ligger i ulike esker.', collPh: 'F.eks. Jul eller Vinter',
+  addedToColl: (n, t) => `La ${n} til #${t}.`, isHere: 'er her', openItem: 'Åpne ting', foundIn: 'Funnet i', list: 'Liste', takeOut: 'Ta fram', putBack: 'Legg tilbake', outTag: 'Framme',
+  outSince: d => `framme siden ${d}`, backBy: d => `tilbake innen ${d}`, outSection: 'Framme akkurat nå', outUntil: 'Framme til (valgfritt)',
+  tookOut: (n, w) => `${n} tatt fram fra ${w}. Plassen beholdes.`, putBackDone: (n, w) => `${n} er tilbake i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Angre', more: 'Mer',
+  quickAddPh: w => `Legg til i ${w}…`, boxEmpty: 'Ingenting her ennå.', backQ: 'Er den tilbake på plass?', stillOut: 'Fortsatt framme', isBack: 'Den er tilbake',
+  adLabel: 'Annonse · testplass', adTitle: 'Storrrage uten reklame', adText: 'Premium fjerner reklame.', readMore: 'Les mer', adsSetting: 'Vis annonseplasser (test)',
+  swipeHint: 'Sveip til høyre for å ta fram eller legge tilbake, til venstre for å slette.', addShort: 'Ting', severalShort: 'Flere', subShort: 'Eske inni',
+  recentSearches: 'Siste søk', clear: 'Tøm', pickIcon: 'Bytt ikon', pickIconHint: 'Brukes når tingen ikke har bilde.', autoIcon: 'Automatisk',
+  askOut: n => `Tar du fram ${n}?`, yesTemp: 'Ja, en stund', yesGone: 'Ja, for godt', no: 'Nei', allOutAlready: 'Alt er allerede framme.', allBackAlready: 'Alt er allerede tilbake.',
+  tookOutN: (n, w) => `Tok fram ${n} fra ${w}. Plassene beholdes.`, putBackN: (n, w) => `La ${n} tilbake i ${w}.`, boxOutDone: c => `${c} er framme. Plassen på kartet beholdes.`, boxBackDone: c => `${c} er tilbake på plass.`,
+  takeOutBox: 'Ta fram hele esken', putBackBox: 'Sett esken tilbake', boxIsOut: 'Hele esken er framme', outOfN: (o, n) => `${o} av ${n} framme`, takeOutAll: 'Ta fram alt', putBackAll: 'Legg alt tilbake',
+  today: 'i dag', yesterday: 'i går', daysAgo: n => `for ${n} dager siden`, weeksAgo: n => n === 1 ? 'for 1 uke siden' : `for ${n} uker siden`, monthsAgo: n => n === 1 ? 'for 1 måned siden' : `for ${n} måneder siden`,
+  yearsAgo: n => n === 1 ? 'for 1 år siden' : `for ${n} år siden`, checked: 'sjekket', neverChecked: 'aldri sjekket', openedApp: 'åpnet i appen', changedAgo: 'endret',
+  checkQ: 'Stemmer alt i esken fortsatt?', checkYes: '✓ Ja, alt stemmer', checkNo: 'Noe er endret', checkedThanks: 'Takk! Merket som sjekket i dag.', checkFix: 'Oppdater det som er endret, og merk den som sjekket.',
+  checkedYear: (c, n) => `${c} av ${n} esker sjekket eller oppdatert i år`, nudgeCollOut: c => `Det er den tiden av året. Tar du fram ${c}?`, nudgeCollBack: c => `Er ${c} tilbake på plass?`,
+  nudgePattern: (n, d) => `Du pleier å ta fram ${n} omtrent hver ${d}. dag. Gjør du det nå?`, nudgeYearly: n => `Du tok fram ${n} rundt denne tiden i fjor. Igjen?`, notNow: 'Ikke nå', suggestions: 'Forslag',
+  sortBy: 'Sorter', sort_manual: 'Egen rekkefølge', sort_az: 'A–Å', sort_changed: 'Sist endret', sort_added: 'Sist lagt til', sort_used: 'Sist brukt',
+  listDragHint: 'Hold på en eske eller ting for å dra den – opp, ned eller til en annen eske.', editItem: 'Rediger', trash: 'Slettet', trashHint: 'Slettede ting tas vare på her i 30 dager.',
+  daysLeft: n => n === 1 ? '1 dag igjen' : `${n} dager igjen`, restoreItem: 'Gjenopprett', trashEmpty: 'Ingenting slettet.', emptyTrash: 'Tøm nå', emptyTrashQ: n => `Slette ${n} ting for godt?`,
+  restoredTo: (n, w) => `${n} er tilbake i ${w}.`, inTrash: 'Tas vare på i Slettet i 30 dager.', remindDate: 'Eller velg en dato', toCalendar: 'Legg i kalenderen',
+  outNow: 'Framme nå', allBoxes: 'Alle esker', allItems: 'Alle ting', itemsH: 'Ting', nothingOut: 'Ingenting er framme nå.',
+  cloudMenu: 'Konto & deling', cloudTitle: 'Del med husstanden', cloudIntro: 'Logg inn med e-posten din, så lagres lageret ditt på kontoen. Da kan du bruke det på PC-en og andre telefoner, dele med husstanden og logge ut hvis telefonen blir borte.',
+  email: 'E-post', emailWhy: 'Brukes bare til innlogging. Ikke passord, ikke nyhetsbrev.', sendLink: 'Send innloggingslenke', checkMail: 'Sjekk e-posten din', linkSent: e => `Vi har sendt en innloggingslenke til ${e}.`,
+  linkSamePhone: 'Åpne lenken på denne telefonen. Det kan ta et minutt – sjekk søppelpost også.', tooMany: 'For mange lenker sendt akkurat nå – prøv igjen om litt.', sendFailed: 'Kunne ikke sende. Prøv igjen.',
+  loginFailed: 'Innloggingen fungerte ikke.', loggedIn: 'Du er logget inn.', loggedOut: 'Logget ut. Tingene dine er trygt lagret på kontoen.', loginAgain: 'Logg inn igjen for å fortsette å synkronisere.',
+  loggedInAs: e => `Logget inn som ${e}`, joinHousehold: 'Bli med via QR-kode', joinHint: 'Skann koden på den andres telefon.', logout: 'Logg ut',
+  logoutQ: 'Logge ut? Tingene fjernes fra denne enheten, men blir på kontoen – logg inn igjen for å få dem tilbake.', yourHousehold: 'Husstanden din', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmer`,
+  e2eNote: 'Lagret på kontoen din på servere i EU. Bare du og de du inviterer kan se det.', invite: 'Inviter noen', inviteHint: 'La dem skanne med telefonkameraet eller i Storrrage (☰ → Skann en etikett).',
+  shareLink: 'Del lenke i stedet', inviteSafe: 'Koden virker én gang i 24 timer.', inviteText: 'Del lageret vårt i Storrrage', syncNow: 'Synk nå', syncing: 'Synkroniserer…', syncedAt: t => `Synket ${t}`,
+  waitingN: n => `${n} endringer venter på synk`, offlineSync: 'Frakoblet – synker når du har dekning.', syncFailed: 'Kunne ikke synke nå.', notMember: 'Du er ikke lenger med i denne husstanden.',
+  badInvite: 'Invitasjonen ser feil ut.', loginToJoin: 'Logg inn først, så brukes invitasjonen automatisk.', switchHouseholdQ: 'Du er allerede med i en husstand. Bytte til den nye?', join: 'Bli med',
+  mergeQ: 'Ta med det som allerede ligger på telefonen?', mergeYes: 'Ja, ta det med', mergeNo: 'Nei', joined: 'Du er med i husstanden!', joinFailed: 'Kunne ikke bli med. Koden kan være brukt eller for gammel.',
+  statsSetting: 'Del anonym bruksstatistikk', statsHint: 'Bare hva som brukes, aldri hva du eier, navn eller steder. Ikke koblet til kontoen din.', statsToast: 'Storrrage sender anonym bruksstatistikk – aldri tingene dine.', statsWhat: 'Innstillinger',
+  feedback: 'Gi tilbakemelding', feedbackIntro: 'Hva er bra, hva irriterer, hva mangler? Vi leser alt.', fbIdea: 'Idé', fbBug: 'Noe er feil', fbLove: 'Liker', fbPh: 'Skriv her…', fbContact: 'E-post, hvis du vil ha svar', optional: 'valgfritt',
+  fbPrivacy: 'Sendes uten kontoen din. Appversjon og skjerm følger med.', fbThanks: 'Takk! 💜', offlineSend: 'Ingen dekning – prøv igjen når du er på nett.', loading: 'Laster…',
+  installTitle: 'Installer Storrrage', install: 'Installer', installBanner: 'Installer Storrrage som app på telefonen', installedToast: 'Storrrage ligger nå på startskjermen.',
+  iosStep1: 'Trykk på Del-knappen nederst i Safari.', iosStep2: 'Velg «Legg til på Hjem-skjerm».', iosStep3: 'Trykk «Legg til». Åpne alltid Storrrage fra Hjem-skjermen.', iosNote: 'På iPhone må det være Safari. Den installerte appen har egen lagring, så logg inn inne i appen.',
+  andStep1: 'Trykk på ⋮ øverst til høyre i Chrome.', andStep2: 'Velg «Installer appen» eller «Legg til på startskjermen».', usageSync: n => `Storrrage bruker omtrent ${n} MB på telefonen. Alt synkes også med kontoen din.`,
+  nameShown: 'Vises for de andre i husstanden.', loginEmail: 'Logget inn med', mailReminders: 'Send meg påminnelser på e-post', otherEmail: 'Send til en annen adresse (valgfritt)',
+  mailHint: 'Kommer snart. E-posten sier bare at noe bør sjekkes.', logIn: 'Logg inn', appearance: 'Utseende', light: 'Lyst', dark: 'Mørkt', auto: 'Automatisk', advanced: 'Mer',
+  restoreHint: 'Trengs bare for gamle sikkerhetskopier.', inApp: 'I appen', youTag: '(deg)', editPlaces: 'Rediger steder', shareTitle: 'Del mellom telefoner', someone: 'Noen', activeNow: 'i appen nå',
+  inThisBox: n => `${n} er i denne esken akkurat nå.`, editingItem: n => `${n} har denne tingen åpen nå – vent litt så endringene ikke kolliderer.`,
+  tapTalk: 'Trykk og snakk', chatPh: 'Skriv, f.eks. «hvor er teltet?»', simpleMode: 'Enkle kommandoer, virker frakoblet', aiOn: 'Slå på AI', offlineSimple: 'frakoblet – enkle kommandoer',
+  noSignalTxt2: 'kommandoene over virker uten dekning. Trenger mikrofonen dekning, bruk mikrofonen på tastaturet.', noPlaceYet: 'Ikke noe sted ennå', unsorted: 'Usortert', addWhat: 'Legg til', where: 'Hvor?',
+  notLoggedIn: 'Du er ikke logget inn.', ownerTag: 'du startet den', noHousehold: 'Ikke delt ennå', memberSince: 'Medlem siden', inStorage: 'Lagret', lastSynced: 'Sist synket',
+  inviteWho: 'Hvem? (valgfritt, f.eks. Anna)', invitesSent: 'Invitasjoner', joinedOn: d => `ble med ${d}`, expired: 'utløpt', waitingUntil: t => `venter · gyldig til ${t}`, invite1: 'Invitasjon', noInvites: 'Ingen invitasjoner ennå.',
+  scanQR: 'Skann QR-kode', whatName: 'Hva heter du?', startNew: 'Start lageret mitt', loginWelcome: 'Vi sender en kode til e-posten din – ikke noe passord.',
+  invitedIntro: 'Skriv e-posten din, så sender vi en kode. Da kommer du rett inn i det delte lageret.', connectNow: 'Lagre på kontoen min', joinOther: 'Bli med i en annen husstand (QR)',
+  mergedIntoAccount: 'Det som lå på telefonen ble lagt til på kontoen din.', unsyncedQ: n => `${n} endringer er ikke lagret på kontoen ennå. Logge ut likevel? De går tapt.`,
+  logoutAll: 'Logg ut på alle enheter', logoutAllQ: 'Logge ut på alle enhetene dine? Bruk dette hvis en telefon er borte.', logoutAllHint: 'Mistet telefonen? Logg inn på PC-en og velg «Logg ut på alle enheter».',
+  wipedRemote: 'Du ble logget ut fra en annen enhet, så tingene ble fjernet herfra.', codeSent: e => `Vi har sendt en e-post til ${e}. Skriv inn koden her:`, wrongAddress: 'Feil adresse?',
+  orTapLink: 'Eller trykk på knappen i e-posten (på denne enheten).', sendAgain: 'Send igjen', sentAgain: 'Sendt igjen.', codeWrong: 'Koden er feil eller for gammel. Prøv igjen eller send en ny.',
+  slogan: 'Ha oversikt over alt du har – og hvor det er.', startNewHint: 'Ny her? Skriv navnet ditt og sett i gang. Ingen konto trengs – alt lagres på telefonen.', or: 'eller',
+  loginHint: 'Har du en konto, eller vil du lage en? Vi sender en kode på e-post – ikke noe passord. Da kan du dele og nå alt fra PC-en.', yourEmail: 'E-posten din', sendCode: 'Send kode',
+  invitedTitle: 'Du er invitert!', pitchTitle: 'Lag en gratis konto – du trenger bare e-post', pitch1: 'Del med dem du bor med', pitch2: 'Nå alt fra PC-en og andre telefoner', pitch3: 'Trygt hvis telefonen blir borte', pitch4: 'Flere funksjoner på vei',
+  fold: 'Slå sammen', unfold: 'Utvid', foldAll: 'Slå sammen alle', unfoldAll: 'Utvid alle', badEmail: 'Sjekk e-postadressen.', sending: 'Sender…', sendTimeout: 'E-postserveren svarte ikke. Prøv igjen om et minutt.',
+  mailNotSent: 'E-posten ble ikke sendt', errorCode: 'Detaljer', moveLocalQ: n => `Telefonen har esker og ting (${n}) som ikke er på kontoen din. Flytte dem inn? De merkes «Ny».`, moveLocalYes: 'Ja, flytt dem inn', moveLocalNo: 'Nei, fjern dem',
+  logInOrCreate: 'Logg inn eller lag konto', yourAccount: 'Kontoen din', peopleTitle: 'Personer i husstanden', peopleHint: 'Legg til alle som har ting her. Inviter dem som vil bruke appen selv.',
+  inAppTag: 'bruker appen', invitePending: 'invitert', inviteAgain: 'Inviter igjen', inviteToApp: 'Inviter', loginToInvite: 'Logg inn først – så kan du invitere.', inviteFor: n => `Inviter ${n}`, sendInvite: 'Send invitasjon',
+  inviteHint2: 'Eller la dem skanne koden med telefonkameraet.', inviteMsg: n => `${n} inviterer deg til å dele lageret vårt i Storrrage:`, storageWord: 'Oppbevaring',
+  notSharedYet: 'Lageret ditt er ikke lagret på kontoen ennå.', creatingInvite: 'Lager invitasjonen…', inviteFailed: 'Kunne ikke lage invitasjonen.',
+  pasteCode: 'Lim inn koden', noCodeCopied: 'Ingen kode kopiert – kopier tallene i e-posten først.', pasteManually: 'Hold inne i feltet og velg Lim inn.', nameQ: 'Hva heter du?', next: 'Neste', hiName: n => `Hei ${n}!`,
+  placeQ: 'Hva kaller du stedet der du oppbevarer ting?', kitQ: 'Hvordan vil du starte?', kitYes: 'Startpakke', kitYesSub: '10 vanlige esker langs tre vegger – gi nytt navn eller fjern som du vil', kitNo: 'Start tomt',
+  kitDone: 'Startpakken er klar. Trykk på en eske for å fylle den.', zoneLeft: 'Venstre vegg', zoneBack: 'Bakveggen', zoneRight: 'Høyre vegg',
+  kitXmas: 'Julepynt', kitEaster: 'Påske & høytider', kitTools: 'Verktøy', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barneklær', kitBooks: 'Bøker', kitCables: 'Ledninger & elektronikk', kitKitchen: 'Kjøkken & servise', kitMisc: 'Diverse',
+  newThing: 'Ny ting', askAI: 'Spør · beta', searchWord: 'Søk', searchOrAsk: 'Søk, eller spør Storrrage…', askAbout: q => `Spør Storrrage: «${q}»`,
+  tab_home: 'Hjem', tab_search: 'Søk', tab_profile: 'Profil', tab_add: 'Legg til'
+};
+
+Object.assign(STR.da, {editRooms: 'Rediger rum', labelLinked: c => `Etiketten hører nu til ${c}.`, newLabelH: 'Ny etiket', newLabelHint: 'Etiketten bruges ikke endnu. Hvad skal den høre til?', newLabelBox: 'Opret en ny kasse', newLabelLink: 'Knyt til en eksisterende kasse', boxNameQ: 'Hvad er der i kassen?',
+  printLabel: 'Udskriv etiket', useOtherLabel: 'Brug en anden etiket (scan den)', moveLabel: 'Flyt etiketten til en anden kasse', labelMenuHint: 'Etiketter kan flyttes mellem kasser. Fortrykte tomme etiketter knyttes første gang, du scanner dem.',
+  blankLabels: 'Tomme etiketter', blankHowMany: 'Hvor mange tomme etiketter?', blankPrintHint: 'Udskriv, klip ud og sæt på kasserne. Første scanning knytter etiketten til en kasse.',
+  scanBarcode: 'Scan stregkode', pointBarcode: 'Ret kameraet mod stregkoden.', noBarcodeCam: 'Stregkodescanning findes ikke i denne browser. Skriv nummeret i stedet.', lookingUp: 'Søger efter produktet…', barcodeFound: n => `Fundet: ${n}`, barcodeSaved: 'Stregkoden er gemt. Ingen produktinfo fundet – skriv navnet selv.',
+  moveTitle: 'Flytning', moveIntroH: 'Skal du flytte?', moveIntro: 'Giv kasserne et rum i det nye hjem, og følg dem fra pakket til flyttet til pakket ud. Dit normale opbevaringssted virker som altid.', moveStart: 'Start en flytning',
+  mv_packed: 'Pakket', mv_moved: 'Flyttet', mv_unpacked: 'Pakket ud', allRooms: 'Alle rum', pickRoom: 'Vælg rum', newRoom: 'Nyt rum', moveEmpty: 'Ingen kasser i flytningen endnu.', moveNewBox: 'Ny flyttekasse', moveAddExisting: 'Tilføj eksisterende kasser',
+  moveLabels: 'Udskriv etiketter til flytningen', moveRooms: 'Rum (adskil med komma)', moveEnd: 'Afslut flytningen', moveEndQ: 'Afslut flytningen? Kasserne bliver, hvor de er, uden rum og flyttestatus.', moveEnded: 'Flytningen er færdig. Velkommen hjem!', moveOngoing: (d, n) => `Flytning: ${d} af ${n} kasser pakket ud`});
+Object.assign(STR.nb, {editRooms: 'Rediger rom', labelLinked: c => `Etiketten hører nå til ${c}.`, newLabelH: 'Ny etikett', newLabelHint: 'Denne etiketten er ikke i bruk ennå. Hva skal den høre til?', newLabelBox: 'Lag en ny eske', newLabelLink: 'Koble til en eksisterende eske', boxNameQ: 'Hva er i esken?',
+  printLabel: 'Skriv ut etikett', useOtherLabel: 'Bruk en annen etikett (skann den)', moveLabel: 'Flytt etiketten til en annen eske', labelMenuHint: 'Etiketter kan flyttes mellom esker. Forhåndstrykte tomme etiketter kobles første gang du skanner dem.',
+  blankLabels: 'Tomme etiketter', blankHowMany: 'Hvor mange tomme etiketter?', blankPrintHint: 'Skriv ut, klipp ut og fest på eskene. Første skanning kobler etiketten til en eske.',
+  scanBarcode: 'Skann strekkode', pointBarcode: 'Rett kameraet mot strekkoden.', noBarcodeCam: 'Strekkodeskanning finnes ikke i denne nettleseren. Skriv inn nummeret i stedet.', lookingUp: 'Søker etter produktet…', barcodeFound: n => `Fant: ${n}`, barcodeSaved: 'Strekkoden er lagret. Fant ingen produktinfo – skriv navnet selv.',
+  moveTitle: 'Flytting', moveIntroH: 'Skal du flytte?', moveIntro: 'Gi eskene et rom i det nye hjemmet og følg dem fra pakket til flyttet til pakket ut. Det vanlige lageret virker som før.', moveStart: 'Start en flytting',
+  mv_packed: 'Pakket', mv_moved: 'Flyttet', mv_unpacked: 'Pakket ut', allRooms: 'Alle rom', pickRoom: 'Velg rom', newRoom: 'Nytt rom', moveEmpty: 'Ingen esker i flyttingen ennå.', moveNewBox: 'Ny flytteeske', moveAddExisting: 'Legg til eksisterende esker',
+  moveLabels: 'Skriv ut etiketter for flyttingen', moveRooms: 'Rom (skill med komma)', moveEnd: 'Avslutt flyttingen', moveEndQ: 'Avslutte flyttingen? Eskene blir der de er, uten rom og flyttestatus.', moveEnded: 'Flyttingen er ferdig. Velkommen hjem!', moveOngoing: (d, n) => `Flytting: ${d} av ${n} esker pakket ut`});
+Object.assign(STR.fi, {editRooms: 'Muokkaa huoneita', labelLinked: c => `Tarra kuuluu nyt laatikolle ${c}.`, newLabelH: 'Uusi tarra', newLabelHint: 'Tätä tarraa ei ole vielä käytetty. Mihin se kuuluu?', newLabelBox: 'Luo uusi laatikko', newLabelLink: 'Yhdistä olemassa olevaan laatikkoon', boxNameQ: 'Mitä laatikossa on?',
+  printLabel: 'Tulosta tarra', useOtherLabel: 'Käytä toista tarraa (skannaa se)', moveLabel: 'Siirrä tarra toiseen laatikkoon', labelMenuHint: 'Tarroja voi siirtää laatikoiden välillä. Valmiiksi tulostetut tyhjät tarrat yhdistetään ensimmäisellä skannauksella.',
+  blankLabels: 'Tyhjät tarrat', blankHowMany: 'Kuinka monta tyhjää tarraa?', blankPrintHint: 'Tulosta, leikkaa ja kiinnitä laatikoihin. Ensimmäinen skannaus yhdistää tarran laatikkoon.',
+  scanBarcode: 'Skannaa viivakoodi', pointBarcode: 'Osoita kameralla viivakoodia.', noBarcodeCam: 'Viivakoodin luku ei ole käytettävissä tässä selaimessa. Kirjoita numero.', lookingUp: 'Haetaan tuotetta…', barcodeFound: n => `Löytyi: ${n}`, barcodeSaved: 'Viivakoodi tallennettu. Tuotetietoja ei löytynyt – kirjoita nimi itse.',
+  moveTitle: 'Muutto', moveIntroH: 'Oletko muuttamassa?', moveIntro: 'Anna laatikoille huone uudessa kodissa ja seuraa niitä pakatusta muutettuun ja purettuun. Tavallinen varastosi toimii normaalisti.', moveStart: 'Aloita muutto',
+  mv_packed: 'Pakattu', mv_moved: 'Muutettu', mv_unpacked: 'Purettu', allRooms: 'Kaikki huoneet', pickRoom: 'Valitse huone', newRoom: 'Uusi huone', moveEmpty: 'Muutossa ei ole vielä laatikoita.', moveNewBox: 'Uusi muuttolaatikko', moveAddExisting: 'Lisää olemassa olevia laatikoita',
+  moveLabels: 'Tulosta muuton tarrat', moveRooms: 'Huoneet (pilkulla erotettuna)', moveEnd: 'Päätä muutto', moveEndQ: 'Päätetäänkö muutto? Laatikot jäävät paikoilleen ilman huonetta ja muuttotilaa.', moveEnded: 'Muutto valmis. Tervetuloa kotiin!', moveOngoing: (d, n) => `Muutto: ${d}/${n} laatikkoa purettu`});
+Object.assign(STR.da, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien udløb for ${-n} dage siden` : n === 0 ? 'Garantien udløber i dag' : `Garantien udløber om ${n} dage`, warrantyH: 'Garanti udløber snart', worth: v => `værdi ${v}`,
+  loansTitle: 'Udlånt', loansHint: 'Ting du har lånt ud, pr. person. Sæt status “Udlånt” på en ting og skriv, hvem der har den.', loansEmpty: 'Intet er lånt ud. 🎉', unknownPerson: 'Nogen', lentSince: d => d <= 0 ? 'lånt ud i dag' : d === 1 ? 'lånt ud for 1 dag siden' : `lånt ud for ${d} dage siden`,
+  gotBack: 'Fået tilbage', remindLoan: 'Påmind', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du stadig min ${item}? Vil gerne have den tilbage, når du er færdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ud i over en måned'});
+Object.assign(STR.nb, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien gikk ut for ${-n} dager siden` : n === 0 ? 'Garantien går ut i dag' : `Garantien går ut om ${n} dager`, warrantyH: 'Garanti går ut snart', worth: v => `verdi ${v}`,
+  loansTitle: 'Utlånt', loansHint: 'Ting du har lånt ut, per person. Sett status «Utlånt» på en ting og skriv hvem som har den.', loansEmpty: 'Ingenting er lånt ut. 🎉', unknownPerson: 'Noen', lentSince: d => d <= 0 ? 'lånt ut i dag' : d === 1 ? 'lånt ut for 1 dag siden' : `lånt ut for ${d} dager siden`,
+  gotBack: 'Fått tilbake', remindLoan: 'Påminn', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Har du fortsatt ${item} min? Vil gjerne ha den tilbake når du er ferdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ut i over en måned'});
+Object.assign(STR.fi, {f_warranty: 'Takuu päättyy', warrantyLeft: n => n < 0 ? `Takuu päättyi ${-n} päivää sitten` : n === 0 ? 'Takuu päättyy tänään' : `Takuu päättyy ${n} päivän kuluttua`, warrantyH: 'Takuu päättymässä', worth: v => `arvo ${v}`,
+  loansTitle: 'Lainassa', loansHint: 'Lainaamasi tavarat henkilöittäin. Aseta tavaran tilaksi ”Lainassa” ja kirjoita kenellä se on.', loansEmpty: 'Mitään ei ole lainassa. 🎉', unknownPerson: 'Joku', lentSince: d => d <= 0 ? 'lainattu tänään' : d === 1 ? 'lainattu 1 päivä sitten' : `lainattu ${d} päivää sitten`,
+  gotBack: 'Sain takaisin', remindLoan: 'Muistuta', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Onko ${item} vielä sinulla? Haluaisin sen takaisin, kun olet valmis 🙂${me ? ' /' + me : ''}`, loansOld: 'Lainassa yli kuukauden'});
+Object.assign(STR.da, {n_many: (n, first) => `${n} ting skal tjekkes. Først: ${first}`, notifTitle: 'Notifikationer', notifSetting: 'Send notifikationer til denne telefon', notifHint: 'Påmindelser, garantier der udløber, ting der burde være tilbage, og ændringer andre i husstanden laver.', notifBlocked: 'Notifikationer er blokeret. Tillad dem for Storrrage i telefonens indstillinger.', notifUnsupported: 'Denne browser kan ikke vise notifikationer.', notifOnToast: 'Notifikationer er slået til.',
+  n_dueT: 'Tid til at tjekke', n_due: n => `${n} er ikke brugt længe. Beholde eller sælge?`, n_loan: (n, w) => `${w} har stadig din ${n}. Tid til at bede om den tilbage?`, n_out: (n, w) => `Er ${n} tilbage i ${w}?`, n_hh: (w, list) => `${w} har lavet ændringer: ${list}`,
+  loanSinceL: 'Lånt ud siden', remindBack: 'Mind mig om at bede om den tilbage om', w1: '1 uge', w2: '2 uger', m1: '1 måned', m3: '3 måneder', pickDate: 'Vælg dato', remindOn: d => `Påmindelse ${d}`, addInto: c => `Tilføj til kassen ${c}`, boxInsideX: c => `Kasse inden i ${c}`});
+Object.assign(STR.nb, {n_many: (n, first) => `${n} ting bør sjekkes. Først: ${first}`, notifTitle: 'Varsler', notifSetting: 'Send varsler til denne telefonen', notifHint: 'Påminnelser, garantier som går ut, ting som burde være tilbake, og endringer andre i husstanden gjør.', notifBlocked: 'Varsler er blokkert. Tillat dem for Storrrage i telefonens innstillinger.', notifUnsupported: 'Denne nettleseren kan ikke vise varsler.', notifOnToast: 'Varsler er på.',
+  n_dueT: 'På tide å sjekke', n_due: n => `${n} er ikke brukt på lenge. Beholde eller selge?`, n_loan: (n, w) => `${w} har fortsatt ${n} din. På tide å be om den tilbake?`, n_out: (n, w) => `Er ${n} tilbake i ${w}?`, n_hh: (w, list) => `${w} har gjort endringer: ${list}`,
+  loanSinceL: 'Lånt ut siden', remindBack: 'Minn meg på å be om den tilbake om', w1: '1 uke', w2: '2 uker', m1: '1 måned', m3: '3 måneder', pickDate: 'Velg dato', remindOn: d => `Påminnelse ${d}`, addInto: c => `Legg til i esken ${c}`, boxInsideX: c => `Eske inni ${c}`});
+Object.assign(STR.fi, {n_many: (n, first) => `${n} asiaa kaipaa huomiota. Ensin: ${first}`, notifTitle: 'Ilmoitukset', notifSetting: 'Lähetä ilmoituksia tähän puhelimeen', notifHint: 'Muistutukset, päättyvät takuut, tavarat joiden pitäisi olla palautettu ja muiden kotitalouden jäsenten muutokset.', notifBlocked: 'Ilmoitukset on estetty. Salli ne Storrragelle puhelimen asetuksista.', notifUnsupported: 'Tämä selain ei voi näyttää ilmoituksia.', notifOnToast: 'Ilmoitukset ovat päällä.',
+  n_dueT: 'Aika tarkistaa', n_due: n => `${n} on ollut pitkään käyttämättä. Säilytetäänkö vai myydäänkö?`, n_loan: (n, w) => `${w}: ${n} on yhä lainassa. Pyydetäänkö takaisin?`, n_out: (n, w) => `Onko ${n} palautettu kohteeseen ${w}?`, n_hh: (w, list) => `${w} teki muutoksia: ${list}`,
+  loanSinceL: 'Lainassa alkaen', remindBack: 'Muistuta pyytämään takaisin', w1: '1 viikko', w2: '2 viikkoa', m1: '1 kuukausi', m3: '3 kuukautta', pickDate: 'Valitse päivä', remindOn: d => `Muistutus ${d}`, addInto: c => `Lisää laatikkoon ${c}`, boxInsideX: c => `Laatikko laatikon ${c} sisään`});
+
+Object.assign(STR.en, {discardNewItemQ: 'Discard this new item?'});
+Object.assign(STR.sv, {discardNewItemQ: 'Vill du slänga den nya saken?'});
+Object.assign(STR.da, {discardNewItemQ: 'Vil du kassere den nye ting?'});
+Object.assign(STR.nb, {discardNewItemQ: 'Vil du forkaste den nye tingen?'});
+Object.assign(STR.fi, {discardNewItemQ: 'Haluatko hylätä tämän uuden tavaran?'});
+Object.assign(STR.en, {itemSaveQ: 'Save changes to this item before leaving?', saveChanges: 'Save changes', discardChanges: 'Discard changes', keepEditing: 'Keep editing'});
+Object.assign(STR.sv, {itemSaveQ: 'Vill du spara ändringarna innan du lämnar saken?', saveChanges: 'Spara ändringar', discardChanges: 'Släng ändringar', keepEditing: 'Fortsätt redigera'});
+Object.assign(STR.da, {itemSaveQ: 'Vil du gemme ændringerne, før du forlader tingen?', saveChanges: 'Gem ændringer', discardChanges: 'Kassér ændringer', keepEditing: 'Fortsæt redigering'});
+Object.assign(STR.nb, {itemSaveQ: 'Vil du lagre endringene før du går ut av tingen?', saveChanges: 'Lagre endringer', discardChanges: 'Forkast endringer', keepEditing: 'Fortsett redigering'});
+Object.assign(STR.fi, {itemSaveQ: 'Tallennetaanko muutokset ennen kuin poistut tavarasta?', saveChanges: 'Tallenna muutokset', discardChanges: 'Hylkää muutokset', keepEditing: 'Jatka muokkausta'});
+Object.assign(STR.en, {saveAnother: 'Save + add new'});
+Object.assign(STR.sv, {saveAnother: 'Spara + lägg till ny'});
+Object.assign(STR.da, {saveAnother: 'Gem + tilføj ny'});
+Object.assign(STR.nb, {saveAnother: 'Lagre + legg til ny'});
+Object.assign(STR.fi, {saveAnother: 'Tallenna + lisää uusi'});
 
 /* ---------- start ---------- */
 async function init(){
@@ -4249,12 +6152,15 @@ async function init(){
     household = await metaGet('household') || [];
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
-    lang = await metaGet('lang') || (voiceLang.startsWith('sv') ? 'sv' : lang);
+    { const lp = await metaGet('langPref'), old = await metaGet('lang'); langPref = lp || (old === 'sv' || old === 'en' ? old : 'auto'); lang = langPref === 'auto' ? phoneLang() : langPref; if (langPref === 'auto') voiceLang = VOICE[lang] || 'en-US'; }
     { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
     ai = await metaGet('ai') || ai;
+    theme = await metaGet('theme') || 'system'; applyTheme();
+    { const so = await metaGet('speakOn'); if (typeof so === 'boolean') speakOn = so; }
     numbering = await metaGet('numbering') || 'place';
     viewMode = await metaGet('viewMode') || 'grid';
-    listSort = await metaGet('listSort') || 'manual'; boxOrder = await metaGet('boxOrder') || {};
+    move = await metaGet('move') || {active: false, rooms: []};
+    listSort = await metaGet('listSort') || 'manual'; folded = new Set(await metaGet('folded') || []); boxOrder = await metaGet('boxOrder') || {};
     trash = await metaGet('trash') || []; purgeTrash();
     placeView = await metaGet('placeView') || 'shelf';
     shelfMode = await metaGet('shelfMode') || 'grid';
@@ -4264,7 +6170,7 @@ async function init(){
     recents = await metaGet('recent') || [];
     notes = await noteAll();
     places = await metaGet('places') || [];
-    if (!places.length){ places = [{id: newId(), name: (navigator.language || '').toLowerCase().startsWith('sv') ? 'Källaren' : 'Basement', createdAt: new Date().toISOString()}]; await metaPut('places', places); }
+    if (!places.length){ places = [{id: newId(), name: (PLACE_SUG[lang] || PLACE_SUG.en)[0], createdAt: new Date().toISOString()}]; await metaPut('places', places); }
     for (const b of boxes) if (!b.placeId || !findPlace(b.placeId)){ b.placeId = places[0].id; await dbPut(clone(b)); }
     currentPlace = await metaGet('currentPlace') || 'all';
     if (currentPlace !== 'all' && !findPlace(currentPlace)) currentPlace = 'all';
@@ -4273,11 +6179,18 @@ async function init(){
     app.innerHTML = '<p class="status">This browser won’t let Storrrage store data. Open it in Chrome, not in a private tab.</p>'; return;
   }
   ready = true; updateStatus();
+  await cloudInit();
   const hasStuff = boxes.some(b => !b.loose || (b.items || []).length);
-  if (!me && !hasStuff && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
+  if (!me && !hasStuff && !cloud.session && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
   else view = {name: 'home', place: currentPlace};
   try { history.replaceState({root: 1}, ''); } catch {}
   render(); arm();
+  try { if (sessionStorage.getItem('wiped')){ sessionStorage.removeItem('wiped'); setTimeout(() => toast(tr('wipedRemote')), 600); } if (sessionStorage.getItem('loggedOut')){ sessionStorage.removeItem('loggedOut'); setTimeout(() => toast(tr('loggedOut')), 600); } } catch {}
+  if (cloud.session && !me && !pendingJoinCode) setTimeout(askMyName, 800);
+  notifOn = !!(await metaGet('notifOn').catch(() => false)); notified = await metaGet('notified').catch(() => null) || {};
+  setTimeout(notifyAlerts, 3000); setInterval(notifyAlerts, 3600 * 1000);
+  track('open', {places: places.length, boxes: Math.min(realBoxes().length, 999), synced: !!cloud.hid});
+  statsNotice();
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
