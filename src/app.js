@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-23.5';
+const APP_VERSION = '2026-10-23.11';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -474,7 +474,7 @@ const STR = {
     noAccount: 'No account needed for now. Everything stays on this phone.', writeName: 'Write your name first.',
     storrrage: 'STORRRAGE', profile: 'Profile', settings: 'Settings', notifications: 'Notifications', premium: 'Premium', version: v => `Storrrage version ${v}`,
     household: 'People in the household', addName: 'Add a name', add: 'Add', you: '(you)', remove: 'Remove', householdHint: 'Used for “whose is it” on items, and when talking to Storrrage (“Elsa’s boots”).', noOne: 'No one added yet.',
-    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Storage places', backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
+    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Storage places', editPlace: n => `Edit ${n}`, foldSpace: n => `Collapse ${n}`, unfoldSpace: n => `Expand ${n}`, changePlaceIcon: n => `Choose an icon for ${n}`, backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
     labelsAll: 'Labels for all boxes', scanLabel: 'Scan a box label', language: 'Language', usage: mb => `Everything is stored only on this phone. Storrrage uses about ${mb} MB.`,
     dueIntro: 'You haven’t used these for a while. Still worth keeping, or time to sell?', lastUsedOn: d => `Last used ${d}`, usedRecently: 'Used it recently', markSale: 'Mark for sale',
     nothingDue: 'Nothing needs your attention. On an item, set “Remind me if unused” to get a nudge when you haven’t used it in a while.',
@@ -510,7 +510,7 @@ const STR = {
     noAccount: 'Inget konto behövs just nu. Allt stannar på den här telefonen.', writeName: 'Skriv ditt namn först.',
     storrrage: 'STORRRAGE', profile: 'Profil', settings: 'Inställningar', notifications: 'Notiser', premium: 'Premium', version: v => `Storrrage version ${v}`,
     household: 'Personer i hushållet', addName: 'Lägg till ett namn', add: 'Lägg till', you: '(du)', remove: 'Ta bort', householdHint: 'Används för ”vems är det” på saker, och när du pratar med Storrrage (”Elsas kängor”).', noOne: 'Ingen tillagd än.',
-    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Förvaringsplatser', backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
+    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Förvaringsplatser', editPlace: n => `Redigera ${n}`, foldSpace: n => `Fäll ihop ${n}`, unfoldSpace: n => `Visa ${n}`, changePlaceIcon: n => `Välj ikon för ${n}`, backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
     labelsAll: 'Etiketter för alla lådor', scanLabel: 'Skanna en etikett', language: 'Språk', usage: mb => `Allt sparas bara på den här telefonen. Storrrage använder ungefär ${mb} MB.`,
     dueIntro: 'Du har inte använt de här på ett tag. Värda att behålla, eller dags att sälja?', lastUsedOn: d => `Senast använd ${d}`, usedRecently: 'Använt nyligen', markSale: 'Markera till salu',
     nothingDue: 'Inget behöver din uppmärksamhet. Välj ”Påminn om oanvänd” på en sak för att få en knuff när du inte använt den på ett tag.',
@@ -537,6 +537,8 @@ const STR = {
     batchAdded: n => n === 1 ? 'La till 1 sak.' : `La till ${n} saker.`, namePh: 'Namn', include: 'Ta med', morePhotos: '+ Fler foton', noneYet: 'Inga foton än.', batchFound: n => n === 1 ? 'Hittade 1 sak.' : `Hittade ${n} saker.`,
   },
 };
+Object.assign(STR.en, {moreBoxes: n => `+ ${n} more boxes`});
+Object.assign(STR.sv, {moreBoxes: n => `+ ${n} lådor till`});
 Object.assign(STR.en, {
     aiSuggest: 'Suggest from photo', testTag: 'TEST', aiLooking: 'Looking at the photo…', aiNothing: 'The AI didn’t recognise anything in the photo.',
     aiSuggestH: 'Suggestions from the photo', aiSuggestHint: 'Tick what you want to use. Ticked details replace what’s there now.', aiNow: v => `now: ${v}`, apply: 'Use selected', aiApplied: n => n === 1 ? 'Updated 1 detail.' : `Updated ${n} details.`, aiNeedPhoto: 'Add a photo first.',
@@ -989,15 +991,19 @@ function placeContent(pid, heading){
     ${li.length ? `<h2 class="section">${tr('notInBox')}</h2><div class="igrid${viewCls()}">${li.map(it => itemTile(it, loose, it.spot ? esc(it.spot) : '')).join('')}</div>` : ''}
     ${!bx.length && !li.length && !heading ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}`;
 }
-let recents = [];
+let recents = [], favoriteOrder = [];
 function remember(kind, id, boxId){
   recents = [{k: kind, id, boxId}].concat(recents.filter(r => !(r.k === kind && r.id === id))).slice(0, 12);
   metaPut('recent', recents).catch(() => {});
 }
 function topStrips(pid){
   const f = favEntries(pid), r = recentEntries(pid);
-  const row = (title, list) => list.length ? `<div class="mini"><span class="minih">${title}</span><div class="strip mini">${list.map(([kind, x, b]) => kind === 'box' ? shelfTile(x) : itemTile(x, b)).join('')}</div></div>` : '';
-  return row('★ ' + tr('favorites'), f) + row(tr('recent'), r);
+  const row = (title, list, favorites = false) => list.length ? `<div class="mini"><span class="minih">${title}</span><div class="strip mini${favorites ? ' favorites' : ''}"${favorites ? ' data-fav-strip' : ''}>${list.map(([kind, x, b]) => {
+    const key = kind === 'box' ? `b:${x.id}` : `i:${b.id}:${x.id}`;
+    const tile = kind === 'box' ? shelfTile(x) : itemTile(x, b);
+    return favorites ? tile.replace('<button ', `<button data-fav-order="${esc(key)}" `).replace(/ data-lp="[^"]*"/, '') : tile;
+  }).join('')}</div></div>` : '';
+  return row('★ ' + tr('favorites'), f, true) + row(tr('recent'), r);
 }
 function stripRow(title, entries){
   if (!entries.length) return '';
@@ -1012,7 +1018,9 @@ function recentEntries(pid){
 function favEntries(pid){
   const out = [];
   boxes.forEach(b => { if (pid && b.placeId !== pid) return; if (!b.loose && b.fav) out.push(['box', b]); (b.items || []).forEach(it => { if (it.fav) out.push(['item', it, b]); }); });
-  return out;
+  const order = new Map(favoriteOrder.map((key, i) => [key, i]));
+  const key = entry => entry[0] === 'box' ? `b:${entry[1].id}` : `i:${entry[2].id}:${entry[1].id}`;
+  return out.sort((a, b) => (order.get(key(a)) ?? Number.MAX_SAFE_INTEGER) - (order.get(key(b)) ?? Number.MAX_SAFE_INTEGER));
 }
 let placeView = 'shelf';
 function topbarUpdate(){
@@ -1021,7 +1029,7 @@ function topbarUpdate(){
   const p = pid && pid !== 'all' ? findPlace(pid) : null;
   sw.innerHTML = p ? `<span class="picon">${placeIcon(p)}</span><span class="sname">${esc(p.name)}</span><span class="caret">▾</span>` : `<span class="sname">${tr('allPlaces')}</span><span class="caret">▾</span>`;
   const up = prevView() || parentView();
-  bk.hidden = !up; lg.hidden = !!up;
+  bk.hidden = !up; lg.hidden = false;
   bk.setAttribute('aria-label', tr('back'));
 }
 function spaceSheet(){
@@ -1069,10 +1077,10 @@ function looseCarousel(pid, opts = {}){
     <div class="lstrip">${li.map(it => itemTile(it, l, opts.showZone && it.zone ? esc(it.zone) : '')).join('')}
       <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newThing')}</span></span></button></div></section>`;
 }
-function shelfHTML(pid){
-  const bx = topBoxesIn(pid).sort(byCode);
-  return `<div class="shelf">${bx.map(shelfTile).join('')}<button class="itile add" data-act="newboxin" data-pid="${esc(pid)}" aria-label="${esc(tr('newBox'))}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newBox')}</span></span></button></div>
-    ${looseCarousel(pid, {showZone: true})}`;
+function shelfHTML(pid, folded = false){
+  const bx = topBoxesIn(pid).sort(byCode), visibleBoxes = folded ? bx.slice(0, 8) : bx;
+  return `<div class="shelf">${visibleBoxes.map(shelfTile).join('')}${folded ? '' : `<button class="itile add" data-act="newboxin" data-pid="${esc(pid)}" aria-label="${esc(tr('newBox'))}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newBox')}</span></span></button>`}</div>
+    ${folded ? '' : looseCarousel(pid, {showZone: true})}`;
 }
 function placeHead(pid){
   const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
@@ -1084,28 +1092,33 @@ function renderSpace(){
   app.innerHTML = `<div class="phead"><p class="tagline">${counts(tr('places_n', places.length), tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(() => true).toUpperCase())}</p></div>
     ${installBanner()}${moveBanner()}${topStrips()}
     ${places.map(p => { const pb = boxesIn(p.id).length, pi = boxes.filter(b => b.placeId === p.id).reduce((s, b) => s + (b.items || []).length, 0);
-      const [cc, cn] = checkedThisYear(p.id);
-      return `<section class="spacesec card" data-place-card="${esc(p.id)}">${nudgeBar(p.id)}<button class="spacehead" data-goplace="${esc(p.id)}" data-lp="place:${esc(p.id)}"><span class="picon">${placeIcon(p)}</span><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}${cn ? ` · ✓ ${cc}/${cn}` : ''}</small><span class="chev">›</span></button>${shelfHTML(p.id)}</section>`; }).join('')}
+      const boxCount = topBoxesIn(p.id).length, canFold = boxCount > 8, isFolded = canFold && foldedPlaces.has(p.id);
+      return `<section class="spacesec card${isFolded ? ' space-folded' : ''}" data-place-card="${esc(p.id)}">${isFolded ? '' : nudgeBar(p.id)}<div class="spacehead-row">
+        <button class="space-icon" data-goplace="${esc(p.id)}" aria-label="${esc(p.name)}">${placeIcon(p)}</button>
+        <button class="spacehead" data-goplace="${esc(p.id)}"><span class="spacehead-info"><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}</small></span></button>
+        ${canFold ? `<button class="space-fold-btn" data-space-fold="${esc(p.id)}" aria-expanded="${!isFolded}" aria-label="${esc(tr(isFolded ? 'unfoldSpace' : 'foldSpace', p.name))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${isFolded ? 'm6 9 6 6 6-6' : 'm6 15 6-6 6 6'}"/></svg></button>` : ''}
+        <button class="space-edit-btn" data-place-edit="${esc(p.id)}" aria-label="${esc(tr('editPlace', p.name))}">⋯</button>
+      </div>${shelfHTML(p.id, isFolded)}${isFolded && boxCount > 8 ? `<button class="fold-more" data-space-fold="${esc(p.id)}">${esc(tr('moreBoxes', boxCount - 8))}</button>` : ''}</section>`; }).join('')}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
 }
 let placePress = null, placeDrag = null;
 app.addEventListener('pointerdown', e => {
-  const head = e.target.closest('.spacehead'), card = head && head.closest('[data-place-card]');
-  if (!head || !card || places.length < 2 || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const row = e.target.closest('.spacehead-row'), card = row && row.closest('[data-place-card]');
+  if (!row || e.target.closest('[data-place-edit], [data-space-fold]') || !card || places.length < 2 || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
   e.stopImmediatePropagation();
-  const press = placePress = {head, card, x: e.clientX, y: e.clientY, pointerId: e.pointerId};
+  const press = placePress = {row, card, x: e.clientX, y: e.clientY, pointerId: e.pointerId};
   press.timer = setTimeout(() => {
-    if (placePress !== press || !head.isConnected) return;
-    const r = head.getBoundingClientRect(), ghost = head.cloneNode(true);
+    if (placePress !== press || !row.isConnected) return;
+    const r = row.getBoundingClientRect(), ghost = row.cloneNode(true);
     ghost.classList.add('place-drag-ghost');
     Object.assign(ghost.style, {left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'});
     document.body.appendChild(ghost);
     document.body.classList.add('reordering-places');
     card.classList.add('place-dragging');
-    placeDrag = {card, ghost, head, pointerId: press.pointerId, dy: press.y - r.top};
+    placeDrag = {card, ghost, row, pointerId: press.pointerId, dy: press.y - r.top};
     placePress = null;
-    head.setPointerCapture(press.pointerId);
+    row.setPointerCapture(press.pointerId);
     if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
   }, 300);
 });
@@ -2457,8 +2470,9 @@ function quickAddRow(b){
 }
 /* the whole place as one grouped list */
 /* sorting the list: your own order (drag), A–Ö, last changed, last added, last used */
-let listSort = 'manual', boxOrder = {}, folded = new Set();
+let listSort = 'manual', boxOrder = {}, folded = new Set(), foldedPlaces = new Set();
 function saveFolded(){ metaPutRaw('folded', [...folded]).catch(() => {}); }
+function saveFoldedPlaces(){ metaPutRaw('foldedPlaces', [...foldedPlaces]).catch(err => toast(saveErr(err))); }
 const SORTS = ['manual', 'az', 'changed', 'added', 'used'];
 const itStamp = (it, k) => k === 'changed' ? (it.updatedAt || it.addedAt || '') : k === 'added' ? (it.addedAt || it.storedOn || '') : k === 'used' ? [it.lastUsed || '', it.out ? it.out.since : '', ...(it.outLog || []).map(l => l.out || '')].sort().pop() || '' : '';
 function sortItems(list){
@@ -2824,16 +2838,24 @@ function ensureInbox(){
 function addNavSheet(){
   const v = view;
   if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); if (!b.loose) return addHereSheet(b.placeId, b.id); }
-  let pid = (v.name === 'box' || v.name === 'item') && findBox(v.boxId) ? findBox(v.boxId).placeId : scopePlace() || '';
-  const chips = () => `${places.filter(p => !p.inbox).map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${pid === 'inbox' || (findPlace(pid) || {}).inbox ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
+  const storagePlaces = places.filter(p => !p.inbox);
+  const currentBox = (v.name === 'box' || v.name === 'item') && findBox(v.boxId);
+  const recentPlace = recents.map(r => findPlace((r.k === 'box' ? findBox(r.id) : findBox(r.boxId))?.placeId)).find(p => p && !p.inbox);
+  let pid = currentBox ? currentBox.placeId : scopePlace() || recentPlace?.id || storagePlaces[0]?.id || 'inbox';
+  const isInbox = id => id === 'inbox' || !!findPlace(id)?.inbox;
+  if (!storagePlaces.some(p => p.id === pid) && !isInbox(pid)) pid = recentPlace?.id || storagePlaces[0]?.id || 'inbox';
+  const chips = () => storagePlaces.length > 6
+    ? `<select class="add-place-select" aria-label="${esc(tr('where'))}">${storagePlaces.map(p => `<option value="${esc(p.id)}"${pid === p.id ? ' selected' : ''}>${esc(placeIcon(p) + ' ' + p.name)}</option>`).join('')}<option value="inbox"${isInbox(pid) ? ' selected' : ''}>📥 ${tr('noPlaceYet')}</option></select>`
+    : `${storagePlaces.map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${isInbox(pid) ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
   openSheet(`<div class="addnav-sheet"><h3>${tr('addWhat')}</h3>
     <div class="choice"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('storageWord')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button></div>
     <button class="btn block icontext" id="adBatch">${ICON.camera}<span>${tr('severalPhotos')}</span></button>
-    <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips" id="adPlaces">${chips()}</div>
+    <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips addplaces" id="adPlaces">${chips()}</div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div></div>`);
-  if (!pid) pid = places.filter(p => !p.inbox).length === 1 ? places.find(p => !p.inbox).id : 'inbox';
   $('#adPlaces').innerHTML = chips();
   $('#adPlaces').onclick = e => { const c = e.target.closest('[data-ap]'); if (!c) return; pid = c.dataset.ap; $('#adPlaces').innerHTML = chips(); };
+  const placeSelect = $('#adPlaces select');
+  if (placeSelect) placeSelect.onchange = () => { pid = placeSelect.value; };
   const target = () => pid === 'inbox' ? ensureInbox().id : pid;
   $('#adBox').onclick = () => { const p = target(); closeSheet(); boxSheet(null, p, null); };
   $('#adItem').onclick = () => { const p = target(); closeSheet(); newItem(ensureLoose(p).id); };
@@ -2914,7 +2936,64 @@ app.addEventListener('pointerdown', e => {
 });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => app.addEventListener(ev, () => clearTimeout(lpTimer)));
 app.addEventListener('pointermove', e => { if (lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) clearTimeout(lpTimer); });
-app.addEventListener('contextmenu', e => { if (e.target.closest('[data-lp], .crate, .ltoken, .mtoken')) e.preventDefault(); });
+app.addEventListener('contextmenu', e => { if (e.target.closest('[data-lp], [data-fav-order], .crate, .ltoken, .mtoken')) e.preventDefault(); });
+
+let favoritePress = null, favoriteDrag = null, suppressFavoriteClick = false;
+app.addEventListener('pointerdown', e => {
+  const tile = e.target.closest('[data-fav-order]'), strip = tile && tile.closest('[data-fav-strip]');
+  if (!tile || !strip || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  e.stopImmediatePropagation();
+  const press = favoritePress = {tile, strip, x: e.clientX, y: e.clientY, pointerId: e.pointerId};
+  press.timer = setTimeout(() => {
+    if (favoritePress !== press || !tile.isConnected) return;
+    favoriteDrag = {tile, strip, pointerId: press.pointerId, moved: false};
+    tile.classList.add('fav-dragging');
+    tile.setPointerCapture(press.pointerId);
+    favoritePress = null;
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+  }, 300);
+});
+document.addEventListener('pointermove', e => {
+  if (favoritePress && !favoriteDrag){
+    if (e.pointerId !== favoritePress.pointerId) return;
+    if (Math.hypot(e.clientX - favoritePress.x, e.clientY - favoritePress.y) > 10){
+      clearTimeout(favoritePress.timer); favoritePress = null;
+    }
+    return;
+  }
+  if (!favoriteDrag || e.pointerId !== favoriteDrag.pointerId) return;
+  e.preventDefault();
+  const {tile, strip} = favoriteDrag, rect = strip.getBoundingClientRect();
+  if (e.clientX < rect.left + 28) strip.scrollLeft -= 8;
+  else if (e.clientX > rect.right - 28) strip.scrollLeft += 8;
+  const target = [...strip.querySelectorAll('[data-fav-order]')].find(x => x !== tile && e.clientX < x.getBoundingClientRect().left + x.getBoundingClientRect().width / 2);
+  if (target !== tile.nextElementSibling) {
+    strip.insertBefore(tile, target || null);
+    favoriteDrag.moved = true;
+  }
+});
+function finishFavoriteDrag(e, cancelled = false){
+  if (favoritePress && e.pointerId === favoritePress.pointerId){ clearTimeout(favoritePress.timer); favoritePress = null; }
+  const drag = favoriteDrag;
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  favoriteDrag = null;
+  drag.tile.classList.remove('fav-dragging');
+  if (cancelled){ render(); return; }
+  if (!drag.moved) return;
+  const movedKeys = [...drag.strip.querySelectorAll('[data-fav-order]')].map(x => x.dataset.favOrder);
+  const movedSet = new Set(movedKeys);
+  let next = 0;
+  favoriteOrder = favEntries().map(([kind, x, b]) => {
+    const key = kind === 'box' ? `b:${x.id}` : `i:${b.id}:${x.id}`;
+    return movedSet.has(key) ? movedKeys[next++] : key;
+  });
+  suppressFavoriteClick = true;
+  setTimeout(() => { suppressFavoriteClick = false; }, 500);
+  metaPutRaw('favoriteOrder', favoriteOrder).catch(() => toast(tr('cantSave')));
+  render();
+}
+document.addEventListener('pointerup', e => finishFavoriteDrag(e));
+document.addEventListener('pointercancel', e => finishFavoriteDrag(e, true));
 
 function backupBanner(){ return ''; }
 function backupBannerOld(){
@@ -2996,7 +3075,9 @@ function settingsAction(k){
 }
 
 app.addEventListener('click', e => {
+  if (suppressFavoriteClick && e.target.closest('[data-fav-order]')){ e.preventDefault(); e.stopImmediatePropagation(); suppressFavoriteClick = false; return; }
   if (lpFired){ lpFired = false; e.preventDefault(); return; }
+  const pe = e.target.closest('[data-place-edit]'); if (pe){ e.preventDefault(); e.stopPropagation(); return lpMenu('place:' + pe.dataset.placeEdit); }
   const pv = e.target.closest('[data-pview]'); if (pv){ placeView = pv.dataset.pview; track('place_view', {v: placeView}); metaPut('placeView', placeView).catch(() => {}); return render(); }
   const zm = e.target.closest('[data-zmove]'); if (zm) return moveZone(currentPlace, zm.dataset.zmove, +zm.dataset.dir);
   const zr = e.target.closest('[data-zrename]'); if (zr) return renameZone(currentPlace, zr.dataset.zrename);
@@ -3009,6 +3090,7 @@ app.addEventListener('click', e => {
   const ao = e.target.closest('[data-askout]'); if (ao){ const k = ao.dataset.askout, itId = view.hl, bid = view.boxId; view.asked = true; if (k === 'temp') return setOut(bid, itId, true); if (k === 'gone') return deleteWithUndo(bid, itId); return render(); }
   const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
   const bo = e.target.closest('[data-backok]'); if (bo){ const [bid, iid] = bo.dataset.backok.split(':'); return setOut(bid, iid, false); }
+  const sf = e.target.closest('[data-space-fold]'); if (sf){ const id = sf.dataset.spaceFold; foldedPlaces.has(id) ? foldedPlaces.delete(id) : foldedPlaces.add(id); saveFoldedPlaces(); return render(); }
   const fo = e.target.closest('[data-fold]'); if (fo){ const id = fo.dataset.fold; folded.has(id) ? folded.delete(id) : folded.add(id); saveFolded(); return render(); }
   const fa = e.target.closest('[data-foldall]'); if (fa){ const ids = orderedGroups(currentPlace).map(b => b.id); if (fa.dataset.foldall === '1') ids.forEach(i => folded.add(i)); else ids.forEach(i => folded.delete(i)); saveFolded(); track('fold_all'); return render(); }
   const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; track('sort', {by: listSort}); metaPut('listSort', listSort).catch(() => {}); return render(); }
@@ -6162,7 +6244,7 @@ async function init(){
     numbering = await metaGet('numbering') || 'place';
     viewMode = await metaGet('viewMode') || 'grid';
     move = await metaGet('move') || {active: false, rooms: []};
-    listSort = await metaGet('listSort') || 'manual'; folded = new Set(await metaGet('folded') || []); boxOrder = await metaGet('boxOrder') || {};
+    listSort = await metaGet('listSort') || 'manual'; folded = new Set(await metaGet('folded') || []); foldedPlaces = new Set(await metaGet('foldedPlaces') || []); boxOrder = await metaGet('boxOrder') || {};
     trash = await metaGet('trash') || []; purgeTrash();
     placeView = await metaGet('placeView') || 'shelf';
     shelfMode = await metaGet('shelfMode') || 'grid';
@@ -6170,6 +6252,7 @@ async function init(){
     nudgeSnooze = await metaGet('nudgeSnooze') || {};
     { const ap = await metaGet('adsPreview'); if (typeof ap === 'boolean') adsPreview = ap; }
     recents = await metaGet('recent') || [];
+    favoriteOrder = await metaGet('favoriteOrder') || [];
     notes = await noteAll();
     places = await metaGet('places') || [];
     if (!places.length){ places = [{id: newId(), name: (PLACE_SUG[lang] || PLACE_SUG.en)[0], createdAt: new Date().toISOString()}]; await metaPut('places', places); }
