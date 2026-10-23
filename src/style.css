@@ -15,8 +15,8 @@
   --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; color-scheme:dark; }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
-html,body{max-width:100%;overflow-x:hidden}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+html,body{max-width:100%;overflow-x:clip}
+body{min-height:100vh;min-height:100dvh;margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -172,6 +172,7 @@ dialog::backdrop{background:rgba(20,8,40,.55)}
 .field{display:block;margin-bottom:14px}
 .field>span{display:block;font-size:.8rem;font-weight:600;margin-bottom:5px;color:var(--ink)}
 .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--ink);border-radius:9px;background:var(--field);color:var(--text)}
+.field.compact input{padding-top:7px;padding-bottom:7px}
 .field textarea{min-height:70px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .sheet-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
@@ -1025,6 +1026,18 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .askhead .linkbtn{text-decoration:none;color:var(--muted)}
 .askpanel .vlog.chat{min-height:0;max-height:40vh;margin:6px 0 0}
 .langsel{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:600 .85rem var(--font,Poppins),system-ui,sans-serif;padding:7px 28px 7px 10px;max-width:60vw}
+.tabbar button.addtab{height:var(--tabh);align-self:stretch}
+.tabbar .addtab svg.plus{width:22px;height:22px;flex:none;line-height:22px}
+.tabbar .addtab.nudge .tl{font-weight:500}
+.boxdocuments{margin-top:8px}
+.boxdocuments h2.section{margin-top:16px}
+.docrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.docopen{grid-column:1;display:flex;align-items:center;gap:8px;min-width:0;padding:2px 0;border:0;background:none;color:var(--ink);text-align:left}
+.docopen svg{width:18px;height:18px;flex:none}
+.docopen span{overflow-wrap:anywhere}
+.docrow select{grid-column:1;width:100%;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--text);font-size:.8rem}
+.docrow .x{grid-column:2;grid-row:1 / span 2}
+.docadd{display:inline-flex;align-items:center;margin-top:10px}
 /* 2026-10-22.3: labels, barcode, moving */
 .labelprev{width:96px;margin:4px auto 10px;background:#fff;padding:6px;border-radius:8px}
 .labelprev svg{width:100%;height:auto;display:block}

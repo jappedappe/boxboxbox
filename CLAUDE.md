@@ -30,7 +30,7 @@ Keep committing the built `index.html` (GitHub Pages serves it). After the split
 ## Data model (short)
 
 - Place (`meta.places`): `id, name, icon, zones[], door, far`.
-- Box: `id, code` (B-001, numbered per place by default; setting `meta.numbering`), `name, autoName, placeId, parentId` (box inside a box), `location` (= zone), `stack, level, fav, out {since, until}, checkedAt, openedAt, updatedAt, items[]`. Each place has one hidden box with `loose: true` for things not in a box.
+- Box: `id, code` (B-001, numbered per place by default; setting `meta.numbering`), `name, autoName, placeId, parentId` (box inside a box), `location` (= zone), `stack, level, fav, out {since, until}, checkedAt, openedAt, updatedAt, items[], documents[]`. Box documents store `id, ref, name, type, itemId` (optional link to an item); their files use the existing `photos` store. Each place has one hidden box with `loose: true` for things not in a box.
 - Item: `id, name, photos[], files[], tags[]` (tags = collections), `owner, status, loanTo, size, color, season, brand, model, serial, qty, value, storedOn, lastUsed, remindMonths, remindAt, icon, fav, out {since, until}, outLog[]`; loose items also have `zone, stack, level` on the map.
 
 ## Design principles (decided with the owner – keep them)

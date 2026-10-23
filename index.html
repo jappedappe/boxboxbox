@@ -28,8 +28,8 @@
   --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; color-scheme:dark; }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
-html,body{max-width:100%;overflow-x:hidden}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+html,body{max-width:100%;overflow-x:clip}
+body{min-height:100vh;min-height:100dvh;margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -185,6 +185,7 @@ dialog::backdrop{background:rgba(20,8,40,.55)}
 .field{display:block;margin-bottom:14px}
 .field>span{display:block;font-size:.8rem;font-weight:600;margin-bottom:5px;color:var(--ink)}
 .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--ink);border-radius:9px;background:var(--field);color:var(--text)}
+.field.compact input{padding-top:7px;padding-bottom:7px}
 .field textarea{min-height:70px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .sheet-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
@@ -1038,6 +1039,18 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .askhead .linkbtn{text-decoration:none;color:var(--muted)}
 .askpanel .vlog.chat{min-height:0;max-height:40vh;margin:6px 0 0}
 .langsel{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:600 .85rem var(--font,Poppins),system-ui,sans-serif;padding:7px 28px 7px 10px;max-width:60vw}
+.tabbar button.addtab{height:var(--tabh);align-self:stretch}
+.tabbar .addtab svg.plus{width:22px;height:22px;flex:none;line-height:22px}
+.tabbar .addtab.nudge .tl{font-weight:500}
+.boxdocuments{margin-top:8px}
+.boxdocuments h2.section{margin-top:16px}
+.docrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.docopen{grid-column:1;display:flex;align-items:center;gap:8px;min-width:0;padding:2px 0;border:0;background:none;color:var(--ink);text-align:left}
+.docopen svg{width:18px;height:18px;flex:none}
+.docopen span{overflow-wrap:anywhere}
+.docrow select{grid-column:1;width:100%;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--text);font-size:.8rem}
+.docrow .x{grid-column:2;grid-row:1 / span 2}
+.docadd{display:inline-flex;align-items:center;margin-top:10px}
 /* 2026-10-22.3: labels, barcode, moving */
 .labelprev{width:96px;margin:4px auto 10px;background:#fff;padding:6px;border-radius:8px}
 .labelprev svg{width:100%;height:auto;display:block}
@@ -13512,7 +13525,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-23.15';
+const APP_VERSION = '2026-10-23.16';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [];
 let places = [], currentPlace = 'all';
@@ -13874,7 +13887,15 @@ function hydrate(root = document){
   });
 }
 function refInUse(ref){
-  return trash.some(t => (t.item.photos || []).some(p => p.ref === ref) || (t.item.files || []).some(f => f.ref === ref)) || boxes.some(b => (b.photo && b.photo.ref === ref) || (b.items || []).some(i => (i.photos || []).some(p => p.ref === ref) || (i.files || []).some(f => f.ref === ref)));
+  return trash.some(t => (t.item.photos || []).some(p => p.ref === ref) || (t.item.files || []).some(f => f.ref === ref)) || boxes.some(b => (b.photo && b.photo.ref === ref) || (b.documents || []).some(d => d.ref === ref) || (b.items || []).some(i => (i.photos || []).some(p => p.ref === ref) || (i.files || []).some(f => f.ref === ref)));
+}
+function unlinkDocuments(itemIds){
+  const ids = new Set(itemIds);
+  boxes.filter(b => (b.documents || []).some(d => ids.has(d.itemId))).forEach(b => {
+    const updated = clone(b);
+    updated.documents.forEach(d => { if (ids.has(d.itemId)) delete d.itemId; });
+    putBox(updated, true);
+  });
 }
 /* deleted items stay in the trash for 30 days (photos too) */
 let trash = [];
@@ -13891,6 +13912,7 @@ function purgeTrash(){
   const lim = Date.now() - TRASH_DAYS * 864e5, old = trash.filter(t => Date.parse(t.deletedAt) < lim);
   if (!old.length) return;
   trash = trash.filter(t => !old.includes(t)); metaPut('trash', trash).catch(() => {});
+  unlinkDocuments(old.map(t => t.item.id));
   old.forEach(t => { (t.item.photos || []).forEach(p => dropPhoto(p.ref)); (t.item.files || []).forEach(f => dropPhoto(f.ref)); });
 }
 function restoreTrash(id){
@@ -13911,7 +13933,7 @@ function trashSheet(){
     <div class="sheet-foot">${trash.length ? `<button class="btn danger" id="trEmpty">${tr('emptyTrash')}</button>` : ''}<button class="btn" id="trX">${tr('close')}</button></div>`);
   sheet.querySelector('.sheet').onclick = e => { const b = e.target.closest('[data-tr]'); if (b){ restoreTrash(b.dataset.tr); render(); trashSheet(); } };
   $('#trX').onclick = closeSheet;
-  if ($('#trEmpty')) $('#trEmpty').onclick = () => askConfirm(tr('emptyTrashQ', trash.length), tr('emptyTrash')).then(y => { if (!y) return; const all = trash; trash = []; metaPut('trash', trash).catch(() => {}); all.forEach(t => { (t.item.photos || []).forEach(p => dropPhoto(p.ref)); (t.item.files || []).forEach(f => dropPhoto(f.ref)); }); trashSheet(); });
+  if ($('#trEmpty')) $('#trEmpty').onclick = () => askConfirm(tr('emptyTrashQ', trash.length), tr('emptyTrash')).then(y => { if (!y) return; const all = trash; trash = []; metaPut('trash', trash).catch(() => {}); unlinkDocuments(all.map(t => t.item.id)); all.forEach(t => { (t.item.photos || []).forEach(p => dropPhoto(p.ref)); (t.item.files || []).forEach(f => dropPhoto(f.ref)); }); trashSheet(); });
 }
 function dropPhoto(ref){
   if (!ref) return;
@@ -13983,7 +14005,7 @@ const STR = {
     nothingDue: 'Nothing needs your attention. On an item, set “Remind me if unused” to get a nudge when you haven’t used it in a while.',
     prem1: 'Share storage with your household', prem2: 'Sell on Blocket, Tradera and Vinted', prem3: 'Login and sync between phones', premLater: 'Coming later. Everything you use now is free.',
     whatIsIt: 'What is it?', whereIs: 'Where it is', addDetail: 'Add details', lastUsed: 'Last time used', remind: 'Remind me if unused', noRemind: 'No reminder',
-    remindM: m => m === 12 ? 'After 1 year' : m === 24 ? 'After 2 years' : `After ${m} months`, notify: d => `notify ${d}`, attachments: 'Attachments', addAttach: '+ Add receipt, warranty or manual',
+    remindM: m => m === 12 ? 'After 1 year' : m === 24 ? 'After 2 years' : `After ${m} months`, notify: d => `notify ${d}`,     attachments: 'Attachments', addAttach: '+ Add receipt, warranty or manual', documents: 'Documents & receipts', addDocument: '+ Add document or recipe', noDocuments: 'No documents yet.', linkToItem: 'Link to item', notLinked: 'Not linked to an item', linkedDocuments: 'Linked documents', document: 'Document',
     tags: 'Tags', registered: (d, by) => `Registered ${d}${by ? ` by ${by}` : ''}.`, storedSince: d => `Stored since ${d}.`, changed: d => `Last changed ${d}.`,
     delItem: 'Delete item', done: 'Done', save: 'Save', saveAnother: 'Save + add another', saved: 'Saved.', savedNext: n => `${n} saved. Add the next one.`, nameFirst: 'Give it a name first.',
     f_size: 'Size', f_brand: 'Brand', f_value: 'Price / value (kr)', f_model: 'Model', f_qty: 'Quantity', f_owner: 'Whose & status', f_color: 'Colour', f_season: 'Season', f_serial: 'Serial number',
@@ -13996,7 +14018,7 @@ const STR = {
     backupBanner: d => d ? `Last backup was ${d}. Everything is stored only on this phone, so keep a copy somewhere else.` : 'You haven’t made a backup yet. Everything is stored only on this phone, so keep a copy somewhere else.',
     voiceNotes: 'Voice notes', voiceNotesBox: 'Voice notes for this box', menu: 'Menu', allSettings: 'All settings', usedNoted: 'Noted. The reminder starts over.', markedSale: 'Marked for sale.',
     placesHint: 'For example the basement storage unit, the attic, the garage or the summer house. Only a name is stored, never an address.', placeNameHint: 'Name, e.g. Vinden',
-    fileMissing: 'That file is missing.', savingPhoto: 'Saving photo…', unnamed: 'Unnamed',
+    fileMissing: 'That file is missing.', savingPhoto: 'Saving photo…', savingDocument: 'Saving document…', unnamed: 'Unnamed',
     batchTitle: 'Add several items', batchWhere: w => `They’ll go into ${w}.`, modeEach: 'One photo per item', modeEachHint: 'Take or pick a photo of each thing.',
     modeMulti: 'Several items in one photo', modeMultiHint: 'Lay things out and take one photo. Each thing becomes its own item.',
     batchAI: 'AI will suggest names and details from the photos. You check them before adding.', batchNoAI: 'Turn on the AI assistant to get names and details suggested automatically. Without it you name each item yourself.',
@@ -14019,7 +14041,7 @@ const STR = {
     nothingDue: 'Inget behöver din uppmärksamhet. Välj ”Påminn om oanvänd” på en sak för att få en knuff när du inte använt den på ett tag.',
     prem1: 'Dela förvaring med hushållet', prem2: 'Sälj på Blocket, Tradera och Vinted', prem3: 'Inloggning och synk mellan telefoner', premLater: 'Kommer senare. Allt du använder nu är gratis.',
     whatIsIt: 'Vad är det?', whereIs: 'Var den finns', addDetail: 'Lägg till detaljer', lastUsed: 'Senast använd', remind: 'Påminn om oanvänd', noRemind: 'Ingen påminnelse',
-    remindM: m => m === 12 ? 'Efter 1 år' : m === 24 ? 'Efter 2 år' : `Efter ${m} månader`, notify: d => `påminnelse ${d}`, attachments: 'Bilagor', addAttach: '+ Lägg till kvitto, garanti eller manual',
+    remindM: m => m === 12 ? 'Efter 1 år' : m === 24 ? 'Efter 2 år' : `Efter ${m} månader`, notify: d => `påminnelse ${d}`,     attachments: 'Bilagor', addAttach: '+ Lägg till kvitto, garanti eller manual', documents: 'Dokument och kvitton', addDocument: '+ Lägg till dokument eller recept', noDocuments: 'Inga dokument än.', linkToItem: 'Koppla till sak', notLinked: 'Inte kopplat till någon sak', linkedDocuments: 'Kopplade dokument', document: 'Dokument',
     tags: 'Taggar', registered: (d, by) => `Registrerad ${d}${by ? ` av ${by}` : ''}.`, storedSince: d => `Förvaras sedan ${d}.`, changed: d => `Senast ändrad ${d}.`,
     delItem: 'Ta bort sak', done: 'Klar', save: 'Spara', saveAnother: 'Spara + lägg till nästa', saved: 'Sparat.', savedNext: n => `${n} sparad. Lägg till nästa.`, nameFirst: 'Ge den ett namn först.',
     f_size: 'Storlek', f_brand: 'Märke', f_value: 'Pris / värde (kr)', f_model: 'Modell', f_qty: 'Antal', f_owner: 'Vems & status', f_color: 'Färg', f_season: 'Säsong', f_serial: 'Serienummer',
@@ -14032,7 +14054,7 @@ const STR = {
     backupBanner: d => d ? `Senaste säkerhetskopian gjordes ${d}. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.` : 'Du har inte gjort någon säkerhetskopia än. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.',
     voiceNotes: 'Röstanteckningar', voiceNotesBox: 'Röstanteckningar för lådan', menu: 'Meny', allSettings: 'Alla inställningar', usedNoted: 'Noterat. Påminnelsen börjar om.', markedSale: 'Markerad till salu.',
     placesHint: 'Till exempel källarförrådet, vinden, garaget eller sommarstugan. Bara ett namn sparas, aldrig en adress.', placeNameHint: 'Namn, t.ex. Vinden',
-    fileMissing: 'Filen saknas.', savingPhoto: 'Sparar foto…', unnamed: 'Namnlös',
+    fileMissing: 'Filen saknas.', savingPhoto: 'Sparar foto…', savingDocument: 'Sparar dokument…', unnamed: 'Namnlös',
     batchTitle: 'Lägg till flera saker', batchWhere: w => `De hamnar i ${w}.`, modeEach: 'Ett foto per sak', modeEachHint: 'Ta eller välj ett foto av varje sak.',
     modeMulti: 'Flera saker på ett foto', modeMultiHint: 'Lägg ut sakerna och ta ett foto. Varje sak blir en egen post.',
     batchAI: 'AI föreslår namn och detaljer utifrån fotona. Du kollar dem innan de läggs till.', batchNoAI: 'Slå på AI-assistenten för att få namn och detaljer föreslagna automatiskt. Utan den namnger du varje sak själv.',
@@ -14197,10 +14219,10 @@ Object.assign(STR.sv, {showAll: 'Visa alla', dragLooseHint: 'Håll in en rund ma
   doorSide: 'Var är dörren?', doorHint: 'Kartan ritas från dörren och inåt. Välj vilken sida dörren sitter på.', door_top: 'Uppe', door_bottom: 'Nere', door_left: 'Vänster', door_right: 'Höger'});
 STR.sv.doorHint = 'Välj vilken sida dörren sitter på, och var längst in är. Det visas som markeringar runt kartan.'; STR.sv.doorSide = 'Dörr och längst in';
 Object.assign(STR.en, {dragHint: 'Hold a box or a round marker and drag it onto a stack or into a zone.', back: 'Back', switchSpace: 'Choose place', shelf: 'Shelf', map: 'Map', door: 'Door', farIn: 'Far end', noZone: 'No zone', placement: 'Placement',
-  placementHint: 'Where the box stands: the zone (for example “By the door”, “Shelf 2”, “Far end”) and which stack it’s in.', zone: 'Zone', zoneHint: 'For example By the door, Shelf 2, Far end',
+  placementHint: 'Where the box stands: its zone (a spot in this place, like a shelf or by the door) and stack.', zone: 'Zone', zoneHint: 'A zone marks a spot in this place, e.g. a shelf or by the door',
   stack: 'Stack', newStack: 'A new stack', level: 'Level', onTop: 'On top', atBottom: 'At the bottom', stackOf: (n, codes) => codes ? `Stack ${n}: on ${codes}` : `Stack ${n}`, closerDoor: 'Move up', furtherIn: 'Move down'});
 Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra den till en stapel eller zon.', back: 'Tillbaka', switchSpace: 'Välj plats', shelf: 'Hylla', map: 'Karta', door: 'Dörren', farIn: 'Längst in', noZone: 'Utan zon', placement: 'Placering',
-  placementHint: 'Var lådan står: zonen (till exempel ”Vid dörren”, ”Hylla 2”, ”Längst in”) och vilken stapel den står i.', zone: 'Zon', zoneHint: 'Till exempel Vid dörren, Hylla 2, Längst in',
+  placementHint: 'Var lådan står: zonen (en del av platsen, som en hylla eller vid dörren) och stapeln.', zone: 'Zon', zoneHint: 'En zon markerar en del av platsen, t.ex. en hylla eller vid dörren',
   stack: 'Stapel', newStack: 'En ny stapel', level: 'Nivå', onTop: 'Överst', atBottom: 'Längst ner', stackOf: (n, codes) => codes ? `Stapel ${n}: ovanpå ${codes}` : `Stapel ${n}`, closerDoor: 'Flytta upp', furtherIn: 'Flytta ner'});
 Object.assign(STR.en, {collections: 'Collections', collection: 'Collection', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
   toCollection: 'Collection', collHint: 'Things with the same tag form a collection, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
@@ -14575,7 +14597,7 @@ function tokenHTML(it, l, opts = {}){
 function looseCarousel(pid, opts = {}){
   const l = looseOf(pid), li = looseItems(pid).filter(opts.filter || (() => true));
   if (!li.length && !opts.always) return '';
-  return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length ? `${li.some(i => i.isNew) ? `<span class="newrib inline">${tr('newTag')}</span>` : ''}<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
+  return `<section class="lcarousel" data-unplace="${opts.dropTarget ? '1' : ''}"><div class="lhead"><b>${tr('notInBox')}</b>${l && li.length >= 6 ? `${li.some(i => i.isNew) ? `<span class="newrib inline">${tr('newTag')}</span>` : ''}<button class="linkbtn" data-open="${esc(l.id)}">${tr('showAll')} ›</button>` : ''}<span class="zcount">${tr('items_n', li.length).toLowerCase()}</span></div>
     ${opts.hint ? `<p class="maphint">${opts.hint}</p>` : ''}
     <div class="lstrip">${li.map(it => itemTile(it, l, opts.showZone && it.zone ? esc(it.zone) : '')).join('')}
       <button class="itile add" data-act="addloose" data-pid="${esc(pid)}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newThing')}</span></span></button></div></section>`;
@@ -14721,11 +14743,62 @@ function renderBox(b){
       <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
       ${b.loose ? '' : `<button class="itile add" data-act="addinbox"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}`}</div>`}
     ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addThingChoice')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('addMultipleChoice')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">+ ${tr('addBoxChoice')}</button>`}</div>` : ''}
+    ${boxDocumentsHTML(b)}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
     ${selBar(['tag', 'move', 'del'])}`;
   document.body.classList.toggle('selecting', !!selecting);
   if (hlIt) scrollToHighlight();
 }
+app.addEventListener('click', async e => {
+  const open = e.target.closest('[data-doc-open]');
+  if (open){
+    const b = findBox(open.dataset.docBox), doc = b && (b.documents || []).find(d => d.id === open.dataset.docOpen);
+    if (doc) await openFile(doc);
+    return;
+  }
+  const remove = e.target.closest('[data-doc-remove]');
+  if (!remove) return;
+  const b = findBox(remove.dataset.docBox), doc = b && (b.documents || []).find(d => d.id === remove.dataset.docRemove);
+  if (!doc || !(await askConfirm(tr('rmQ', doc.name), tr('remove')))) return;
+  const updated = clone(b);
+  updated.documents = (updated.documents || []).filter(d => d.id !== doc.id);
+  putBox(updated, true); dropPhoto(doc.ref); render();
+});
+app.addEventListener('change', async e => {
+  const link = e.target.closest('[data-doc-link]');
+  if (link){
+    const b = findBox(view.boxId), doc = b && (b.documents || []).find(d => d.id === link.dataset.docLink);
+    if (!doc) return;
+    const updated = clone(b), target = updated.documents.find(d => d.id === doc.id);
+    if (link.value) target.itemId = link.value; else delete target.itemId;
+    putBox(updated);
+    return;
+  }
+  const input = e.target.closest('[data-doc-file]');
+  if (!input) return;
+  const files = [...input.files]; input.value = '';
+  if (!files.length) return;
+  toast(tr('savingDocument'));
+  const boxId = input.dataset.docBox;
+  for (const file of files){
+    try {
+      let blob = file;
+      if (file.type.startsWith('image/')){
+        const cv = await shrink(file, PHOTO_MAX);
+        blob = await toBlob(cv, 'image/webp', PHOTO_QUALITY);
+        if (!blob || blob.type !== 'image/webp') blob = await toBlob(cv, 'image/jpeg', .8);
+        if (!blob) throw new Error('Could not process document image');
+      }
+      const ref = newId(); await phPut(ref, blob);
+      const b = findBox(boxId);
+      if (!b){ dropPhoto(ref); continue; }
+      const updated = clone(b);
+      updated.documents = (updated.documents || []).concat({id: newId(), ref, name: file.name.replace(/\.[^.]+$/, '') || tr('document'), type: blob.type || file.type, addedAt: new Date().toISOString()});
+      putBox(updated, true);
+    } catch (err){ toast(saveErr(err)); }
+  }
+  render();
+});
 /* placement: which zone, which stack, on top or at the bottom */
 
 /* ---------- the map: boxes AND loose things, in zones and stacks ---------- */
@@ -15148,11 +15221,10 @@ function renderWelcome(){
   };
   $('#wGo').onclick = go; $('#wName').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 }
-/* language: Auto (follows the phone), Svenska or English */
+/* The selected language follows the device unless another language is chosen. */
 let langPref = 'auto';
 const LANGS = [['sv', 'Svenska'], ['en', 'English'], ['da', 'Dansk'], ['nb', 'Norsk'], ['fi', 'Suomi']];
 const VOICE = {sv: 'sv-SE', en: 'en-US', da: 'da-DK', nb: 'nb-NO', fi: 'fi-FI'};
-const AUTO_LABEL = {sv: 'Auto (telefonens språk)', en: 'Auto (phone language)', da: 'Auto (telefonens sprog)', nb: 'Auto (telefonens språk)', fi: 'Automaattinen (puhelimen kieli)'};
 const phoneLang = () => {
   for (const raw of (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'])){
     const l = String(raw).toLowerCase();
@@ -15160,7 +15232,11 @@ const phoneLang = () => {
   }
   return 'en';
 };
-const langSwitch = () => `<select class="langsel" data-lang-select aria-label="Language / Språk"><option value="auto"${langPref === 'auto' ? ' selected' : ''}>Auto (${(LANGS.find(x => x[0] === lang) || LANGS[1])[1]})</option>${LANGS.map(([k, n]) => `<option value="${k}"${langPref === k ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+const langSwitch = () => {
+  const active = LANGS.find(x => x[0] === lang) || LANGS[1];
+  const currentValue = langPref === 'auto' ? 'auto' : active[0];
+  return `<select class="langsel" data-lang-select aria-label="Language / Språk"><option value="${currentValue}" selected>${active[1]}</option>${LANGS.filter(([k]) => k !== active[0]).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>`;
+};
 document.addEventListener('change', e => { const s = e.target.closest && e.target.closest('[data-lang-select]'); if (!s) return; setLang(s.value); if (sheet.open && sheet.querySelector('[data-lang-select]')) menuSheet(); });
 function setLang(l){
   langPref = LANGS.some(x => x[0] === l) ? l : 'auto';
@@ -15296,6 +15372,7 @@ function discardItemEdit(){
   for (const ref of state.removedRefs) if (!originalRefs.has(ref)) newRefs.add(ref);
   if (state.isNew){
     if (currentBox){ const removed = clone(currentBox); removed.items = removed.items.filter(i => i.id !== state.itemId); putBox(removed, true); }
+    unlinkDocuments([state.itemId]);
     itemDraft = null;
   } else if (currentBox && currentBox.id !== state.boxId){
     const movedFrom = clone(currentBox); movedFrom.items = movedFrom.items.filter(i => i.id !== state.itemId); putBox(movedFrom, true);
@@ -15352,7 +15429,7 @@ function leaveItemPage(){
   flushItem = null;
   if (v.name !== 'item' || itemDraft !== v.itemId) return;
   const b = findBox(v.boxId), it = b && (b.items || []).find(i => i.id === v.itemId);
-  if (it && !(it.name || '').trim()){ const nb = clone(b); nb.items = nb.items.filter(i => i.id !== it.id); putBox(nb, true); (it.photos || []).forEach(p => dropPhoto(p.ref)); (it.files || []).forEach(f => dropPhoto(f.ref)); if ((it.photos || []).length) toast(tr('discarded')); }
+  if (it && !(it.name || '').trim()){ const nb = clone(b); nb.items = nb.items.filter(i => i.id !== it.id); putBox(nb, true); unlinkDocuments([it.id]); (it.photos || []).forEach(p => dropPhoto(p.ref)); (it.files || []).forEach(f => dropPhoto(f.ref)); if ((it.photos || []).length) toast(tr('discarded')); }
   itemDraft = null;
 }
 async function newItem(boxId, replace){
@@ -15404,7 +15481,7 @@ async function cancelNewItem(){
   if (hasDetails && !(await askConfirm(tr('discardNewItemQ'), tr('del')))) return;
   if (itemEdit && itemEdit.isNew) discardItemEdit();
   else {
-    const nb = clone(b); nb.items = (nb.items || []).filter(x => x.id !== it.id); putBox(nb, true);
+    const nb = clone(b); nb.items = (nb.items || []).filter(x => x.id !== it.id); putBox(nb, true); unlinkDocuments([it.id]);
     [...(it.photos || []), ...(it.files || [])].forEach(p => dropPhoto(p.ref));
     itemDraft = null; itemEdit = null;
   }
@@ -15449,6 +15526,7 @@ function renderItem(){
   const isNew = itemDraft === it.id;
   const show = k => hasVal(it, k) || shownOpt.has(k);
   const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
+  const linkedDocs = boxes.flatMap(owner => (owner.documents || []).filter(doc => doc.itemId === it.id).map(doc => ({doc, owner})));
   const input = (k, opts = {}) => `<div class="fl"><input data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}><label>${esc(tr('f_' + k))}</label></div>`;
   let status = it.status || '', loanTo = it.loanTo || '';
   const legacy = /^On loan \((.+)\)$/.exec(status); if (legacy){ status = 'On loan'; loanTo = loanTo || legacy[1]; }
@@ -15491,6 +15569,7 @@ function renderItem(){
     <div class="fl att"><label class="always">${tr('attachments')}</label>
       ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
       <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/*,application/pdf" id="fFile" hidden></label></div></div>
+    ${linkedDocs.length ? `<div class="fl att"><label class="always">${tr('linkedDocuments')}</label>${linkedDocs.map(({doc, owner}) => `<div class="attrow"><span>${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</div>` : ''}
     <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<span class="tag"><button class="tagopen" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button class="tagx" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
     <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
     ${adSlot('card')}
@@ -15744,7 +15823,7 @@ async function sharePlaceCopy(pid){
   const p = findPlace(pid); if (!p) return;
   toast(tr('loadingLib'));
   const bx = boxes.filter(b => b.placeId === pid), photos = {};
-  const refs = bx.flatMap(b => [b.photo && b.photo.ref, ...(b.items || []).flatMap(i => [...(i.photos || []).map(x => x.ref), ...(i.files || []).map(f => f.ref)])]).filter(Boolean);
+  const refs = bx.flatMap(b => [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(x => x.ref), ...(i.files || []).map(f => f.ref)])]).filter(Boolean);
   for (const ref of refs){ const blob = await phGet(ref).catch(() => null); if (blob) photos[ref] = await blobToDataURL(blob); }
   const json = JSON.stringify({app: 'boxes', version: 3, kind: 'place-copy', exportedAt: new Date().toISOString(), places: [p], boxes: bx, photos, household});
   deliver(`storrrage-${p.name.toLowerCase().replace(/[^a-z0-9åäö]+/g, '-')}-${today()}.json`, new Blob([json], {type: 'application/json'}), tr('shareCopy'));
@@ -16528,6 +16607,21 @@ function notesHTML(list, title){
     <span class="hint">${esc(fmtStamp(n.createdAt))}, ${n.duration} s${n.by ? `, ${esc(n.by)}` : ''}</span>
     <button class="linkbtn" data-notedel="${esc(n.id)}">${tr('del')}</button></div>`).join('')}</section>`;
 }
+function boxDocumentsHTML(b){
+  if (b.loose) return '';
+  const docs = b.documents || [];
+  const items = boxes.flatMap(owner => (owner.items || []).map(it => ({it, owner})))
+    .sort((a, z) => a.it.name.localeCompare(z.it.name, lang));
+  const options = doc => `<option value="">${tr('notLinked')}</option>${items.map(({it, owner}) => `<option value="${esc(it.id)}" ${doc.itemId === it.id ? 'selected' : ''}>${esc(it.name)} · ${esc(placeName(owner.placeId))}${owner.loose ? '' : ` · ${esc(owner.code)}`}</option>`).join('')}`;
+  return `<section class="boxdocuments"><h2 class="section">${tr('documents')}</h2>
+    ${docs.length ? docs.map(doc => `<div class="docrow">
+      <button class="docopen" data-doc-open="${esc(doc.id)}" data-doc-box="${esc(b.id)}">${ICON.eye}<span>${esc(doc.name)}</span></button>
+      <select data-doc-link="${esc(doc.id)}" aria-label="${esc(tr('linkToItem'))}">${options(doc)}</select>
+      <button class="x" data-doc-remove="${esc(doc.id)}" data-doc-box="${esc(b.id)}" aria-label="${esc(tr('remove'))}">×</button>
+    </div>`).join('') : `<p class="hint">${tr('noDocuments')}</p>`}
+    <label class="btn quiet small docadd">${tr('addDocument')}<input type="file" accept="image/*,application/pdf" data-doc-file data-doc-box="${esc(b.id)}" hidden multiple></label>
+  </section>`;
+}
 const noteUrls = new Map();
 function hydrateNotes(root){
   root.querySelectorAll('audio[data-note]').forEach(a => {
@@ -16762,7 +16856,7 @@ function boxSheet(id, presetPid, presetParent, presetZone){
   const parentOpts = pid => `<option value="">${esc(tr('topLevel', placeName(pid)))}</option>` + boxesIn(pid).filter(x => !banned.has(x.id)).sort(byCode).map(x => `<option value="${esc(x.id)}" ${x.id === b.parentId ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)}</option>`).join('');
   let saved = false;
   openSheet(`<h3>${existing ? tr('editBoxH') : tr('newBox')} <span class="chip" id="bCode">${esc(b.code)}</span></h3>
-    <label class="field"><span>${tr('name')}</span><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}"></label>
+    <label class="field compact"><span>${tr('name')}</span><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}"></label>
     <div class="row2">
       <label class="field"><span>${tr('storagePlace')}</span><select id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
       <label class="field"><span>${tr('inside')}</span><select id="bParent">${parentOpts(b.placeId)}</select></label>
@@ -16803,6 +16897,7 @@ function boxSheet(id, presetPid, presetParent, presetZone){
     kids.forEach(k => { const nk = clone(k); nk.parentId = existing.parentId || null; putBox(nk, true); });
     removeBox(existing.id);
     if (existing.photo) dropPhoto(existing.photo.ref);
+    (existing.documents || []).forEach(d => dropPhoto(d.ref));
     toTrash((existing.items || []).map(i => [i, existing]));
     if (existing.parentId){ const pb = findBox(existing.parentId); if (pb && pb.autoName) putBox(clone(pb), true); }
     toast(`${existing.code} ✕`);
@@ -18141,7 +18236,7 @@ async function backup(){
   if (!boxes.length && !notes.length) return toast('Nothing to back up yet.');
   toast('Preparing backup…');
   const photos = {};
-  const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.items || []).flatMap(i => (i.photos || []).map(p => p.ref))]).filter(Boolean);
+  const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])]).filter(Boolean);
   for (const ref of refs){ const b = await phGet(ref).catch(() => null); if (b) photos[ref] = await blobToDataURL(b); }
   const notesOut = [];
   for (const n of notes) notesOut.push({...n, blob: undefined, audio: n.blob ? await blobToDataURL(n.blob) : ''});
@@ -18159,7 +18254,7 @@ $('#importFile').addEventListener('change', async e => {
     let n = 0;
     for (const b of list){
       if (!b || !b.id || !b.code || findBox(b.id)) continue;
-      const refs = [b.photo && b.photo.ref, ...(b.items || []).flatMap(i => (i.photos || []).map(p => p.ref))].filter(Boolean);
+      const refs = [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])].filter(Boolean);
       for (const r of refs){ const d = data.photos && data.photos[r]; if (d) await phPut(r, await (await fetch(d)).blob()); }
       putBox(b); n++;
     }
@@ -18419,7 +18514,7 @@ function markEverything(){
   boxes.forEach(b => dirty.add('b:' + b.id));
   SYNC_META.forEach(k => dirty.add('m:' + k));
   const refs = new Set(); const add = r => r && refs.add(r);
-  boxes.forEach(b => { if (b.photo) add(b.photo.ref); (b.items || []).forEach(i => { (i.photos || []).forEach(p => add(p.ref)); (i.files || []).forEach(f => add(f.ref)); }); });
+  boxes.forEach(b => { if (b.photo) add(b.photo.ref); (b.documents || []).forEach(d => add(d.ref)); (b.items || []).forEach(i => { (i.photos || []).forEach(p => add(p.ref)); (i.files || []).forEach(f => add(f.ref)); }); });
   trash.forEach(t => { (t.item.photos || []).forEach(p => add(p.ref)); (t.item.files || []).forEach(f => add(f.ref)); });
   refs.forEach(r => dirty.add('p:' + r));
   saveDirty();
