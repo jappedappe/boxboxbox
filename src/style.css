@@ -8,6 +8,7 @@
   box-sizing:border-box; color-scheme:light;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
+html{scrollbar-gutter:stable}
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
   --bg:#17151F; --surface:#221F2D; --ink:#E7E2F8; --text:#ECEAF2; --muted:#A9A3BD; --line:#3A3550; --lav-2:#2D2842; --lav-3:#1F1C2A;
   --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; color-scheme:dark; } }
@@ -53,6 +54,8 @@ h2.section{font-family:var(--caps);font-weight:700;font-size:.72rem;letter-spaci
 .tile .tcode{font-weight:500;font-size:.72rem;opacity:.75;margin-top:4px}
 .tile.current{background:var(--current)}
 .tile.add{background:transparent;border:1.5px solid var(--ink);color:var(--ink);font-size:1.4rem;font-weight:500}
+.tile.add .add-sign{font-size:1.4rem;line-height:1}
+.tile.add .add-label{font-size:.8rem;font-weight:600;margin-top:4px}
 .tile:active,.itile:active{transform:scale(.97)}
 .dot{position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:var(--dot);border:2px solid var(--bg)}
 .dot.inline{position:relative;display:inline-block;top:-8px;right:auto;margin-left:2px;width:9px;height:9px;border:none}
@@ -113,6 +116,7 @@ h2.section{font-family:var(--caps);font-weight:700;font-size:.72rem;letter-spaci
 .heroimg.empty{display:grid;place-items:center}
 .heroimg .ticon{font-size:4rem;opacity:.6;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
 .cam{position:absolute;right:-16px;bottom:-14px;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(47,17,96,.35)}
+.cam.gallery{right:36px;background:var(--ink)}
 .cam svg{width:20px;height:20px}
 .thumbs{display:flex;gap:8px;overflow-x:auto;margin:18px 0 6px;padding:6px 2px}
 .th{position:relative;flex:none}
@@ -151,8 +155,8 @@ h2.section{font-family:var(--caps);font-weight:700;font-size:.72rem;letter-spaci
 
 /* tab bar + talk button */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabbar button{position:relative;border:none;background:none;height:var(--tabh);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink);font-size:.78rem;font-weight:500}
-.tabbar button svg{width:22px;height:22px}
+.tabbar button{position:relative;border:none;background:none;height:var(--tabh);padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink);font-size:.78rem;font-weight:500}
+.tabbar button svg{display:block;flex:none;width:22px;height:22px}
 .tabbar button.on{color:var(--accent)}
 .tabbar button.on::before{content:"";position:absolute;top:-2px;left:0;right:0;height:3px;background:var(--accent)}
 .tabbar .dot{top:10px;right:calc(50% - 16px);width:9px;height:9px}
@@ -430,6 +434,7 @@ body.selecting .fab{display:none}
 .btitle .bname{font-size:1.05rem;font-weight:700;min-width:0;overflow-wrap:anywhere}
 .bpath{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
 .bpath button{border:none;background:none;padding:0;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.bstatus{display:inline-block;margin:6px 0 0;padding:3px 8px;border-radius:8px;background:var(--lav-3);color:var(--ink);font-size:.75rem;font-weight:600}
 .boxbar .vtoggle{margin:0 0 0 auto}
 /* 4 items per row by default, 5 in small */
 .igrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px}
@@ -768,7 +773,7 @@ dialog::backdrop{background:rgba(25,18,45,.45)}
 /* box tiles: same look as items – a square with a whole box, name under it */
 .shelf,.kids{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px;margin:8px 0 6px}
 .shelf .itile .tname,.kids .itile .tname{font-size:.74rem;margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.btile .timg{background:var(--lav-3)}
+.btile .timg{background:var(--lav-3);border-radius:0}
 .btile .boxart{width:78%;height:78%}
 .btile .bcount{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--primary);color:#fff;font-size:.62rem;font-weight:700;display:grid;place-items:center;line-height:1}
 .btile .favstar,.itile .favstar{position:absolute;top:3px;left:5px;color:var(--dot);font-size:.8rem;line-height:1}
@@ -807,7 +812,8 @@ dialog::backdrop{background:rgba(25,18,45,.45)}
 .lgh-in{font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lgh-count{font-size:.75rem;font-weight:700;opacity:1;color:var(--ink);background:var(--lav-2);border-radius:999px;padding:1px 8px}
 .lgroup-h.outh .lgh-count{background:rgba(255,255,255,.25);color:#fff}
-.lgh-add{background:none;color:var(--primary);width:46px;font-size:1.5rem;font-weight:500}
+.lgh-add,.lgh-fold{flex:none;display:grid;place-items:center;width:34px;height:34px;margin:auto 5px;border:0;border-radius:9px;background:var(--primary);color:#fff}
+.lgh-add svg{width:18px;height:18px;fill:currentColor}
 .sortbar{margin:0 0 10px}
 .sortbar .lab{font-size:.72rem;color:var(--muted)}
 .sortbar .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px -16px 0;padding:0 16px}
@@ -961,8 +967,8 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .hasimg > .ticon{display:none}
 .itile .timg{overflow:hidden}
 /* fold boxes in the list */
-.lgh-fold{flex:none;border:none;background:none;color:var(--muted);width:34px;font-size:1.3rem;line-height:1;transition:transform .15s}
-.lgh-fold.shut{transform:rotate(-90deg)}
+.lgh-fold svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.lgh-fold.shut svg{transform:rotate(-90deg)}
 .sortbar{position:relative}
 .sortbar .foldall{position:absolute;right:0;top:0;font-size:.75rem}
 .itile .timg{overflow:visible}
@@ -973,6 +979,10 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .btn.addopt{flex-direction:column;gap:6px;padding:14px 8px}
 .addopt .aoi{width:44px;height:44px;border-radius:12px;background:#fff;display:grid;place-items:center}
 .addopt .aoi svg{width:36px;height:36px}
+.choice.addchoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.addchoices .btn.big{min-width:0;padding:12px 6px;font-size:.82rem;overflow-wrap:anywhere}
+.addchoices .addopt .aoi{width:40px;height:40px}
+.addchoices .addopt .aoi svg{width:32px;height:32px}
 .addnav-sheet .btn.big{background:var(--surface);border:1px solid var(--lav);color:var(--ink)}
 .addnav-sheet .addopt .aoi{background:var(--lav-3);color:var(--primary)}
 .addnav-sheet .btn.block{border:1px solid var(--lav);color:var(--ink)}
@@ -1026,8 +1036,8 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .askhead .linkbtn{text-decoration:none;color:var(--muted)}
 .askpanel .vlog.chat{min-height:0;max-height:40vh;margin:6px 0 0}
 .langsel{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:600 .85rem var(--font,Poppins),system-ui,sans-serif;padding:7px 28px 7px 10px;max-width:60vw}
-.tabbar button.addtab{height:var(--tabh);align-self:stretch}
-.tabbar .addtab svg.plus{width:22px;height:22px;flex:none;line-height:22px}
+.tabbar button.addtab{height:var(--tabh);align-self:stretch;justify-content:center;gap:2px;margin:0}
+.tabbar .addtab svg.plus{display:block;width:22px;height:22px;flex:none;line-height:22px}
 .tabbar .addtab.nudge .tl{font-weight:500}
 .boxdocuments{margin-top:8px}
 .boxdocuments h2.section{margin-top:16px}

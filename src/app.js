@@ -9,9 +9,9 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-23.16';
+const APP_VERSION = '2026-10-26.3';
 let boxes = [], ready = false, lastBackup = null;
-let household = [], me = '', notes = [];
+let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
 let voiceLang = (navigator.language || '').toLowerCase().startsWith('sv') ? 'sv-SE' : 'en-US';
 let view = {name: 'home'}, query = '';
@@ -116,7 +116,7 @@ function setPlace(pid){
   currentPlace = pid; metaPut('currentPlace', pid).catch(() => {});
 }
 const scopePlace = () => currentPlace !== 'all' ? currentPlace : (places.length === 1 ? places[0].id : null);
-const saveErr = e => (e && e.name === 'QuotaExceededError') ? 'The phone is out of storage space for Storrrage.' : 'Couldn’t save that change. Try again.';
+const saveErr = e => (e && e.name === 'QuotaExceededError') ? 'The phone is out of storage space for Storrrage.' : e && e.message ? e.message : 'Couldn’t save that change. Try again.';
 
 
 /* ---------- icon guessing for items without photos ---------- */
@@ -255,7 +255,7 @@ function stems(tok){
   return [...new Set(out)];
 }
 function itemHay(it, b){
-  const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), it.owner, it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
+  const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), itemOwner(it), it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
     it.color, it.season, it.brand, it.model, it.serial, b.loose || b.autoName ? '' : b.name, b.loose ? '' : b.code, b.location].filter(Boolean).join(' ').toLowerCase();
   return {hay, toks: new Set(hay.split(/[^a-zåäöéü0-9.-]+/).filter(Boolean))};
 }
@@ -345,14 +345,70 @@ const toBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
 // Photos: longest side 1600 px (sharp enough to read labels and serial numbers when zoomed),
 // saved as WebP, which is roughly a third smaller than JPEG at the same quality. JPEG if WebP isn't supported.
 const PHOTO_MAX = 1600, PHOTO_QUALITY = .78;
-async function storePhoto(file){
-  const takenAt = new Date(file.lastModified || Date.now()).toISOString();
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const imageSignature = async blob => {
+  const h = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  return h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff
+    || h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47
+    || String.fromCharCode(...h.slice(0, 4)) === 'RIFF' && String.fromCharCode(...h.slice(8, 12)) === 'WEBP'
+    || String.fromCharCode(...h.slice(0, 3)) === 'GIF';
+};
+async function validateImageUpload(file){
+  if (!file || !file.size || file.size > MAX_UPLOAD_BYTES) throw new Error(tr(file && file.size > MAX_UPLOAD_BYTES ? 'uploadTooLarge' : 'uploadImageOnly'));
+  if (!await imageSignature(file)) throw new Error(tr('uploadImageOnly'));
+}
+async function validatePdfUpload(file){
+  if (!file || !file.size || file.size > MAX_UPLOAD_BYTES) throw new Error(tr(file && file.size > MAX_UPLOAD_BYTES ? 'uploadTooLarge' : 'uploadPdfOnly'));
+  if (file.type && file.type !== 'application/pdf') throw new Error(tr('uploadPdfOnly'));
+  const h = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+  if (String.fromCharCode(...h) !== '%PDF-') throw new Error(tr('uploadPdfOnly'));
+}
+async function storeUpload(file){
+  if (await imageSignature(file)){
+    const photo = await storePhoto(file);
+    return {ref: photo.ref, type: photo.type};
+  }
+  await validatePdfUpload(file);
+  const ref = newId();
+  await phPut(ref, file.slice(0, file.size, 'application/pdf'));
+  return {ref, type: 'application/pdf'};
+}
+async function validateAudioUpload(file){
+  if (!file || !file.size || file.size > MAX_UPLOAD_BYTES) throw new Error(tr('uploadTooLarge'));
+  const h = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const type = (file.type || '').split(';')[0].toLowerCase();
+  const valid = type === 'audio/webm' && h[0] === 0x1a && h[1] === 0x45 && h[2] === 0xdf && h[3] === 0xa3
+    || type === 'audio/ogg' && String.fromCharCode(...h.slice(0, 4)) === 'OggS'
+    || type === 'audio/mpeg' && (String.fromCharCode(...h.slice(0, 3)) === 'ID3' || h[0] === 0xff && (h[1] & 0xe0) === 0xe0)
+    || type === 'audio/mp4' && String.fromCharCode(...h.slice(4, 8)) === 'ftyp'
+    || type === 'audio/wav' && String.fromCharCode(...h.slice(0, 4)) === 'RIFF' && String.fromCharCode(...h.slice(8, 12)) === 'WAVE';
+  if (!valid) throw new Error(tr('uploadUnsafeType'));
+}
+function backupDataBlob(value, limit = MAX_UPLOAD_BYTES){
+  if (typeof value !== 'string' || value.length > Math.ceil(limit * 1.4)) throw new Error(tr('uploadTooLarge'));
+  const match = /^data:([a-z0-9.+/-]+)(?:;codecs=[a-z0-9.-]+)?;base64,([a-z0-9+/]*={0,2})$/i.exec(value);
+  if (!match) throw new Error(tr('uploadUnsafeType'));
+  const type = match[1].toLowerCase(), allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/wav'];
+  if (!allowed.includes(type)) throw new Error(tr('uploadUnsafeType'));
+  const raw = atob(match[2]), bytes = new Uint8Array(raw.length);
+  if (!raw.length || raw.length > limit) throw new Error(tr('uploadTooLarge'));
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return new Blob([bytes], {type});
+}
+async function normalizePhoto(file){
+  await validateImageUpload(file);
   const cv = await shrink(file, PHOTO_MAX);
   let blob = await toBlob(cv, 'image/webp', PHOTO_QUALITY);
   if (!blob || blob.type !== 'image/webp') blob = await toBlob(cv, 'image/jpeg', .8);
+  if (!blob) throw new Error(tr('uploadImageOnly'));
+  return blob;
+}
+async function storePhoto(file){
+  const takenAt = new Date(file.lastModified || Date.now()).toISOString();
+  const blob = await normalizePhoto(file);
   const ref = newId();
   await phPut(ref, blob);
-  return {ref, takenAt, addedAt: new Date().toISOString()};
+  return {ref, type: blob.type, takenAt, addedAt: new Date().toISOString()};
 }
 const urls = new Map();
 async function photoURL(ref){
@@ -422,7 +478,7 @@ function trashSheet(){
 function dropPhoto(ref){
   if (!ref) return;
   setTimeout(() => {
-    if (refInUse(ref) || (typeof batchRefs !== 'undefined' && batchRefs.has(ref))) return;
+    if (refInUse(ref) || (batch && batch.refs.has(ref))) return;
     phDel(ref).catch(() => {});
     if (urls.has(ref)){ URL.revokeObjectURL(urls.get(ref)); urls.delete(ref); }
   }, 300);
@@ -494,8 +550,9 @@ const STR = {
     delItem: 'Delete item', done: 'Done', save: 'Save', saveAnother: 'Save + add another', saved: 'Saved.', savedNext: n => `${n} saved. Add the next one.`, nameFirst: 'Give it a name first.',
     f_size: 'Size', f_brand: 'Brand', f_value: 'Price / value (kr)', f_model: 'Model', f_qty: 'Quantity', f_owner: 'Whose & status', f_color: 'Colour', f_season: 'Season', f_serial: 'Serial number',
     f_category: 'Category', f_spot: 'Where exactly', f_notes: 'Notes', whose: 'Whose is it', status: 'Status', loanTo: 'Lent to whom', shared: 'Shared',
-    st_store: 'In storage', st_loan: 'On loan', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Given away',
-    addTo: p => `Add to ${p}`, boxStorage: 'Box / storage', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
+    st_store: 'In storage', st_loan: 'On loan', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Given away', st_throw: 'Throw away', st_custom: 'Other…',
+    customStatus: 'Enter a status',
+    addTo: p => `Add to ${p}`, addBoxOrItem: 'Add box or item', boxStorage: 'Box / storage', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
     moveX: n => `Move ${n}`, to: 'To', move: 'Move', movedTo: w => `Moved to ${w}.`, rename: 'Rename', del: 'Delete', edit: 'Edit', moveToPlace: 'Move to place', emptyFirst: 'Empty this place to delete it.',
     delQ: n => `Delete “${n}”? This can’t be undone.`, delNoteQ: 'Delete this voice note?', rmPhotoQ: 'Remove this photo?', rmQ: n => `Remove “${n}”?`, rmTagQ: n => `Remove the tag “${n}”?`,
     newPlace: 'New storage place', newPlaceHint: 'For example Basement, Vinden or Garaget', renameX: n => `Rename ${n}`, newTag: 'Add a tag', tagHint: 'For example hiking or winter',
@@ -530,8 +587,9 @@ const STR = {
     delItem: 'Ta bort sak', done: 'Klar', save: 'Spara', saveAnother: 'Spara + lägg till nästa', saved: 'Sparat.', savedNext: n => `${n} sparad. Lägg till nästa.`, nameFirst: 'Ge den ett namn först.',
     f_size: 'Storlek', f_brand: 'Märke', f_value: 'Pris / värde (kr)', f_model: 'Modell', f_qty: 'Antal', f_owner: 'Vems & status', f_color: 'Färg', f_season: 'Säsong', f_serial: 'Serienummer',
     f_category: 'Kategori', f_spot: 'Var exakt', f_notes: 'Anteckningar', whose: 'Vems är det', status: 'Status', loanTo: 'Utlånad till', shared: 'Gemensam',
-    st_store: 'I förrådet', st_loan: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Bortskänkt',
-    addTo: p => `Lägg till i ${p}`, boxStorage: 'Låda / förvaring', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
+    st_store: 'I förrådet', st_loan: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Bortskänkt', st_throw: 'Slängas', st_custom: 'Annat…',
+    customStatus: 'Skriv en egen status',
+    addTo: p => `Lägg till i ${p}`, addBoxOrItem: 'Lägg till låda eller sak', boxStorage: 'Låda / förvaring', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
     moveX: n => `Flytta ${n}`, to: 'Till', move: 'Flytta', movedTo: w => `Flyttad till ${w}.`, rename: 'Byt namn', del: 'Ta bort', edit: 'Ändra', moveToPlace: 'Flytta till plats', emptyFirst: 'Töm platsen för att kunna ta bort den.',
     delQ: n => `Ta bort ”${n}”? Det går inte att ångra.`, delNoteQ: 'Ta bort röstanteckningen?', rmPhotoQ: 'Ta bort fotot?', rmQ: n => `Ta bort ”${n}”?`, rmTagQ: n => `Ta bort taggen ”${n}”?`,
     newPlace: 'Ny förvaringsplats', newPlaceHint: 'Till exempel Källaren, Vinden eller Garaget', renameX: n => `Byt namn på ${n}`, newTag: 'Lägg till en tagg', tagHint: 'Till exempel vandring eller vinter',
@@ -758,11 +816,23 @@ Object.assign(STR.sv, {sortBy: 'Sortera', sort_manual: 'Egen ordning', sort_az: 
   outNow: 'Framme nu', allBoxes: 'Alla lådor', allItems: 'Alla saker', itemsH: 'Saker', nothingOut: 'Inget är framme just nu.'});
 function tr(k, ...a){ const v = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : (v ?? k); }
 const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
-const STATUS_KEYS = {'In storage': 'st_store', 'On loan': 'st_loan', 'For sale': 'st_sale', 'Sold': 'st_sold', 'Given away': 'st_given'};
+const STATUS_KEYS = {'In storage': 'st_store', 'On loan': 'st_loan', 'For sale': 'st_sale', 'Sold': 'st_sold', 'Given away': 'st_given', 'Throw away': 'st_throw'};
 const showColor = c => !c ? '' : lang === 'sv' ? cap(COLOR_SV[c] || c) : c;
 const showSeason = s => !s ? '' : lang === 'sv' ? (SEASON_SV[s] || s) : s;
 const showStatus = s => !s ? '' : STATUS_KEYS[s] ? tr(STATUS_KEYS[s]) : s;
-const showOwner = o => o === 'Shared' ? tr('shared') : (o || '');
+const showOwner = o => (Array.isArray(o) ? o : [o]).filter(Boolean).map(n => n === 'Shared' ? tr('shared') : n).join(', ');
+const ownerNames = it => [...new Set((Array.isArray(it.owners) ? it.owners : it.owner ? [it.owner] : []).map(n => String(n || '').trim()).filter(Boolean))];
+const itemOwner = it => showOwner(ownerNames(it));
+function setItemOwners(it, names){
+  const input = Array.isArray(names) ? names : String(names || '').split(/[;,]/);
+  const clean = [...new Set(input.map(n => {
+    const name = String(n || '').trim();
+    return name && (name.toLowerCase() === 'shared' || name.toLowerCase() === tr('shared').toLowerCase()) ? 'Shared' : name;
+  }).filter(Boolean))];
+  if (clean.length){ it.owners = clean; it.owner = clean[0]; recordRecentOwners(clean); }
+  else { delete it.owners; delete it.owner; }
+}
+const statusOptions = selected => `<option value="">${tr('status')}…</option>${Object.keys(STATUS_KEYS).map(s => `<option value="${esc(s)}" ${selected === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${selected && !STATUS_KEYS[selected] ? `<option value="${esc(selected)}" selected>${esc(selected)}</option>` : ''}<option value="__custom__">${tr('st_custom')}</option>`;
 // map typed Swedish values back to the stored (English) value
 const fromColor = v => { if (!v) return ''; const s = v.trim().toLowerCase(); const en = Object.keys(COLOR_SV).find(k => k.toLowerCase() === s || COLOR_SV[k] === s); return en || findColor(s) || cap(v.trim()); };
 const fromSeason = v => { if (!v) return ''; const s = v.trim().toLowerCase(); return Object.keys(SEASON_SV).find(k => k.toLowerCase() === s || SEASON_SV[k].toLowerCase() === s) || cap(v.trim()); };
@@ -964,7 +1034,7 @@ STR.en.tab_home = 'Home'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Pr
 STR.sv.tab_home = 'Hem'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
 
 /* tiles */
-const addTile = (act, label, extra = '') => `<button class="tile add" data-act="${act}" ${extra} aria-label="${esc(label)}">+</button>`;
+const addTile = (act, label, extra = '') => `<button class="tile add" data-act="${act}" ${extra} aria-label="${esc(label)}"><span class="add-sign">+</span><span class="add-label">${esc(tr('addNav'))}</span></button>`;
 function boxTile(b){ return shelfTile(b); }
 function itemTile(it, b, caption){
   const p = (it.photos || [])[0];
@@ -996,7 +1066,7 @@ function placeContent(pid, heading){
   const bx = topBoxesIn(pid).sort(byCode), loose = looseOf(pid), li = loose ? [...(loose.items || [])].sort(byName) : [];
   const p = findPlace(pid);
   return `${heading ? `<h2 class="placehead"><button data-goplace="${esc(pid)}"><span class="picon">${placeIcon(p)}</span>${esc(placeName(pid))}</button></h2>` : ''}
-    <div class="grid${viewCls()}">${bx.map(boxTile).join('')}${addTile('addhere', tr('addTo', placeName(pid)), `data-pid="${esc(pid)}"`)}</div>
+    <div class="grid${viewCls()}">${bx.map(boxTile).join('')}${addTile('addhere', tr('addNav'), `data-pid="${esc(pid)}"`)}</div>
     ${li.length ? `<h2 class="section">${tr('notInBox')}</h2><div class="igrid${viewCls()}">${li.map(it => itemTile(it, loose, it.spot ? esc(it.spot) : '')).join('')}</div>` : ''}
     ${!bx.length && !li.length && !heading ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}`;
 }
@@ -1088,7 +1158,7 @@ function looseCarousel(pid, opts = {}){
 }
 function shelfHTML(pid, folded = false){
   const bx = topBoxesIn(pid).sort(byCode), visibleBoxes = folded ? bx.slice(0, 8) : bx;
-  return `<div class="shelf">${visibleBoxes.map(shelfTile).join('')}${folded ? '' : `<button class="itile add" data-act="newboxin" data-pid="${esc(pid)}" aria-label="${esc(tr('newBox'))}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('newBox')}</span></span></button>`}</div>
+  return `<div class="shelf">${visibleBoxes.map(shelfTile).join('')}${folded ? '' : `<button class="itile add" data-act="newboxin" data-pid="${esc(pid)}" aria-label="${esc(tr('addNav'))}"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}</div>
     ${folded ? '' : looseCarousel(pid, {showZone: true})}`;
 }
 function placeHead(pid){
@@ -1208,6 +1278,7 @@ function renderBox(b){
     <div class="bhead">
       ${b.loose ? `<h1 class="btitle"><span class="bname">${tr('notInBox')}</span></h1>` : `<h1 class="btitle"><span class="bcode">${esc(b.code)}</span><span class="bname">${esc(b.name)}</span></h1>`}
       <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}${nOut ? ` · <b class="outsum">↗ ${esc(tr('outOfN', nOut, items.length))}</b>` : ''}</p>
+      ${b.status ? `<p class="bstatus">${esc(showStatus(b.status))}</p>` : ''}
       ${b.loose ? '' : `<p class="bfresh">${freshDot(b)} ${esc(freshText(b))}</p>`}
     </div>
     ${needCheck ? `<div class="checkbar"><span>${tr('checkQ')}</span><span class="fhbtns"><button class="btn primary small" data-act="checkyes">${tr('checkYes')}</button><button class="btn quiet small" data-act="checkno">${tr('checkNo')}</button></span></div>` : ''}
@@ -1223,10 +1294,8 @@ function renderBox(b){
     </div>`}
     ${kids.length ? `<div class="kids${shelfCls()}">${kids.map(shelfTile).join('')}</div>` : ''}
     ${viewMode === 'list' ? rowsHTML(items.map(it => [it, b])) + `<p class="swipehint">${tr('swipeHint')}</p>` : ''}
-    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="additem"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addItem')}</span></span></button>
-      <button class="itile add" data-act="batch"><span class="timg">${ICON.camera}</span><span class="ttext"><span class="tname">${tr('addSeveral')}</span></span></button>
-      ${b.loose ? '' : `<button class="itile add" data-act="addinbox"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}`}</div>`}
-    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="additem">+ ${tr('addThingChoice')}</button><button class="btn quiet small" data-act="batch">${ICON.camera} ${tr('addMultipleChoice')}</button>${b.loose ? '' : `<button class="btn quiet small" data-act="subbox">+ ${tr('addBoxChoice')}</button>`}</div>` : ''}
+    ${viewMode === 'list' ? '' : `<div class="igrid${viewCls()}">${items.map(it => itemTile(it, b)).join('')}${items.length || selecting ? '' : `<button class="itile add" data-act="addinbox"><span class="timg">${PLUS_SVG}</span><span class="ttext"><span class="tname">${tr('addNav')}</span></span></button>`}</div>`}
+    ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="addinbox">${PLUS_SVG} ${tr('addNav')}</button></div>` : ''}
     ${boxDocumentsHTML(b)}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
     ${selBar(['tag', 'move', 'del'])}`;
@@ -1260,24 +1329,17 @@ app.addEventListener('change', async e => {
   }
   const input = e.target.closest('[data-doc-file]');
   if (!input) return;
-  const files = [...input.files]; input.value = '';
+  const files = [...input.files]; input.value = ''; input.value = '';
   if (!files.length) return;
   toast(tr('savingDocument'));
   const boxId = input.dataset.docBox;
   for (const file of files){
     try {
-      let blob = file;
-      if (file.type.startsWith('image/')){
-        const cv = await shrink(file, PHOTO_MAX);
-        blob = await toBlob(cv, 'image/webp', PHOTO_QUALITY);
-        if (!blob || blob.type !== 'image/webp') blob = await toBlob(cv, 'image/jpeg', .8);
-        if (!blob) throw new Error('Could not process document image');
-      }
-      const ref = newId(); await phPut(ref, blob);
+      const {ref, type} = await storeUpload(file);
       const b = findBox(boxId);
       if (!b){ dropPhoto(ref); continue; }
       const updated = clone(b);
-      updated.documents = (updated.documents || []).concat({id: newId(), ref, name: file.name.replace(/\.[^.]+$/, '') || tr('document'), type: blob.type || file.type, addedAt: new Date().toISOString()});
+      updated.documents = (updated.documents || []).concat({id: newId(), ref, name: file.name.replace(/\.[^.]+$/, '') || tr('document'), type, addedAt: new Date().toISOString()});
       putBox(updated, true);
     } catch (err){ toast(saveErr(err)); }
   }
@@ -1939,7 +2001,7 @@ function saveItem(mut, rerender){
   mut(x); x.updatedAt = new Date().toISOString();
   putBox(nb, !rerender);
 }
-function hasVal(it, k){ return k === 'owner' ? !!(it.owner || it.status || it.loanTo) : (it[k] !== undefined && it[k] !== null && String(it[k]).trim() !== ''); }
+function hasVal(it, k){ return k === 'owner' ? !!(ownerNames(it).length || it.status || it.loanTo) : (it[k] !== undefined && it[k] !== null && String(it[k]).trim() !== ''); }
 function finishItem(again){
   if (flushItem) flushItem();
   const [it, b] = curItem(); if (!it) return;
@@ -2025,8 +2087,8 @@ function renderItem(){
     if (k === 'spot') return b.loose ? input(k) : '';
     if (k === 'notes') return `<div class="fl"><textarea data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea><label>${tr('f_notes')}</label></div>`;
     if (k === 'owner') return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
-      <div class="pair"><input data-f="owner" value="${esc(showOwner(it.owner))}" placeholder="${esc(tr('whose'))}" list="people" autocapitalize="words">
-      <select data-f="status" aria-label="${esc(tr('status'))}"><option value="">${tr('status')}…</option>${STATUSES.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${status && !STATUS_KEYS[status] ? `<option value="${esc(status)}" selected>${esc(status)}</option>` : ''}</select></div>
+      <div class="pair"><input data-f="owners" value="${esc(itemOwner(it))}" placeholder="${esc(tr('whose'))}" list="people" autocapitalize="words">
+      <select data-f="status" aria-label="${esc(tr('status'))}">${statusOptions(status)}</select></div>
       ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">${loanFields(it)}` : ''}</div>`;
     return input(k);
   };
@@ -2036,7 +2098,8 @@ function renderItem(){
     ${presenceNote(b.id, it.id)}
     <div class="hero">
       ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
-      <label class="cam" aria-label="Photo">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
+      <label class="cam" aria-label="${esc(tr('takePhoto'))}" title="${esc(tr('takePhoto'))}">${ICON.camera}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" id="fCamera" hidden></label>
+      <label class="cam gallery" aria-label="${esc(tr('pickPhoto'))}" title="${esc(tr('pickPhoto'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2ZM5 5h14v9l-3.5-3.5-4.5 5.5-3-3L5 17Zm3.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/></svg><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="fPhoto" multiple hidden></label>
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     ${isOut(it) ? `<p class="outline"><span>↗ ${tr('outTag')} · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="linkbtn" data-act="itemback">↩ ${tr('putBack')}</button></p>` : ''}
@@ -2052,7 +2115,7 @@ function renderItem(){
     ${n ? `<p class="notifyrow"><span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span><button class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="fl att"><label class="always">${tr('attachments')}</label>
       ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
-      <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/*,application/pdf" id="fFile" hidden></label></div></div>
+      <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" id="fFile" hidden></label></div></div>
     ${linkedDocs.length ? `<div class="fl att"><label class="always">${tr('linkedDocuments')}</label>${linkedDocs.map(({doc, owner}) => `<div class="attrow"><span>${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</div>` : ''}
     <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<span class="tag"><button class="tagopen" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button class="tagx" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
     <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
@@ -2060,14 +2123,14 @@ function renderItem(){
     <p class="proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
     ${isNew ? '' : `<button class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
     <div class="donebar${isNew ? ' newitembar' : ' edititembar'}"><button class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${tr('save')}</button></div>
-    <datalist id="people">${household.map(p => `<option value="${esc(p)}">`).join('')}<option value="${esc(tr('shared'))}"></datalist>
+    <datalist id="people">${ownerSuggestions(b.placeId, it).map(p => `<option value="${esc(p === 'Shared' ? tr('shared') : p)}">`).join('')}</datalist>
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
     <datalist id="seasons">${SEASONS.map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
     <datalist id="brands">${recentValues('brand').map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
   const timers = {};
   const conv = (k, v) => {
     v = typeof v === 'string' ? v.trim() : v;
-    if (k === 'owner' && v) return v.toLowerCase() === tr('shared').toLowerCase() || v.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(v));
+    if (k === 'owners' && v) return String(v).split(/[,;]+/).map(n => n.trim()).filter(Boolean).map(n => n.toLowerCase() === tr('shared').toLowerCase() || n.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(n)));
     if (k === 'loanTo' && v) return addPerson(cap(v));
     if (k === 'color') return fromColor(v);
     if (k === 'season') return fromSeason(v);
@@ -2079,6 +2142,10 @@ function renderItem(){
     if (k === 'value' || k === 'qty'){ if (v === '' || isNaN(+v)) delete x[k]; else x[k] = Math.max(0, +v); return; }
     if (k === 'remindMonths'){ if (+v) x.remindMonths = +v; else delete x.remindMonths; return; }
     v = conv(k, v);
+    if (k === 'owners'){
+      setItemOwners(x, v);
+      return;
+    }
     if (k === 'status' && v !== 'On loan'){ delete x.loanTo; delete x.loanSince; }
     if (k === 'status' && v === 'On loan'){ if (!x.loanSince) x.loanSince = today(); if (!x.loanDue) x.loanDue = addDays(x.loanSince, 30); }
     if (k === 'status' && v !== 'On loan') delete x.loanDue;
@@ -2091,47 +2158,74 @@ function renderItem(){
     const nm2 = $('#fName'); if (nm2 && nm2.value.trim() && nm2.value.trim() !== x.name) commit('name', nm2.value);
     app.querySelectorAll('[data-f]').forEach(el => {
       const k = el.dataset.f, [y] = curItem(); if (!y) return;
-      const cur = k === 'color' ? showColor(y.color) : k === 'season' ? showSeason(y.season) : k === 'owner' ? showOwner(y.owner) : String(y[k] ?? (k === 'remindMonths' ? 0 : ''));
+      const cur = k === 'color' ? showColor(y.color) : k === 'season' ? showSeason(y.season) : k === 'owners' ? itemOwner(y) : String(y[k] ?? (k === 'remindMonths' ? 0 : ''));
       if (String(el.value) !== cur) commit(k, el.value);
     });
   };
   app.querySelectorAll('[data-f]').forEach(el => {
     const k = el.dataset.f;
-    el.addEventListener('input', () => { if (el.tagName === 'SELECT') return; clearTimeout(timers[k]); timers[k] = setTimeout(() => commit(k, el.value), 700); });
-    el.addEventListener('change', () => { clearTimeout(timers[k]); if (RERENDER.includes(k)){ flushItem(); render(); } else commit(k, el.value); });
+    el.addEventListener('input', () => { if (el.tagName === 'SELECT' || k === 'owners') return; clearTimeout(timers[k]); timers[k] = setTimeout(() => commit(k, el.value), 700); });
+    el.addEventListener('change', async () => {
+      clearTimeout(timers[k]);
+      if (k === 'status' && el.value === '__custom__'){
+        const custom = await askText(tr('customStatus'), {value: status && !STATUS_KEYS[status] ? status : '', placeholder: tr('customStatus'), ok: tr('save')});
+        if (custom && custom.trim()) commit('status', custom.trim());
+        render();
+        return;
+      }
+      if (RERENDER.includes(k)){
+        flushItem(); render();
+        if (k === 'remindAt' && el.value) reminderPermissionNudge();
+      } else commit(k, el.value);
+    });
   });
   const nm = $('#fName');
   nm.addEventListener('input', () => { clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
   nm.addEventListener('change', () => { clearTimeout(timers.name); commit('name', nm.value); });
   if (app.querySelector('[data-where]')) app.querySelector('[data-where]').addEventListener('change', e => { if (flushItem) flushItem(); moveItemTo(view.boxId, view.itemId, e.target.value); render(); });
-  $('#fPhoto').addEventListener('change', async e => {
-    const files = [...e.target.files]; if (!files.length) return; toast(tr('savingPhoto'));
+  const addPhotos = async e => {
+    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; toast(tr('savingPhoto'));
+    const target = {boxId: view.boxId, itemId: view.itemId};
+    if (flushItem) flushItem();
     const added = [];
     for (const f of files){ try { added.push(await storePhoto(f)); } catch (err){ toast(saveErr(err)); } }
-    if (flushItem) flushItem();
-    if (added.length) saveItem(x => { x.photos = (x.photos || []).concat(added); }, true);
-  });
+    if (!added.length) return;
+    const b = itemLocation(target.itemId), it = b && (b.items || []).find(x => x.id === target.itemId);
+    if (!it){ added.forEach(p => dropPhoto(p.ref)); toast(tr('photoUploadCancelled')); return; }
+    const nb = clone(b), item = nb.items.find(x => x.id === target.itemId);
+    item.photos = (item.photos || []).concat(added); item.updatedAt = new Date().toISOString(); putBox(nb, true);
+    if (view.name === 'item' && view.boxId === b.id && view.itemId === target.itemId) render();
+  };
+  $('#fPhoto').addEventListener('change', addPhotos);
+  $('#fCamera').addEventListener('change', addPhotos);
   $('#fFile').addEventListener('change', async e => {
-    const f = e.target.files[0]; if (!f) return;
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
-      let blob = f;
-      if (f.type.startsWith('image/')){ const cv = await shrink(f, PHOTO_MAX); blob = await toBlob(cv, 'image/webp', PHOTO_QUALITY) || await toBlob(cv, 'image/jpeg', .8); }
-      const ref = newId(); await phPut(ref, blob);
+      const target = {boxId: view.boxId, itemId: view.itemId};
       if (flushItem) flushItem();
-      saveItem(x => { x.files = (x.files || []).concat({ref, name: f.name.replace(/\.[^.]+$/, '') || tr('attachments'), type: blob.type || f.type, addedAt: new Date().toISOString()}); }, true);
+      const {ref, type} = await storeUpload(f);
+      const b = itemLocation(target.itemId), it = b && (b.items || []).find(x => x.id === target.itemId);
+      if (!it){ dropPhoto(ref); toast(tr('photoUploadCancelled')); return; }
+      const nb = clone(b), item = nb.items.find(x => x.id === target.itemId);
+      item.files = (item.files || []).concat({ref, name: f.name.replace(/\.[^.]+$/, '') || tr('attachments'), type, addedAt: new Date().toISOString()});
+      item.updatedAt = new Date().toISOString(); putBox(nb, true);
+      if (view.name === 'item' && view.boxId === b.id && view.itemId === target.itemId) render();
     } catch (err){ toast(saveErr(err)); }
   });
 }
 async function openFile(f){
   const blob = await phGet(f.ref).catch(() => null); if (!blob) return toast(tr('fileMissing'));
-  if ((f.type || blob.type || '').startsWith('image/')) return openViewer(f.ref);
-  const u = URL.createObjectURL(blob); const w = window.open(u, '_blank'); if (!w) location.href = u; setTimeout(() => URL.revokeObjectURL(u), 60000);
+  if (await imageSignature(blob)) return openViewer(f.ref);
+  try { await validatePdfUpload(blob); } catch { return toast(tr('uploadUnsafeType')); }
+  const u = URL.createObjectURL(blob);
+  window.open(u, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(u), 60000);
 }
 /* ---------- batch: several items from photos, with AI recognition when it's on ---------- */
 let batch = null;
-const batchRefs = new Set();
 function openBatch(boxId){
-  batch = {boxId, mode: null, rows: [], busy: 0};
+  if (batch){ const previous = batch; batch = null; previous.refs.forEach(dropPhoto); }
+  batch = {boxId, mode: null, rows: [], busy: 0, refs: new Set()};
   navigate({name: 'batch', boxId});
 }
 const blobToB64 = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); });
@@ -2156,7 +2250,7 @@ async function recogniseRow(rows, ref, mode){
   const s = String(text || '').replace(/```(?:json)?/gi, ''), i = s.indexOf('{'), j = s.lastIndexOf('}');
   const out = JSON.parse(s.slice(i, j + 1)); return Array.isArray(out.items) ? out.items : [];
 }
-async function cropRef(ref, box){
+async function cropRef(ref, box, session){
   if (!Array.isArray(box) || box.length !== 4) return null;
   const blob = await phGet(ref), bmp = await createImageBitmap(blob);
   let [y0, x0, y1, x1] = box.map(v => Math.max(0, Math.min(1000, +v || 0)) / 1000);
@@ -2168,7 +2262,9 @@ async function cropRef(ref, box){
   const cv = document.createElement('canvas'); cv.width = Math.round(sw); cv.height = Math.round(sh);
   cv.getContext('2d').drawImage(bmp, sx, sy, sw, sh, 0, 0, cv.width, cv.height); bmp.close && bmp.close();
   const out = await toBlob(cv, 'image/webp', PHOTO_QUALITY) || await toBlob(cv, 'image/jpeg', .8);
-  const r = newId(); await phPut(r, out); batchRefs.add(r); return r;
+  const r = newId(); await phPut(r, out);
+  if (batch !== session){ await phDel(r); return null; }
+  session.refs.add(r); return r;
 }
 function fieldsFromAI(x){
   const f = {};
@@ -2184,34 +2280,39 @@ function fieldsFromAI(x){
 }
 async function addBatchFiles(files, mode){
   if (!batch) return;
-  batch.mode = mode;
+  const session = batch;
+  session.mode = mode;
   const useAI = aiReady();
   for (const file of files){
-    let p; try { p = await storePhoto(file); } catch (e){ toast(saveErr(e)); continue; }
-    batchRefs.add(p.ref);
+    let p; try { p = await storePhoto(file); } catch (e){ if (batch !== session) return; toast(saveErr(e)); continue; }
+    if (batch !== session){ await phDel(p.ref); return; }
+    session.refs.add(p.ref);
     const row = {id: newId(), name: '', photos: [p], fields: {}, include: true, status: useAI ? 'thinking' : 'ready', src: p.ref};
-    batch.rows.push(row); render();
+    session.rows.push(row); render();
     if (!useAI) continue;
-    batch.busy++;
+    session.busy++;
     try {
-      const found = await recogniseRow(batch.rows, p.ref, mode);
+      const found = await recogniseRow(session.rows, p.ref, mode);
+      if (batch !== session) return;
       if (mode === 'multi' && found.length > 1){
-        const at = batch.rows.indexOf(row), made = [];
+        const at = session.rows.indexOf(row), made = [];
         for (const x of found){
-          const c = await cropRef(p.ref, x.box_2d);
+          if (batch !== session) return;
+          const c = await cropRef(p.ref, x.box_2d, session);
+          if (batch !== session) return;
           made.push({id: newId(), name: cap(String(x.name || '').trim()), photos: c ? [{ref: c, takenAt: p.takenAt, addedAt: p.addedAt}, p] : [p], fields: fieldsFromAI(x), include: true, status: 'ready', src: p.ref});
         }
-        batch.rows.splice(at, 1, ...made);
+        session.rows.splice(at, 1, ...made);
         toast(tr('batchFound', made.length));
       } else if (found.length){
         row.name = cap(String(found[0].name || '').trim()); row.fields = fieldsFromAI(found[0]); row.status = 'ready';
       } else row.status = 'ready';
-    } catch (e){ row.status = 'failed'; row.err = aiErrorText(e); }
-    batch.busy--; if (view.name === 'batch') render();
+    } catch (e){ if (batch !== session) return; row.status = 'failed'; row.err = aiErrorText(e); }
+    finally { session.busy--; if (batch === session && view.name === 'batch') render(); }
   }
 }
 function renderBatch(){
-  if (!batch || batch.boxId !== view.boxId) batch = {boxId: view.boxId, mode: null, rows: [], busy: 0};
+  if (!batch || batch.boxId !== view.boxId) batch = {boxId: view.boxId, mode: null, rows: [], busy: 0, refs: new Set()};
   const b = findBox(batch.boxId);
   const where = b.loose ? `${placeName(b.placeId)}, ${tr('notInBoxShort')}` : `${b.code} ${b.name}`;
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
@@ -2223,16 +2324,16 @@ function renderBatch(){
     <p class="hint">${esc(tr('batchWhere', where))}</p>
     <p class="hint">${aiReady() ? tr('batchAI') + (ai.provider === 'gemini' ? ' ' + tr('batchPrivacy') : '') : tr('batchNoAI')}</p>
     ${!rows.length ? `<div class="choice col">
-      <label class="btn primary big">${ICON.camera}<span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small><input type="file" accept="image/*" multiple hidden data-batchmode="each"></label>
-      <label class="btn primary big">${ICON.box}<span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small><input type="file" accept="image/*" multiple hidden data-batchmode="multi"></label></div>`
+      <label class="btn primary big">${ICON.camera}<span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="each"></label>
+      <label class="btn primary big">${ICON.box}<span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="multi"></label></div>`
     : `<div class="brows">${rows.map((r, i) => `<div class="brow${r.include ? '' : ' off'}">
         <button class="bthumb" data-viewph="${esc(r.photos[0].ref)}">${imgTag(r.photos[0].ref, '')}</button>
         <div class="bmain">${r.status === 'thinking' ? `<p class="hint">${tr('thinking')}</p>` : `<input class="input" data-bname="${i}" value="${esc(r.name)}" placeholder="${esc(tr('namePh'))}" autocapitalize="sentences">
           ${detail(r.fields) ? `<p class="bdet">${detail(r.fields)}</p>` : ''}${r.status === 'failed' ? `<p class="hint">${esc(tr('aiFailed', r.err || ''))}</p>` : ''}`}</div>
         <label class="binc"><input type="checkbox" data-binc="${i}" ${r.include ? 'checked' : ''}><span>${tr('include')}</span></label></div>`).join('')}</div>
-      <label class="btn quiet block morebtn">${tr('morePhotos')}<input type="file" accept="image/*" multiple hidden data-batchmode="${batch.mode || 'each'}"></label>`}
+      <label class="btn quiet block morebtn">${tr('morePhotos')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="${batch.mode || 'each'}"></label>`}
     <div class="donebar"><button class="btn quiet" data-act="batchcancel">${tr('cancel')}</button><button class="btn primary" data-act="batchadd" ${n && !batch.busy && !missing ? '' : 'disabled'}>${tr('addN', n)}</button></div>${missing && n ? `<p class="hint needname">${tr('nameNeeded')}</p>` : ''}`;
-  app.querySelectorAll('[data-batchmode]').forEach(inp => inp.addEventListener('change', e => { const f = [...e.target.files]; if (f.length) addBatchFiles(f, inp.dataset.batchmode); }));
+  app.querySelectorAll('[data-batchmode]').forEach(inp => inp.addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) addBatchFiles(f, inp.dataset.batchmode); }));
   app.querySelectorAll('[data-bname]').forEach(inp => { inp.classList.toggle('need', !inp.value.trim()); inp.addEventListener('input', () => {
     const r = batch.rows[+inp.dataset.bname]; if (r) r.name = inp.value; inp.classList.toggle('need', !inp.value.trim());
     const miss = batch.rows.some(x => x.include && x.status !== 'thinking' && !(x.name || '').trim()), btn = app.querySelector('[data-act=batchadd]');
@@ -2243,11 +2344,11 @@ function renderBatch(){
 }
 function finishBatch(add){
   if (!batch) return;
-  const b = findBox(batch.boxId), used = new Set();
+  const session = batch, b = findBox(session.boxId), used = new Set();
   let count = 0;
   if (add && b){
     const nb = clone(b), now = new Date().toISOString();
-    batch.rows.forEach((r, i) => {
+    session.rows.forEach(r => {
       if (!r.include || r.status === 'thinking') return;
       if (!(r.name || '').trim()) return;
       const it = Object.assign({id: newId(), name: cap((r.name || '').trim()), category: '', value: '', storedOn: today(), notes: '', photos: r.photos, tags: [], addedAt: now, addedBy: me || ''}, r.fields);
@@ -2255,9 +2356,9 @@ function finishBatch(add){
     });
     snapshot([b.id]); putBox(nb, true);
   }
-  const refs = [...batchRefs]; batchRefs.clear();
-  refs.forEach(r => { if (!used.has(r)) dropPhoto(r); });
+  const refs = [...session.refs];
   batch = null;
+  refs.forEach(r => { if (!used.has(r)) dropPhoto(r); });
   if (count) toast(tr('batchAdded', count));
   if (!goUp()) go({name: 'home', place: currentPlace});
 }
@@ -2326,7 +2427,7 @@ function exportRows(pid){
       rows.push({
         [tr('col_place')]: p.name, [tr('col_box')]: b.loose ? tr('notInBox') : `${b.code} ${b.name}`, [tr('col_inbox')]: parent ? `${parent.code} ${parent.name}` : '',
         [tr('col_item')]: it.name, [tr('col_cat')]: it.category || '', [tr('col_brand')]: it.brand || '', [tr('col_model')]: it.model || '', [tr('col_size')]: it.size || '',
-        [tr('col_color')]: showColor(it.color), [tr('col_owner')]: showOwner(it.owner), [tr('col_status')]: [showStatus(it.status), it.loanTo].filter(Boolean).join(' '),
+        [tr('col_color')]: showColor(it.color), [tr('col_owner')]: itemOwner(it), [tr('col_status')]: [showStatus(it.status), it.loanTo].filter(Boolean).join(' '),
         [tr('col_qty')]: it.qty || '', [tr('col_value')]: it.value ? +it.value : '', [tr('col_stored')]: it.storedOn || '', [tr('col_used')]: it.lastUsed || '',
         [tr('col_serial')]: it.serial || '', [tr('col_tags')]: (it.tags || []).join(', '), [tr('col_notes')]: it.notes || '',
       });
@@ -2507,7 +2608,7 @@ const isOut = it => !!(it && it.out);
 const outOverdue = it => isOut(it) && it.out.until && it.out.until <= today();
 const outItems = (filter = () => true) => boxes.filter(filter).flatMap(b => (b.items || []).filter(isOut).map(it => [it, b]));
 function itemSub(it, b, showWhere){
-  const bits = [it.size && (lang === 'sv' ? 'stl ' : 'size ') + it.size, showOwner(it.owner), showColor(it.color), it.brand, it.category].filter(Boolean);
+  const bits = [it.size && (lang === 'sv' ? 'stl ' : 'size ') + it.size, itemOwner(it), showColor(it.color), it.brand, it.category].filter(Boolean);
   if (isOut(it)) bits.unshift(tr('outSince', it.out.since) + (it.out.until ? ' · ' + tr('backBy', it.out.until) : ''));
   if (showWhere) bits.push(b.loose ? placeName(b.placeId) : b.code);
   return bits.join(' · ') || (it.notes ? it.notes.slice(0, 60) : '');
@@ -2533,7 +2634,7 @@ function groupHeader(b){
   return `<div class="lgroup-h${b.loose ? ' loose' : ''}${b.out ? ' out' : ''}" data-gid="${esc(b.id)}"><button class="lgh-main" data-open="${esc(b.id)}">
       ${icon}<span class="lgh-text"><span class="lgh-name">${b.loose ? tr('notInBox') : esc((chain.length ? chain.map(boxNum).join(' › ') + ' › ' : '') + (b.name || boxLabel(b)))}</span><span class="lgh-in">${esc(inside || tr('boxEmpty'))}</span></span>
       <span class="lgh-count">${b.out ? '↗ ' : ''}${n}${nOut ? ` · ↗${nOut}` : ''}</span></button>
-    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">+</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}">⌄</button></div>`;
+    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">${PLUS_SVG}</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-expanded="${!folded.has(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
 }
 let quickAddFor = null;
 function quickAddRow(b){
@@ -2571,13 +2672,12 @@ function sortBar(){
 }
 function listHTML(pid){
   const all = orderedGroups(pid);
-  const loose = looseOf(pid);
   const outs = outItems(b => b.placeId === pid);
   return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => folded.has(b.id) ? `<section class="lgroup folded" data-gid="${esc(b.id)}">${groupHeader(b)}</section>` : `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}
       ${!(b.items || []).filter(it => !isOut(it)).length && quickAddFor !== b.id ? `<p class="lempty">${tr('boxEmpty')}</p>` : ''}</section>`).join('')}</div>
     ${all.length > 1 || all.some(b => (b.items || []).length > 1) ? `<p class="swipehint">${tr('listDragHint')}</p>` : ''}
     ${!all.length ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}
-    <div class="lgroup-actions"><button class="btn quiet small" data-act="addhere" data-pid="${esc(pid)}">+ ${tr('boxStorage')}</button>${loose && (loose.items || []).length ? '' : `<button class="btn quiet small" data-quickadd="${esc(ensureLooseId(pid))}">+ ${tr('itemNoBox')}</button>`}</div>
+    <div class="lgroup-actions"><button class="btn quiet small" data-act="addhere" data-pid="${esc(pid)}">${PLUS_SVG} ${tr('addBoxOrItem')}</button></div>
     ${quickAddFor && findBox(quickAddFor) && findBox(quickAddFor).loose && !(findBox(quickAddFor).items || []).length && findBox(quickAddFor).placeId === pid ? `<section class="lgroup">${groupHeader(findBox(quickAddFor))}${quickAddRow(findBox(quickAddFor))}</section>` : ''}
     ${outs.length ? `<section class="lgroup outsec"><div class="lgroup-h outh"><span class="lgh-main static"><span class="lgh-name">↗ ${tr('outSection')}</span><span class="lgh-count">${outs.length}</span></span></div>${rowsHTML(outs.sort((x, y) => byName(x[0], y[0])), {where: true})}</section>` : ''}
     ${adSlot('banner')}`;
@@ -2893,16 +2993,16 @@ function doNudge(key, yes, pid){
 }
 
 /* ---------- sheets: add, move, long press ---------- */
-function addHereSheet(pid, boxId){
+function addHereSheet(pid, boxId, includeBatch = true){
   const b = boxId && findBox(boxId);
-  openSheet(`<h3>${esc(b ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
-    <div class="choice">${b ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>`
-      : `<button class="btn primary big" id="adBox">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="adItem">${ICON.star}<span>${tr('itemNoBox')}</span></button>`}</div>
-    ${b ? '' : `<button class="btn quiet block" id="adBatch">${ICON.camera} ${tr('severalPhotos')}</button>`}
+  const intoBox = b && !b.loose;
+  openSheet(`<h3>${esc(intoBox ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
+    <div class="choice addchoices">${intoBox ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`
+      : `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`}</div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
-  $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid, b ? b.id : null); };
+  $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid, intoBox ? b.id : null); };
   $('#adItem').onclick = () => { closeSheet(); newItem(b ? b.id : ensureLoose(pid).id); };
-  $('#adBatch').onclick = () => { closeSheet(); openBatch(b ? b.id : ensureLoose(pid).id); };
+  if (includeBatch) $('#adBatch').onclick = () => { closeSheet(); openBatch(b ? b.id : ensureLoose(pid).id); };
   $('#adX').onclick = closeSheet;
 }
 function ensureInbox(){
@@ -2910,21 +3010,20 @@ function ensureInbox(){
   if (!p){ p = {id: newId(), name: tr('unsorted'), icon: '📥', inbox: true, createdAt: new Date().toISOString()}; places.push(p); metaPut('places', places).catch(() => {}); }
   return p;
 }
-function addNavSheet(){
+function addNavSheet(initialPid){
   const v = view;
   if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); if (!b.loose) return addHereSheet(b.placeId, b.id); }
   const storagePlaces = places.filter(p => !p.inbox);
   const currentBox = (v.name === 'box' || v.name === 'item') && findBox(v.boxId);
   const recentPlace = recents.map(r => findPlace((r.k === 'box' ? findBox(r.id) : findBox(r.boxId))?.placeId)).find(p => p && !p.inbox);
-  let pid = currentBox ? currentBox.placeId : scopePlace() || recentPlace?.id || storagePlaces[0]?.id || 'inbox';
+  let pid = currentBox ? currentBox.placeId : initialPid || scopePlace() || recentPlace?.id || storagePlaces[0]?.id || 'inbox';
   const isInbox = id => id === 'inbox' || !!findPlace(id)?.inbox;
   if (!storagePlaces.some(p => p.id === pid) && !isInbox(pid)) pid = recentPlace?.id || storagePlaces[0]?.id || 'inbox';
   const chips = () => storagePlaces.length > 6
     ? `<select class="add-place-select" aria-label="${esc(tr('where'))}">${storagePlaces.map(p => `<option value="${esc(p.id)}"${pid === p.id ? ' selected' : ''}>${esc(placeIcon(p) + ' ' + p.name)}</option>`).join('')}<option value="inbox"${isInbox(pid) ? ' selected' : ''}>📥 ${tr('noPlaceYet')}</option></select>`
     : `${storagePlaces.map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${isInbox(pid) ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
   openSheet(`<div class="addnav-sheet"><h3>${tr('addWhat')}</h3>
-    <div class="choice"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('storageWord')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button></div>
-    <button class="btn block icontext" id="adBatch">${ICON.camera}<span>${tr('severalPhotos')}</span></button>
+    <div class="choice addchoices"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button></div>
     <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips addplaces" id="adPlaces">${chips()}</div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div></div>`);
   $('#adPlaces').innerHTML = chips();
@@ -3081,7 +3180,7 @@ function backupBannerOld(){
 function itemRow(it, b){
   const p = (it.photos || [])[0];
   const img = p ? imgTag(p.ref, 'thumb') : `<span class="thumb none icon" aria-hidden="true">${guessIcon(it)}</span>`;
-  const sub = [showOwner(it.owner), it.size, showColor(it.color), it.category].filter(Boolean).join(', ');
+  const sub = [itemOwner(it), it.size, showColor(it.color), it.category].filter(Boolean).join(', ');
   return `<li><button class="item" data-item="${esc(it.id)}" data-box="${esc(b.id)}">${img}<span class="item-main"><span class="item-name">${esc(it.name)}</span><span class="item-sub">${esc(sub)}</span></span></button></li>`;
 }
 function notesHTML(list, title){
@@ -3103,7 +3202,7 @@ function boxDocumentsHTML(b){
       <select data-doc-link="${esc(doc.id)}" aria-label="${esc(tr('linkToItem'))}">${options(doc)}</select>
       <button class="x" data-doc-remove="${esc(doc.id)}" data-doc-box="${esc(b.id)}" aria-label="${esc(tr('remove'))}">×</button>
     </div>`).join('') : `<p class="hint">${tr('noDocuments')}</p>`}
-    <label class="btn quiet small docadd">${tr('addDocument')}<input type="file" accept="image/*,application/pdf" data-doc-file data-doc-box="${esc(b.id)}" hidden multiple></label>
+    <label class="btn quiet small docadd">${tr('addDocument')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" data-doc-file data-doc-box="${esc(b.id)}" hidden multiple></label>
   </section>`;
 }
 const noteUrls = new Map();
@@ -3215,7 +3314,7 @@ app.addEventListener('click', e => {
   const b = findBox(view.boxId);
   switch (d.act){
     case 'addplace': askText(tr('newPlace'), {placeholder: tr('newPlaceHint'), ok: tr('add')}).then(n => { const p = n && addPlace(n); if (p) goHome(p.id); }); break;
-    case 'addhere': addHereSheet(d.pid || scopePlace() || places[0].id); break;
+    case 'addhere': addNavSheet(d.pid || scopePlace() || places[0].id); break;
     case 'additem': newItem(b.id); break;
     case 'batch': openBatch(b.id); break;
     case 'batchcancel': finishBatch(false); break;
@@ -3248,14 +3347,13 @@ app.addEventListener('click', e => {
     case 'movestart': case 'movenew': case 'moveadd': case 'movelabels': case 'moverooms': case 'moveend': moveAction(d.act); break;
     case 'gomove': navigate({name: 'move'}); break;
     case 'scanbarcode': scanItemBarcode(); break;
-    case 'newboxin': boxSheet(null, d.pid || scopePlace(), null); break;
+    case 'newboxin': addNavSheet(d.pid || scopePlace()); break;
     case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
     case 'itemout': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, true); break;
     case 'itemback': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, false); break;
     case 'qadone': { const i = $('#qaIn'); if (i && i.value.trim()) quickAdd(i.dataset.qa, i.value); quickAddFor = null; render(); break; }
-    case 'subbox': boxSheet(null, b.placeId, b.id); break;
     case 'addinbox': addHereSheet(b.placeId, b.id); break;
     case 'placement': placementSheet(b.id); break;
     case 'doorside': doorSheet(currentPlace); break;
@@ -3297,24 +3395,29 @@ sheet.addEventListener('close', () => { if (sheet.open) return; const f = onShee
 sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
 
 function photoState(initial, multiple){
+  let accepting = true;
   const st = {photos: clone(initial), added: [], removed: [], busy: false};
   const draw = () => {
     const w = $('#phwrap');
     w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="${tr('rmPhoto')}">×</button></div>`).join('')}
-      ${multiple || !st.photos.length ? `<label class="addph">${tr('addPhoto')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
+      ${multiple || !st.photos.length ? `<label class="addph">${tr('addPhoto')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
     hydrate(w);
   };
   st.mount = () => {
     draw();
     $('#phwrap').addEventListener('change', async e => {
       if (!e.target.files) return;
-      const files = [...e.target.files]; st.busy = true;
+      const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; st.busy = true;
       $('#phwrap').insertAdjacentHTML('beforeend', `<p class="hint">${tr('savingPhoto')}</p>`);
       for (const f of files){
-        try { const p = await storePhoto(f); st.photos.push(p); st.added.push(p.ref); }
+        try {
+          const p = await storePhoto(f);
+          if (!accepting){ dropPhoto(p.ref); continue; }
+          st.photos.push(p); st.added.push(p.ref);
+        }
         catch (err) { toast(saveErr(err)); }
       }
-      st.busy = false; draw();
+      st.busy = false; if (accepting) draw();
     });
     $('#phwrap').addEventListener('click', e => {
       const im = e.target.closest('img[data-ph]'); if (im) return openViewer(im.dataset.ph);
@@ -3324,8 +3427,8 @@ function photoState(initial, multiple){
       draw();
     });
   };
-  st.commit = () => { st.removed.forEach(dropPhoto); st.added = []; st.removed = []; };
-  st.discard = () => { st.added.forEach(dropPhoto); st.added = []; };
+  st.commit = () => { accepting = false; st.removed.forEach(dropPhoto); st.added = []; st.removed = []; };
+  st.discard = () => { accepting = false; st.added.forEach(dropPhoto); st.added = []; };
   return st;
 }
 
@@ -3346,6 +3449,7 @@ function boxSheet(id, presetPid, presetParent, presetZone){
       <label class="field"><span>${tr('inside')}</span><select id="bParent">${parentOpts(b.placeId)}</select></label>
     </div>
     <label class="field"><span>${tr('zone')}</span><input id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
+    <label class="field"><span>${tr('status')}</span><select id="bStatus">${statusOptions(b.status || '')}</select><input id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}></label>
     <label class="field"><span>${tr('notes')}</span><textarea id="bNotes">${esc(b.notes)}</textarea></label>
     <div class="field"><span>${tr('boxPhoto')}</span><div id="phwrap"></div></div>
     <div class="sheet-foot">
@@ -3355,6 +3459,11 @@ function boxSheet(id, presetPid, presetParent, presetZone){
     </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
   $('#bPlace').onchange = e => { const pid = e.target.value; $('#bParent').innerHTML = parentOpts(pid); if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; } };
+  $('#bStatus').onchange = e => {
+    const custom = $('#bCustomStatus');
+    custom.hidden = e.target.value !== '__custom__' && (!e.target.value || !!STATUS_KEYS[e.target.value]);
+    if (e.target.value === '__custom__'){ custom.hidden = false; custom.focus(); }
+  };
   $('#bCancel').onclick = closeSheet;
   $('#bSave').onclick = () => {
     if (ps.busy) return toast(tr('waitPhoto'));
@@ -3364,6 +3473,8 @@ function boxSheet(id, presetPid, presetParent, presetZone){
     b.autoName = !name; b.name = name || autoBoxName(b);
     const zoneWas = (b.location || '').trim();
     b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim(); b.placeId = newPlace; b.parentId = parent;
+    b.status = $('#bStatus').value === '__custom__' ? $('#bCustomStatus').value.trim() : $('#bStatus').value;
+    if (!b.status) delete b.status;
     if (!existing || zoneWas !== b.location){ const others = mapEntities(newPlace).filter(e => e.k !== 'b:' + b.id && e.zone === b.location); b.stack = Math.max(0, ...others.map(e => e.stack)) + 1; b.level = 1; }
     b.photo = ps.photos[0] || null;
     ps.commit(); saved = true;
@@ -3433,6 +3544,17 @@ function addPerson(name){
   name = (name || '').trim(); if (!name) return '';
   const hit = household.find(h => h.toLowerCase() === name.toLowerCase()); if (hit) return hit;
   household.push(name); metaPut('household', household).catch(() => {}); return name;
+}
+function recordRecentOwners(names){
+  const clean = names.filter(n => n !== 'Shared');
+  if (!clean.length) return;
+  recentOwners = [...new Set([...clean, ...recentOwners])].slice(0, 20);
+  metaPutRaw('recentOwners', recentOwners).catch(() => {});
+}
+function ownerSuggestions(placeId, item){
+  const local = [];
+  boxes.filter(b => b.placeId === placeId).forEach(b => (b.items || []).forEach(it => ownerNames(it).forEach(n => { if (!local.includes(n)) local.push(n); })));
+  return [...new Set([...local, ...ownerNames(item), ...recentOwners, ...household, 'Shared'])];
 }
 
 /* ---------- people in the household ---------- */
@@ -3830,7 +3952,7 @@ function doEdit(subject, rest){
   for (const [it, b] of items){
     const nb = byBox[b.id] || (byBox[b.id] = clone(findBox(b.id)));
     const x = nb.items.find(i => i.id === it.id); if (!x) continue;
-    if (a.color) x.color = a.color; if (a.size) x.size = a.size; if (a.owner) x.owner = a.owner;
+    if (a.color) x.color = a.color; if (a.size) x.size = a.size; if (a.owner) setItemOwners(x, [a.owner]);
     if (a.tags.length) x.tags = [...new Set([...(x.tags || []), ...a.tags])];
     x.updatedAt = new Date().toISOString();
   }
@@ -4098,7 +4220,7 @@ function doAdd(text, forcedPid, forcedBoxId){
   const created = splitItems(text).map(part => {
     const a = extract(part);
     const it = {id: newId(), name: a.name, category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: now, addedBy: me || ''};
-    if (a.size) it.size = a.size; if (a.owner) it.owner = a.owner; if (a.color) it.color = a.color;
+    if (a.size) it.size = a.size; if (a.owner) setItemOwners(it, [a.owner]); if (a.color) it.color = a.color;
     return it;
   }).filter(it => it.name);
   if (!created.length) return say(t('unknown'));
@@ -4466,7 +4588,7 @@ function cleanItemFields(src, dst, isNew){
   const str = v => (v === null || v === undefined) ? null : String(v).trim();
   const set = (k, v) => { if (v === null) return; if (v === '') { if (!isNew) delete dst[k]; } else dst[k] = v; };
   if (s.name !== undefined && str(s.name)) dst.name = cap(str(s.name));
-  if (s.owner !== undefined){ const o = str(s.owner); set('owner', o ? (o.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(o))) : ''); }
+  if (s.owner !== undefined){ const o = str(s.owner); setItemOwners(dst, o ? [o.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(o))] : []); }
   if (s.size !== undefined){ const z = str(s.size); if (!z) set('size', ''); else { const c = cleanSize(z); if (c.ok) dst.size = c.v; } }
   if (s.color !== undefined){ const c = str(s.color); set('color', c ? (COLOR_SET[c.toLowerCase()] || findColor(c) || cap(c)) : ''); }
   for (const k of ['season','brand','model','serial','spot','category','notes']) if (s[k] !== undefined) set(k, str(s[k]) || '');
@@ -4732,28 +4854,82 @@ async function backup(){
 $('#importFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
+    if (f.size > 100 * 1024 * 1024) throw new Error(tr('uploadTooLarge'));
     const data = JSON.parse(await f.text()); const list = Array.isArray(data) ? data : data.boxes;
     if (!Array.isArray(list)) throw 0;
+    if (data.household !== undefined && (!Array.isArray(data.household) || !data.household.every(n => typeof n === 'string'))
+      || data.places !== undefined && (!Array.isArray(data.places) || !data.places.every(p => p && typeof p.id === 'string' && typeof p.name === 'string'))
+      || data.notes !== undefined && !Array.isArray(data.notes)) throw new Error(tr('backupInvalid'));
+    const photoData = data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos) ? data.photos : {};
+    const safePhotos = new Map(), refMap = new Map(), prepared = [];
+    const importRef = async (oldRef, allowPdf = false) => {
+      if (!oldRef) return null;
+      if (refMap.has(oldRef)){
+        const existing = refMap.get(oldRef);
+        if (!allowPdf && existing.type !== 'image/webp' && existing.type !== 'image/jpeg') throw new Error(tr('uploadImageOnly'));
+        return existing;
+      }
+      if (typeof photoData[oldRef] !== 'string') return null;
+      const raw = backupDataBlob(photoData[oldRef]), isImage = await imageSignature(raw);
+      if (!isImage && !allowPdf) throw new Error(tr('uploadImageOnly'));
+      let blob, type;
+      if (isImage){ blob = await normalizePhoto(raw); type = blob.type; }
+      else { await validatePdfUpload(raw); blob = raw.slice(0, raw.size, 'application/pdf'); type = 'application/pdf'; }
+      const result = {ref: newId(), type};
+      refMap.set(oldRef, result); safePhotos.set(result.ref, blob);
+      return result;
+    };
+    for (const source of list){
+      if (!source || typeof source.id !== 'string' || typeof source.code !== 'string' || findBox(source.id)) continue;
+      if (source.items !== undefined && !Array.isArray(source.items) || source.documents !== undefined && !Array.isArray(source.documents)) throw new Error(tr('backupInvalid'));
+      const b = clone(source);
+      if (b.photo && b.photo.ref){
+        const p = await importRef(b.photo.ref);
+        if (p) b.photo.ref = p.ref; else delete b.photo;
+      }
+      b.documents = await Promise.all((b.documents || []).map(async d => {
+        if (!d || !d.ref) return null;
+        const p = await importRef(d.ref, true);
+        return p ? {...d, ref: p.ref, type: p.type} : null;
+      }));
+      b.documents = b.documents.filter(Boolean);
+      for (const it of b.items || []){
+        if (!it || typeof it !== 'object') throw new Error(tr('backupInvalid'));
+        if (it.photos !== undefined && !Array.isArray(it.photos) || it.files !== undefined && !Array.isArray(it.files)) throw new Error(tr('backupInvalid'));
+        it.photos = await Promise.all((it.photos || []).map(async p => {
+          if (!p || !p.ref) return null;
+          const safe = await importRef(p.ref);
+          return safe ? {...p, ref: safe.ref} : null;
+        }));
+        it.photos = it.photos.filter(Boolean);
+        it.files = await Promise.all((it.files || []).map(async file => {
+          if (!file || !file.ref) return null;
+          const safe = await importRef(file.ref, true);
+          return safe ? {...file, ref: safe.ref, type: safe.type} : null;
+        }));
+        it.files = it.files.filter(Boolean);
+      }
+      prepared.push(b);
+    }
+    const preparedNotes = [];
+    for (const x of (data.notes || [])){
+      if (!x || typeof x.id !== 'string' || notes.some(y => y.id === x.id) || typeof x.audio !== 'string' || !x.audio) continue;
+      const audio = backupDataBlob(x.audio);
+      await validateAudioUpload(audio);
+      preparedNotes.push({id: x.id, boxId: x.boxId || null, createdAt: x.createdAt || new Date().toISOString(), duration: Math.max(0, +x.duration || 0), by: String(x.by || '').slice(0, 80), blob: audio});
+    }
     toast('Restoring…');
     let n = 0;
-    for (const b of list){
-      if (!b || !b.id || !b.code || findBox(b.id)) continue;
-      const refs = [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])].filter(Boolean);
-      for (const r of refs){ const d = data.photos && data.photos[r]; if (d) await phPut(r, await (await fetch(d)).blob()); }
-      putBox(b); n++;
-    }
-    (data.household || []).forEach(addPerson);
-    (data.places || []).forEach(p => { if (p && p.id && !findPlace(p.id)){ places.push(p); } }); metaPut('places', places).catch(() => {});
+    for (const [ref, blob] of safePhotos) await phPut(ref, blob);
+    for (const b of prepared){ putBox(b); n++; }
+    if (Array.isArray(data.household)) data.household.forEach(addPerson);
+    if (Array.isArray(data.places)) data.places.forEach(p => { if (p && p.id && !findPlace(p.id)){ places.push(p); } }); metaPut('places', places).catch(() => {});
     boxes.forEach(b => { if (!b.placeId || !findPlace(b.placeId)){ b.placeId = places[0].id; dbPut(clone(b)).catch(() => {}); } });
-    let k = 0;
-    for (const x of (data.notes || [])){
-      if (!x || !x.id || notes.some(y => y.id === x.id) || !x.audio) continue;
-      const nn = {id: x.id, boxId: x.boxId || null, createdAt: x.createdAt, duration: x.duration || 0, by: x.by || '', blob: await (await fetch(x.audio)).blob()};
-      await notePut(nn); notes.push(nn); k++;
-    }
+    for (const nn of preparedNotes){ await notePut(nn); notes.push(nn); }
+    const k = preparedNotes.length;
     updateStatus(); render();
     toast(n || k ? `Restored ${n} ${n === 1 ? 'box' : 'boxes'}${k ? ` and ${k} voice ${k === 1 ? 'note' : 'notes'}` : ''}.` : 'Everything in that backup is already here.');
-  } catch { toast('That file isn’t a Storrrage backup.'); }
+  } catch (err){ toast(err instanceof Error && err.message ? err.message : tr('backupInvalid')); }
 });
 function menuSheet(){
   const nN = dueCount() + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length + attention();
@@ -5544,7 +5720,7 @@ function newLabelSheet(lid){
     const n = await askText(tr('boxNameQ'), {placeholder: tr('boxNamePh'), ok: tr('saveBox')}); if (n === null || n === undefined) return;
     const pid = scopePlace() || places.find(p => !p.inbox)?.id || ensureInbox().id, now = new Date().toISOString();
     const b = {id: newId(), code: nextCode(pid), name: (n || '').trim() || tr('unnamed'), placeId: pid, items: [], label: lid, createdAt: now, updatedAt: now, checkedAt: now};
-    if (move.active){ b.moveState = 'packed'; }
+    if (move.active){ b.moveState = 'created'; }
     putBox(b, true); track('label_newbox'); openBox(b.id);
   };
   $('#nlLink').onclick = () => pickBoxSheet(tr('newLabelLink'), id => { giveLabel(id, lid); openBox(id); });
@@ -5631,7 +5807,7 @@ function scanItemBarcode(){
 
 /* ---- moving house: runs next to the normal storage, boxes get a room and a state ---- */
 let move = {active: false, rooms: []};
-const MOVE_STATES = ['packed', 'moved', 'unpacked'];
+const MOVE_STATES = ['created', 'packed', 'moved', 'unpacked'];
 const DEFAULT_ROOMS = {sv: ['Kök', 'Vardagsrum', 'Sovrum', 'Barnrum', 'Badrum', 'Hall', 'Förråd'], en: ['Kitchen', 'Living room', 'Bedroom', 'Kids’ room', 'Bathroom', 'Hall', 'Storage'], da: ['Køkken', 'Stue', 'Soveværelse', 'Børneværelse', 'Badeværelse', 'Entré', 'Depot'], nb: ['Kjøkken', 'Stue', 'Soverom', 'Barnerom', 'Bad', 'Gang', 'Bod'], fi: ['Keittiö', 'Olohuone', 'Makuuhuone', 'Lastenhuone', 'Kylpyhuone', 'Eteinen', 'Varasto']};
 const moveBoxes = () => realBoxes().filter(b => b.moveState);
 function saveMove(){ metaPut('move', move).catch(() => {}); }
@@ -5658,7 +5834,7 @@ function renderMove(){
       <button class="btn block" data-act="moverooms">${tr('editRooms')}</button>
       <button class="btn danger block" data-act="moveend">${tr('moveEnd')}</button></div>`;
   app.querySelectorAll('[data-mvf]').forEach(c => c.onclick = () => { moveFilter = c.dataset.mvf; render(); });
-  app.querySelectorAll('[data-mvnext]').forEach(c => c.onclick = () => { const nb = clone(findBox(c.dataset.mvnext)); nb.moveState = MOVE_STATES[(MOVE_STATES.indexOf(nb.moveState) + 1) % 3]; putBox(nb); track('move_state', {s: nb.moveState}); });
+  app.querySelectorAll('[data-mvnext]').forEach(c => c.onclick = () => { const nb = clone(findBox(c.dataset.mvnext)); nb.moveState = MOVE_STATES[(MOVE_STATES.indexOf(nb.moveState) + 1) % MOVE_STATES.length]; putBox(nb); track('move_state', {s: nb.moveState}); });
   app.querySelectorAll('[data-mvroom]').forEach(c => c.onclick = () => roomPick(c.dataset.mvroom));
 }
 function roomPick(boxId){
@@ -5676,7 +5852,7 @@ function moveAction(a){
   if (a === 'movenew') return (async () => {
     const n = await askText(tr('boxNameQ'), {placeholder: tr('boxNamePh'), ok: tr('saveBox')}); if (n === null || n === undefined) return;
     const pid = scopePlace() || places.find(p => !p.inbox)?.id || ensureInbox().id, now = new Date().toISOString();
-    const b = {id: newId(), code: nextCode(pid), name: (n || '').trim() || tr('unnamed'), placeId: pid, items: [], moveState: 'packed', createdAt: now, updatedAt: now, checkedAt: now};
+    const b = {id: newId(), code: nextCode(pid), name: (n || '').trim() || tr('unnamed'), placeId: pid, items: [], moveState: 'created', createdAt: now, updatedAt: now, checkedAt: now};
     putBox(b, true); render(); roomPick(b.id);
   })();
   if (a === 'moveadd') return pickBoxSheet(tr('moveAddExisting'), id => { const nb = clone(findBox(id)); nb.moveState = 'packed'; putBox(nb); }, b => !b.moveState);
@@ -5694,14 +5870,14 @@ Object.assign(STR.en, {editRooms: 'Edit rooms', labelLinked: c => `The label now
   printLabel: 'Print label', useOtherLabel: 'Use another label (scan it)', moveLabel: 'Move this label to another box', labelMenuHint: 'Labels can be moved between boxes. Pre-printed blank labels are linked the first time you scan them.',
   blankLabels: 'Blank labels', blankHowMany: 'How many blank labels?', blankPrintHint: 'Print, cut out and stick them on boxes. The first scan links each label to a box.',
   scanBarcode: 'Scan barcode', pointBarcode: 'Point the camera at the barcode.', noBarcodeCam: 'Barcode scanning isn’t available in this browser. Type the number instead.', lookingUp: 'Looking up the product…', barcodeFound: n => `Found: ${n}`, barcodeSaved: 'Barcode saved. No product info found – write the name yourself.',
-  moveTitle: 'Moving', moveIntroH: 'Moving house?', moveIntro: 'Give boxes a room in your new home and follow them from packed to moved to unpacked. Your normal storage keeps working as usual.', moveStart: 'Start a move',
+  moveTitle: 'Moving', moveIntroH: 'Moving house?', moveIntro: 'Create boxes, then follow them from created to packed to moved to unpacked. Your normal storage keeps working as usual.', moveStart: 'Start a move',
   mv_packed: 'Packed', mv_moved: 'Moved', mv_unpacked: 'Unpacked', allRooms: 'All rooms', pickRoom: 'Choose room', newRoom: 'New room', moveEmpty: 'No boxes in the move yet.', moveNewBox: 'New moving box', moveAddExisting: 'Add existing boxes',
   moveLabels: 'Print labels for the move', moveRooms: 'Rooms (separate with commas)', moveEnd: 'Finish the move', moveEndQ: 'Finish the move? The boxes stay where they are, without room and moving status.', moveEnded: 'Move finished. Welcome home!', moveOngoing: (d, n) => `Moving: ${d} of ${n} boxes unpacked`});
 Object.assign(STR.sv, {editRooms: 'Ändra rum', labelLinked: c => `Etiketten hör nu till ${c}.`, newLabelH: 'Ny etikett', newLabelHint: 'Den här etiketten används inte än. Vad ska den höra till?', newLabelBox: 'Skapa en ny låda', newLabelLink: 'Koppla till en befintlig låda', boxNameQ: 'Vad finns i lådan?',
   printLabel: 'Skriv ut etikett', useOtherLabel: 'Använd en annan etikett (skanna den)', moveLabel: 'Flytta etiketten till en annan låda', labelMenuHint: 'Etiketter kan flyttas mellan lådor. Förtryckta tomma etiketter kopplas första gången du skannar dem.',
   blankLabels: 'Tomma etiketter', blankHowMany: 'Hur många tomma etiketter?', blankPrintHint: 'Skriv ut, klipp och sätt på lådorna. Första skanningen kopplar etiketten till en låda.',
   scanBarcode: 'Skanna streckkod', pointBarcode: 'Rikta kameran mot streckkoden.', noBarcodeCam: 'Streckkodsläsning finns inte i den här webbläsaren. Skriv in numret i stället.', lookingUp: 'Söker produkten…', barcodeFound: n => `Hittade: ${n}`, barcodeSaved: 'Streckkoden sparad. Ingen produktinfo hittades – skriv namnet själv.',
-  moveTitle: 'Flytt', moveIntroH: 'Ska du flytta?', moveIntro: 'Ge lådorna ett rum i nya hemmet och följ dem från packad till flyttad till uppackad. Ditt vanliga förråd fungerar som vanligt under tiden.', moveStart: 'Starta en flytt',
+  moveTitle: 'Flytt', moveIntroH: 'Ska du flytta?', moveIntro: 'Skapa lådor och följ dem från skapad till packad, flyttad och uppackad. Ditt vanliga förråd fungerar som vanligt under tiden.', moveStart: 'Starta en flytt',
   mv_packed: 'Packad', mv_moved: 'Flyttad', mv_unpacked: 'Uppackad', allRooms: 'Alla rum', pickRoom: 'Välj rum', newRoom: 'Nytt rum', moveEmpty: 'Inga lådor i flytten än.', moveNewBox: 'Ny flyttlåda', moveAddExisting: 'Lägg till befintliga lådor',
   moveLabels: 'Skriv ut etiketter för flytten', moveRooms: 'Rum (separera med komma)', moveEnd: 'Avsluta flytten', moveEndQ: 'Avsluta flytten? Lådorna stannar där de är, utan rum och flyttstatus.', moveEnded: 'Flytten är klar. Välkommen hem!', moveOngoing: (d, n) => `Flytt: ${d} av ${n} lådor uppackade`});
 
@@ -5780,6 +5956,22 @@ async function turnOnNotifications(){
   notifyAlerts();
   return true;
 }
+let reminderNudgesShown = 0;
+async function reminderPermissionNudge(){
+  if (notifOn && 'Notification' in window && Notification.permission === 'granted') return;
+  let stored;
+  try { stored = await metaGet('reminderNudgeCount'); }
+  catch (err){ toast(saveErr(err)); return; }
+  const count = Math.max(reminderNudgesShown, +stored || 0);
+  if (count >= 2) return;
+  reminderNudgesShown = count + 1;
+  try { await metaPutRaw('reminderNudgeCount', reminderNudgesShown); }
+  catch (err){ toast(saveErr(err)); }
+  openSheet(`<h3>${tr('reminderNudgeTitle')}</h3><p class="hint">${tr('reminderNudgeText')}</p>
+    <div class="sheet-foot"><button class="btn quiet" id="rnLater">${tr('close')}</button><button class="btn primary" id="rnEnable">${tr('reminderNudgeAction')}</button></div>`);
+  $('#rnLater').onclick = closeSheet;
+  $('#rnEnable').onclick = () => { closeSheet(); turnOnNotifications(); };
+}
 /* something changed by someone else in the household while the app was in the background */
 let hhChanges = {};
 function noteHouseholdChange(updatedBy, box){
@@ -5820,7 +6012,7 @@ document.addEventListener('click', e => {
   const r = e.target.closest('[data-remind]'), l = e.target.closest('[data-loandue]');
   if (!r && !l) return;
   if (flushItem) flushItem();
-  if (r){ const v = r.dataset.remind; if (v === 'pick'){ showRemindPick = true; saveItem(x => { delete x.remindMonths; }, true); return; } showRemindPick = false; saveItem(x => { delete x.remindAt; if (+v) x.remindMonths = +v; else delete x.remindMonths; }, true); return; }
+  if (r){ const v = r.dataset.remind; if (v === 'pick'){ showRemindPick = true; saveItem(x => { delete x.remindMonths; }, true); return; } showRemindPick = false; saveItem(x => { delete x.remindAt; if (+v) x.remindMonths = +v; else delete x.remindMonths; }, true); if (+v) reminderPermissionNudge(); return; }
   const v = l.dataset.loandue;
   if (v === 'pick'){ showLoanPick = true; render(); return; }
   showLoanPick = false; saveItem(x => { x.loanDue = addDays(x.loanSince || today(), +v); }, true);
@@ -5828,10 +6020,16 @@ document.addEventListener('click', e => {
 
 Object.assign(STR.en, {n_many: (n, first) => `${n} things need a look. First: ${first}`, notifTitle: 'Notifications', notifSetting: 'Notify me on this phone', notifHint: 'Reminders, warranties that end, things that should be back, and changes others in your household make.', notifBlocked: 'Notifications are blocked. Allow them for Storrrage in the phone’s settings.', notifUnsupported: 'This browser can’t show notifications.', notifOnToast: 'Notifications are on.',
   n_dueT: 'Time to check', n_due: n => `${n} hasn’t been used in a while. Keep it, or sell it?`, n_loan: (n, w) => `${w} still has your ${n}. Time to ask for it back?`, n_out: (n, w) => `Is ${n} back in ${w}?`, n_hh: (w, list) => `${w} made changes: ${list}`,
-  loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to box ${c}`, boxInsideX: c => `Box inside ${c}`});
+  loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to box ${c}`, boxInsideX: c => `Box inside ${c}`,
+  uploadImageOnly: 'Choose a valid JPEG, PNG, WebP or GIF image.', uploadPdfOnly: 'Choose a valid PDF document.', uploadTooLarge: 'That file is too large. The limit is 25 MB per file.', uploadUnsafeType: 'This file type or content is not supported.', backupInvalid: 'That file isn’t a valid Storrrage backup.',
+  takePhoto: 'Take a photo', pickPhoto: 'Choose from photos', photoUploadCancelled: 'The item was closed before the upload finished, so the file was not attached.', reminderNudgeTitle: 'Turn on reminders?', reminderNudgeText: 'This reminder is saved, but Storrrage cannot notify you until notifications are allowed on this phone.', reminderNudgeAction: 'Enable notifications',
+  mv_created: 'Created — not packed'});
 Object.assign(STR.sv, {n_many: (n, first) => `${n} saker behöver kollas. Först: ${first}`, notifTitle: 'Notiser', notifSetting: 'Skicka notiser till den här telefonen', notifHint: 'Påminnelser, garantier som går ut, saker som borde vara tillbaka och ändringar som andra i hushållet gör.', notifBlocked: 'Notiser är blockerade. Tillåt dem för Storrrage i telefonens inställningar.', notifUnsupported: 'Den här webbläsaren kan inte visa notiser.', notifOnToast: 'Notiser är på.',
   n_dueT: 'Dags att kolla', n_due: n => `${n} har inte använts på länge. Behålla eller sälja?`, n_loan: (n, w) => `${w} har fortfarande din ${n}. Dags att be om den tillbaka?`, n_out: (n, w) => `Är ${n} tillbaka i ${w}?`, n_hh: (w, list) => `${w} har gjort ändringar: ${list}`,
-  loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i lådan ${c}`, boxInsideX: c => `Låda inuti ${c}`});
+  loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i lådan ${c}`, boxInsideX: c => `Låda inuti ${c}`,
+  uploadImageOnly: 'Välj en giltig JPEG-, PNG-, WebP- eller GIF-bild.', uploadPdfOnly: 'Välj ett giltigt PDF-dokument.', uploadTooLarge: 'Filen är för stor. Gränsen är 25 MB per fil.', uploadUnsafeType: 'Filtypen eller innehållet stöds inte.', backupInvalid: 'Filen är inte en giltig Storrrage-säkerhetskopia.',
+  takePhoto: 'Ta ett foto', pickPhoto: 'Välj bland foton', photoUploadCancelled: 'Saken stängdes innan uppladdningen blev klar, så filen bifogades inte.', reminderNudgeTitle: 'Aktivera påminnelser?', reminderNudgeText: 'Påminnelsen sparas, men Storrrage kan inte meddela dig förrän notiser är tillåtna på telefonen.', reminderNudgeAction: 'Aktivera notiser',
+  mv_created: 'Skapad — inte packad'});
 
 STR.da = {
   space: 'RUM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 KASSE' : `${n} KASSER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `KASSE ${n}`,
@@ -6326,6 +6524,7 @@ async function init(){
     boxes = await dbAll();
     lastBackup = await metaGet('lastBackup') || null;
     household = await metaGet('household') || [];
+    recentOwners = await metaGet('recentOwners') || [];
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
     { const lp = await metaGet('langPref'), old = await metaGet('lang'); langPref = lp || (old === 'sv' || old === 'en' ? old : 'auto'); lang = langPref === 'auto' ? phoneLang() : langPref; if (langPref === 'auto') voiceLang = VOICE[lang] || 'en-US'; }
