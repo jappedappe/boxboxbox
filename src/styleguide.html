@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Storrrage – designsystem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+{{CSS}}
+/* ---- the style guide page itself (not part of the app) ---- */
+.sg{max-width:880px;margin:0 auto;padding:24px 16px 80px}
+.sg h1{font-family:var(--caps);color:var(--ink);font-size:var(--fs-6);margin:0}
+.sg h2.sgh{font-family:var(--caps);color:var(--ink);font-size:var(--fs-5);margin:40px 0 6px;padding-top:12px;border-top:1.5px solid var(--line)}
+.sg h3{color:var(--ink);font-size:var(--fs-3);margin:20px 0 8px}
+.sg p.lead{color:var(--muted);margin:6px 0 0}
+.sgbar{position:sticky;top:0;z-index:4;background:var(--bg);display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1.5px solid var(--line)}
+.sgbar nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.sgbar nav a{font-size:var(--fs-2);color:var(--ink)}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{border:1.5px solid var(--line);border-radius:var(--r-3);overflow:hidden;background:var(--surface)}
+.sw i{display:block;height:56px}
+.sw div{padding:6px 8px;font-size:var(--fs-1);color:var(--text)}
+.sw code,.sg code{font-size:var(--fs-1);color:var(--muted)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.demo{border:1.5px dashed var(--line);border-radius:var(--r-3);padding:14px;margin:8px 0;background:var(--bg)}
+.demo.narrow{max-width:360px}
+.lbl{display:block;font-size:var(--fs-1);color:var(--muted);margin-top:4px}
+.tscale div{display:flex;gap:12px;align-items:baseline;border-bottom:1px solid var(--line);padding:6px 0}
+.tscale code{width:120px;flex:none}
+.shape{width:84px;height:56px;background:var(--lav-2);border:1.5px solid var(--lav);display:grid;place-items:center;font-size:var(--fs-1);color:var(--ink)}
+.shadowbox{width:120px;height:64px;background:var(--surface);border-radius:var(--r-3);display:grid;place-items:center;font-size:var(--fs-1);color:var(--ink)}
+.rules li{margin:6px 0}
+.icogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.icocell{border:1.5px solid var(--line);border-radius:var(--r-3);padding:10px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;background:var(--surface)}
+.icocell .ico{width:40px;height:40px;border-radius:var(--r-2);background:var(--lav-2);color:var(--primary);display:grid;place-items:center}
+.icocell .ico svg{width:24px;height:24px}
+.icocell small{color:var(--muted);font-size:var(--fs-1)}
+table.words{border-collapse:collapse;width:100%;font-size:var(--fs-2)}
+table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="sg">
+  <div class="sgbar">
+    <h1>Designsystem</h1><span class="hint">Storrrage {{VERSION}}</span>
+    <div class="seg small" id="themeSeg"><button class="on" data-t="">Auto</button><button data-t="light">Ljust</button><button data-t="dark">Mörkt</button></div>
+    <nav><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
+  </div>
+  <p class="lead">Den här sidan använder exakt samma CSS som appen och byggs om med <code>python3 build.py</code>. Ändrar du en token eller en komponent i <code>src/style.css</code> syns det här direkt. Byt tema uppe till höger.</p>
+
+  <h2 class="sgh" id="farger">Färger</h2>
+  <p class="lead">Värdena läses från appens CSS just nu, för valt tema.</p>
+  <h3>Varumärke och text</h3><div class="swatches" data-tokens="--primary --primary-2 --accent --ink --text --muted --dot --danger"></div>
+  <h3>Ytor och linjer</h3><div class="swatches" data-tokens="--bg --surface --field --lav --lav-2 --lav-3 --line"></div>
+  <h3>Status</h3><div class="swatches" data-tokens="--ok --ok-2 --warn"></div>
+  <h3>Kartong (lådan)</h3><div class="swatches" data-tokens="--box --box-lid --box-tape --box-edge --box-label --box-ink --box-text"></div>
+
+  <h2 class="sgh" id="typo">Typografi</h2>
+  <p class="lead">Poppins för text, Montserrat för sökväg och sektionsrubriker. Sju storlekar, inget annat.</p>
+  <div class="tscale" id="tscale"></div>
+  <h2 class="section">Sektionsrubrik</h2>
+  <nav class="crumbs"><button>JONATHANS</button><span class="sep"> - </span><button>KÄLLAREN</button><span class="sep"> - </span><span>B-001</span></nav>
+  <p class="hint">Hjälptext i --muted.</p>
+
+  <h2 class="sgh" id="former">Former</h2>
+  <h3>Hörnradier</h3>
+  <div class="row"><div class="shape" style="border-radius:var(--r-1)">--r-1</div><div class="shape" style="border-radius:var(--r-2)">--r-2</div><div class="shape" style="border-radius:var(--r-3)">--r-3</div><div class="shape" style="border-radius:var(--r-4)">--r-4</div><div class="shape" style="border-radius:var(--r-round)">--r-round</div></div>
+  <h3>Skuggor</h3>
+  <div class="row"><div class="shadowbox" style="box-shadow:var(--sh-1)">--sh-1 lyft</div><div class="shadowbox" style="box-shadow:var(--sh-2)">--sh-2 ark</div></div>
+
+  <h2 class="sgh" id="ikoner">Ikoner</h2>
+  <p class="lead">Bara SVG-ikoner med linjer (<code>svg.stroke</code>). Samma åtgärd har alltid samma ikon, var den än syns. Inga emojis eller pilar som ↗ i knappar.</p>
+  <div class="icogrid"><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M2.5 11h6M15.5 11h6M12 15V3.5M8 7.5l4-4 4 4"/></svg></span><code>ICON.takeout</code><small>Ta ut</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M2.5 11h6M15.5 11h6M12 3.5V15M8 11l4 4 4-4"/></svg></span><code>ICON.putback</code><small>Ställ tillbaka</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M5 17.5V5a2 2 0 0 1 2-2h9.5M11 12h6M11 16h4"/></svg></span><code>ICON.stack</code><small>Lägg till flera</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="6" y="9" width="4" height="4" rx=".8"/><rect x="11" y="11" width="3.5" height="3.5" rx=".8"/><rect x="15.5" y="8" width="3" height="3" rx=".8"/><path d="M6 17h12"/></svg></span><code>ICON.photos</code><small>Flera saker på ett foto</small></div><div class="icocell"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.6 2.5H20a1.5 1.5 0 0 1 1.5 1.5v10.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg></span><code>ICON.camera</code><small>Lägg till foto</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6v12M7 6v12M10 6v8M13 6v12M16 6v8M19 6v12M10 17h0M16 17h0"/></svg></span><code>ICON.barcode</code><small>Skanna streckkod</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.2 2.7 5.5 6 .9-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2 6-.9z"/></svg></span><code>ICON.starO</code><small>Favorit (av)</small></div><div class="icocell"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.2l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg></span><code>ICON.star</code><small>Favorit (på)</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></span><code>ICON.pin</code><small>Visa på kartan</small></div><div class="icocell"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4.5 9v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V9M9.5 13h5"/></svg></span><code>ICON.box</code><small>Låda</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></span><code>ICON.truck</code><small>Flytt</small></div><div class="icocell"><span class="ico"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg></span><code>ICON.trash</code><small>Ta bort</small></div></div>
+
+  <h2 class="sgh" id="knappar">Knappar</h2>
+  <p class="lead">En komponent: tre varianter (primär, sekundär, fara), två storlekar och samma valda läge som allt annat. En primärknapp per vy eller ark.</p>
+  <div class="demo">
+    <div class="row"><button class="btn primary">Spara</button><button class="btn quiet">Avbryt</button><button class="btn danger">Ta bort</button><button class="btn quiet" aria-pressed="true">Vald</button><button class="btn primary" disabled>Inaktiv</button></div>
+    <span class="lbl">.btn.primary · .btn.quiet · .btn.danger · aria-pressed="true" · disabled</span>
+    <div class="row"><button class="btn primary small">Spara</button><button class="btn quiet small">Avbryt</button><button class="btn danger small">Ta bort</button><button class="btn quiet small" aria-pressed="true">📏 Mått</button></div>
+    <span class="lbl">.small</span>
+    <button class="btn primary block">Full bredd</button><span class="lbl">.block</span>
+    <div class="row"><button class="btn quiet small icontext"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M2.5 11h6M15.5 11h6M12 15V3.5M8 7.5l4-4 4 4"/></svg>Ta ut</button><button class="btn quiet small icontext favbtn" aria-pressed="false"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.2 2.7 5.5 6 .9-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2 6-.9z"/></svg>Favorit</button><button class="btn quiet small icontext"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6v12M7 6v12M10 6v8M13 6v12M16 6v8M19 6v12M10 17h0M16 17h0"/></svg>Skanna streckkod</button></div><span class="lbl">Åtgärder för en sak: .btn.quiet.small.icontext, alltid ikon + text</span>
+    <div class="row"><button class="lgh-fold" aria-expanded="true" aria-label="Fäll ihop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><button class="lgh-fold shut" aria-expanded="false" aria-label="Fäll ut"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><span class="lbl">Fäll ut / ihop: .lgh-fold – fyrkantig överallt, pil ned = öppen, pil höger = stängd</span>
+    <div class="row"><button class="linkbtn">Textlänk</button><button class="space-edit-btn" aria-label="Mer">⋯</button></div><span class="lbl">.linkbtn · ikonknapp</span>
+  </div>
+
+  <h2 class="sgh" id="kort">Valkort</h2>
+  <p class="lead">När man väljer <i>vad</i> eller <i>hur</i> man lägger till: ljusa kort med ikonen i en ruta, aldrig fyllda lila knappar bredvid varandra. Samma kort och ikoner överallt.</p>
+  <div class="demo narrow"><div class="choice addchoices"><button class="btn big addopt"><span class="aoi"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4.5 9v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V9M9.5 13h5"/></svg></span><span>Lägg till låda</span></button><button class="btn big addopt"><span class="aoi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.6 2.5H20a1.5 1.5 0 0 1 1.5 1.5v10.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg></span><span>Lägg till sak</span></button><button class="btn big addopt"><span class="aoi"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M5 17.5V5a2 2 0 0 1 2-2h9.5M11 12h6M11 16h4"/></svg></span><span>Lägg till flera</span></button></div><span class="lbl">.choice.addchoices .btn.big.addopt</span>
+  <div class="choice col"><label class="btn big addopt wide"><span class="aoi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.6 2.5H20a1.5 1.5 0 0 1 1.5 1.5v10.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg></span><span class="aot"><span>Ett foto per sak</span><small>Ta eller välj ett foto av varje sak.</small></span></label><label class="btn big addopt wide"><span class="aoi"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="6" y="9" width="4" height="4" rx=".8"/><rect x="11" y="11" width="3.5" height="3.5" rx=".8"/><rect x="15.5" y="8" width="3" height="3" rx=".8"/><path d="M6 17h12"/></svg></span><span class="aot"><span>Flera saker på ett foto</span><small>Varje sak blir en egen post.</small></span></label></div><span class="lbl">.btn.big.addopt.wide – med förklaring</span></div>
+
+  <h2 class="sgh" id="val">Val</h2>
+  <p class="lead">Segment för 2–4 val, chips för fler. Valt läge är alltid fylld --primary med vit text.</p>
+  <div class="demo"><div class="seg small"><button class="on">Rutnät</button><button class="">Lista</button><button class="">Karta</button><button class="rktab">Hyllor<sup>test</sup></button></div><span class="lbl">.seg.small</span>
+  <div class="chips quick"><button class="chipbtn">↗ Framme nu <small>1</small></button><button class="chipbtn">Utan låda <small>2</small></button><button class="chipbtn">Alla lådor <small>8</small></button><button class="chipbtn">Alla saker <small>21</small></button><button class="chipbtn" id="scopeBtn">📍 Överallt ▾</button></div><span class="lbl">.chips .chipbtn (valt: .on)</span>
+  <div class="chips"><button class="chipbtn on">#jul</button><button class="chipbtn">#vinter</button><button class="chipbtn add">+ Ny</button></div></div>
+
+  <h2 class="sgh" id="falt">Fält</h2>
+  <p class="lead">Alla fält och rullgardiner: samma ram, radie, höjd 44 px, fokus i --primary och samma pil.</p>
+  <div class="demo narrow">
+    <label class="field"><span>Namn</span><input value="Julpynt"></label>
+    <label class="field"><span>Plats</span><select><option>Källaren</option><option>Vinden</option></select></label>
+    <label class="field"><span>Zon (med förslag)</span><input list="sgz" value="Vänster vägg"><datalist id="sgz"><option value="Vänster vägg"><option value="Mitten"></datalist></label>
+    <label class="field"><span>Anteckningar</span><textarea>Övre hyllan</textarea></label>
+    <div class="sbar"><input class="input search" id="q" type="search" placeholder="Sök, eller fråga Storrrage…" value="" autocomplete="off" enterkeyhint="search"><button class="micin" id="micBtn" aria-label="Tryck och prata"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"></path></svg></button></div>
+  </div>
+
+  <h2 class="sgh" id="lador">Lådor och saker</h2>
+  <p class="lead">En låda ser alltid ut som en kartong med numret på etiketten. En lös sak är alltid en rund markör.</p>
+  <div class="demo narrow"><div class="shelf" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"><button class="itile btile">
+    <span class="timg"><svg class="boxart" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"></path><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#C99A62"></rect><rect x="10" y="27" width="44" height="2.6" fill="#8C5E2E"></rect><rect x="28.5" y="16" width="7" height="11" fill="#E6C894"></rect><rect x="16" y="34" width="32" height="15" rx="2" fill="#FFF7EA"></rect><text x="32" y="45.4" text-anchor="middle" font-family="Montserrat,Poppins,Arial,sans-serif" font-weight="800" font-size="11" fill="#5A3FB8">001</text></svg><span class="bcount">5</span></span>
+    <span class="ttext"><span class="tname">Julpynt, adventsljusstakar och glaskulor från farmor</span></span></button><button class="itile btile out">
+    <span class="timg"><svg class="boxart" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"></path><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#C99A62"></rect><rect x="10" y="27" width="44" height="2.6" fill="#8C5E2E"></rect><rect x="28.5" y="16" width="7" height="11" fill="#E6C894"></rect><rect x="16" y="34" width="32" height="15" rx="2" fill="#FFF7EA"></rect><text x="32" y="45.4" text-anchor="middle" font-family="Montserrat,Poppins,Arial,sans-serif" font-weight="800" font-size="11" fill="#5A3FB8">004</text></svg><span class="bcount">2</span><span class="boxouttag">↗</span></span>
+    <span class="ttext"><span class="tname">Kablar</span></span></button><button class="itile add" aria-label="Lägg till"><span class="timg"><svg class="plusic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"></path></svg></span><span class="ttext"><span class="tname">Lägg till</span></span></button></div><span class="lbl">Rutnät: låda, framme (streckad), lägg till</span></div>
+  <div class="demo narrow"><div class="igrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"><button class="itile">
+    <span class="timg"><span class="ticon"><svg class="itemico" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 8.5l2 4M32 4v4.5M49 8.5l-2 4" stroke="#F97F26" stroke-width="2.6" stroke-linecap="round" fill="none"></path><rect x="12" y="30" width="40" height="7" rx="2" fill="#6F4A24"></rect><g transform="rotate(-9 32 26)"><rect x="26.5" y="11" width="12" height="25" rx="2" fill="#6C4CC9"></rect><rect x="28.5" y="13" width="2.2" height="21" rx="1" fill="#A49CD6"></rect></g><circle cx="19" cy="26.5" r="7.5" fill="#F97F26"></circle><path d="M12.5 24.5c4 2.2 9 2.2 13 0" stroke="#FFF7EA" stroke-width="1.8" fill="none" stroke-linecap="round"></path><g transform="rotate(10 45 25)"><rect x="40" y="18" width="10.5" height="13" rx="2.2" fill="#3D8BFD"></rect><path d="M50.5 21.5h1.6a3 3 0 0 1 0 6h-1.6" stroke="#3D8BFD" stroke-width="2.2" fill="none"></path></g><path d="M10 33h44l-2.5 24.5a3 3 0 0 1-3 2.5H15.5a3 3 0 0 1-3-2.5z" fill="#B5824A"></path><path d="M10 33L3 26.5h12.5L19 33z" fill="#C99A62"></path><path d="M54 33l7-6.5H48.5L45 33z" fill="#C99A62"></path><rect x="10" y="33" width="44" height="3.2" fill="#8C5E2E"></rect><rect x="23.5" y="42" width="17" height="9.5" rx="1.6" fill="#FFF7EA"></rect><path d="M26.3 45.4h11.4M26.3 48.3h7.4" stroke="#2F1160" stroke-width="1.5" stroke-linecap="round"></path></svg></span></span>
+    <span class="ttext"><span class="tname">Elektrisk fondueset med extra gafflar och recepthäfte</span></span></button></div><span class="lbl">Sak</span></div>
+  <div class="demo"><div class="row"><button class="crate"><span class="ccode"><span class="sico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M4.5 9v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V9M9.5 13h5"></path></svg></span>001</span><span class="cname">Julpynt, adventsljusstakar och glaskulor från farmor</span><span class="ccount">5</span></button><button class="mtoken"><span class="lcirc"><span class="ticon">🎿</span></span><span class="lname">Skidor och stavar till hela familjen</span></button><button class="rkbox" style="width:150px;height:100px" aria-label="B-003 Böcker och pärmar från universitetet 2004–2009"><span class="rklabel">003</span><span class="rkname">Böcker och pärmar från universitetet 2004–2009</span><span class="rkcount">2</span></button></div><span class="lbl">Karta (.crate) · lös sak (.mtoken) · Hyllor (.rkbox, ritad i skala)</span></div>
+
+  <h2 class="sgh" id="ovrigt">Övrigt</h2>
+  <div class="demo narrow">
+    <div class="toast act" style="position:static;transform:none;opacity:1;display:flex"><span>B-003 flyttad</span><button class="linkbtn">Ångra</button></div><span class="lbl">Notis med åtgärd</span>
+    <div class="sheet" style="position:static;display:block;max-width:360px;margin-top:12px;border:1.5px solid var(--line);border-radius:var(--r-4);padding:16px;background:var(--surface)"><h3 style="margin-top:0">Ark</h3><p class="hint">Rubrik, innehåll och en fast fotrad.</p><div class="sheet-foot"><button class="btn quiet">Avbryt</button><button class="btn primary">Spara</button></div></div>
+  </div>
+
+  <h2 class="sgh" id="regler">Regler</h2>
+  <ol class="rules">
+    <li>En primärknapp per vy eller ark.</li>
+    <li>Valt läge ser likadant ut överallt: fylld --primary med vit text.</li>
+    <li>Alla tryckytor är minst 44 × 44 px.</li>
+    <li>Namn får högst två rader och slutar med "…". Hela namnet syns i lådans eller sakens egen vy.</li>
+    <li>Lavendel (--lav) bara för linjer och ytor, aldrig för text.</li>
+    <li>All text går via tr(), även notiser och etiketter för skärmläsare.</li>
+    <li>Nya storlekar, radier, skuggor och färger läggs till som tokens i :root, aldrig som lösa värden.</li>
+    <li>Åtgärder är knappar med ikon och text, inte lösa symboler eller understrukna länkar. Länkstil bara för att hoppa till en annan vy.</li>
+    <li>Ett understruket rubrikfält (sakens namn) betyder att det går att ändra. Strecket blir lila och tjockare när man skriver.</li>
+    <li>En fotoknapp: kameran. Telefonen frågar själv om kamera eller bildgalleri.</li>
+    <li>Fäll ut och ihop är alltid den fyrkantiga knappen med pil.</li>
+  </ol>
+  <h3>Ord</h3>
+  <table class="words"><tr><th>Använd</th><th>Inte</th></tr>
+    <tr><td>Ändra</td><td>Redigera</td></tr><tr><td>Plats</td><td>Förvaring, Förvaringsplats</td></tr><tr><td>Tagg</td><td>Samling</td></tr>
+    <tr><td>B-001</td><td>Låda 1</td></tr><tr><td>Utan låda</td><td>Lösa saker</td></tr><tr><td>Rutnät (vyn)</td><td>Hylla (vyn)</td></tr><tr><td>Hyllor (testvyn)</td><td>–</td></tr></table>
+</div>
+<script>
+(() => {
+  const root = document.documentElement;
+  const draw = () => {
+    const cs = getComputedStyle(root);
+    document.querySelectorAll('[data-tokens]').forEach(box => {
+      box.innerHTML = box.dataset.tokens.split(' ').map(t => { const v = cs.getPropertyValue(t).trim(); return `<div class="sw"><i style="background:var(${t})"></i><div><b>${t}</b><br><code>${v}</code></div></div>`; }).join('');
+    });
+    const names = [['--fs-0','Märken, räknare'],['--fs-1','Bildtexter'],['--fs-2','Små knappar, chips'],['--fs-3','Brödtext, knappar'],['--fs-4','Underrubriker'],['--fs-5','Rubriker'],['--fs-6','Stora rubriker']];
+    document.getElementById('tscale').innerHTML = names.map(([t, d]) => { const px = Math.round(parseFloat(cs.getPropertyValue(t)) * 16); return `<div><code>${t} · ${px} px</code><span style="font-size:var(${t})">${d} – Storrrage</span></div>`; }).join('');
+  };
+  document.getElementById('themeSeg').addEventListener('click', e => {
+    const b = e.target.closest('[data-t]'); if (!b) return;
+    if (b.dataset.t) root.dataset.theme = b.dataset.t; else delete root.dataset.theme;
+    document.querySelectorAll('#themeSeg button').forEach(x => x.classList.toggle('on', x === b)); draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

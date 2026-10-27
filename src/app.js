@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-27.3';
+const APP_VERSION = '2026-10-27.5';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -548,7 +548,7 @@ const STR = {
     nothingDue: 'Nothing needs your attention. On an item, set “Remind me if unused” to get a nudge when you haven’t used it in a while.',
     prem1: 'Share storage with your household', prem2: 'Sell on Blocket, Tradera and Vinted', prem3: 'Login and sync between phones', premLater: 'Coming later. Everything you use now is free.',
     whatIsIt: 'What is it?', whereIs: 'Where it is', addDetail: 'Add details', lastUsed: 'Last time used', remind: 'Remind me if unused', noRemind: 'No reminder',
-    remindM: m => m === 12 ? 'After 1 year' : m === 24 ? 'After 2 years' : `After ${m} months`, notify: d => `notify ${d}`,     attachments: 'Attachments', addAttach: '+ Add receipt, warranty or manual', documents: 'Documents & receipts', addDocument: '+ Add document or recipe', noDocuments: 'No documents yet.', linkToItem: 'Link to item', notLinked: 'Not linked to an item', linkedDocuments: 'Linked documents', document: 'Document',
+    remindM: m => m === 12 ? 'After 1 year' : m === 24 ? 'After 2 years' : `After ${m} months`, notify: d => `notify ${d}`,     attachments: 'Attachments', addAttach: '+ Add receipt, warranty or manual', documents: 'Documents & receipts', addDocument: '+ Add document or receipt', noDocuments: 'No documents yet.', linkToItem: 'Link to item', notLinked: 'Not linked to an item', linkedDocuments: 'Linked documents', document: 'Document',
     tags: 'Tags', registered: (d, by) => `Registered ${d}${by ? ` by ${by}` : ''}.`, storedSince: d => `Stored since ${d}.`, changed: d => `Last changed ${d}.`,
     delItem: 'Delete item', done: 'Done', save: 'Save', saveAnother: 'Save + add another', saved: 'Saved.', savedNext: n => `${n} saved. Add the next one.`, nameFirst: 'Give it a name first.',
     f_size: 'Size', f_brand: 'Brand', f_value: 'Price / value (kr)', f_model: 'Model', f_qty: 'Quantity', f_owner: 'Whose & status', f_color: 'Colour', f_season: 'Season', f_serial: 'Serial number',
@@ -585,7 +585,7 @@ const STR = {
     nothingDue: 'Inget behöver din uppmärksamhet. Välj ”Påminn om oanvänd” på en sak för att få en knuff när du inte använt den på ett tag.',
     prem1: 'Dela förvaring med hushållet', prem2: 'Sälj på Blocket, Tradera och Vinted', prem3: 'Inloggning och synk mellan telefoner', premLater: 'Kommer senare. Allt du använder nu är gratis.',
     whatIsIt: 'Vad är det?', whereIs: 'Var den finns', addDetail: 'Lägg till detaljer', lastUsed: 'Senast använd', remind: 'Påminn om oanvänd', noRemind: 'Ingen påminnelse',
-    remindM: m => m === 12 ? 'Efter 1 år' : m === 24 ? 'Efter 2 år' : `Efter ${m} månader`, notify: d => `påminnelse ${d}`,     attachments: 'Bilagor', addAttach: '+ Lägg till kvitto, garanti eller manual', documents: 'Dokument och kvitton', addDocument: '+ Lägg till dokument eller recept', noDocuments: 'Inga dokument än.', linkToItem: 'Koppla till sak', notLinked: 'Inte kopplat till någon sak', linkedDocuments: 'Kopplade dokument', document: 'Dokument',
+    remindM: m => m === 12 ? 'Efter 1 år' : m === 24 ? 'Efter 2 år' : `Efter ${m} månader`, notify: d => `påminnelse ${d}`,     attachments: 'Bilagor', addAttach: '+ Lägg till kvitto, garanti eller manual', documents: 'Dokument och kvitton', addDocument: '+ Lägg till dokument eller kvitto', noDocuments: 'Inga dokument än.', linkToItem: 'Koppla till sak', notLinked: 'Inte kopplat till någon sak', linkedDocuments: 'Kopplade dokument', document: 'Dokument',
     tags: 'Taggar', registered: (d, by) => `Registrerad ${d}${by ? ` av ${by}` : ''}.`, storedSince: d => `Förvaras sedan ${d}.`, changed: d => `Senast ändrad ${d}.`,
     delItem: 'Ta bort sak', done: 'Klar', save: 'Spara', saveAnother: 'Spara + lägg till nästa', saved: 'Sparat.', savedNext: n => `${n} sparad. Lägg till nästa.`, nameFirst: 'Ge den ett namn först.',
     f_size: 'Storlek', f_brand: 'Märke', f_value: 'Pris / värde (kr)', f_model: 'Modell', f_qty: 'Antal', f_owner: 'Vems & status', f_color: 'Färg', f_season: 'Säsong', f_serial: 'Serienummer',
@@ -608,7 +608,7 @@ const STR = {
   },
 };
 Object.assign(STR.en, {moreBoxes: n => `+ ${n} more boxes`});
-Object.assign(STR.en, {whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom',
+Object.assign(STR.en, {photoAdd: 'Add photo', whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom',
   h_stopVoice: 'Stop the voice note first.', h_noRec: 'Recording isn’t available in this browser.', h_micBlocked: 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
   h_aiBusy: 'Still thinking about the last thing you said.', h_boxLabels: 'Box labels', h_printHint: 'Print this page, cut out the labels and tape them to the boxes.',
   h_addBoxesFirst: 'Add some boxes first.', h_building: 'Building the report…', h_nothingBackup: 'Nothing to back up yet.', h_preparingBackup: 'Preparing backup…', h_restoring: 'Restoring…',
@@ -616,7 +616,7 @@ Object.assign(STR.en, {whereYouAre: 'Where you are', moreDetails: 'More details'
   rp_packed: (d, n, v) => `Packed ${d}. ${n} items, ${v}.`, rp_generated: (d, b, n, v) => `Generated ${d}. ${b} boxes, ${n} items, estimated total value ${v}.`,
   rp_note: '“Registered” is when the item was entered in the inventory. Photo times come from the image file.', rp_ready: 'Insurance report ready',
   joinConfirmQ: 'Join this household? Everyone in it will see your things. Only join with a code from someone you know.'});
-Object.assign(STR.sv, {whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma',
+Object.assign(STR.sv, {photoAdd: 'Lägg till foto', whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma',
   h_stopVoice: 'Stoppa röstanteckningen först.', h_noRec: 'Inspelning fungerar inte i den här webbläsaren.', h_micBlocked: 'Mikrofonen är blockerad. Tillåt den för Storrrage i Chromes webbplatsinställningar.',
   h_aiBusy: 'Tänker fortfarande på det du sa senast.', h_boxLabels: 'Lådetiketter', h_printHint: 'Skriv ut sidan, klipp ut etiketterna och tejpa fast dem på lådorna.',
   h_addBoxesFirst: 'Lägg till några lådor först.', h_building: 'Gör rapporten…', h_nothingBackup: 'Det finns inget att säkerhetskopiera än.', h_preparingBackup: 'Förbereder säkerhetskopian…', h_restoring: 'Återställer…',
@@ -887,6 +887,10 @@ function logoSVG(){
 }
 const app = $('#app');
 const ICON = {
+  takeout: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M2.5 11h6M15.5 11h6M12 15V3.5M8 7.5l4-4 4 4"/></svg>',
+  putback: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M2.5 11h6M15.5 11h6M12 3.5V15M8 11l4 4 4-4"/></svg>',
+  stack: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M5 17.5V5a2 2 0 0 1 2-2h9.5M11 12h6M11 16h4"/></svg>',
+  photos: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="6" y="9" width="4" height="4" rx=".8"/><rect x="11" y="11" width="3.5" height="3.5" rx=".8"/><rect x="15.5" y="8" width="3" height="3" rx=".8"/><path d="M6 17h12"/></svg>',
   home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg>',
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>',
   user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5"/><path d="M3.5 21c.6-4.6 4.1-7.5 8.5-7.5s7.9 2.9 8.5 7.5z"/></svg>',
@@ -1196,7 +1200,7 @@ function renderSpace(){
       return `<section class="spacesec card${isFolded ? ' space-folded' : ''}" data-place-card="${esc(p.id)}">${isFolded ? '' : nudgeBar(p.id)}<div class="spacehead-row">
         <button class="space-icon" data-goplace="${esc(p.id)}" aria-label="${esc(p.name)}">${placeIcon(p)}</button>
         <button class="spacehead" data-goplace="${esc(p.id)}"><span class="spacehead-info"><b>${esc(p.name)}</b><small>${tr('boxes_n', pb).toLowerCase()} · ${tr('items_n', pi).toLowerCase()}</small></span></button>
-        ${canFold ? `<button class="space-fold-btn" data-space-fold="${esc(p.id)}" aria-expanded="${!isFolded}" aria-label="${esc(tr(isFolded ? 'unfoldSpace' : 'foldSpace', p.name))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${isFolded ? 'm6 9 6 6 6-6' : 'm6 15 6-6 6 6'}"/></svg></button>` : ''}
+        ${canFold ? `<button class="lgh-fold${isFolded ? ' shut' : ''}" data-space-fold="${esc(p.id)}" aria-expanded="${!isFolded}" aria-label="${esc(tr(isFolded ? 'unfoldSpace' : 'foldSpace', p.name))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}
         <button class="space-edit-btn" data-place-edit="${esc(p.id)}" aria-label="${esc(tr('editPlace', p.name))}">⋯</button>
       </div>${shelfHTML(p.id, isFolded)}${isFolded && boxCount > 8 ? `<button class="fold-more" data-space-fold="${esc(p.id)}">${esc(tr('moreBoxes', boxCount - 8))}</button>` : ''}</section>`; }).join('')}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
@@ -1293,7 +1297,7 @@ function renderBox(b){
   const askOut = hlIt && view.fromSearch && !view.asked && !isOut(hlIt);
   const needCheck = !b.loose && items.length && daysSince(b.checkedAt || b.createdAt) > 60 && view.checkReady && !view.checkDismissed;
   if (!b.loose && items.length && !view.checkReady && daysSince(b.checkedAt || b.createdAt) > 60){ clearTimeout(window._ckT); const vid = b.id; window._ckT = setTimeout(() => { if (view.name === 'box' && view.boxId === vid){ view.checkReady = true; render(); } }, 25000); }
-  app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>↗ <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
+  app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>${ICON.takeout} <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
     ${askOut ? `<div class="askout"><span>${esc(tr('askOut', hlIt.name))}</span><span class="fhbtns"><button class="btn primary small" data-askout="temp">${tr('yesTemp')}</button><button class="btn quiet small" data-askout="gone">${tr('yesGone')}</button><button class="btn quiet small" data-askout="no">${tr('no')}</button></span></div>` : ''}
     ${hlIt ? `<div class="findhint"><span>🔎 <b>${esc(hlIt.name)}</b> ${tr('isHere')}</span><span class="fhbtns"><button class="btn primary small" data-item="${esc(hlIt.id)}" data-box="${esc(b.id)}" data-open-item="1">${tr('openItem')}</button><button class="btn quiet small" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? hlIt.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button></span></div>` : ''}
     ${presenceNote(b.id)}
@@ -1310,7 +1314,7 @@ function renderBox(b){
       <button class="btn quiet small" data-act="placement">${tr('placement')}</button>
       <button class="btn quiet small iconly" data-mapbox="${esc(b.id)}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button>
       <button class="btn quiet small" data-act="favbox" aria-pressed="${b.fav ? 'true' : 'false'}">${b.fav ? '★' : '☆'}</button>
-      ${b.out ? '' : `<button class="btn quiet small" data-act="boxout" aria-label="${esc(tr('takeOutBox'))}">↗</button>`}
+      ${b.out ? '' : `<button class="btn quiet small icontext" data-act="boxout">${ICON.takeout}${tr('takeOut')}</button>`}
       ${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}
       ${viewToggle()}
     </div>`}
@@ -2120,16 +2124,14 @@ function renderItem(){
     ${presenceNote(b.id, it.id)}
     <div class="hero">
       ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
-      <label class="cam" aria-label="${esc(tr('takePhoto'))}" title="${esc(tr('takePhoto'))}">${ICON.camera}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" id="fCamera" hidden></label>
-      <label class="cam gallery" aria-label="${esc(tr('pickPhoto'))}" title="${esc(tr('pickPhoto'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2ZM5 5h14v9l-3.5-3.5-4.5 5.5-3-3L5 17Zm3.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/></svg><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="fPhoto" multiple hidden></label>
+      <label class="cam" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="fPhoto" multiple hidden></label>
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
-    ${isOut(it) ? `<p class="outline"><span>↗ ${tr('outTag')} · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="linkbtn" data-act="itemback">↩ ${tr('putBack')}</button></p>` : ''}
-    <div class="titlerow"><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea>
-      ${isOut(it) ? '' : `<button class="iconbtn outbtn" data-act="itemout" aria-label="${esc(tr('takeOut'))}" title="${esc(tr('takeOut'))}">↗</button>`}<button class="iconbtn star" data-act="favitem" aria-label="${esc(it.fav ? tr('unfav') : tr('fav'))}" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? '★' : '☆'}</button></div>
+    ${isOut(it) ? `<p class="outline"><span>${ICON.takeout} ${tr('outTag')} · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="btn quiet small icontext" data-act="itemback">${ICON.putback}${tr('putBack')}</button></p>` : ''}
+    <label class="titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
+    <div class="itemacts">${isOut(it) ? '' : `<button class="btn quiet small icontext" data-act="itemout">${ICON.takeout}${tr('takeOut')}</button>`}<button class="btn quiet small icontext favbtn" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button><button class="btn quiet small icontext" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     <div class="whereline"><button class="pinbtn" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button><span class="wtxt">${esc(b.loose ? placeName(b.placeId) + ' · ' + tr('notInBoxShort') : `${placeName(b.placeId)} · ${b.code} ${b.name}`)}</span><button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
-    <button class="linkbtn barcodebtn" data-act="scanbarcode">${ICON.barcode} ${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button>
     ${OPT.map(field).join('')}
     ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="chips">${addable.map(k => `<button class="chipbtn" data-addopt="${k}">+ ${esc(tr('f_' + k))}</button>`).join('')}</div></div>` : ''}
     <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
@@ -2222,7 +2224,6 @@ function renderItem(){
     if (view.name === 'item' && view.boxId === b.id && view.itemId === target.itemId) render();
   };
   $('#fPhoto').addEventListener('change', addPhotos);
-  $('#fCamera').addEventListener('change', addPhotos);
   $('#fFile').addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
@@ -2349,8 +2350,8 @@ function renderBatch(){
     <p class="hint">${esc(tr('batchWhere', where))}</p>
     <p class="hint">${aiReady() ? tr('batchAI') + (ai.provider === 'gemini' ? ' ' + tr('batchPrivacy') : '') : tr('batchNoAI')}</p>
     ${!rows.length ? `<div class="choice col">
-      <label class="btn primary big">${ICON.camera}<span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="each"></label>
-      <label class="btn primary big">${ICON.box}<span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="multi"></label></div>`
+      <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small></span><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="each"></label>
+      <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small></span><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="multi"></label></div>`
     : `<div class="brows">${rows.map((r, i) => `<div class="brow${r.include ? '' : ' off'}">
         <button class="bthumb" data-viewph="${esc(r.photos[0].ref)}">${imgTag(r.photos[0].ref, '')}</button>
         <div class="bmain">${r.status === 'thinking' ? `<p class="hint">${tr('thinking')}</p>` : `<input class="input" data-bname="${i}" value="${esc(r.name)}" placeholder="${esc(tr('namePh'))}" autocapitalize="sentences">
@@ -2552,7 +2553,7 @@ function renderCollection(tag){
   app.innerHTML = `<div class="bhead"><p class="tagline">${tr('collection').toUpperCase()}</p><h1 class="btitle"><span class="bname">#${esc(tagLabel(tag))}</span></h1>
       <p class="bpath">${tr('items_n', c.list.length).toLowerCase()} · ${tr('inBoxes', groups.length)}</p></div>
     <div class="boxbar">${placesIn.map(pid => `<button class="btn primary small" data-mapcoll="${esc(pid)}">${ICON.pin} ${tr('showOnMap')}${placesIn.length > 1 ? ' · ' + esc(placeName(pid)) : ''}</button>`).join('')}
-      <button class="btn quiet small" data-act="collout">↗ ${tr('takeOutAll')}</button><button class="btn quiet small" data-act="collback">↩ ${tr('putBackAll')}</button>
+      <button class="btn quiet small icontext" data-act="collout">${ICON.takeout}${tr('takeOutAll')}</button><button class="btn quiet small icontext" data-act="collback">${ICON.putback}${tr('putBackAll')}</button>
       <button class="btn quiet small" data-act="selectmode">${tr('select')}</button>${viewToggle()}</div>
     ${groups.map(([b, its]) => `<section class="cgroup"><button class="cghead" data-open="${esc(b.id)}"><span class="cgcode${b.loose ? ' loose' : ''}">${b.loose ? '' : `<span class="sico">${ICON.box}</span>` + esc(b.code.replace('B-', ''))}</span><span class="cgtext"><b>${b.loose ? tr('notInBox') : esc(b.name)}</b><small>${esc(boxWhere(b))}</small></span><span class="chev">›</span></button>
       ${viewMode === 'list' && !selecting ? rowsHTML(its.sort(byName).map(it => [it, b])) : `<div class="igrid${viewCls()}">${its.sort(byName).map(it => itemTile(it, b)).join('')}</div>`}</section>`).join('')}
@@ -2704,7 +2705,7 @@ function listHTML(pid){
     ${!all.length ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}
     <div class="lgroup-actions"><button class="btn quiet small" data-act="addhere" data-pid="${esc(pid)}">${PLUS_SVG} ${tr('addBoxOrItem')}</button></div>
     ${quickAddFor && findBox(quickAddFor) && findBox(quickAddFor).loose && !(findBox(quickAddFor).items || []).length && findBox(quickAddFor).placeId === pid ? `<section class="lgroup">${groupHeader(findBox(quickAddFor))}${quickAddRow(findBox(quickAddFor))}</section>` : ''}
-    ${outs.length ? `<section class="lgroup outsec"><div class="lgroup-h outh"><span class="lgh-main static"><span class="lgh-name">↗ ${tr('outSection')}</span><span class="lgh-count">${outs.length}</span></span></div>${rowsHTML(outs.sort((x, y) => byName(x[0], y[0])), {where: true})}</section>` : ''}
+    ${outs.length ? `<section class="lgroup outsec"><div class="lgroup-h outh"><span class="lgh-main static"><span class="lgh-name">${ICON.takeout} ${tr('outSection')}</span><span class="lgh-count">${outs.length}</span></span></div>${rowsHTML(outs.sort((x, y) => byName(x[0], y[0])), {where: true})}</section>` : ''}
     ${adSlot('banner')}`;
 }
 function ensureLooseId(pid){ const l = looseOf(pid); return l ? l.id : 'new:' + pid; }
@@ -2732,7 +2733,7 @@ function rowMenu(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
   openSheet(`<h3>${esc(it.name)}</h3><p class="hint">${esc(b.loose ? placeName(b.placeId) + ', ' + tr('notInBoxShort') : `${b.code} ${b.name}`)}</p><div class="menu">
     <button class="btn quiet" id="rmOpen">${tr('editItem')}</button>
-    ${isOut(it) ? `<button class="btn quiet" id="rmBack">↩ ${tr('putBack')}</button>` : `<button class="btn quiet" id="rmOut">↗ ${tr('takeOut')}</button>`}
+    ${isOut(it) ? `<button class="btn quiet icontext" id="rmBack">${ICON.putback}${tr('putBack')}</button>` : `<button class="btn quiet icontext" id="rmOut">${ICON.takeout}${tr('takeOut')}</button>`}
     <label class="field"><span>${tr('outUntil')}</span><input type="date" id="rmUntil" value="${esc(it.out && it.out.until || '')}" min="${today()}"></label>
     <button class="btn quiet" id="rmMove">${tr('move')}</button>
     <button class="btn quiet" id="rmColl"># ${tr('toCollection')}</button>
@@ -3022,8 +3023,8 @@ function addHereSheet(pid, boxId, includeBatch = true){
   const b = boxId && findBox(boxId);
   const intoBox = b && !b.loose;
   openSheet(`<h3>${esc(intoBox ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
-    <div class="choice addchoices">${intoBox ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`
-      : `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`}</div>
+    <div class="choice addchoices">${intoBox ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.stack}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`
+      : `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.stack}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`}</div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
   $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid, intoBox ? b.id : null); };
   $('#adItem').onclick = () => { closeSheet(); newItem(b ? b.id : ensureLoose(pid).id); };
@@ -3048,7 +3049,7 @@ function addNavSheet(initialPid){
     ? `<select class="add-place-select" aria-label="${esc(tr('where'))}">${storagePlaces.map(p => `<option value="${esc(p.id)}"${pid === p.id ? ' selected' : ''}>${esc(placeIcon(p) + ' ' + p.name)}</option>`).join('')}<option value="inbox"${isInbox(pid) ? ' selected' : ''}>📥 ${tr('noPlaceYet')}</option></select>`
     : `${storagePlaces.map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${isInbox(pid) ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
   openSheet(`<div class="addnav-sheet"><h3>${tr('addWhat')}</h3>
-    <div class="choice addchoices"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.camera}</span><span>${tr('addMultipleChoice')}</span></button></div>
+    <div class="choice addchoices"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.stack}</span><span>${tr('addMultipleChoice')}</span></button></div>
     <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips addplaces" id="adPlaces">${chips()}</div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div></div>`);
   $('#adPlaces').innerHTML = chips();
@@ -6545,7 +6546,7 @@ Object.assign(STR.da, {discardNewItemQ: 'Vil du kassere den nye ting?'});
 Object.assign(STR.nb, {discardNewItemQ: 'Vil du forkaste den nye tingen?'});
 Object.assign(STR.fi, {discardNewItemQ: 'Haluatko hylätä tämän uuden tavaran?'});
 Object.assign(STR.en, {itemSaveQ: 'Save changes to this item before leaving?', saveChanges: 'Save changes', discardChanges: 'Discard changes', keepEditing: 'Keep editing'});
-Object.assign(STR.sv, {itemSaveQ: 'Vill du spara ändringarna innan du lämnar saken?', saveChanges: 'Spara ändringar', discardChanges: 'Släng ändringar', keepEditing: 'Fortsätt redigera'});
+Object.assign(STR.sv, {itemSaveQ: 'Vill du spara ändringarna innan du lämnar saken?', saveChanges: 'Spara ändringar', discardChanges: 'Släng ändringar', keepEditing: 'Fortsätt ändra'});
 Object.assign(STR.da, {itemSaveQ: 'Vil du gemme ændringerne, før du forlader tingen?', saveChanges: 'Gem ændringer', discardChanges: 'Kassér ændringer', keepEditing: 'Fortsæt redigering'});
 Object.assign(STR.nb, {itemSaveQ: 'Vil du lagre endringene før du går ut av tingen?', saveChanges: 'Lagre endringer', discardChanges: 'Forkast endringer', keepEditing: 'Fortsett redigering'});
 Object.assign(STR.fi, {itemSaveQ: 'Tallennetaanko muutokset ennen kuin poistut tavarasta?', saveChanges: 'Tallenna muutokset', discardChanges: 'Hylkää muutokset', keepEditing: 'Jatka muokkausta'});
@@ -7345,6 +7346,172 @@ app.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') 
 let rkResizeT = null;
 window.addEventListener('resize', () => { if (placeView !== 'racks') return; clearTimeout(rkResizeT); rkResizeT = setTimeout(() => { if (!rkDrag && !(sheet && sheet.open)) render(); }, 200); });
 
+/* ---------- Danish, Norwegian and Finnish for newer texts (admin screens stay English) ---------- */
+Object.assign(STR.da, {
+  photoAdd: 'Tilføj foto', editPlace: n => `Ret ${n}`, foldSpace: n => `Fold ${n} sammen`, unfoldSpace: n => `Fold ${n} ud`, changePlaceIcon: n => `Vælg ikon til ${n}`,
+  documents: 'Dokumenter og kvitteringer', addDocument: '+ Tilføj dokument eller kvittering', noDocuments: 'Ingen dokumenter endnu.', linkToItem: 'Knyt til ting', notLinked: 'Ikke knyttet til en ting', linkedDocuments: 'Tilknyttede dokumenter', document: 'Dokument',
+  st_throw: 'Smides ud', st_custom: 'Andet…', customStatus: 'Skriv en status', addBoxOrItem: 'Tilføj kasse eller ting',
+  backupBanner: d => d ? `Seneste backup var ${d}. Alt ligger kun på denne telefon, så gem en kopi et andet sted.` : 'Du har ikke taget en backup endnu. Alt ligger kun på denne telefon, så gem en kopi et andet sted.',
+  savingDocument: 'Gemmer dokument…', moreBoxes: n => `+ ${n} kasser mere`,
+  whereYouAre: 'Hvor du er', moreDetails: 'Flere detaljer', openBoxNow: 'Åben kasse', closePhoto: 'Luk billedet', zoomHint: 'Knib eller dobbelttryk for at zoome',
+  h_stopVoice: 'Stop stemmenoten først.', h_noRec: 'Optagelse virker ikke i denne browser.', h_micBlocked: 'Mikrofonen er blokeret. Tillad den for Storrrage i Chromes webstedsindstillinger.',
+  h_aiBusy: 'Tænker stadig over det, du sagde sidst.', h_boxLabels: 'Kasseetiketter', h_printHint: 'Udskriv siden, klip etiketterne ud og tape dem på kasserne.',
+  h_addBoxesFirst: 'Tilføj nogle kasser først.', h_building: 'Laver rapporten…', h_nothingBackup: 'Der er intet at tage backup af endnu.', h_preparingBackup: 'Forbereder backup…', h_restoring: 'Gendanner…',
+  rp_title: 'Opbevaringsoversigt', rp_item: 'Ting', rp_value: 'Anslået værdi', rp_stored: 'Opbevaret siden', rp_registered: 'Registreret', rp_photos: 'Fotos', rp_photo: 'Foto', rp_empty: 'Tom.',
+  rp_packed: (d, n, v) => `Pakket ${d}. ${n} ting, ${v}.`, rp_generated: (d, b, n, v) => `Lavet ${d}. ${b} kasser, ${n} ting, anslået samlet værdi ${v}.`,
+  rp_note: '“Registreret” er, da tingen blev lagt ind. Fototiderne kommer fra billedfilen.', rp_ready: 'Forsikringsrapporten er klar',
+  joinConfirmQ: 'Bliv medlem af husstanden? Alle i den kan se dine ting. Brug kun en kode fra en, du kender.',
+  noSignalTxt: 'Chromes talegenkendelse kræver som regel signal. Uden signal kan du trykke i tekstfeltet og bruge mikrofonen på tastaturet i stedet.',
+  shareCopyHint: 'Den anden åbner Storrrage og vælger Gendan fra backup. De får deres egen kopi; den synkroniseres ikke, før login og deling kommer.',
+  createHousehold: 'Start en husstand', createHint: 'Dine ting uploades til husstanden. Bagefter kan du invitere andre.', householdCreated: 'Husstanden er oprettet – invitér nu de andre.', haveHousehold: 'Har du allerede en husstand eller en invitation? Log ind',
+  loginForMore: 'Log ind for at dele med husstanden og få påmindelser på e-mail.', morePeople: 'Andre i husstanden', morePeopleHint: 'Personer, der ikke bruger appen, men ejer ting, fx børn. Vælg dem som ejer af en ting.',
+  lockedHere: 'Låst på denne telefon – scan en QR-kode fra en anden telefon', unlockTitle: 'Lås op på denne telefon', unlockHint: 'Åbn ☰ → Husstand og synk → Invitér nogen på en anden telefon i husstanden, og scan koden her.',
+  uploadImageOnly: 'Vælg et gyldigt JPEG-, PNG-, WebP- eller GIF-billede.', uploadPdfOnly: 'Vælg et gyldigt PDF-dokument.', uploadTooLarge: 'Filen er for stor. Grænsen er 25 MB pr. fil.', uploadUnsafeType: 'Denne filtype eller dette indhold understøttes ikke.', backupInvalid: 'Filen er ikke en gyldig Storrrage-backup.',
+  takePhoto: 'Tag et billede', pickPhoto: 'Vælg fra billeder', photoUploadCancelled: 'Tingen blev lukket, før uploaden var færdig, så filen blev ikke vedhæftet.',
+  reminderNudgeTitle: 'Slå påmindelser til?', reminderNudgeText: 'Påmindelsen er gemt, men Storrrage kan ikke give besked, før notifikationer er tilladt på telefonen.', reminderNudgeAction: 'Tillad notifikationer', mv_created: 'Oprettet – ikke pakket',
+  rk_view: 'Reoler', rk_small: 'Lille', rk_medium: 'Mellem', rk_large: 'Stor', rk_sizeL: 'Størrelse', rk_measure: 'Mål', rk_measureHint: 'Viser centimeter: hvor bred hver reol er, hvor fuld hver hylde er, og hvor stor hver kasse er.',
+  rk_tidy: 'Ryd op', rk_wall_left: 'Venstre væg', rk_wall_back: 'Bageste væg', rk_wall_right: 'Højre væg', rk_wall: 'Væg', rk_unitName: n => `Reol ${n}`, rk_addUnit: 'Tilføj reol', rk_editUnit: 'Ret reol',
+  rk_width: 'Bredde (cm)', rk_shelves: 'Hylder', rk_gap: 'Højde mellem hylderne (cm)', rk_delUnit: 'Fjern reolen',
+  rk_delUnitQ: n => n ? `Fjern reolen? De ${n} kasser og ting på den bliver her, bare ikke på en reol.` : 'Fjern reolen?',
+  rk_badSize: 'Tjek tallene: bredde 30–400 cm, 1–8 hylder og 15–150 cm mellem hylderne.', rk_empty: 'Ingen reoler her endnu. Tilføj dine reoler, og træk så kasser og ting op på dem.',
+  rk_quick: 'Én reol pr. væg', rk_unplaced: 'Ikke på en reol endnu', rk_unplacedEmpty: 'Træk herhen for at tage noget ned fra reolen.', rk_autoPlace: 'Placér dem for mig',
+  rk_dragHint: 'Tryk for at åbne. Hold og træk for at flytte – op på en hylde, mellem kasser eller oven på en kasse.',
+  rk_shelfN: n => `Hylde ${n}`, rk_free: n => `${n} cm ledigt`, rk_fits: t => `Plads til en ${t}`, rk_used: (u, w, h) => `${u} af ${w} cm brugt, ${h} cm højt`, rk_tooWide: n => `${n} cm for bredt`, rk_tooTall: 'For høj til hylden',
+  rk_unitMeta: (w, s, n) => `${w} cm, ${s} hylder, ${n} på den`, rk_offShelf: x => `${x} står ikke længere på en reol`,
+  rk_boxType: 'Kassens størrelse', rk_bt_moving: 'Flyttekasse 60×40×40 cm', rk_bt_banana: 'Bananaskasse 50×40×25 cm', rk_bt_small: 'Lille kasse 40×30×30 cm', rk_bt_custom: 'Egne mål',
+  rk_bn_moving: 'flyttekasse', rk_bn_banana: 'bananaskasse', rk_bn_small: 'lille kasse', rk_w: 'Bredde', rk_h: 'Højde', rk_d: 'Dybde', rk_addOn: (u, s) => `Tilføj til ${u}, ${s}`,
+  rk_bottom: 'nederste hylde', rk_top: 'øverste hylde', rk_nth: n => `hylde ${n} nedefra`, rk_only: 'hylden',
+  rk_simple: 'Enkel', rk_detailed: 'Detaljeret', rk_now: 'Hvor de står nu', rk_after: 'Hvor de skal hen', rk_toMove: 'Skal flyttes (tal = trin)', rk_stays: 'Bliver', rk_nothing: 'Alt står allerede, hvor reglerne vil have det.',
+  rk_moved: 'Jeg har flyttet dem', rk_from: 'Fra', rk_to: 'Til', rk_tidyHint: 'Vælg reglerne. Forslaget bruger kun pladser, hvor kassen kan være.', rk_zones: 'Nederste hylde: tungt. Midten: let at nå. Øverst: let og sjældent brugt.',
+  rk_r_heavy: 'Tungt nederst', rk_r_heavyD: 'Skånsomt for ryggen og sikrere for reolen', rk_r_reach: 'Det du ofte bruger, inden for rækkevidde', rk_r_reachD: 'Midterhylderne, på reolen tættest på døren',
+  rk_r_top: 'Let og sjældent brugt øverst', rk_r_topD: 'Minder og arkivkasser kommer øverst', rk_r_season: 'Næste sæson inden for rækkevidde', rk_r_seasonD: 'Det, der ikke er sæson, kommer højt op',
+  rk_r_fragile: 'Intet oven på skrøbelige kasser', rk_r_fragileD: 'Skrøbelige kasser får deres egen plads', rk_ruleCol: 'Bryder reglen', rk_nowCol: 'Nu', rk_afterCol: 'Efter', rk_guesses: n => `Tjek gættene (${n})`,
+  rk_guessHint: 'Gættet ud fra navne, indhold, sæson og hvornår du sidst åbnede kassen. Ændrer du et, gælder dit.',
+  rk_weight: 'Vægt', rk_use: 'Bruges', rk_fragileL: 'Skrøbelig', rk_seasonL: 'Sæson', rk_light: 'Let ~3 kg', rk_mediumW: 'Mellem ~8 kg', rk_heavy: 'Tung ~15 kg', rk_often: 'Ofte', rk_sometimes: 'Nogle gange', rk_rarely: 'Sjældent',
+  rk_yes: 'Ja', rk_no: 'Nej', rk_allYear: 'Hele året', rk_christmas: 'Jul', rk_easter: 'Påske', rk_winter: 'Vinter', rk_summer: 'Sommer',
+  rk_why_heavy: 'Tung – nederste hylde', rk_why_reach: 'Bruges ofte – let at nå', rk_why_seasonUp: s => `${s} nærmer sig – inden for rækkevidde`, rk_why_seasonOff: 'Ikke sæson – højt oppe', rk_why_top: 'Let eller sjældent brugt – højt oppe',
+  rk_why_room: 'Giver plads til kasser, der har brug for pladsen', rk_why_place: 'Får en plads på en reol', rk_updated: 'Reolerne er opdateret', rk_notPlaced: 'ikke på en reol', rk_noRoom: n => `${n} kunne ikke være nogen steder – tilføj en reol eller hylde.`,
+  rk_q: x => `Er det i orden, at ${x} står her?`, rk_qW: n => `Den stikker ${n} cm ud.`, rk_qH: n => `Stablen er ${n} cm for høj.`, rk_qYes: 'Ja, det er i orden', rk_qNo: 'Nej, flyt den', rk_hard: 'Det ser svært ud at få plads til',
+  rk_hardW: (need, have) => `Kasserne kræver ${need} cm, men reolen er ${have} cm bred (målt).`, rk_hardH: (need, have) => `Stablen er ${need} cm høj, men der er ${have} cm op til næste hylde (målt).`,
+  rk_editM: 'Tjek målene', rk_force: 'Det er der plads til alligevel…', rk_forceOk: 'Behold sådan', rk_forceQ: 'Du har målt både reolen og kasserne, og tallene går ikke op. Vil du alligevel have det sådan?',
+  rk_grewW: (u, w) => `${u} er nu ${w} cm bred`, rk_grewH: (s, h) => `${s} er nu ${h} cm høj`, rk_measured: 'Jeg har målt reolen', rk_measuredHint: 'Så advarer appen, når noget ikke kan være der, i stedet for at gøre reolen større.',
+  rk_gapsNote: x => `Nogle hylder er højere: ${x}. Ændrer du højden eller antallet af hylder, nulstilles de.`,
+  rk_room: 'Rummet', rk_roomEdit: 'Ret rummet', rk_planHint: 'Tryk for at hoppe derhen. Hold en reol og træk den til en væg.', rk_planAt: (w, n) => `${w}: ${n} cm fra hjørnet`, rk_planNoRoom: 'Ingen plads der – den ville gå ind i en anden reol', rk_planMoved: (u, w) => `${u} flyttet til ${w}`,
+  rk_roomW: 'Bredde, bageste væg (cm)', rk_roomD: 'Dybde, sidevægge (cm)', rk_door: 'Dør', rk_door_left: 'Venstre', rk_door_mid: 'Midten', rk_door_right: 'Højre', rk_doorW: 'Dørens bredde (cm)',
+  rk_roomMeasured: 'Jeg har målt rummet', rk_roomMeasuredHint: 'Så advarer appen, når reoler ikke kan være langs en væg, i stedet for at gøre rummet større.', rk_unitsInRoom: 'Reoler', rk_fromCorner: 'Fra hjørnet (cm)', rk_auto: 'auto', rk_depth: 'Dybde (cm)',
+  rk_cornerHint: 'Mål fra det bageste hjørne langs sidevæggene og fra venstre hjørne langs den bageste væg. Lad feltet stå tomt, så placerer appen dem.',
+  rk_wallFull: (u, w, need, have) => `${u} kan ikke være langs ${w} (${need} af ${have} cm).`, rk_overlap: (a, b) => `${a} og ${b} går ind i hinanden.`, rk_roomBad: 'Tjek tallene: rummet 50–2000 cm, døren 50–300 cm, reolens dybde 10–200 cm.'
+});
+Object.assign(STR.nb, {
+  photoAdd: 'Legg til bilde', editPlace: n => `Endre ${n}`, foldSpace: n => `Fold sammen ${n}`, unfoldSpace: n => `Fold ut ${n}`, changePlaceIcon: n => `Velg ikon for ${n}`,
+  documents: 'Dokumenter og kvitteringer', addDocument: '+ Legg til dokument eller kvittering', noDocuments: 'Ingen dokumenter ennå.', linkToItem: 'Knytt til ting', notLinked: 'Ikke knyttet til en ting', linkedDocuments: 'Tilknyttede dokumenter', document: 'Dokument',
+  st_throw: 'Kastes', st_custom: 'Annet…', customStatus: 'Skriv en status', addBoxOrItem: 'Legg til eske eller ting',
+  backupBanner: d => d ? `Siste sikkerhetskopi var ${d}. Alt ligger bare på denne telefonen, så ta vare på en kopi et annet sted.` : 'Du har ikke tatt sikkerhetskopi ennå. Alt ligger bare på denne telefonen, så ta vare på en kopi et annet sted.',
+  savingDocument: 'Lagrer dokument…', moreBoxes: n => `+ ${n} esker til`,
+  whereYouAre: 'Hvor du er', moreDetails: 'Flere detaljer', openBoxNow: 'Åpen eske', closePhoto: 'Lukk bildet', zoomHint: 'Knip eller dobbelttrykk for å zoome',
+  h_stopVoice: 'Stopp talenotatet først.', h_noRec: 'Opptak fungerer ikke i denne nettleseren.', h_micBlocked: 'Mikrofonen er blokkert. Tillat den for Storrrage i Chromes nettstedsinnstillinger.',
+  h_aiBusy: 'Tenker fortsatt på det du sa sist.', h_boxLabels: 'Eskeetiketter', h_printHint: 'Skriv ut siden, klipp ut etikettene og teip dem på eskene.',
+  h_addBoxesFirst: 'Legg til noen esker først.', h_building: 'Lager rapporten…', h_nothingBackup: 'Det er ingenting å ta sikkerhetskopi av ennå.', h_preparingBackup: 'Forbereder sikkerhetskopi…', h_restoring: 'Gjenoppretter…',
+  rp_title: 'Lageroversikt', rp_item: 'Ting', rp_value: 'Anslått verdi', rp_stored: 'Lagret siden', rp_registered: 'Registrert', rp_photos: 'Bilder', rp_photo: 'Bilde', rp_empty: 'Tom.',
+  rp_packed: (d, n, v) => `Pakket ${d}. ${n} ting, ${v}.`, rp_generated: (d, b, n, v) => `Laget ${d}. ${b} esker, ${n} ting, anslått totalverdi ${v}.`,
+  rp_note: '«Registrert» er da tingen ble lagt inn. Bildetidene kommer fra bildefilen.', rp_ready: 'Forsikringsrapporten er klar',
+  joinConfirmQ: 'Bli med i husstanden? Alle i den ser tingene dine. Bruk bare en kode fra noen du kjenner.',
+  noSignalTxt: 'Chromes talegjenkjenning trenger som regel dekning. Uten dekning kan du trykke i tekstfeltet og bruke mikrofonen på tastaturet i stedet.',
+  shareCopyHint: 'Den andre åpner Storrrage og velger Gjenopprett fra sikkerhetskopi. De får sin egen kopi; den synkroniseres ikke før innlogging og deling kommer.',
+  createHousehold: 'Start en husstand', createHint: 'Tingene dine lastes opp til husstanden. Etterpå kan du invitere andre.', householdCreated: 'Husstanden er opprettet – inviter de andre nå.', haveHousehold: 'Har du allerede en husstand eller en invitasjon? Logg inn',
+  loginForMore: 'Logg inn for å dele med husstanden og få påminnelser på e-post.', morePeople: 'Andre i husstanden', morePeopleHint: 'Folk som ikke bruker appen, men eier ting, f.eks. barn. Velg dem som eier av en ting.',
+  lockedHere: 'Låst på denne telefonen – skann en QR-kode fra en annen telefon', unlockTitle: 'Lås opp på denne telefonen', unlockHint: 'Åpne ☰ → Husstand og synk → Inviter noen på en annen telefon i husstanden, og skann koden her.',
+  uploadImageOnly: 'Velg et gyldig JPEG-, PNG-, WebP- eller GIF-bilde.', uploadPdfOnly: 'Velg et gyldig PDF-dokument.', uploadTooLarge: 'Filen er for stor. Grensen er 25 MB per fil.', uploadUnsafeType: 'Denne filtypen eller dette innholdet støttes ikke.', backupInvalid: 'Filen er ikke en gyldig Storrrage-sikkerhetskopi.',
+  takePhoto: 'Ta et bilde', pickPhoto: 'Velg fra bilder', photoUploadCancelled: 'Tingen ble lukket før opplastingen var ferdig, så filen ble ikke lagt ved.',
+  reminderNudgeTitle: 'Slå på påminnelser?', reminderNudgeText: 'Påminnelsen er lagret, men Storrrage kan ikke varsle deg før varsler er tillatt på telefonen.', reminderNudgeAction: 'Tillat varsler', mv_created: 'Opprettet – ikke pakket',
+  rk_view: 'Reoler', rk_small: 'Liten', rk_medium: 'Middels', rk_large: 'Stor', rk_sizeL: 'Størrelse', rk_measure: 'Mål', rk_measureHint: 'Viser centimeter: hvor bred hver reol er, hvor full hver hylle er og hvor stor hver eske er.',
+  rk_tidy: 'Rydd', rk_wall_left: 'Venstre vegg', rk_wall_back: 'Bakre vegg', rk_wall_right: 'Høyre vegg', rk_wall: 'Vegg', rk_unitName: n => `Reol ${n}`, rk_addUnit: 'Legg til reol', rk_editUnit: 'Endre reol',
+  rk_width: 'Bredde (cm)', rk_shelves: 'Hyller', rk_gap: 'Høyde mellom hyllene (cm)', rk_delUnit: 'Fjern reolen',
+  rk_delUnitQ: n => n ? `Fjerne reolen? De ${n} eskene og tingene på den blir her, bare ikke på en reol.` : 'Fjerne reolen?',
+  rk_badSize: 'Sjekk tallene: bredde 30–400 cm, 1–8 hyller og 15–150 cm mellom hyllene.', rk_empty: 'Ingen reoler her ennå. Legg til reolene du har, og dra så esker og ting opp på dem.',
+  rk_quick: 'Én reol per vegg', rk_unplaced: 'Ikke på en reol ennå', rk_unplacedEmpty: 'Dra hit for å ta noe ned fra reolen.', rk_autoPlace: 'Plasser dem for meg',
+  rk_dragHint: 'Trykk for å åpne. Hold inne og dra for å flytte – til en hylle, mellom esker eller oppå en eske.',
+  rk_shelfN: n => `Hylle ${n}`, rk_free: n => `${n} cm ledig`, rk_fits: t => `Plass til en ${t}`, rk_used: (u, w, h) => `${u} av ${w} cm brukt, ${h} cm høyt`, rk_tooWide: n => `${n} cm for bredt`, rk_tooTall: 'For høy for hyllen',
+  rk_unitMeta: (w, s, n) => `${w} cm, ${s} hyller, ${n} på den`, rk_offShelf: x => `${x} står ikke lenger på en reol`,
+  rk_boxType: 'Eskens størrelse', rk_bt_moving: 'Flytteeske 60×40×40 cm', rk_bt_banana: 'Bananeske 50×40×25 cm', rk_bt_small: 'Liten eske 40×30×30 cm', rk_bt_custom: 'Egne mål',
+  rk_bn_moving: 'flytteeske', rk_bn_banana: 'bananeske', rk_bn_small: 'liten eske', rk_w: 'Bredde', rk_h: 'Høyde', rk_d: 'Dybde', rk_addOn: (u, s) => `Legg til på ${u}, ${s}`,
+  rk_bottom: 'nederste hylle', rk_top: 'øverste hylle', rk_nth: n => `hylle ${n} nedenfra`, rk_only: 'hyllen',
+  rk_simple: 'Enkel', rk_detailed: 'Detaljert', rk_now: 'Hvor de står nå', rk_after: 'Hvor de skal', rk_toMove: 'Skal flyttes (tall = steg)', rk_stays: 'Blir stående', rk_nothing: 'Alt står allerede der reglene vil ha det.',
+  rk_moved: 'Jeg har flyttet dem', rk_from: 'Fra', rk_to: 'Til', rk_tidyHint: 'Velg reglene. Forslaget bruker bare plasser der esken får plass.', rk_zones: 'Nederste hylle: tungt. Midten: lett å nå. Øverst: lett og sjelden brukt.',
+  rk_r_heavy: 'Tungt nederst', rk_r_heavyD: 'Skånsomt for ryggen og tryggere for reolen', rk_r_reach: 'Det du bruker ofte, lett å nå', rk_r_reachD: 'Midthyllene, på reolen nærmest døren',
+  rk_r_top: 'Lett og sjelden brukt øverst', rk_r_topD: 'Minner og arkiveesker havner øverst', rk_r_season: 'Neste sesong lett å nå', rk_r_seasonD: 'Det som ikke er sesong, havner høyt oppe',
+  rk_r_fragile: 'Ingenting oppå skjøre esker', rk_r_fragileD: 'Skjøre esker får sin egen plass', rk_ruleCol: 'Bryter regelen', rk_nowCol: 'Nå', rk_afterCol: 'Etter', rk_guesses: n => `Sjekk gjetningene (${n})`,
+  rk_guessHint: 'Gjettet ut fra navn, innhold, sesong og når du sist åpnet esken. Endrer du en, gjelder din.',
+  rk_weight: 'Vekt', rk_use: 'Brukes', rk_fragileL: 'Skjør', rk_seasonL: 'Sesong', rk_light: 'Lett ~3 kg', rk_mediumW: 'Middels ~8 kg', rk_heavy: 'Tung ~15 kg', rk_often: 'Ofte', rk_sometimes: 'Av og til', rk_rarely: 'Sjelden',
+  rk_yes: 'Ja', rk_no: 'Nei', rk_allYear: 'Hele året', rk_christmas: 'Jul', rk_easter: 'Påske', rk_winter: 'Vinter', rk_summer: 'Sommer',
+  rk_why_heavy: 'Tung – nederste hylle', rk_why_reach: 'Brukes ofte – lett å nå', rk_why_seasonUp: s => `${s} nærmer seg – lett å nå`, rk_why_seasonOff: 'Ikke sesong – høyt oppe', rk_why_top: 'Lett eller sjelden brukt – høyt oppe',
+  rk_why_room: 'Gir plass til esker som trenger plassen', rk_why_place: 'Får en plass på en reol', rk_updated: 'Reolene er oppdatert', rk_notPlaced: 'ikke på en reol', rk_noRoom: n => `${n} fikk ikke plass noe sted – legg til en reol eller hylle.`,
+  rk_q: x => `Er det greit at ${x} står her?`, rk_qW: n => `Den stikker ut ${n} cm.`, rk_qH: n => `Stabelen er ${n} cm for høy.`, rk_qYes: 'Ja, det er greit', rk_qNo: 'Nei, flytt den', rk_hard: 'Dette ser vanskelig ut å få plass til',
+  rk_hardW: (need, have) => `Eskene trenger ${need} cm, men reolen er ${have} cm bred (målt).`, rk_hardH: (need, have) => `Stabelen er ${need} cm høy, men det er ${have} cm opp til neste hylle (målt).`,
+  rk_editM: 'Sjekk målene', rk_force: 'Det får plass likevel…', rk_forceOk: 'Behold slik', rk_forceQ: 'Du har målt både reolen og eskene, og tallene går ikke opp. Vil du likevel ha det slik?',
+  rk_grewW: (u, w) => `${u} er nå ${w} cm bred`, rk_grewH: (s, h) => `${s} er nå ${h} cm høy`, rk_measured: 'Jeg har målt reolen', rk_measuredHint: 'Da varsler appen når noe ikke får plass, i stedet for å gjøre reolen større.',
+  rk_gapsNote: x => `Noen hyller er høyere: ${x}. Endrer du høyden eller antall hyller, nullstilles de.`,
+  rk_room: 'Rommet', rk_roomEdit: 'Endre rommet', rk_planHint: 'Trykk for å hoppe dit. Hold inne en reol og dra den til en vegg.', rk_planAt: (w, n) => `${w}: ${n} cm fra hjørnet`, rk_planNoRoom: 'Ingen plass der – den ville gått inn i en annen reol', rk_planMoved: (u, w) => `${u} flyttet til ${w}`,
+  rk_roomW: 'Bredde, bakre vegg (cm)', rk_roomD: 'Dybde, sidevegger (cm)', rk_door: 'Dør', rk_door_left: 'Venstre', rk_door_mid: 'Midten', rk_door_right: 'Høyre', rk_doorW: 'Dørens bredde (cm)',
+  rk_roomMeasured: 'Jeg har målt rommet', rk_roomMeasuredHint: 'Da varsler appen når reoler ikke får plass langs en vegg, i stedet for å gjøre rommet større.', rk_unitsInRoom: 'Reoler', rk_fromCorner: 'Fra hjørnet (cm)', rk_auto: 'auto', rk_depth: 'Dybde (cm)',
+  rk_cornerHint: 'Mål fra det bakre hjørnet langs sideveggene og fra venstre hjørne langs bakre vegg. La feltet stå tomt, så plasserer appen dem.',
+  rk_wallFull: (u, w, need, have) => `${u} får ikke plass langs ${w} (${need} av ${have} cm).`, rk_overlap: (a, b) => `${a} og ${b} går inn i hverandre.`, rk_roomBad: 'Sjekk tallene: rommet 50–2000 cm, døren 50–300 cm, reolens dybde 10–200 cm.'
+});
+Object.assign(STR.fi, {
+  photoAdd: 'Lisää kuva', editPlace: n => `Muokkaa: ${n}`, foldSpace: n => `Pienennä ${n}`, unfoldSpace: n => `Laajenna ${n}`, changePlaceIcon: n => `Valitse kuvake: ${n}`,
+  documents: 'Asiakirjat ja kuitit', addDocument: '+ Lisää asiakirja tai kuitti', noDocuments: 'Ei asiakirjoja vielä.', linkToItem: 'Liitä tavaraan', notLinked: 'Ei liitetty tavaraan', linkedDocuments: 'Liitetyt asiakirjat', document: 'Asiakirja',
+  st_throw: 'Heitetään pois', st_custom: 'Muu…', customStatus: 'Kirjoita tila', addBoxOrItem: 'Lisää laatikko tai tavara',
+  backupBanner: d => d ? `Viimeisin varmuuskopio: ${d}. Kaikki on vain tässä puhelimessa, joten säilytä kopio muualla.` : 'Et ole vielä tehnyt varmuuskopiota. Kaikki on vain tässä puhelimessa, joten säilytä kopio muualla.',
+  savingDocument: 'Tallennetaan asiakirjaa…', moreBoxes: n => `+ ${n} laatikkoa lisää`,
+  whereYouAre: 'Missä olet', moreDetails: 'Lisätietoja', openBoxNow: 'Avoin laatikko', closePhoto: 'Sulje kuva', zoomHint: 'Nipistä tai kaksoisnapauta zoomataksesi',
+  h_stopVoice: 'Lopeta ääniviesti ensin.', h_noRec: 'Tallennus ei toimi tässä selaimessa.', h_micBlocked: 'Mikrofoni on estetty. Salli se Storrragelle Chromen sivustoasetuksissa.',
+  h_aiBusy: 'Mietin vielä edellistä viestiäsi.', h_boxLabels: 'Laatikkotarrat', h_printHint: 'Tulosta sivu, leikkaa tarrat irti ja teippaa ne laatikoihin.',
+  h_addBoxesFirst: 'Lisää ensin muutama laatikko.', h_building: 'Tehdään raporttia…', h_nothingBackup: 'Ei vielä mitään varmuuskopioitavaa.', h_preparingBackup: 'Valmistellaan varmuuskopiota…', h_restoring: 'Palautetaan…',
+  rp_title: 'Varastoluettelo', rp_item: 'Tavara', rp_value: 'Arvioitu arvo', rp_stored: 'Säilytetty alkaen', rp_registered: 'Kirjattu', rp_photos: 'Kuvat', rp_photo: 'Kuva', rp_empty: 'Tyhjä.',
+  rp_packed: (d, n, v) => `Pakattu ${d}. ${n} tavaraa, ${v}.`, rp_generated: (d, b, n, v) => `Luotu ${d}. ${b} laatikkoa, ${n} tavaraa, arvioitu kokonaisarvo ${v}.`,
+  rp_note: '”Kirjattu” on hetki, jolloin tavara lisättiin luetteloon. Kuvien ajat tulevat kuvatiedostosta.', rp_ready: 'Vakuutusraportti on valmis',
+  joinConfirmQ: 'Liitytäänkö kotitalouteen? Kaikki siinä näkevät tavarasi. Käytä vain tutulta saatua koodia.',
+  noSignalTxt: 'Chromen puheentunnistus tarvitsee yleensä verkon. Ilman sitä napauta tekstikenttää ja käytä näppäimistön mikrofonia.',
+  shareCopyHint: 'Toinen avaa Storrragen ja valitsee Palauta varmuuskopiosta. Hän saa oman kopion; se ei synkronoidu ennen kuin kirjautuminen ja jakaminen tulevat.',
+  createHousehold: 'Perusta kotitalous', createHint: 'Tavarasi ladataan kotitalouteen. Sen jälkeen voit kutsua muita.', householdCreated: 'Kotitalous on luotu – kutsu nyt muut.', haveHousehold: 'Onko sinulla jo kotitalous tai kutsu? Kirjaudu',
+  loginForMore: 'Kirjaudu jakaaksesi kotitalouden kanssa ja saadaksesi muistutukset sähköpostiin.', morePeople: 'Muut kotitaloudessa', morePeopleHint: 'Henkilöt, jotka eivät käytä sovellusta mutta omistavat tavaroita, esim. lapset. Valitse heidät tavaran omistajaksi.',
+  lockedHere: 'Lukittu tässä puhelimessa – skannaa QR-koodi toisesta puhelimesta', unlockTitle: 'Avaa tässä puhelimessa', unlockHint: 'Avaa toisessa kotitalouden puhelimessa ☰ → Kotitalous ja synkronointi → Kutsu joku, ja skannaa koodi tässä.',
+  uploadImageOnly: 'Valitse kelvollinen JPEG-, PNG-, WebP- tai GIF-kuva.', uploadPdfOnly: 'Valitse kelvollinen PDF-asiakirja.', uploadTooLarge: 'Tiedosto on liian suuri. Raja on 25 Mt tiedostoa kohden.', uploadUnsafeType: 'Tätä tiedostotyyppiä tai sisältöä ei tueta.', backupInvalid: 'Tiedosto ei ole kelvollinen Storrrage-varmuuskopio.',
+  takePhoto: 'Ota kuva', pickPhoto: 'Valitse kuvista', photoUploadCancelled: 'Tavara suljettiin ennen kuin lataus valmistui, joten tiedostoa ei liitetty.',
+  reminderNudgeTitle: 'Otetaanko muistutukset käyttöön?', reminderNudgeText: 'Muistutus on tallennettu, mutta Storrrage voi ilmoittaa vasta, kun ilmoitukset on sallittu puhelimessa.', reminderNudgeAction: 'Salli ilmoitukset', mv_created: 'Luotu – ei pakattu',
+  rk_view: 'Hyllyt', rk_small: 'Pieni', rk_medium: 'Keski', rk_large: 'Suuri', rk_sizeL: 'Koko', rk_measure: 'Mitat', rk_measureHint: 'Näyttää senttimetrit: kunkin hyllyn leveyden, tasojen täyttöasteen ja laatikoiden koon.',
+  rk_tidy: 'Järjestä', rk_wall_left: 'Vasen seinä', rk_wall_back: 'Takaseinä', rk_wall_right: 'Oikea seinä', rk_wall: 'Seinä', rk_unitName: n => `Hylly ${n}`, rk_addUnit: 'Lisää hylly', rk_editUnit: 'Muokkaa hyllyä',
+  rk_width: 'Leveys (cm)', rk_shelves: 'Tasot', rk_gap: 'Tasojen väli (cm)', rk_delUnit: 'Poista hylly',
+  rk_delUnitQ: n => n ? `Poistetaanko hylly? Sen ${n} laatikkoa ja tavaraa jäävät tähän paikkaan, eivät vain hyllylle.` : 'Poistetaanko hylly?',
+  rk_badSize: 'Tarkista luvut: leveys 30–400 cm, 1–8 tasoa ja tasojen väli 15–150 cm.', rk_empty: 'Ei vielä hyllyjä. Lisää hyllysi ja vedä laatikot ja tavarat niille.',
+  rk_quick: 'Yksi hylly seinää kohden', rk_unplaced: 'Ei vielä hyllyllä', rk_unplacedEmpty: 'Vedä tähän ottaaksesi jotain pois hyllyltä.', rk_autoPlace: 'Sijoita puolestani',
+  rk_dragHint: 'Napauta avataksesi. Pidä ja vedä siirtääksesi – tasolle, laatikoiden väliin tai laatikon päälle.',
+  rk_shelfN: n => `Taso ${n}`, rk_free: n => `${n} cm vapaana`, rk_fits: t => `Mahtuu: ${t}`, rk_used: (u, w, h) => `${u}/${w} cm käytössä, korkeus ${h} cm`, rk_tooWide: n => `${n} cm liian leveä`, rk_tooTall: 'Liian korkea tasolle',
+  rk_unitMeta: (w, s, n) => `${w} cm, ${s} tasoa, ${n} hyllyllä`, rk_offShelf: x => `${x} ei ole enää hyllyllä`,
+  rk_boxType: 'Laatikon koko', rk_bt_moving: 'Muuttolaatikko 60×40×40 cm', rk_bt_banana: 'Banaanilaatikko 50×40×25 cm', rk_bt_small: 'Pieni laatikko 40×30×30 cm', rk_bt_custom: 'Omat mitat',
+  rk_bn_moving: 'muuttolaatikko', rk_bn_banana: 'banaanilaatikko', rk_bn_small: 'pieni laatikko', rk_w: 'Leveys', rk_h: 'Korkeus', rk_d: 'Syvyys', rk_addOn: (u, s) => `Lisää: ${u}, ${s}`,
+  rk_bottom: 'alin taso', rk_top: 'ylin taso', rk_nth: n => `taso ${n} alhaalta`, rk_only: 'taso',
+  rk_simple: 'Yksinkertainen', rk_detailed: 'Yksityiskohtainen', rk_now: 'Missä ne ovat nyt', rk_after: 'Minne ne menevät', rk_toMove: 'Siirrettävä (numero = vaihe)', rk_stays: 'Pysyy', rk_nothing: 'Kaikki on jo sääntöjen mukaisilla paikoilla.',
+  rk_moved: 'Siirsin ne', rk_from: 'Mistä', rk_to: 'Minne', rk_tidyHint: 'Valitse säännöt. Ehdotus käyttää vain paikkoja, joihin laatikko mahtuu.', rk_zones: 'Alin taso: painavat. Keskitasot: helposti ulottuvilla. Ylin taso: kevyet ja harvoin käytetyt.',
+  rk_r_heavy: 'Painavat alimmaksi', rk_r_heavyD: 'Helpompi selälle ja turvallisempi hyllylle', rk_r_reach: 'Usein käytetyt ulottuville', rk_r_reachD: 'Keskitasoille, ovea lähimpään hyllyyn',
+  rk_r_top: 'Kevyet ja harvoin käytetyt ylös', rk_r_topD: 'Muistot ja arkistolaatikot ylimmäksi', rk_r_season: 'Tuleva kausi ulottuville', rk_r_seasonD: 'Kauden ulkopuoliset ylös',
+  rk_r_fragile: 'Ei mitään särkyvien päälle', rk_r_fragileD: 'Särkyvät laatikot saavat oman paikan', rk_ruleCol: 'Rikkoo sääntöä', rk_nowCol: 'Nyt', rk_afterCol: 'Jälkeen', rk_guesses: n => `Tarkista arvaukset (${n})`,
+  rk_guessHint: 'Arvattu nimistä, sisällöstä, kaudesta ja siitä, milloin avasit laatikon viimeksi. Jos muutat, sinun valintasi pätee.',
+  rk_weight: 'Paino', rk_use: 'Käyttö', rk_fragileL: 'Särkyvä', rk_seasonL: 'Kausi', rk_light: 'Kevyt ~3 kg', rk_mediumW: 'Keski ~8 kg', rk_heavy: 'Painava ~15 kg', rk_often: 'Usein', rk_sometimes: 'Joskus', rk_rarely: 'Harvoin',
+  rk_yes: 'Kyllä', rk_no: 'Ei', rk_allYear: 'Koko vuoden', rk_christmas: 'Joulu', rk_easter: 'Pääsiäinen', rk_winter: 'Talvi', rk_summer: 'Kesä',
+  rk_why_heavy: 'Painava – alin taso', rk_why_reach: 'Usein käytetty – ulottuvilla', rk_why_seasonUp: s => `${s} lähestyy – ulottuvilla`, rk_why_seasonOff: 'Ei kausi – ylhäällä', rk_why_top: 'Kevyt tai harvoin käytetty – ylhäällä',
+  rk_why_room: 'Tekee tilaa laatikoille, jotka tarvitsevat paikan', rk_why_place: 'Saa paikan hyllyltä', rk_updated: 'Hyllyt päivitetty', rk_notPlaced: 'ei hyllyllä', rk_noRoom: n => `${n} ei mahtunut minnekään – lisää hylly tai taso.`,
+  rk_q: x => `Saako ${x} olla tässä?`, rk_qW: n => `Se ulottuu ${n} cm yli.`, rk_qH: n => `Pino on ${n} cm liian korkea.`, rk_qYes: 'Kyllä, saa olla', rk_qNo: 'Ei, siirrä se', rk_hard: 'Tämä näyttää vaikealta mahduttaa',
+  rk_hardW: (need, have) => `Laatikot vievät ${need} cm, mutta hylly on ${have} cm leveä (mitattu).`, rk_hardH: (need, have) => `Pino on ${need} cm korkea, mutta seuraavaan tasoon on ${have} cm (mitattu).`,
+  rk_editM: 'Tarkista mitat', rk_force: 'Mahtuu silti…', rk_forceOk: 'Pidä näin', rk_forceQ: 'Olet mitannut sekä hyllyn että laatikot, eivätkä luvut täsmää. Pidetäänkö näin silti?',
+  rk_grewW: (u, w) => `${u} on nyt ${w} cm leveä`, rk_grewH: (s, h) => `${s} on nyt ${h} cm korkea`, rk_measured: 'Olen mitannut hyllyn', rk_measuredHint: 'Silloin sovellus varoittaa, kun jokin ei mahdu, eikä suurenna hyllyä.',
+  rk_gapsNote: x => `Jotkin tasot ovat korkeampia: ${x}. Korkeuden tai tasojen määrän muuttaminen nollaa ne.`,
+  rk_room: 'Huone', rk_roomEdit: 'Muokkaa huonetta', rk_planHint: 'Napauta siirtyäksesi. Pidä hyllyä ja vedä se mille tahansa seinälle.', rk_planAt: (w, n) => `${w}: ${n} cm kulmasta`, rk_planNoRoom: 'Ei tilaa – menisi toisen hyllyn päälle', rk_planMoved: (u, w) => `${u} siirretty: ${w}`,
+  rk_roomW: 'Leveys, takaseinä (cm)', rk_roomD: 'Syvyys, sivuseinät (cm)', rk_door: 'Ovi', rk_door_left: 'Vasen', rk_door_mid: 'Keskellä', rk_door_right: 'Oikea', rk_doorW: 'Oven leveys (cm)',
+  rk_roomMeasured: 'Olen mitannut huoneen', rk_roomMeasuredHint: 'Silloin sovellus varoittaa, kun hyllyt eivät mahdu seinälle, eikä suurenna huonetta.', rk_unitsInRoom: 'Hyllyt', rk_fromCorner: 'Kulmasta (cm)', rk_auto: 'auto', rk_depth: 'Syvyys (cm)',
+  rk_cornerHint: 'Mittaa takakulmasta sivuseiniä pitkin ja vasemmasta kulmasta takaseinää pitkin. Jätä tyhjäksi, niin sovellus sijoittaa ne.',
+  rk_wallFull: (u, w, need, have) => `${u} ei mahdu seinälle ${w} (${need}/${have} cm).`, rk_overlap: (a, b) => `${a} ja ${b} menevät päällekkäin.`, rk_roomBad: 'Tarkista luvut: huone 50–2000 cm, ovi 50–300 cm, hyllyn syvyys 10–200 cm.'
+});
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
 })();
