@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-27.2';
+const APP_VERSION = '2026-10-27.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -4997,9 +4997,10 @@ function menuSheet(){
 }
 
 /* ====================================================================
-   Cloud: login (e-mail link), household, end-to-end encrypted sync,
-   anonymous usage statistics and feedback. Supabase is only a mailbox:
-   everything about the inventory is encrypted on the phone first.
+   Cloud: login (e-mail link), household sync, anonymous usage statistics
+   and feedback. The sync is NOT end-to-end encrypted today (cloud.plain):
+   data and photos are stored in plain form, protected by Supabase access
+   rules. The AES-GCM helpers below are kept for a possible later switch.
    ==================================================================== */
 const SB_URL = 'https://lqzfkhactizvzfzmigcz.supabase.co';
 const SB_KEY = 'sb_publishable_vn4-GzgYonITq3cV1S5euQ_-ophAXvW';
@@ -5018,7 +5019,7 @@ const toUrl64 = b => b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''
 const fromUrl64 = b => { b = b.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '='; return b; };
 async function saveCloud(){ await metaPutRaw('cloud', cloud).catch(() => {}); }
 
-/* ---------- encryption (AES-GCM 256, key only on the household's phones) ---------- */
+/* ---------- encryption helpers (AES-GCM 256). Not used for uploads today, only to read data from the old encrypted format ---------- */
 async function loadKey(){ cryptoKey = cloud.key ? await crypto.subtle.importKey('raw', b64ToBytes(cloud.key), 'AES-GCM', false, ['encrypt', 'decrypt']) : null; }
 async function newKey(){ const k = crypto.getRandomValues(new Uint8Array(32)); cloud.key = bytesToB64(k); await loadKey(); }
 async function encBytes(u8){ const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv}, cryptoKey, u8)); const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out; }
@@ -5385,7 +5386,7 @@ async function cloudSheet(){
     <div class="vtype"><input class="input" id="hhName" placeholder="${esc(tr('addName'))}" autocapitalize="words"><button class="btn" id="hhAdd">${tr('add')}</button></div>
     <div id="clQR"></div>
     <h4 class="adh">${tr('storagePlaces')}</h4>${placeRows}<button class="btn block" data-m2="places">${tr('editPlaces')}</button>
-    ${cloud.hid && cloud.session ? `<p class="hint" style="margin-top:14px">🔒 ${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button><button class="btn block" id="clJoin">${tr('joinOther')}</button>` : ''}
+    ${cloud.hid && cloud.session ? `<p class="hint" style="margin-top:14px">${tr('e2eNote')}</p><button class="btn block" id="clSync">${tr('syncNow')}</button><button class="btn block" id="clJoin">${tr('joinOther')}</button>` : ''}
     <div class="sheet-foot"><button class="btn" id="clX">${tr('close')}</button></div>`);
   let members = [], invites = [];
   const drawPeople = () => {
@@ -5550,11 +5551,11 @@ function feedbackSheet(){
   };
 }
 
-Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
+Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Only you and the people you invite can see what you store.',
   email: 'E-mail', emailWhy: 'Only used to log in. No password, no newsletters.', sendLink: 'Send login link', checkMail: 'Check your e-mail', linkSent: e => `We sent a login link to ${e}.`, linkSamePhone: 'Open the link on this phone. It can take a minute – check the spam folder too.',
   tooMany: 'Too many links sent just now – try again in a while.', sendFailed: 'Couldn’t send. Try again.', loginFailed: 'Login didn’t work.', loggedIn: 'You’re logged in.', loggedOut: 'Logged out. Your things are still on this phone.', loginAgain: 'Log in again to keep syncing.',
   loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded to your household. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
-  householdCreated: 'Household created – now invite the others.', yourHousehold: 'Your household', membersN: n => n === 1 ? '1 member' : `${n} members`, e2eNote: 'Encrypted on your phones. The server only stores scrambled data.',
+  householdCreated: 'Household created – now invite the others.', yourHousehold: 'Your household', membersN: n => n === 1 ? '1 member' : `${n} members`, e2eNote: 'Stored in your account on servers in the EU. Only you and the people you invite can see it.',
   invite: 'Invite someone', inviteHint: 'Let them scan this with the phone camera or inside Storrrage (☰ → Scan label).', shareLink: 'Share link instead', inviteSafe: 'The code works once, for 24 hours. The key is in the link itself and never passes our server.', inviteText: 'Join our storage in Storrrage', copied: 'Copied.',
   syncNow: 'Sync now', syncing: 'Syncing…', syncedAt: t => `Synced ${t}`, waitingN: n => `${n} changes waiting to sync`, offlineSync: 'Offline – syncs when you have signal.', syncFailed: 'Couldn’t sync right now.', notMember: 'You’re no longer in this household.',
   badInvite: 'That invite doesn’t look right.', loginToJoin: 'Log in first, then the invite is used automatically.', switchHouseholdQ: 'You’re already in a household. Switch to the new one?', join: 'Join',
@@ -5563,11 +5564,11 @@ Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with y
   statsToast: 'Storrrage sends anonymous usage stats – never your things.', statsWhat: 'Settings',
   feedback: 'Give feedback', feedbackIntro: 'What’s good, what’s annoying, what’s missing? We read everything.', fbIdea: 'Idea', fbBug: 'Something’s wrong', fbLove: 'I like', fbPh: 'Write here…', fbContact: 'E-mail, if you want an answer', optional: 'optional',
   fbPrivacy: 'Sent without your account. App version and which screen you were on are included.', send: 'Send', fbThanks: 'Thanks! 💜', offlineSend: 'No signal – try again when you’re online.', ok: 'OK'});
-Object.assign(STR.sv, {cloudMenu: 'Konto & delning', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
+Object.assign(STR.sv, {cloudMenu: 'Konto & delning', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Bara du och de du bjuder in kan se det du sparar.',
   email: 'E-post', emailWhy: 'Används bara för inloggning. Inget lösenord, inga nyhetsbrev.', sendLink: 'Skicka inloggningslänk', checkMail: 'Kolla din e-post', linkSent: e => `Vi har skickat en inloggningslänk till ${e}.`, linkSamePhone: 'Öppna länken på den här telefonen. Det kan ta en minut – kolla skräpposten också.',
   tooMany: 'För många länkar skickade just nu – försök igen om en stund.', sendFailed: 'Kunde inte skicka. Försök igen.', loginFailed: 'Inloggningen fungerade inte.', loggedIn: 'Du är inloggad.', loggedOut: 'Utloggad. Dina saker finns kvar på telefonen.', loginAgain: 'Logga in igen för att fortsätta synka.',
   loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp till hushållet. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
-  householdCreated: 'Hushållet är skapat – bjud in de andra.', yourHousehold: 'Ditt hushåll', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmar`, e2eNote: 'Krypterat på era telefoner. Servern sparar bara oläslig data.',
+  householdCreated: 'Hushållet är skapat – bjud in de andra.', yourHousehold: 'Ditt hushåll', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmar`, e2eNote: 'Sparas i ditt konto på servrar i EU. Bara du och de du bjuder in kan se det.',
   invite: 'Bjud in någon', inviteHint: 'Låt dem skanna med telefonens kamera eller i Storrrage (☰ → Skanna etikett).', shareLink: 'Dela länk i stället', inviteSafe: 'Koden fungerar en gång i 24 timmar. Nyckeln ligger i själva länken och passerar aldrig vår server.', inviteText: 'Gå med i vår förvaring i Storrrage', copied: 'Kopierat.',
   syncNow: 'Synka nu', syncing: 'Synkar…', syncedAt: t => `Synkat ${t}`, waitingN: n => `${n} ändringar väntar på att synkas`, offlineSync: 'Offline – synkar när du har täckning.', syncFailed: 'Kunde inte synka just nu.', notMember: 'Du är inte längre med i det här hushållet.',
   badInvite: 'Inbjudan ser inte rätt ut.', loginToJoin: 'Logga in först, sedan används inbjudan automatiskt.', switchHouseholdQ: 'Du är redan med i ett hushåll. Byta till det nya?', join: 'Gå med',
