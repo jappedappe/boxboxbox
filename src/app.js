@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-26.3';
+const APP_VERSION = '2026-10-27.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -255,7 +255,9 @@ function stems(tok){
   return [...new Set(out)];
 }
 function itemHay(it, b){
+  const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u);
   const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), itemOwner(it), it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
+    it.loanTo, it.status ? (STATUS_KEYS[it.status] ? tr(STATUS_KEYS[it.status]) : it.status) : '', it.out ? tr('outTag') : '', unit ? unit.name : '', b.moveRoom,
     it.color, it.season, it.brand, it.model, it.serial, b.loose || b.autoName ? '' : b.name, b.loose ? '' : b.code, b.location].filter(Boolean).join(' ').toLowerCase();
   return {hay, toks: new Set(hay.split(/[^a-zåäöéü0-9.-]+/).filter(Boolean))};
 }
@@ -486,7 +488,7 @@ function dropPhoto(ref){
 /* ---------- full-screen photo viewer with pinch and double-tap zoom ---------- */
 const viewer = document.createElement('dialog');
 viewer.id = 'viewer';
-viewer.innerHTML = '<div class="vwrap"><img id="vImg" alt=""></div><button class="vclose" aria-label="Close photo">×</button><p class="vhint">Pinch or double-tap to zoom</p>';
+viewer.innerHTML = '<div class="vwrap"><img id="vImg" alt=""></div><button class="vclose">×</button><p class="vhint"></p>';
 document.body.appendChild(viewer);
 (() => {
   const img = viewer.querySelector('#vImg'), wrap = viewer.querySelector('.vwrap');
@@ -520,6 +522,7 @@ document.body.appendChild(viewer);
   wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
   viewer.querySelector('.vclose').onclick = () => viewer.close();
   window.openViewer = async ref => {
+    viewer.querySelector('.vclose').setAttribute('aria-label', tr('closePhoto')); viewer.querySelector('.vhint').textContent = tr('zoomHint');
     const u = await photoURL(ref); if (!u) return;
     img.src = u; reset(); pts.clear(); viewer.showModal();
   };
@@ -530,7 +533,7 @@ const imgTag = (ref, cls, alt = '') => `<img class="${cls}" data-ph="${esc(ref)}
 let lang = (navigator.language || '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
 const STR = {
   en: {
-    space: 'SPACE', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
+    space: 'PLACES', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
     box_n: n => `BOX ${n}`, allPlaces: 'All places', addPlace: '+ Place', notInBox: 'Not in a box', notInBoxShort: 'not in a box',
     emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', addThingChoice: 'Add thing', addMultipleChoice: 'Add multiple', addBoxChoice: 'Add box', item: 'item', items: 'items',
     editBox: 'Edit box', label: 'Label', findStuff: 'FIND YOUR STUFF!', typeKeyword: 'Type keyword', searchIn: 'Search in', everywhere: 'Everywhere', allOf: p => `All of ${p}`,
@@ -539,7 +542,7 @@ const STR = {
     noAccount: 'No account needed for now. Everything stays on this phone.', writeName: 'Write your name first.',
     storrrage: 'STORRRAGE', profile: 'Profile', settings: 'Settings', notifications: 'Notifications', premium: 'Premium', version: v => `Storrrage version ${v}`,
     household: 'People in the household', addName: 'Add a name', add: 'Add', you: '(you)', remove: 'Remove', householdHint: 'Used for “whose is it” on items, and when talking to Storrrage (“Elsa’s boots”).', noOne: 'No one added yet.',
-    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Storage places', editPlace: n => `Edit ${n}`, foldSpace: n => `Collapse ${n}`, unfoldSpace: n => `Expand ${n}`, changePlaceIcon: n => `Choose an icon for ${n}`, backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
+    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Places', editPlace: n => `Edit ${n}`, foldSpace: n => `Collapse ${n}`, unfoldSpace: n => `Expand ${n}`, changePlaceIcon: n => `Choose an icon for ${n}`, backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
     labelsAll: 'Labels for all boxes', scanLabel: 'Scan a box label', language: 'Language', usage: mb => `Everything is stored only on this phone. Storrrage uses about ${mb} MB.`,
     dueIntro: 'You haven’t used these for a while. Still worth keeping, or time to sell?', lastUsedOn: d => `Last used ${d}`, usedRecently: 'Used it recently', markSale: 'Mark for sale',
     nothingDue: 'Nothing needs your attention. On an item, set “Remind me if unused” to get a nudge when you haven’t used it in a while.',
@@ -552,10 +555,10 @@ const STR = {
     f_category: 'Category', f_spot: 'Where exactly', f_notes: 'Notes', whose: 'Whose is it', status: 'Status', loanTo: 'Lent to whom', shared: 'Shared',
     st_store: 'In storage', st_loan: 'On loan', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Given away', st_throw: 'Throw away', st_custom: 'Other…',
     customStatus: 'Enter a status',
-    addTo: p => `Add to ${p}`, addBoxOrItem: 'Add box or item', boxStorage: 'Box / storage', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
+    addTo: p => `Add to ${p}`, addBoxOrItem: 'Add box or item', boxStorage: 'Box', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
     moveX: n => `Move ${n}`, to: 'To', move: 'Move', movedTo: w => `Moved to ${w}.`, rename: 'Rename', del: 'Delete', edit: 'Edit', moveToPlace: 'Move to place', emptyFirst: 'Empty this place to delete it.',
     delQ: n => `Delete “${n}”? This can’t be undone.`, delNoteQ: 'Delete this voice note?', rmPhotoQ: 'Remove this photo?', rmQ: n => `Remove “${n}”?`, rmTagQ: n => `Remove the tag “${n}”?`,
-    newPlace: 'New storage place', newPlaceHint: 'For example Basement, Vinden or Garaget', renameX: n => `Rename ${n}`, newTag: 'Add a tag', tagHint: 'For example hiking or winter',
+    newPlace: 'New place', newPlaceHint: 'For example Basement, Vinden or Garaget', renameX: n => `Rename ${n}`, newTag: 'Add a tag', tagHint: 'For example hiking or winter',
     backupBanner: d => d ? `Last backup was ${d}. Everything is stored only on this phone, so keep a copy somewhere else.` : 'You haven’t made a backup yet. Everything is stored only on this phone, so keep a copy somewhere else.',
     voiceNotes: 'Voice notes', voiceNotesBox: 'Voice notes for this box', menu: 'Menu', allSettings: 'All settings', usedNoted: 'Noted. The reminder starts over.', markedSale: 'Marked for sale.',
     placesHint: 'For example the basement storage unit, the attic, the garage or the summer house. Only a name is stored, never an address.', placeNameHint: 'Name, e.g. Vinden',
@@ -567,7 +570,7 @@ const STR = {
     batchAdded: n => n === 1 ? 'Added 1 item.' : `Added ${n} items.`, namePh: 'Name', include: 'Include', morePhotos: '+ More photos', noneYet: 'No photos yet.', batchFound: n => n === 1 ? 'Found 1 thing.' : `Found ${n} things.`,
   },
   sv: {
-    space: 'FÖRVARING', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
+    space: 'PLATSER', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
     box_n: n => `LÅDA ${n}`, allPlaces: 'Alla platser', addPlace: '+ Plats', notInBox: 'Utan låda', notInBoxShort: 'utan låda',
     emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', addThingChoice: 'Lägg till sak', addMultipleChoice: 'Lägg till flera', addBoxChoice: 'Lägg till låda', item: 'sak', items: 'saker',
     editBox: 'Ändra låda', label: 'Etikett', findStuff: 'HITTA DINA GREJER!', typeKeyword: 'Skriv ett sökord', searchIn: 'Sök i', everywhere: 'Överallt', allOf: p => `Hela ${p}`,
@@ -576,7 +579,7 @@ const STR = {
     noAccount: 'Inget konto behövs just nu. Allt stannar på den här telefonen.', writeName: 'Skriv ditt namn först.',
     storrrage: 'STORRRAGE', profile: 'Profil', settings: 'Inställningar', notifications: 'Notiser', premium: 'Premium', version: v => `Storrrage version ${v}`,
     household: 'Personer i hushållet', addName: 'Lägg till ett namn', add: 'Lägg till', you: '(du)', remove: 'Ta bort', householdHint: 'Används för ”vems är det” på saker, och när du pratar med Storrrage (”Elsas kängor”).', noOne: 'Ingen tillagd än.',
-    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Förvaringsplatser', editPlace: n => `Redigera ${n}`, foldSpace: n => `Fäll ihop ${n}`, unfoldSpace: n => `Visa ${n}`, changePlaceIcon: n => `Välj ikon för ${n}`, backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
+    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Platser', editPlace: n => `Ändra ${n}`, foldSpace: n => `Fäll ihop ${n}`, unfoldSpace: n => `Visa ${n}`, changePlaceIcon: n => `Välj ikon för ${n}`, backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
     labelsAll: 'Etiketter för alla lådor', scanLabel: 'Skanna en etikett', language: 'Språk', usage: mb => `Allt sparas bara på den här telefonen. Storrrage använder ungefär ${mb} MB.`,
     dueIntro: 'Du har inte använt de här på ett tag. Värda att behålla, eller dags att sälja?', lastUsedOn: d => `Senast använd ${d}`, usedRecently: 'Använt nyligen', markSale: 'Markera till salu',
     nothingDue: 'Inget behöver din uppmärksamhet. Välj ”Påminn om oanvänd” på en sak för att få en knuff när du inte använt den på ett tag.',
@@ -589,10 +592,10 @@ const STR = {
     f_category: 'Kategori', f_spot: 'Var exakt', f_notes: 'Anteckningar', whose: 'Vems är det', status: 'Status', loanTo: 'Utlånad till', shared: 'Gemensam',
     st_store: 'I förrådet', st_loan: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Bortskänkt', st_throw: 'Slängas', st_custom: 'Annat…',
     customStatus: 'Skriv en egen status',
-    addTo: p => `Lägg till i ${p}`, addBoxOrItem: 'Lägg till låda eller sak', boxStorage: 'Låda / förvaring', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
+    addTo: p => `Lägg till i ${p}`, addBoxOrItem: 'Lägg till låda eller sak', boxStorage: 'Låda', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
     moveX: n => `Flytta ${n}`, to: 'Till', move: 'Flytta', movedTo: w => `Flyttad till ${w}.`, rename: 'Byt namn', del: 'Ta bort', edit: 'Ändra', moveToPlace: 'Flytta till plats', emptyFirst: 'Töm platsen för att kunna ta bort den.',
     delQ: n => `Ta bort ”${n}”? Det går inte att ångra.`, delNoteQ: 'Ta bort röstanteckningen?', rmPhotoQ: 'Ta bort fotot?', rmQ: n => `Ta bort ”${n}”?`, rmTagQ: n => `Ta bort taggen ”${n}”?`,
-    newPlace: 'Ny förvaringsplats', newPlaceHint: 'Till exempel Källaren, Vinden eller Garaget', renameX: n => `Byt namn på ${n}`, newTag: 'Lägg till en tagg', tagHint: 'Till exempel vandring eller vinter',
+    newPlace: 'Ny plats', newPlaceHint: 'Till exempel Källaren, Vinden eller Garaget', renameX: n => `Byt namn på ${n}`, newTag: 'Lägg till en tagg', tagHint: 'Till exempel vandring eller vinter',
     backupBanner: d => d ? `Senaste säkerhetskopian gjordes ${d}. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.` : 'Du har inte gjort någon säkerhetskopia än. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.',
     voiceNotes: 'Röstanteckningar', voiceNotesBox: 'Röstanteckningar för lådan', menu: 'Meny', allSettings: 'Alla inställningar', usedNoted: 'Noterat. Påminnelsen börjar om.', markedSale: 'Markerad till salu.',
     placesHint: 'Till exempel källarförrådet, vinden, garaget eller sommarstugan. Bara ett namn sparas, aldrig en adress.', placeNameHint: 'Namn, t.ex. Vinden',
@@ -605,6 +608,22 @@ const STR = {
   },
 };
 Object.assign(STR.en, {moreBoxes: n => `+ ${n} more boxes`});
+Object.assign(STR.en, {whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom',
+  h_stopVoice: 'Stop the voice note first.', h_noRec: 'Recording isn’t available in this browser.', h_micBlocked: 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
+  h_aiBusy: 'Still thinking about the last thing you said.', h_boxLabels: 'Box labels', h_printHint: 'Print this page, cut out the labels and tape them to the boxes.',
+  h_addBoxesFirst: 'Add some boxes first.', h_building: 'Building the report…', h_nothingBackup: 'Nothing to back up yet.', h_preparingBackup: 'Preparing backup…', h_restoring: 'Restoring…',
+  rp_title: 'Storage inventory', rp_item: 'Item', rp_value: 'Est. value', rp_stored: 'Stored since', rp_registered: 'Registered', rp_photos: 'Photos', rp_photo: 'Photo', rp_empty: 'Empty.',
+  rp_packed: (d, n, v) => `Packed ${d}. ${n} items, ${v}.`, rp_generated: (d, b, n, v) => `Generated ${d}. ${b} boxes, ${n} items, estimated total value ${v}.`,
+  rp_note: '“Registered” is when the item was entered in the inventory. Photo times come from the image file.', rp_ready: 'Insurance report ready',
+  joinConfirmQ: 'Join this household? Everyone in it will see your things. Only join with a code from someone you know.'});
+Object.assign(STR.sv, {whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma',
+  h_stopVoice: 'Stoppa röstanteckningen först.', h_noRec: 'Inspelning fungerar inte i den här webbläsaren.', h_micBlocked: 'Mikrofonen är blockerad. Tillåt den för Storrrage i Chromes webbplatsinställningar.',
+  h_aiBusy: 'Tänker fortfarande på det du sa senast.', h_boxLabels: 'Lådetiketter', h_printHint: 'Skriv ut sidan, klipp ut etiketterna och tejpa fast dem på lådorna.',
+  h_addBoxesFirst: 'Lägg till några lådor först.', h_building: 'Gör rapporten…', h_nothingBackup: 'Det finns inget att säkerhetskopiera än.', h_preparingBackup: 'Förbereder säkerhetskopian…', h_restoring: 'Återställer…',
+  rp_title: 'Förrådsinventering', rp_item: 'Sak', rp_value: 'Uppskattat värde', rp_stored: 'Förvarad sedan', rp_registered: 'Registrerad', rp_photos: 'Foton', rp_photo: 'Foto', rp_empty: 'Tom.',
+  rp_packed: (d, n, v) => `Packad ${d}. ${n} saker, ${v}.`, rp_generated: (d, b, n, v) => `Skapad ${d}. ${b} lådor, ${n} saker, uppskattat totalvärde ${v}.`,
+  rp_note: '”Registrerad” är när saken lades in i inventeringen. Fototiderna kommer från bildfilen.', rp_ready: 'Försäkringsrapporten är klar',
+  joinConfirmQ: 'Gå med i hushållet? Alla i det ser dina saker. Gå bara med via en kod från någon du känner.'});
 Object.assign(STR.sv, {moreBoxes: n => `+ ${n} lådor till`});
 Object.assign(STR.en, {
     aiSuggest: 'Suggest from photo', testTag: 'TEST', aiLooking: 'Looking at the photo…', aiNothing: 'The AI didn’t recognise anything in the photo.',
@@ -615,7 +634,7 @@ Object.assign(STR.en, {
     newBox: 'New box',
     name: 'Name',
     boxNamePh: 'Winter clothes',
-    storagePlace: 'Storage place',
+    storagePlace: 'Place',
     whereInPlace: 'Where in that place',
     wherePh: 'Back wall, top shelf',
     boxPhoto: 'Photo of the box',
@@ -677,7 +696,7 @@ Object.assign(STR.sv, {
     newBox: 'Ny låda',
     name: 'Namn',
     boxNamePh: 'Vinterkläder',
-    storagePlace: 'Förvaringsplats',
+    storagePlace: 'Plats',
     whereInPlace: 'Var på platsen',
     wherePh: 'Bakre väggen, översta hyllan',
     boxPhoto: 'Foto av lådan',
@@ -760,17 +779,17 @@ STR.en.doorHint = 'Pick the side the door is on, and where the far end is. They�
 Object.assign(STR.sv, {showAll: 'Visa alla', dragLooseHint: 'Håll in en rund markör och dra in den i en zon för att visa var den står.', addZone: 'Lägg till zon', zoneExists: 'Det finns redan en zon med det namnet.',
   doorSide: 'Var är dörren?', doorHint: 'Kartan ritas från dörren och inåt. Välj vilken sida dörren sitter på.', door_top: 'Uppe', door_bottom: 'Nere', door_left: 'Vänster', door_right: 'Höger'});
 STR.sv.doorHint = 'Välj vilken sida dörren sitter på, och var längst in är. Det visas som markeringar runt kartan.'; STR.sv.doorSide = 'Dörr och längst in';
-Object.assign(STR.en, {dragHint: 'Hold a box or a round marker and drag it onto a stack or into a zone.', back: 'Back', switchSpace: 'Choose place', shelf: 'Shelf', map: 'Map', door: 'Door', farIn: 'Far end', noZone: 'No zone', placement: 'Placement',
+Object.assign(STR.en, {dragHint: 'Hold a box or a round marker and drag it onto a stack or into a zone.', back: 'Back', switchSpace: 'Choose place', shelf: 'Grid', map: 'Map', door: 'Door', farIn: 'Far end', noZone: 'No zone', placement: 'Placement',
   placementHint: 'Where the box stands: its zone (a spot in this place, like a shelf or by the door) and stack.', zone: 'Zone', zoneHint: 'A zone marks a spot in this place, e.g. a shelf or by the door',
   stack: 'Stack', newStack: 'A new stack', level: 'Level', onTop: 'On top', atBottom: 'At the bottom', stackOf: (n, codes) => codes ? `Stack ${n}: on ${codes}` : `Stack ${n}`, closerDoor: 'Move up', furtherIn: 'Move down'});
-Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra den till en stapel eller zon.', back: 'Tillbaka', switchSpace: 'Välj plats', shelf: 'Hylla', map: 'Karta', door: 'Dörren', farIn: 'Längst in', noZone: 'Utan zon', placement: 'Placering',
+Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra den till en stapel eller zon.', back: 'Tillbaka', switchSpace: 'Välj plats', shelf: 'Rutnät', map: 'Karta', door: 'Dörren', farIn: 'Längst in', noZone: 'Utan zon', placement: 'Placering',
   placementHint: 'Var lådan står: zonen (en del av platsen, som en hylla eller vid dörren) och stapeln.', zone: 'Zon', zoneHint: 'En zon markerar en del av platsen, t.ex. en hylla eller vid dörren',
   stack: 'Stapel', newStack: 'En ny stapel', level: 'Nivå', onTop: 'Överst', atBottom: 'Längst ner', stackOf: (n, codes) => codes ? `Stapel ${n}: ovanpå ${codes}` : `Stapel ${n}`, closerDoor: 'Flytta upp', furtherIn: 'Flytta ner'});
-Object.assign(STR.en, {collections: 'Collections', collection: 'Collection', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
-  toCollection: 'Collection', collHint: 'Things with the same tag form a collection, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
+Object.assign(STR.en, {collections: 'Tags', collection: 'Tag', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
+  toCollection: 'Tag', collHint: 'Things with the same tag are shown together, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
   isHere: 'is here', openItem: 'Open item', foundIn: 'Found in'});
-Object.assign(STR.sv, {collections: 'Samlingar', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 ställe' : `på ${n} ställen`, showOnMap: 'Visa på kartan', insideBox: 'inuti',
-  toCollection: 'Samling', collHint: 'Saker med samma tagg blir en samling, även om de ligger i olika lådor.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
+Object.assign(STR.sv, {collections: 'Taggar', collection: 'Tagg', inBoxes: n => n === 1 ? 'på 1 ställe' : `på ${n} ställen`, showOnMap: 'Visa på kartan', insideBox: 'inuti',
+  toCollection: 'Tagg', collHint: 'Saker med samma tagg visas tillsammans, även om de ligger i olika lådor.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
   isHere: 'ligger här', openItem: 'Öppna saken', foundIn: 'Hittad i'});
 Object.assign(STR.en, {list: 'List', takeOut: 'Take out', putBack: 'Put back', outTag: 'Out', outSince: d => `out since ${d}`, backBy: d => `back by ${d}`, outSection: 'Out of storage right now',
   outUntil: 'Out until (optional)', tookOut: (n, w) => `${n} taken out of ${w}. Its place is kept.`, putBackDone: (n, w) => `${n} is back in ${w}.`, deletedX: n => `${n} deleted.`, undo: 'Undo', more: 'More',
@@ -946,7 +965,7 @@ function goBack(){
   for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)){ go(backStack[i], {backIndex: i}); return true; }
   return goUp();
 }
-function arm(){ if (armed || !(prevView() || parentView())) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
+function arm(){ if (armed || !(prevView() || parentView() || (placeView === 'racks' && rkMode === 'tidy'))) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
 async function go(v, options = {}){
   if (sameView(v, view)) return true;
   if (view.name === 'item' && !(await prepareItemLeave())){ arm(); return false; }
@@ -977,6 +996,7 @@ window.addEventListener('popstate', () => {
   const vw = document.getElementById('viewer');
   if (vw && vw.open){ vw.close(); arm(); return; }
   if (sheet.open){ closeSheet(); arm(); return; }
+  if (view.name === 'home' && placeView === 'racks' && rkMode === 'tidy'){ rkMode = 'shelves'; render(); arm(); return; }
   if (goBack()) arm();
 });
 function goHome(pid){ navigate({name: 'home', place: pid || 'all'}); }
@@ -993,7 +1013,8 @@ const possessive = () => {
   return lang === 'sv' ? (/[SXZ]$/.test(n) ? n : n + 'S') : (n.endsWith('S') ? n + '’' : n + '’S');
 };
 function crumbs(parts, sub){
-  return `<nav class="crumbs" aria-label="Where you are">${parts.map(p => p.nav ? `<button data-nav='${esc(JSON.stringify(p.nav))}'>${esc(p.label)}</button>` : `<span>${esc(p.label)}</span>`).join('<span class="sep"> - </span>')}</nav>${sub ? `<p class="tagline">${sub}</p>` : ''}`;
+  const short = l => { l = String(l); return l.length > 26 ? l.slice(0, 24).trimEnd() + '…' : l; };
+  return `<nav class="crumbs" aria-label="${esc(tr('whereYouAre'))}">${parts.map(p => p.nav ? `<button data-nav='${esc(JSON.stringify(p.nav))}' title="${esc(p.label)}">${esc(short(p.label))}</button>` : `<span title="${esc(p.label)}">${esc(short(p.label))}</span>`).join('<span class="sep"> - </span>')}</nav>${sub ? `<p class="tagline">${sub}</p>` : ''}`;
 }
 const crumbSpace = () => ({label: possessive(), nav: {name: 'home', place: 'all'}});
 const crumbPlace = pid => ({label: placeName(pid).toUpperCase(), nav: {name: 'home', place: pid}});
@@ -1164,7 +1185,7 @@ function shelfHTML(pid, folded = false){
 function placeHead(pid){
   const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
   return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(b => b.placeId === pid).toUpperCase())}</p></div>
-    <div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button></div></div>`;
+    <div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button><button class="rktab${placeView === 'racks' ? ' on' : ''}" data-pview="racks">${tr('rk_view')}<sup>test</sup></button></div></div>`;
 }
 function renderSpace(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
@@ -1248,12 +1269,13 @@ document.addEventListener('pointercancel', e => {
 });
 function nudgeBar(pid){ const n = nudges(pid)[0]; return n ? nudgeCard(n, true) : ''; }
 function renderPlace(pid, focus){
+  if (!focus && placeView === 'racks') rkPlacePending(pid);
   const what = focus ? [...(view.hlBoxes || []).map(findBox).filter(Boolean).map(b => (view.hlBoxes.length === 1 ? `${b.code} ${b.name}` : b.code)), ...looseItems(pid).filter(i => (view.hlItems || []).includes(i.id)).map(i => i.name)] : [];
   app.innerHTML = `${focus ? `<div class="findhint"><span>${ICON.pin} <b>${esc(what.join(', '))}</b></span></div>` : placeHead(pid)}
     ${focus ? '' : installBanner() + moveBanner()}
-    ${focus || placeView === 'map' ? '' : topStrips(pid)}
+    ${focus || placeView === 'map' || placeView === 'racks' ? '' : topStrips(pid)}
     ${focus ? '' : nudgeBar(pid)}
-    ${focus || placeView === 'map' ? mapHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
+    ${focus || placeView === 'map' ? mapHTML(pid) : placeView === 'racks' ? racksHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
     ${focus ? '' : (([c, n]) => n ? `<p class="freshsum">${freshDot({checkedAt: c === n ? today() : null, updatedAt: null})} ${esc(tr('checkedYear', c, n))}</p>` : '')(checkedThisYear(pid))}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
@@ -1644,7 +1666,7 @@ function renderSearch(){
   }
   if (q && !searchQuick){
     const {exact, related} = searchItems(q, {placeIds: P, boxIds: B});
-    const boxHits = searchQuick ? [] : realBoxes().filter(b => { if (!inScope(b)) return false; const h = [b.code, b.code.replace('B-', ''), b.name, b.location, b.notes, placeName(b.placeId)].join(' ').toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => h.includes(w)); }).sort(byCode);
+    const boxHits = searchQuick ? [] : realBoxes().filter(b => { if (!inScope(b)) return false; const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u); const h = [b.code, b.code.replace('B-', ''), b.name, b.location, b.notes, placeName(b.placeId), b.moveRoom, b.out ? tr('outTag') : '', unit ? unit.name : '', ...(b.documents || []).map(d => d.name)].join(' ').toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => h.includes(w)); }).sort(byCode);
     body = `${exact.length ? (viewMode === 'list' && !selecting ? rowsHTML(exact, {where: true}) : `<div class="igrid${viewCls()}">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}
       ${boxHits.length ? `<h2 class="section">${tr('boxesH')}</h2><div class="shelf${shelfCls()}">${boxHits.map(shelfTile).join('')}</div>` : ''}
       ${related.length ? `<h2 class="section">${tr('similar')}</h2><div class="igrid${viewCls()}">${related.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
@@ -2093,7 +2115,7 @@ function renderItem(){
     return input(k);
   };
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
-  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
+  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
   app.innerHTML = `${crumbs(crumbParts)}
     ${presenceNote(b.id, it.id)}
     <div class="hero">
@@ -2103,7 +2125,7 @@ function renderItem(){
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     ${isOut(it) ? `<p class="outline"><span>↗ ${tr('outTag')} · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="linkbtn" data-act="itemback">↩ ${tr('putBack')}</button></p>` : ''}
-    <div class="titlerow"><input class="title" id="fName" value="${esc(it.name)}" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" required>
+    <div class="titlerow"><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea>
       ${isOut(it) ? '' : `<button class="iconbtn outbtn" data-act="itemout" aria-label="${esc(tr('takeOut'))}" title="${esc(tr('takeOut'))}">↗</button>`}<button class="iconbtn star" data-act="favitem" aria-label="${esc(it.fav ? tr('unfav') : tr('fav'))}" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? '★' : '☆'}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     <div class="whereline"><button class="pinbtn" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button><span class="wtxt">${esc(b.loose ? placeName(b.placeId) + ' · ' + tr('notInBoxShort') : `${placeName(b.placeId)} · ${b.code} ${b.name}`)}</span><button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
@@ -2180,7 +2202,10 @@ function renderItem(){
     });
   });
   const nm = $('#fName');
-  nm.addEventListener('input', () => { clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
+  const fitName = () => { nm.style.height = 'auto'; nm.style.height = nm.scrollHeight + 'px'; };
+  requestAnimationFrame(fitName);
+  nm.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); nm.blur(); } });
+  nm.addEventListener('input', () => { if (/\n/.test(nm.value)) nm.value = nm.value.replace(/\s*\n\s*/g, ' '); fitName(); clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
   nm.addEventListener('change', () => { clearTimeout(timers.name); commit('name', nm.value); });
   if (app.querySelector('[data-where]')) app.querySelector('[data-where]').addEventListener('change', e => { if (flushItem) flushItem(); moveItemTo(view.boxId, view.itemId, e.target.value); render(); });
   const addPhotos = async e => {
@@ -2315,7 +2340,7 @@ function renderBatch(){
   if (!batch || batch.boxId !== view.boxId) batch = {boxId: view.boxId, mode: null, rows: [], busy: 0, refs: new Set()};
   const b = findBox(batch.boxId);
   const where = b.loose ? `${placeName(b.placeId)}, ${tr('notInBoxShort')}` : `${b.code} ${b.name}`;
-  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
+  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
   const rows = batch.rows, n = rows.filter(r => r.include && r.status !== 'thinking').length;
   const missing = rows.some(r => r.include && r.status !== 'thinking' && !(r.name || '').trim());
   const detail = f => [showColor(f.color), f.brand, f.size && (lang === 'sv' ? 'stl ' : 'size ') + f.size, f.value && kr(f.value), f.category].filter(Boolean).map(esc).join(' · ');
@@ -3289,7 +3314,9 @@ app.addEventListener('click', e => {
   const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
   const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt]'); if (!t) return;
   const d = t.dataset;
-  if (d.nav){ const v = JSON.parse(d.nav); if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
+  if (d.nav){ let v = JSON.parse(d.nav); if (v.name === 'home') v = {name: 'home', place: v.place || 'all'};
+    for (let i = backStack.length - 1; i >= 0; i--) if (sameView(backStack[i], v)) return go(backStack[i], {backIndex: i});
+    if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
   if (d.goplace) return goHome(d.goplace === 'all' ? null : d.goplace);
   if (selecting && (d.item || d.open) && !d.openItem){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; if (d.open) return; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
   if (d.open) return openBox(d.open);
@@ -3432,12 +3459,14 @@ function photoState(initial, multiple){
   return st;
 }
 
-function boxSheet(id, presetPid, presetParent, presetZone){
+function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   const existing = id ? findBox(id) : null;
   const b = existing ? clone(existing) : {id: newId(), code: '', name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: presetPid || scopePlace() || places[0].id, parentId: presetParent || null, autoName: true};
   if (presetParent && findBox(presetParent)) b.placeId = findBox(presetParent).placeId;
   if (!existing) b.code = nextCode(b.placeId);
   if (!existing && presetZone) b.location = presetZone;
+  if (!existing && presetShelf) b.shelf = presetShelf;
+  const bt = b.boxType || 'moving', bd = b.boxDims || RK_TYPES.moving;
   const ps = photoState(b.photo ? [b.photo] : [], false);
   const banned = existing ? new Set([existing.id, ...descendants(existing.id).map(x => x.id)]) : new Set();
   const parentOpts = pid => `<option value="">${esc(tr('topLevel', placeName(pid)))}</option>` + boxesIn(pid).filter(x => !banned.has(x.id)).sort(byCode).map(x => `<option value="${esc(x.id)}" ${x.id === b.parentId ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)}</option>`).join('');
@@ -3450,6 +3479,8 @@ function boxSheet(id, presetPid, presetParent, presetZone){
     </div>
     <label class="field"><span>${tr('zone')}</span><input id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
     <label class="field"><span>${tr('status')}</span><select id="bStatus">${statusOptions(b.status || '')}</select><input id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}></label>
+    <label class="field"><span>${tr('rk_boxType')}</span><select id="bType">${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select></label>
+    <div class="rkdims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="field"><span>${tr('rk_' + k)} (cm)</span><input id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
     <label class="field"><span>${tr('notes')}</span><textarea id="bNotes">${esc(b.notes)}</textarea></label>
     <div class="field"><span>${tr('boxPhoto')}</span><div id="phwrap"></div></div>
     <div class="sheet-foot">
@@ -3465,8 +3496,13 @@ function boxSheet(id, presetPid, presetParent, presetZone){
     if (e.target.value === '__custom__'){ custom.hidden = false; custom.focus(); }
   };
   $('#bCancel').onclick = closeSheet;
+  let typeSet = !!b.boxTypeSet;
+  $('#bType').onchange = e => { typeSet = true; $('#bDims').hidden = e.target.value !== 'custom'; };
   $('#bSave').onclick = () => {
     if (ps.busy) return toast(tr('waitPhoto'));
+    b.boxType = $('#bType').value; if (typeSet) b.boxTypeSet = true;
+    if (b.boxType === 'custom'){ const v = k => parseInt($('#bD' + k).value, 10); const dm = {w: v('w'), h: v('h'), d: v('d')}; if (!(dm.w > 0 && dm.h > 0 && dm.d > 0 && dm.w < 400 && dm.h < 400 && dm.d < 400)) return toast(tr('rk_badSize')); b.boxDims = dm; }
+    if (existing && $('#bPlace').value !== existing.placeId) delete b.shelf;
     const name = $('#bName').value.trim();
     const newPlace = $('#bPlace').value, parent = $('#bParent').value || null;
     if (existing && newPlace !== existing.placeId && numbering === 'place' && realBoxes().some(x => x.placeId === newPlace && x.code === b.code && x.id !== b.id)) b.code = nextCode(newPlace);
@@ -3475,6 +3511,7 @@ function boxSheet(id, presetPid, presetParent, presetZone){
     b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim(); b.placeId = newPlace; b.parentId = parent;
     b.status = $('#bStatus').value === '__custom__' ? $('#bCustomStatus').value.trim() : $('#bStatus').value;
     if (!b.status) delete b.status;
+    if (parent) delete b.shelf;
     if (!existing || zoneWas !== b.location){ const others = mapEntities(newPlace).filter(e => e.k !== 'b:' + b.id && e.zone === b.location); b.stack = Math.max(0, ...others.map(e => e.stack)) + 1; b.level = 1; }
     b.photo = ps.photos[0] || null;
     ps.commit(); saved = true;
@@ -3538,7 +3575,7 @@ function detailsHTML(attrs, kind, moreOpen){
       ${chips.length || k === 'owner' ? `<div class="chips">${chips.map(c => `<button type="button" class="chipbtn${v.toLowerCase() === c.toLowerCase() ? ' on' : ''}" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}${k === 'owner' ? '<button type="button" class="chipbtn add" data-addperson>+ Person</button>' : ''}</div>` : ''}
     </div>`;
   };
-  return main.map(field).join('') + `<details class="more" ${moreOpen ? 'open' : ''}><summary>More details</summary>${rest.map(field).join('')}</details>`;
+  return main.map(field).join('') + `<details class="more" ${moreOpen ? 'open' : ''}><summary>${tr('moreDetails')}</summary>${rest.map(field).join('')}</details>`;
 }
 function addPerson(name){
   name = (name || '').trim(); if (!name) return '';
@@ -3791,7 +3828,7 @@ function updateCtx(){
   const el = $('#vCtx'); if (!el) return;
   const b = curBox(), pid = scopePlace();
   const sv = lang === 'sv';
-  el.textContent = b ? `${sv ? 'Öppen låda' : 'Open box'}: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
+  el.textContent = b ? `${tr('openBoxNow')}: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
     : pid ? (sv ? `I ${placeName(pid)}, ingen låda öppen. Det du lägger till hamnar utan låda.` : `In ${placeName(pid)}, no box open. Things you add go in as “not in a box”.`)
     : (sv ? 'Alla platser. Säg var du är, till exempel ”jag är i garaget”.' : 'All places. Say where you are, for example “I’m in the garage”.');
 }
@@ -4146,9 +4183,9 @@ function doOutVoice(subject, out, where){
     setBoxOut(b.id, out); return say(out ? t('boxOutV', {box: boxSpoken(b)}) : t('boxBackV', {box: boxSpoken(b)}));
   }
   // a whole collection: "ta ut hela #jul", "take out the christmas collection"
-  const cm = subject.replace(/^(?:hela|samlingen|the|whole|collection)\s+/i, '').replace(/\s+(?:collection|samlingen)$/i, '').replace(/^#/, '').toLowerCase();
+  const cm = subject.replace(/^(?:hela|samlingen|taggen|the|whole|collection|tag)\s+/i, '').replace(/\s+(?:collection|samlingen|tag|taggen)$/i, '').replace(/^#/, '').toLowerCase();
   const coll = collectionsAll().find(c => c.tag === cm || stems(cm).includes(c.tag) || stems(c.tag).includes(cm));
-  if (coll && (/#|hela|samling|whole|collection/i.test(subject) || !findIn(subject))){ setOutMany(coll.list, out, null, '#' + tagLabel(coll.tag)); return say(out ? t('collOutV', {c: tagLabel(coll.tag), n: coll.list.length}) : t('collBackV', {c: tagLabel(coll.tag)})); }
+  if (coll && (/#|hela|samling|tagg|whole|collection|\btag\b/i.test(subject) || !findIn(subject))){ setOutMany(coll.list, out, null, '#' + tagLabel(coll.tag)); return say(out ? t('collOutV', {c: tagLabel(coll.tag), n: coll.list.length}) : t('collBackV', {c: tagLabel(coll.tag)})); }
   const pid = scopePlace();
   const hit = findIn(subject, curBox() ? {boxId: curBox().id} : pid ? {placeId: pid} : {}) || findIn(subject);
   if (!hit) return say(t('notFound', {q: cleanQ(subject)}));
@@ -4309,7 +4346,7 @@ function pickAlt(result){
 }
 function listen(){
   if (listening) return finishListening();
-  if (rec) return toast('Stop the voice note first.');
+  if (rec) return toast(tr('h_stopVoice'));
   if (window.speechSynthesis) speechSynthesis.cancel();
   listening = true; finished = false; heard = ''; listenStart = Date.now();
   setMic('on'); showLive('…'); startRecog(); armSilence(true);
@@ -4410,10 +4447,10 @@ function updRecBtn(){
 async function toggleRecord(){
   if (rec){ rec.stop(); return; }
   if (recog) stopListening();
-  if (!navigator.mediaDevices || !window.MediaRecorder) return toast('Recording isn’t available in this browser.');
+  if (!navigator.mediaDevices || !window.MediaRecorder) return toast(tr('h_noRec'));
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({audio: true}); }
-  catch { return toast('Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.'); }
+  catch { return toast(tr('h_micBlocked')); }
   const chunks = [], boxId = curBox() ? curBox().id : null;
   const r = new MediaRecorder(stream); rec = r;
   r.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
@@ -4684,7 +4721,7 @@ function applyPlan(actions){
   updateCtx();
 }
 async function aiTurn(text){
-  if (aiBusy) return toast('Still thinking about the last thing you said.');
+  if (aiBusy) return toast(tr('h_aiBusy'));
   aiBusy = true;
   const history = voiceLog.slice(-14).map(l => (l.who === 'you' ? 'User: ' : 'Assistant: ') + l.text).join('\n');
   logLine('you', text);
@@ -4798,11 +4835,11 @@ function deliver(filename, blob, title, onDone){
 }
 function labels(list){
   const ls = [...list].sort(byCode).map(b => `<div class="l"><div class="q">${qrSvg(labelText(b), 6)}</div><div>${b.moveRoom ? `<div class="r">${esc(b.moveRoom)}</div>` : ''}<div class="c">${esc(b.code)}</div><div class="n">${esc(b.name)}</div></div></div>`).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Box labels</title><style>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(tr('h_boxLabels'))}</title><style>
     body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
     .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
     .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.c{font:900 30pt/1 Impact,Arial Black,sans-serif}.r{font:900 22pt/1.05 Arial Black,Arial,sans-serif;text-transform:uppercase;margin-bottom:2mm}.n{font-size:12pt;margin-top:2mm}
-    p{color:#555}@media print{p{display:none}}</style></head><body><p>Print this page, cut out the labels and tape them to the boxes.</p><div class="g">${ls}</div></body></html>`;
+    p{color:#555}@media print{p{display:none}}</style></head><body><p>${esc(tr('h_printHint'))}</p><div class="g">${ls}</div></body></html>`;
   deliver(list.length === 1 ? `label-${list[0].code}.html` : 'box-labels.html', new Blob([html], {type: 'text/html'}), list.length === 1 ? `${tr('label')} ${list[0].code}` : tr('labelsAllH'));
 }
 async function thumbData(ref){
@@ -4810,8 +4847,8 @@ async function thumbData(ref){
   catch { return ''; }
 }
 async function insuranceReport(){
-  if (!boxes.length) return toast('Add some boxes first.');
-  toast('Building the report…');
+  if (!boxes.length) return toast(tr('h_addBoxesFirst'));
+  toast(tr('h_building'));
   const pi = b => places.findIndex(p => p.id === b.placeId);
   const all = [...boxes].filter(b => !b.loose || (b.items || []).length).sort((x, y) => pi(x) - pi(y) || (x.loose ? -1 : 0) - (y.loose ? -1 : 0) || byCode(x, y));
   const total = all.reduce((s, b) => s + boxValue(b), 0);
@@ -4820,27 +4857,27 @@ async function insuranceReport(){
     let rows = '';
     for (const it of (b.items || [])){
       const imgs = [];
-      for (const p of (it.photos || [])){ const d = await thumbData(p.ref); if (d) imgs.push(`<img src="${d}" alt=""><br><small>Photo ${esc(fmtStamp(p.takenAt))}</small>`); }
+      for (const p of (it.photos || [])){ const d = await thumbData(p.ref); if (d) imgs.push(`<img src="${d}" alt=""><br><small>${esc(tr('rp_photo'))} ${esc(fmtStamp(p.takenAt))}</small>`); }
       rows += `<tr><td><b>${esc(it.name)}</b>${it.category ? `<br>${esc(it.category)}` : ''}${it.notes ? `<br><small>${esc(it.notes)}</small>` : ''}</td>
         <td>${esc(kr(it.value))}</td><td>${esc(it.storedOn)}</td><td>${esc(fmtStamp(it.addedAt))}</td><td class="ph">${imgs.join('<br>')}</td></tr>`;
     }
     const bimg = b.photo ? await thumbData(b.photo.ref) : '';
-    body += `<section><h2>${b.loose ? `${esc(placeName(b.placeId))}: not in a box` : `${esc(b.code)} ${esc(b.name)}`}</h2><p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}. Packed ${esc(fmtDate(b.createdAt))}. ${(b.items || []).length} items, ${esc(kr(boxValue(b)) || '0 kr')}.</p>
+    body += `<section><h2>${b.loose ? `${esc(placeName(b.placeId))}: ${esc(tr('notInBoxShort'))}` : `${esc(b.code)} ${esc(b.name)}`}</h2><p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}. ${esc(tr('rp_packed', fmtDate(b.createdAt), (b.items || []).length, kr(boxValue(b)) || '0 kr'))}</p>
       ${bimg ? `<img class="box" src="${bimg}" alt="">` : ''}
-      ${rows ? `<table><tr><th>Item</th><th>Est. value</th><th>Stored since</th><th>Registered</th><th>Photos</th></tr>${rows}</table>` : '<p>Empty.</p>'}</section>`;
+      ${rows ? `<table><tr><th>${esc(tr('rp_item'))}</th><th>${esc(tr('rp_value'))}</th><th>${esc(tr('rp_stored'))}</th><th>${esc(tr('rp_registered'))}</th><th>${esc(tr('rp_photos'))}</th></tr>${rows}</table>` : `<p>${esc(tr('rp_empty'))}</p>`}</section>`;
   }
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storage inventory ${today()}</title><style>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(tr('rp_title'))} ${today()}</title><style>
     body{font-family:Arial,sans-serif;margin:14mm;color:#111}h1{margin:0}table{border-collapse:collapse;width:100%;margin:8px 0 24px}
     th,td{border:1px solid #bbb;padding:6px;vertical-align:top;text-align:left;font-size:10pt}td.ph img{width:110px}img.box{width:200px}
     section{break-inside:avoid-page}small{color:#555}</style></head><body>
-    <h1>Storage inventory</h1><p>Generated ${esc(fmtStamp(new Date().toISOString()))}. ${all.filter(b => !b.loose).length} boxes, ${all.reduce((s, b) => s + (b.items || []).length, 0)} items, estimated total value ${esc(kr(total) || '0 kr')}.</p>
-    <p>"Registered" is when the item was entered in the inventory. Photo times come from the image file.</p>${body}</body></html>`;
-  deliver(`storage-inventory-${today()}.html`, new Blob([html], {type: 'text/html'}), 'Insurance report ready');
+    <h1>${esc(tr('rp_title'))}</h1><p>${esc(tr('rp_generated', fmtStamp(new Date().toISOString()), all.filter(b => !b.loose).length, all.reduce((s, b) => s + (b.items || []).length, 0), kr(total) || '0 kr'))}</p>
+    <p>${esc(tr('rp_note'))}</p>${body}</body></html>`;
+  deliver(`storage-inventory-${today()}.html`, new Blob([html], {type: 'text/html'}), tr('rp_ready'));
 }
 const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 async function backup(){
-  if (!boxes.length && !notes.length) return toast('Nothing to back up yet.');
-  toast('Preparing backup…');
+  if (!boxes.length && !notes.length) return toast(tr('h_nothingBackup'));
+  toast(tr('h_preparingBackup'));
   const photos = {};
   const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])]).filter(Boolean);
   for (const ref of refs){ const b = await phGet(ref).catch(() => null); if (b) photos[ref] = await blobToDataURL(b); }
@@ -4918,7 +4955,7 @@ $('#importFile').addEventListener('change', async e => {
       await validateAudioUpload(audio);
       preparedNotes.push({id: x.id, boxId: x.boxId || null, createdAt: x.createdAt || new Date().toISOString(), duration: Math.max(0, +x.duration || 0), by: String(x.by || '').slice(0, 80), blob: audio});
     }
-    toast('Restoring…');
+    toast(tr('h_restoring'));
     let n = 0;
     for (const [ref, blob] of safePhotos) await phPut(ref, blob);
     for (const b of prepared){ putBox(b); n++; }
@@ -5062,7 +5099,7 @@ async function verifyCode(email, code){
 }
 /* the login e-mail is written in the language chosen in the app */
 function saveLangToAccount(){ if (cloud.session) sb('/auth/v1/user', {method: 'PUT', body: {data: {lang}}}).catch(() => {}); }
-const KEEP_META = ['folded', 'langPref', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs'];
+const KEEP_META = ['folded', 'langPref', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs', 'rkSize', 'rkMeasure', 'rkRules'];
 async function wipeLocal(){
   for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
   const keys = await tx('meta', 'readonly', s => s.getAllKeys()).catch(() => []) || [];
@@ -5124,6 +5161,7 @@ async function joinFromLink(text){
   const pj = m[1] + (m[2] ? '.' + m[2] : '');
   if (!cloud.session){ await metaPutRaw('pendingJoin', pj).catch(() => {}); pendingJoinCode = pj; if (view.name === 'welcome') return render(); toast(tr('loginToJoin')); return cloudSheet(); }
   if (cloud.hid && boxes.some(b => !b.loose || (b.items || []).length) && !(await askConfirm(tr('switchHouseholdQ'), tr('join')))) return;
+  if (!cloud.hid && !(await askConfirm(tr('joinConfirmQ'), tr('join')))) return;
   const keep = (boxes.some(b => (b.items || []).length) || realBoxes().length) ? await askChoice(tr('mergeQ'), tr('mergeYes'), tr('mergeNo')) : false;
   try {
     const hid = await rpc('join_household', {c: m[1]});
@@ -5515,7 +5553,7 @@ function feedbackSheet(){
 Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
   email: 'E-mail', emailWhy: 'Only used to log in. No password, no newsletters.', sendLink: 'Send login link', checkMail: 'Check your e-mail', linkSent: e => `We sent a login link to ${e}.`, linkSamePhone: 'Open the link on this phone. It can take a minute – check the spam folder too.',
   tooMany: 'Too many links sent just now – try again in a while.', sendFailed: 'Couldn’t send. Try again.', loginFailed: 'Login didn’t work.', loggedIn: 'You’re logged in.', loggedOut: 'Logged out. Your things are still on this phone.', loginAgain: 'Log in again to keep syncing.',
-  loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded encrypted. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
+  loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded to your household. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
   householdCreated: 'Household created – now invite the others.', yourHousehold: 'Your household', membersN: n => n === 1 ? '1 member' : `${n} members`, e2eNote: 'Encrypted on your phones. The server only stores scrambled data.',
   invite: 'Invite someone', inviteHint: 'Let them scan this with the phone camera or inside Storrrage (☰ → Scan label).', shareLink: 'Share link instead', inviteSafe: 'The code works once, for 24 hours. The key is in the link itself and never passes our server.', inviteText: 'Join our storage in Storrrage', copied: 'Copied.',
   syncNow: 'Sync now', syncing: 'Syncing…', syncedAt: t => `Synced ${t}`, waitingN: n => `${n} changes waiting to sync`, offlineSync: 'Offline – syncs when you have signal.', syncFailed: 'Couldn’t sync right now.', notMember: 'You’re no longer in this household.',
@@ -5528,7 +5566,7 @@ Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with y
 Object.assign(STR.sv, {cloudMenu: 'Konto & delning', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
   email: 'E-post', emailWhy: 'Används bara för inloggning. Inget lösenord, inga nyhetsbrev.', sendLink: 'Skicka inloggningslänk', checkMail: 'Kolla din e-post', linkSent: e => `Vi har skickat en inloggningslänk till ${e}.`, linkSamePhone: 'Öppna länken på den här telefonen. Det kan ta en minut – kolla skräpposten också.',
   tooMany: 'För många länkar skickade just nu – försök igen om en stund.', sendFailed: 'Kunde inte skicka. Försök igen.', loginFailed: 'Inloggningen fungerade inte.', loggedIn: 'Du är inloggad.', loggedOut: 'Utloggad. Dina saker finns kvar på telefonen.', loginAgain: 'Logga in igen för att fortsätta synka.',
-  loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp krypterat. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
+  loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp till hushållet. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
   householdCreated: 'Hushållet är skapat – bjud in de andra.', yourHousehold: 'Ditt hushåll', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmar`, e2eNote: 'Krypterat på era telefoner. Servern sparar bara oläslig data.',
   invite: 'Bjud in någon', inviteHint: 'Låt dem skanna med telefonens kamera eller i Storrrage (☰ → Skanna etikett).', shareLink: 'Dela länk i stället', inviteSafe: 'Koden fungerar en gång i 24 timmar. Nyckeln ligger i själva länken och passerar aldrig vår server.', inviteText: 'Gå med i vår förvaring i Storrrage', copied: 'Kopierat.',
   syncNow: 'Synka nu', syncing: 'Synkar…', syncedAt: t => `Synkat ${t}`, waitingN: n => `${n} ändringar väntar på att synkas`, offlineSync: 'Offline – synkar när du har täckning.', syncFailed: 'Kunde inte synka just nu.', notMember: 'Du är inte längre med i det här hushållet.',
@@ -5597,15 +5635,15 @@ Object.assign(STR.sv, {adminTitle: 'Statistik & feedback', loading: 'Laddar…',
 
 
 
-Object.assign(STR.en, {usageSync: n => `Storrrage uses about ${n} MB on this phone. Everything is also synced, encrypted, with your household.`, nameShown: 'Shown to the others in your household.', loginEmail: 'Logged in with', mailReminders: 'E-mail me reminders (things to bring back, things not used for a long time)', otherEmail: 'Send to another address (optional)',
-  mailHint: 'Coming soon. The e-mail only says that something needs attention – what it is stays encrypted in the app.', loginForMore: 'Log in to share with your household and get reminders by e-mail.', logIn: 'Log in',
+Object.assign(STR.en, {usageSync: n => `Storrrage uses about ${n} MB on this phone. Everything is also synced with your household.`, nameShown: 'Shown to the others in your household.', loginEmail: 'Logged in with', mailReminders: 'E-mail me reminders (things to bring back, things not used for a long time)', otherEmail: 'Send to another address (optional)',
+  mailHint: 'Coming soon. The e-mail only says that something needs attention – what it is stays in the app.', loginForMore: 'Log in to share with your household and get reminders by e-mail.', logIn: 'Log in',
   appearance: 'Appearance', light: 'Light', dark: 'Dark', auto: 'Automatic', advanced: 'More', restoreHint: 'Only needed for old backup files. Your things are kept safe by syncing with your household.',
   inApp: 'In the app', youTag: '(you)', morePeople: 'Others in the household', morePeopleHint: 'People who don’t use the app but own things, e.g. kids. Pick them as owner of a thing.', editPlaces: 'Edit places', shareTitle: 'Share between phones',
   someone: 'Someone', activeNow: 'in the app now', inThisBox: n => `${n} is in this box right now.`, editingItem: n => `${n} has this thing open right now – wait a moment so your changes don’t clash.`,
   talkH: 'Talk or write to Storrrage', tapTalk: 'Tap and talk', chatPh: 'Write, e.g. “where is the tent?”', simpleMode: 'Simple commands, works offline', aiOn: 'Turn on AI', offlineSimple: 'offline – simple commands',
   whatSay: 'What can I say? (also without signal)', noSignal: 'Without signal:', noSignalTxt2: 'all the commands above work offline. If the microphone needs signal on your phone, use the microphone on your keyboard instead.'});
-Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på telefonen. Allt synkas också, krypterat, med hushållet.`, nameShown: 'Visas för de andra i hushållet.', loginEmail: 'Inloggad med', mailReminders: 'Mejla mig påminnelser (saker som ska tillbaka, saker som inte använts på länge)', otherEmail: 'Skicka till en annan adress (valfritt)',
-  mailHint: 'Kommer snart. Mejlet säger bara att något behöver kollas – vad det är stannar krypterat i appen.', loginForMore: 'Logga in för att dela med hushållet och få påminnelser via e-post.', logIn: 'Logga in',
+Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på telefonen. Allt synkas också med hushållet.`, nameShown: 'Visas för de andra i hushållet.', loginEmail: 'Inloggad med', mailReminders: 'Mejla mig påminnelser (saker som ska tillbaka, saker som inte använts på länge)', otherEmail: 'Skicka till en annan adress (valfritt)',
+  mailHint: 'Kommer snart. Mejlet säger bara att något behöver kollas – vad det är stannar i appen.', loginForMore: 'Logga in för att dela med hushållet och få påminnelser via e-post.', logIn: 'Logga in',
   appearance: 'Utseende', light: 'Ljust', dark: 'Mörkt', auto: 'Automatiskt', advanced: 'Mer', restoreHint: 'Behövs bara för gamla säkerhetskopior. Dina saker skyddas nu av synken med hushållet.',
   inApp: 'I appen', youTag: '(du)', morePeople: 'Fler i hushållet', morePeopleHint: 'Personer som inte använder appen men äger saker, t.ex. barn. Välj dem som ägare på en sak.', editPlaces: 'Ändra platser', shareTitle: 'Dela mellan telefoner',
   someone: 'Någon', activeNow: 'i appen nu', inThisBox: n => `${n} är i den här lådan just nu.`, editingItem: n => `${n} har den här saken öppen just nu – vänta en stund så era ändringar inte krockar.`,
@@ -5748,7 +5786,7 @@ async function blankLabels(){
   const v = await askText(tr('blankHowMany'), {value: '12', placeholder: '12', ok: tr('printLabel')}); if (!v) return;
   const n = Math.max(1, Math.min(60, parseInt(v, 10) || 12));
   const ls = Array.from({length: n}, () => `<div class="l"><div class="q">${qrSvg('STRG:L:' + newLabelId(), 6)}</div><div class="w"><div class="ln"></div><div class="ln"></div></div></div>`).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storrrage labels</title><style>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storrrage – ${esc(tr('h_boxLabels'))}</title><style>
     body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
     .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
     .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.w{flex:1}.ln{border-bottom:1.5px solid #999;height:12mm}
@@ -5861,7 +5899,7 @@ function moveAction(a){
   if (a === 'moveend') return askConfirm(tr('moveEndQ'), tr('moveEnd')).then(y => { if (!y) return; moveBoxes().forEach(b => { const nb = clone(b); delete nb.moveState; delete nb.moveRoom; putBox(nb, true); }); move = {active: false, rooms: move.rooms}; saveMove(); track('move_end'); toast(tr('moveEnded')); render(); });
 }
 function moveBanner(){
-  if (!move.active) return '';
+  if (!move.active || !moveBoxes().length) return '';
   const all = moveBoxes(), done = all.filter(b => b.moveState === 'unpacked').length;
   return `<button class="movebanner" data-act="gomove">${ICON.truck}<span>${tr('moveOngoing', done, all.length)}</span><b>›</b></button>`;
 }
@@ -6101,11 +6139,11 @@ STR.da = {
   col_owner: 'Ejer', col_status: 'Status', col_qty: 'Antal', col_value: 'Værdi (kr)', col_stored: 'Opbevaret siden', col_used: 'Sidst brugt', col_tags: 'Tags', col_notes: 'Noter', col_serial: 'Serienr.',
   listTitle: 'Opbevaringsliste', total: 'Total', showAll: 'Vis alle', dragLooseHint: 'Hold på en rund markør og træk den ind i en zone.', addZone: 'Tilføj zone', zoneExists: 'Der findes allerede en zone med det navn.',
   doorSide: 'Dør og bagende', doorHint: 'Vælg hvilken side døren er på, og hvor bagenden er.', door_top: 'Top', door_bottom: 'Bund', door_left: 'Venstre', door_right: 'Højre',
-  dragHint: 'Hold på en kasse eller rund markør og træk den til en stabel eller zone.', back: 'Tilbage', switchSpace: 'Vælg sted', shelf: 'Hylde', map: 'Kort', door: 'Dør', farIn: 'Bagest',
+  dragHint: 'Hold på en kasse eller rund markør og træk den til en stabel eller zone.', back: 'Tilbage', switchSpace: 'Vælg sted', shelf: 'Gitter', map: 'Kort', door: 'Dør', farIn: 'Bagest',
   noZone: 'Ingen zone', placement: 'Placering', placementHint: 'Hvor kassen står: zonen (fx “Ved døren”, “Hylde 2”) og hvilken stabel.', zone: 'Zone', zoneHint: 'Fx Ved døren, Hylde 2, Bagest',
   stack: 'Stabel', newStack: 'En ny stabel', level: 'Niveau', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
-  closerDoor: 'Flyt op', furtherIn: 'Flyt ned', collections: 'Samlinger', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kort',
-  insideBox: 'indeni', toCollection: 'Samling', collHint: 'Ting med samme tag udgør en samling, også når de ligger i forskellige kasser.', collPh: 'Fx Jul eller Vinter',
+  closerDoor: 'Flyt op', furtherIn: 'Flyt ned', collections: 'Tags', collection: 'Tag', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kort',
+  insideBox: 'indeni', toCollection: 'Tag', collHint: 'Ting med samme tag vises samlet, også når de ligger i forskellige kasser.', collPh: 'Fx Jul eller Vinter',
   addedToColl: (n, t) => `Føjede ${n} til #${t}.`, isHere: 'er her', openItem: 'Åbn ting', foundIn: 'Fundet i', list: 'Liste', takeOut: 'Tag frem', putBack: 'Læg tilbage', outTag: 'Fremme',
   outSince: d => `fremme siden ${d}`, backBy: d => `tilbage senest ${d}`, outSection: 'Fremme lige nu', outUntil: 'Fremme til (valgfrit)',
   tookOut: (n, w) => `${n} taget frem fra ${w}. Pladsen beholdes.`, putBackDone: (n, w) => `${n} er tilbage i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Fortryd', more: 'Mere',
@@ -6244,12 +6282,12 @@ STR.fi = {
   col_owner: 'Omistaja', col_status: 'Tila', col_qty: 'Määrä', col_value: 'Arvo (kr)', col_stored: 'Säilytetty alkaen', col_used: 'Viimeksi käytetty', col_tags: 'Tunnisteet', col_notes: 'Muistiinpanot', col_serial: 'Sarjanro',
   listTitle: 'Varastolista', total: 'Yhteensä', showAll: 'Näytä kaikki', dragLooseHint: 'Pidä pyöreää merkkiä painettuna ja vedä se vyöhykkeelle.', addZone: 'Lisää vyöhyke', zoneExists: 'Samanniminen vyöhyke on jo olemassa.',
   doorSide: 'Ovi ja perä', doorHint: 'Valitse millä puolella ovi on ja missä perä on.', door_top: 'Ylhäällä', door_bottom: 'Alhaalla', door_left: 'Vasemmalla', door_right: 'Oikealla',
-  dragHint: 'Pidä laatikkoa tai pyöreää merkkiä painettuna ja vedä se pinoon tai vyöhykkeelle.', back: 'Takaisin', switchSpace: 'Valitse paikka', shelf: 'Hylly', map: 'Kartta', door: 'Ovi', farIn: 'Perällä',
+  dragHint: 'Pidä laatikkoa tai pyöreää merkkiä painettuna ja vedä se pinoon tai vyöhykkeelle.', back: 'Takaisin', switchSpace: 'Valitse paikka', shelf: 'Ruudukko', map: 'Kartta', door: 'Ovi', farIn: 'Perällä',
   noZone: 'Ei vyöhykettä', placement: 'Sijoitus', placementHint: 'Missä laatikko on: vyöhyke (esim. ”Oven vieressä”, ”Hylly 2”) ja mikä pino.', zone: 'Vyöhyke', zoneHint: 'Esim. Oven vieressä, Hylly 2, Perällä',
   stack: 'Pino', newStack: 'Uusi pino', level: 'Taso', onTop: 'Päällimmäisenä', atBottom: 'Alimmaisena', stackOf: (n, codes) => codes ? `Pino ${n}: päällä ${codes}` : `Pino ${n}`,
-  closerDoor: 'Siirrä ylös', furtherIn: 'Siirrä alas', collections: 'Kokoelmat', collection: 'Kokoelma', inBoxes: n => n === 1 ? '1 paikassa' : `${n} paikassa`, showOnMap: 'Näytä kartalla',
-  insideBox: 'sisällä', toCollection: 'Kokoelma', collHint: 'Saman tunnisteen tavarat muodostavat kokoelman, vaikka ne olisivat eri laatikoissa.', collPh: 'Esim. Joulu tai Talvi',
-  addedToColl: (n, t) => `Lisättiin ${n} kokoelmaan #${t}.`, isHere: 'on täällä', openItem: 'Avaa tavara', foundIn: 'Löytyy', list: 'Lista', takeOut: 'Ota esiin', putBack: 'Palauta', outTag: 'Esillä',
+  closerDoor: 'Siirrä ylös', furtherIn: 'Siirrä alas', collections: 'Tunnisteet', collection: 'Tunniste', inBoxes: n => n === 1 ? '1 paikassa' : `${n} paikassa`, showOnMap: 'Näytä kartalla',
+  insideBox: 'sisällä', toCollection: 'Tunniste', collHint: 'Saman tunnisteen tavarat näytetään yhdessä, vaikka ne olisivat eri laatikoissa.', collPh: 'Esim. Joulu tai Talvi',
+  addedToColl: (n, t) => `Lisättiin ${n} tunnisteeseen #${t}.`, isHere: 'on täällä', openItem: 'Avaa tavara', foundIn: 'Löytyy', list: 'Lista', takeOut: 'Ota esiin', putBack: 'Palauta', outTag: 'Esillä',
   outSince: d => `esillä ${d} alkaen`, backBy: d => `takaisin viimeistään ${d}`, outSection: 'Esillä juuri nyt', outUntil: 'Esillä asti (valinnainen)',
   tookOut: (n, w) => `${n} otettu esiin kohteesta ${w}. Paikka säilyy.`, putBackDone: (n, w) => `${n} on taas kohteessa ${w}.`, deletedX: n => `${n} poistettu.`, undo: 'Kumoa', more: 'Lisää',
   quickAddPh: w => `Lisää kohteeseen ${w}…`, boxEmpty: 'Täällä ei ole vielä mitään.', backQ: 'Onko se palautettu?', stillOut: 'Yhä esillä', isBack: 'Se on palautettu',
@@ -6387,11 +6425,11 @@ STR.nb = {
   col_owner: 'Eier', col_status: 'Status', col_qty: 'Antall', col_value: 'Verdi (kr)', col_stored: 'Lagret siden', col_used: 'Sist brukt', col_tags: 'Stikkord', col_notes: 'Notater', col_serial: 'Serienr.',
   listTitle: 'Lagerliste', total: 'Totalt', showAll: 'Vis alle', dragLooseHint: 'Hold på en rund markør og dra den inn i en sone.', addZone: 'Legg til sone', zoneExists: 'Det finnes allerede en sone med det navnet.',
   doorSide: 'Dør og innerste del', doorHint: 'Velg hvilken side døren er på, og hvor innerst er.', door_top: 'Topp', door_bottom: 'Bunn', door_left: 'Venstre', door_right: 'Høyre',
-  dragHint: 'Hold på en eske eller rund markør og dra den til en stabel eller sone.', back: 'Tilbake', switchSpace: 'Velg sted', shelf: 'Hylle', map: 'Kart', door: 'Dør', farIn: 'Innerst',
+  dragHint: 'Hold på en eske eller rund markør og dra den til en stabel eller sone.', back: 'Tilbake', switchSpace: 'Velg sted', shelf: 'Rutenett', map: 'Kart', door: 'Dør', farIn: 'Innerst',
   noZone: 'Ingen sone', placement: 'Plassering', placementHint: 'Hvor esken står: sonen (f.eks. «Ved døren», «Hylle 2») og hvilken stabel.', zone: 'Sone', zoneHint: 'F.eks. Ved døren, Hylle 2, Innerst',
   stack: 'Stabel', newStack: 'En ny stabel', level: 'Nivå', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
-  closerDoor: 'Flytt opp', furtherIn: 'Flytt ned', collections: 'Samlinger', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kart',
-  insideBox: 'inni', toCollection: 'Samling', collHint: 'Ting med samme stikkord blir en samling, også når de ligger i ulike esker.', collPh: 'F.eks. Jul eller Vinter',
+  closerDoor: 'Flytt opp', furtherIn: 'Flytt ned', collections: 'Stikkord', collection: 'Stikkord', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kart',
+  insideBox: 'inni', toCollection: 'Stikkord', collHint: 'Ting med samme stikkord vises samlet, også når de ligger i ulike esker.', collPh: 'F.eks. Jul eller Vinter',
   addedToColl: (n, t) => `La ${n} til #${t}.`, isHere: 'er her', openItem: 'Åpne ting', foundIn: 'Funnet i', list: 'Liste', takeOut: 'Ta fram', putBack: 'Legg tilbake', outTag: 'Framme',
   outSince: d => `framme siden ${d}`, backBy: d => `tilbake innen ${d}`, outSection: 'Framme akkurat nå', outUntil: 'Framme til (valgfritt)',
   tookOut: (n, w) => `${n} tatt fram fra ${w}. Plassen beholdes.`, putBackDone: (n, w) => `${n} er tilbake i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Angre', more: 'Mer',
@@ -6538,6 +6576,7 @@ async function init(){
     listSort = await metaGet('listSort') || 'manual'; folded = new Set(await metaGet('folded') || []); foldedPlaces = new Set(await metaGet('foldedPlaces') || []); boxOrder = await metaGet('boxOrder') || {};
     trash = await metaGet('trash') || []; purgeTrash();
     placeView = await metaGet('placeView') || 'shelf';
+    rkSize = await metaGet('rkSize') || 'M'; rkMeasure = !!(await metaGet('rkMeasure')); rkRules = Object.assign(rkRules, await metaGet('rkRules') || {});
     shelfMode = await metaGet('shelfMode') || 'grid';
     recentQ = await metaGet('recentQ') || [];
     nudgeSnooze = await metaGet('nudgeSnooze') || {};
@@ -6568,6 +6607,743 @@ async function init(){
   track('open', {places: places.length, boxes: Math.min(realBoxes().length, 999), synced: !!cloud.hid});
   statsNotice();
 }
+
+/* ---------- Shelves (test): shelf units on the walls, boxes and loose things on them ----------
+   Data: place.units = [{id, name, wall: 'left'|'back'|'right', width, shelves, gap}] (cm).
+   Position on a box (b.shelf) or a loose item (it.shelf) = {u, s, x, l}:
+   u = unit id, s = shelf from the bottom (0), x = column from the left, l = level in that column (0 = on the shelf). */
+const RK_TYPES = {moving: {w: 60, h: 40, d: 40}, banana: {w: 50, h: 25, d: 40}, small: {w: 40, h: 30, d: 30}};
+const RK_ITEM = {w: 30, h: 30, d: 30};
+const RK_WALLS = ['left', 'back', 'right'];
+let rkSize = 'M', rkMeasure = false, rkMode = 'shelves', rkTidyDetail = false, rkTidyShow = 'after', rkLastTidy = null;
+let rkRules = {heavy: true, reach: true, top: true, season: true, fragile: true};
+let rkPendingItem = null;
+Object.assign(STR.en, {
+  rk_view: 'Shelves', rk_small: 'Small', rk_medium: 'Medium', rk_large: 'Large', rk_sizeL: 'Size',
+  rk_measure: 'Measurements', rk_measureHint: 'Shows centimetres: how wide each shelf unit is, how full each shelf is, and the size of each box.',
+  rk_tidy: 'Tidy up', rk_wall_left: 'Left wall', rk_wall_back: 'Far wall', rk_wall_right: 'Right wall', rk_wall: 'Wall',
+  rk_unitName: n => `Shelf ${n}`, rk_addUnit: 'Add shelf unit', rk_editUnit: 'Edit shelf unit', rk_width: 'Width (cm)', rk_shelves: 'Shelves',
+  rk_gap: 'Height between shelves (cm)', rk_delUnit: 'Remove shelf unit',
+  rk_delUnitQ: n => n ? `Remove this shelf unit? The ${n} boxes and things on it stay in this place, just not on a shelf.` : 'Remove this shelf unit?',
+  rk_badSize: 'Check the numbers: width 30–400 cm, 1–8 shelves and 15–150 cm between shelves.',
+  rk_empty: 'No shelf units here yet. Add the shelves you have, then drag your boxes and things onto them.',
+  rk_quick: 'One shelf unit per wall', rk_unplaced: 'Not on a shelf yet', rk_unplacedEmpty: 'Drag here to take something off its shelf.',
+  rk_autoPlace: 'Place them for me', rk_dragHint: 'Tap to open. Hold and drag to move – onto a shelf, between boxes or on top of a box.',
+  rk_shelfN: n => `Shelf ${n}`, rk_free: n => `${n} cm free`, rk_fits: t => `Fits a ${t}`,
+  rk_used: (u, w, h) => `${u} of ${w} cm used, ${h} cm high`, rk_tooWide: n => `${n} cm too wide`, rk_tooTall: 'Too tall for the shelf',
+  rk_unitMeta: (w, s, n) => `${w} cm, ${s} shelves, ${n} on it`, rk_offShelf: x => `${x} is no longer on a shelf`,
+  rk_boxType: 'Box size', rk_bt_moving: 'Moving box 60×40×40 cm', rk_bt_banana: 'Banana box 50×40×25 cm', rk_bt_small: 'Small box 40×30×30 cm', rk_bt_custom: 'Own measurements',
+  rk_bn_moving: 'moving box', rk_bn_banana: 'banana box', rk_bn_small: 'small box',
+  rk_w: 'Width', rk_h: 'Height', rk_d: 'Depth', rk_addOn: (u, s) => `Add to ${u}, ${s}`,
+  rk_bottom: 'bottom shelf', rk_top: 'top shelf', rk_nth: n => `shelf ${n} from the bottom`, rk_only: 'the shelf',
+  rk_simple: 'Simple', rk_detailed: 'Detailed', rk_now: 'Where they are now', rk_after: 'Where they go',
+  rk_toMove: 'To move (number = step)', rk_stays: 'Stays', rk_nothing: 'Everything is already where these rules want it.',
+  rk_moved: 'I’ve moved them', rk_from: 'From', rk_to: 'To', rk_tidyHint: 'Choose the rules. It only suggests spots where the box fits.',
+  rk_zones: 'Bottom shelf: heavy. Middle shelves: easy to reach. Top shelf: light and rarely used.',
+  rk_r_heavy: 'Heavy on the lowest shelf', rk_r_heavyD: 'Easier on your back and safer for the shelf',
+  rk_r_reach: 'Used often within easy reach', rk_r_reachD: 'Middle shelves, on the shelf unit closest to the door',
+  rk_r_top: 'Light and rarely used up high', rk_r_topD: 'Keepsakes and archive boxes go on top',
+  rk_r_season: 'Coming season within reach', rk_r_seasonD: 'Out of season goes up high',
+  rk_r_fragile: 'Nothing on top of fragile boxes', rk_r_fragileD: 'Fragile boxes get their own spot',
+  rk_ruleCol: 'Breaking the rule', rk_nowCol: 'Now', rk_afterCol: 'After', rk_guesses: n => `Check the guesses (${n})`,
+  rk_guessHint: 'Guessed from names, contents, seasons and when you last opened the box. Change one and it stays.',
+  rk_weight: 'Weight', rk_use: 'Used', rk_fragileL: 'Fragile', rk_seasonL: 'Season',
+  rk_light: 'Light ~3 kg', rk_mediumW: 'Medium ~8 kg', rk_heavy: 'Heavy ~15 kg', rk_often: 'Often', rk_sometimes: 'Sometimes', rk_rarely: 'Rarely',
+  rk_yes: 'Yes', rk_no: 'No', rk_allYear: 'All year', rk_christmas: 'Christmas', rk_easter: 'Easter', rk_winter: 'Winter', rk_summer: 'Summer',
+  rk_why_heavy: 'Heavy – lowest shelf', rk_why_reach: 'Used often – easy to reach', rk_why_seasonUp: s => `${s} is coming up – within reach`,
+  rk_why_seasonOff: 'Out of season – up high', rk_why_top: 'Light or rarely used – up high', rk_why_room: 'Makes room for boxes that need this spot', rk_why_place: 'Gets a spot on a shelf',
+  rk_updated: 'Shelves updated', rk_notPlaced: 'not on a shelf', rk_noRoom: n => `${n} didn’t fit anywhere – add a shelf unit or shelf.`,
+  rk_q: x => `Is it OK to keep ${x} here?`, rk_qW: n => `It sticks out ${n} cm.`, rk_qH: n => `The stack is ${n} cm too tall.`,
+  rk_qYes: 'Yes, keep it', rk_qNo: 'No, move it', rk_hard: 'This looks hard to fit',
+  rk_hardW: (need, have) => `The boxes need ${need} cm, but the shelf is ${have} cm wide (measured).`,
+  rk_hardH: (need, have) => `The stack is ${need} cm high, but there is ${have} cm to the shelf above (measured).`,
+  rk_editM: 'Check measurements', rk_force: 'It fits anyway…', rk_forceOk: 'Keep it like this',
+  rk_forceQ: 'You’ve measured both the shelf and the boxes, and the numbers don’t add up. Keep it like this anyway?',
+  rk_grewW: (u, w) => `${u} is now ${w} cm wide`, rk_grewH: (s, h) => `${s} is now ${h} cm high`,
+  rk_measured: 'I’ve measured this shelf unit', rk_measuredHint: 'Then the app warns you when something doesn’t fit, instead of making the shelf bigger.',
+  rk_gapsNote: x => `Some shelves are higher: ${x}. Changing the height or number of shelves resets them.`,
+  rk_room: 'The room', rk_roomEdit: 'Edit the room', rk_planHint: 'Tap to jump there. Hold a shelf unit and drag it to any wall.',
+  rk_planAt: (w, n) => `${w}: ${n} cm from the corner`, rk_planNoRoom: 'No room there – it would overlap another shelf unit', rk_planMoved: (u, w) => `${u} moved to the ${w}`,
+  rk_roomW: 'Width, far wall (cm)', rk_roomD: 'Depth, side walls (cm)', rk_door: 'Door', rk_door_left: 'Left', rk_door_mid: 'Middle', rk_door_right: 'Right',
+  rk_doorW: 'Door width (cm)', rk_roomMeasured: 'I’ve measured the room', rk_roomMeasuredHint: 'Then the app warns you when shelf units don’t fit along a wall, instead of making the room bigger.',
+  rk_unitsInRoom: 'Shelf units', rk_fromCorner: 'From the corner (cm)', rk_auto: 'auto', rk_depth: 'Depth (cm)',
+  rk_cornerHint: 'Measured from the far corner along the side walls, and from the left corner along the far wall. Leave it empty and the app places them for you.',
+  rk_wallFull: (u, w, need, have) => `${u} doesn’t fit along the ${w} (${need} of ${have} cm).`, rk_overlap: (a, b) => `${a} and ${b} overlap.`,
+  rk_roomBad: 'Check the numbers: the room 50–2000 cm, the door 50–300 cm, shelf depth 10–200 cm.'
+});
+Object.assign(STR.sv, {
+  rk_view: 'Hyllor', rk_small: 'Liten', rk_medium: 'Mellan', rk_large: 'Stor', rk_sizeL: 'Storlek',
+  rk_measure: 'Mått', rk_measureHint: 'Visar centimeter: hur bred varje hylla är, hur fullt varje hyllplan är och hur stor varje låda är.',
+  rk_tidy: 'Städa', rk_wall_left: 'Vänster vägg', rk_wall_back: 'Bortre vägg', rk_wall_right: 'Höger vägg', rk_wall: 'Vägg',
+  rk_unitName: n => `Hylla ${n}`, rk_addUnit: 'Lägg till hylla', rk_editUnit: 'Ändra hylla', rk_width: 'Bredd (cm)', rk_shelves: 'Hyllplan',
+  rk_gap: 'Höjd mellan hyllplanen (cm)', rk_delUnit: 'Ta bort hyllan',
+  rk_delUnitQ: n => n ? `Ta bort hyllan? De ${n} lådor och saker som står på den blir kvar här, bara inte på en hylla.` : 'Ta bort hyllan?',
+  rk_badSize: 'Kolla siffrorna: bredd 30–400 cm, 1–8 hyllplan och 15–150 cm mellan hyllplanen.',
+  rk_empty: 'Inga hyllor här än. Lägg till hyllorna du har och dra sedan dina lådor och saker till dem.',
+  rk_quick: 'En hylla per vägg', rk_unplaced: 'Inte på en hylla än', rk_unplacedEmpty: 'Dra hit för att ta ner något från hyllan.',
+  rk_autoPlace: 'Placera åt mig', rk_dragHint: 'Tryck för att öppna. Håll inne och dra för att flytta – till en hylla, mellan lådor eller ovanpå en låda.',
+  rk_shelfN: n => `Hyllplan ${n}`, rk_free: n => `${n} cm ledigt`, rk_fits: t => `Plats för en ${t}`,
+  rk_used: (u, w, h) => `${u} av ${w} cm använt, ${h} cm högt`, rk_tooWide: n => `${n} cm för brett`, rk_tooTall: 'För hög för hyllplanet',
+  rk_unitMeta: (w, s, n) => `${w} cm, ${s} hyllplan, ${n} på den`, rk_offShelf: x => `${x} står inte längre på en hylla`,
+  rk_boxType: 'Lådans storlek', rk_bt_moving: 'Flyttkartong 60×40×40 cm', rk_bt_banana: 'Bananlåda 50×40×25 cm', rk_bt_small: 'Liten låda 40×30×30 cm', rk_bt_custom: 'Egna mått',
+  rk_bn_moving: 'flyttkartong', rk_bn_banana: 'bananlåda', rk_bn_small: 'liten låda',
+  rk_w: 'Bredd', rk_h: 'Höjd', rk_d: 'Djup', rk_addOn: (u, s) => `Lägg till på ${u}, ${s}`,
+  rk_bottom: 'nedersta hyllplanet', rk_top: 'översta hyllplanet', rk_nth: n => `hyllplan ${n} nerifrån`, rk_only: 'hyllplanet',
+  rk_simple: 'Enkel', rk_detailed: 'Detaljerad', rk_now: 'Var de står nu', rk_after: 'Vart de ska',
+  rk_toMove: 'Ska flyttas (siffra = steg)', rk_stays: 'Står kvar', rk_nothing: 'Allt står redan där reglerna vill.',
+  rk_moved: 'Jag har flyttat dem', rk_from: 'Från', rk_to: 'Till', rk_tidyHint: 'Välj regler. Förslaget använder bara platser där lådan får plats.',
+  rk_zones: 'Nedersta hyllplanet: tungt. Mitten: lätt att nå. Översta: lätt och sällan använt.',
+  rk_r_heavy: 'Tungt längst ner', rk_r_heavyD: 'Skonsamt för ryggen och säkrare för hyllan',
+  rk_r_reach: 'Det du använder ofta nära till hands', rk_r_reachD: 'Mittenhyllplanen, på hyllan närmast dörren',
+  rk_r_top: 'Lätt och sällan använt högst upp', rk_r_topD: 'Minnen och arkivlådor hamnar överst',
+  rk_r_season: 'Kommande säsong nära till hands', rk_r_seasonD: 'Det som inte är säsong hamnar högt upp',
+  rk_r_fragile: 'Inget ovanpå ömtåliga lådor', rk_r_fragileD: 'Ömtåliga lådor får en egen plats',
+  rk_ruleCol: 'Bryter mot regeln', rk_nowCol: 'Nu', rk_afterCol: 'Efter', rk_guesses: n => `Kolla gissningarna (${n})`,
+  rk_guessHint: 'Gissat utifrån namn, innehåll, säsong och när du senast öppnade lådan. Ändrar du en så gäller din.',
+  rk_weight: 'Vikt', rk_use: 'Används', rk_fragileL: 'Ömtålig', rk_seasonL: 'Säsong',
+  rk_light: 'Lätt ~3 kg', rk_mediumW: 'Mellan ~8 kg', rk_heavy: 'Tung ~15 kg', rk_often: 'Ofta', rk_sometimes: 'Ibland', rk_rarely: 'Sällan',
+  rk_yes: 'Ja', rk_no: 'Nej', rk_allYear: 'Hela året', rk_christmas: 'Jul', rk_easter: 'Påsk', rk_winter: 'Vinter', rk_summer: 'Sommar',
+  rk_why_heavy: 'Tung – nedersta hyllplanet', rk_why_reach: 'Används ofta – nära till hands', rk_why_seasonUp: s => `${s} närmar sig – nära till hands`,
+  rk_why_seasonOff: 'Inte säsong – högt upp', rk_why_top: 'Lätt eller sällan använd – högt upp', rk_why_room: 'Gör plats för lådor som behöver platsen', rk_why_place: 'Får en plats på en hylla',
+  rk_updated: 'Hyllorna uppdaterade', rk_notPlaced: 'inte på en hylla', rk_noRoom: n => `${n} fick inte plats – lägg till en hylla eller ett hyllplan.`,
+  rk_q: x => `Är det okej att ${x} står här?`, rk_qW: n => `Den sticker ut ${n} cm.`, rk_qH: n => `Traven är ${n} cm för hög.`,
+  rk_qYes: 'Ja, det är okej', rk_qNo: 'Nej, flytta den', rk_hard: 'Det här verkar svårt att få plats',
+  rk_hardW: (need, have) => `Lådorna behöver ${need} cm, men hyllan är ${have} cm bred (uppmätt).`,
+  rk_hardH: (need, have) => `Traven är ${need} cm hög, men det är ${have} cm upp till nästa hyllplan (uppmätt).`,
+  rk_editM: 'Kolla måtten', rk_force: 'Det får plats ändå…', rk_forceOk: 'Behåll så här',
+  rk_forceQ: 'Du har mätt både hyllan och lådorna, och siffrorna går inte ihop. Vill du ändå ha det så här?',
+  rk_grewW: (u, w) => `${u} är nu ${w} cm bred`, rk_grewH: (s, h) => `${s} är nu ${h} cm högt`,
+  rk_measured: 'Jag har mätt hyllan', rk_measuredHint: 'Då varnar appen när något inte får plats, i stället för att göra hyllan större.',
+  rk_gapsNote: x => `Vissa hyllplan är högre: ${x}. Ändrar du höjden eller antalet hyllplan nollställs de.`,
+  rk_room: 'Rummet', rk_roomEdit: 'Ändra rummet', rk_planHint: 'Tryck för att hoppa dit. Håll in en hylla och dra den till valfri vägg.',
+  rk_planAt: (w, n) => `${w}: ${n} cm från hörnet`, rk_planNoRoom: 'Ingen plats där – den skulle gå in i en annan hylla', rk_planMoved: (u, w) => `${u} flyttad till ${w}`,
+  rk_roomW: 'Bredd, bortre väggen (cm)', rk_roomD: 'Djup, sidoväggarna (cm)', rk_door: 'Dörr', rk_door_left: 'Vänster', rk_door_mid: 'Mitten', rk_door_right: 'Höger',
+  rk_doorW: 'Dörrens bredd (cm)', rk_roomMeasured: 'Jag har mätt rummet', rk_roomMeasuredHint: 'Då varnar appen när hyllor inte får plats längs en vägg, i stället för att göra rummet större.',
+  rk_unitsInRoom: 'Hyllor', rk_fromCorner: 'Från hörnet (cm)', rk_auto: 'auto', rk_depth: 'Djup (cm)',
+  rk_cornerHint: 'Mät från det bortre hörnet längs sidoväggarna och från vänstra hörnet längs bortre väggen. Lämna tomt så placerar appen dem åt dig.',
+  rk_wallFull: (u, w, need, have) => `${u} får inte plats längs ${w} (${need} av ${have} cm).`, rk_overlap: (a, b) => `${a} och ${b} går in i varandra.`,
+  rk_roomBad: 'Kolla siffrorna: rummet 50–2000 cm, dörren 50–300 cm, hyllans djup 10–200 cm.'
+});
+const rkUnits = pid => ((findPlace(pid) || {}).units || []);
+const rkGapOf = (u, s) => (u.gaps && u.gaps[s]) || u.gap;
+const rkWallLabel = w => tr('rk_wall_' + w);
+const rkShelfWord = (s, n) => n === 1 ? tr('rk_only') : s === 0 ? tr('rk_bottom') : s === n - 1 ? tr('rk_top') : tr('rk_nth', s + 1);
+function rkDims(e){
+  if (e.kind === 'item') return RK_ITEM;
+  const b = e.b; if (b.boxType === 'custom' && b.boxDims && b.boxDims.w) return b.boxDims;
+  return RK_TYPES[b.boxType] || RK_TYPES.moving;
+}
+function rkEnts(pid){
+  const m = new Map();
+  topBoxesIn(pid).sort(byCode).forEach(b => m.set('b:' + b.id, {k: 'b:' + b.id, kind: 'box', b, pos: b.shelf}));
+  const l = looseOf(pid);
+  (l ? [...(l.items || [])].sort(byName) : []).forEach(it => m.set('i:' + it.id, {k: 'i:' + it.id, kind: 'item', it, l, pos: it.shelf}));
+  return m;
+}
+function rkGrid(pid){
+  const units = rkUnits(pid), ents = rkEnts(pid), grid = {}, unplaced = [], placed = [];
+  units.forEach(u => { grid[u.id] = Array.from({length: u.shelves}, () => []); });
+  ents.forEach(e => { const q = e.pos; if (q && grid[q.u] && q.s >= 0 && q.s < grid[q.u].length) placed.push(e); else unplaced.push(e.k); });
+  placed.sort((a, c) => (a.pos.x - c.pos.x) || (a.pos.l - c.pos.l));
+  const tmp = {};
+  placed.forEach(e => { const key = e.pos.u + ':' + e.pos.s, cols = tmp[key] = tmp[key] || []; let col = cols.find(c => c.x === e.pos.x); if (!col){ col = {x: e.pos.x, ks: []}; cols.push(col); } col.ks.push(e.k); });
+  Object.entries(tmp).forEach(([key, cols]) => { const [u, s] = key.split(':'); grid[u][+s] = cols.sort((a, c) => a.x - c.x).map(c => c.ks); });
+  return {units, grid, ents, unplaced};
+}
+const rkColW = (ents, col) => Math.max(0, ...col.map(k => rkDims(ents.get(k)).w));
+const rkColH = (ents, col) => col.reduce((a, k) => a + rkDims(ents.get(k)).h, 0);
+const rkUsedW = (ents, shelf) => shelf.reduce((a, c) => a + rkColW(ents, c), 0);
+const rkName = e => e.kind === 'box' ? e.b.code : (e.it.name || tr('unnamed'));
+function rkWhere(units, grid, k){
+  for (const u of units) for (let s = 0; s < (grid[u.id] || []).length; s++) if (grid[u.id][s].some(c => c.includes(k))) return {u, s};
+  return null;
+}
+const rkWhereText = (units, grid, k) => { const w = rkWhere(units, grid, k); return w ? `${w.u.name}, ${rkShelfWord(w.s, w.u.shelves)}` : tr('rk_notPlaced'); };
+/* write a whole new arrangement: only boxes that really changed are saved, and it can be undone */
+function rkCommit(pid, grid, msg){
+  const {ents} = rkGrid(pid), next = new Map();
+  Object.entries(grid).forEach(([u, shelves]) => shelves.forEach((cols, s) => cols.forEach((col, x) => col.forEach((k, l) => next.set(k, {u, s, x, l})))));
+  const same = (a, b) => (!a && !b) || (a && b && a.u === b.u && a.s === b.s && a.x === b.x && a.l === b.l);
+  const changed = [...ents.values()].filter(e => !same(e.pos, next.get(e.k)));
+  if (!changed.length) return render();
+  const l = looseOf(pid), boxIds = changed.filter(e => e.kind === 'box').map(e => e.b.id);
+  const itemsChanged = changed.some(e => e.kind === 'item');
+  snapshot([...boxIds, itemsChanged && l ? l.id : null].filter(Boolean));
+  changed.filter(e => e.kind === 'box').forEach(e => { const nb = clone(e.b), p = next.get(e.k); if (p) nb.shelf = p; else delete nb.shelf; putBox(nb, true); });
+  if (itemsChanged && l){ const nl = clone(l); nl.items.forEach(it => { const p = next.get('i:' + it.id); if (p) it.shelf = p; else delete it.shelf; }); putBox(nl, true); }
+  render();
+  if (msg) toastAction(msg, tr('undo'), () => { undoApply(); render(); });
+}
+let rkLastDrop = null;
+function rkDrop(ek, pid, t){
+  const {units, grid, ents} = rkGrid(pid), e = ents.get(ek); if (!e) return;
+  rkLastDrop = t.type === 'out' ? null : {k: ek, u: t.u, s: t.s};
+  const shelf = t.u && grid[t.u] ? grid[t.u][t.s] : null;
+  if (t.type === 'stack'){ const col = shelf && shelf[t.c]; if (!col || (col.length === 1 && col[0] === ek)) return; }
+  const ref = t.type === 'insert' && shelf ? shelf[t.idx] : null;
+  const stackCol = t.type === 'stack' ? shelf[t.c] : null;
+  Object.values(grid).forEach(sh => sh.forEach((cols, i) => { sh[i] = cols.map(c => c.filter(k => k !== ek)).filter(c => c.length); }));
+  const sh2 = shelf ? grid[t.u][t.s] : null;
+  if (t.type === 'stack'){ const col = sh2.find(c => c === stackCol) || sh2.find(c => stackCol.filter(k => k !== ek).every(k => c.includes(k))); if (!col) return; col.push(ek); }
+  else if (t.type === 'insert'){ let i = ref ? sh2.findIndex(c => c === ref || (ref.filter(k => k !== ek).length && ref.filter(k => k !== ek).every(k => c.includes(k)))) : -1; if (i < 0) i = Math.min(t.idx, sh2.length); sh2.splice(i, 0, [ek]); }
+  const w = t.type === 'out' ? null : rkWhere(units, grid, ek);
+  rkCommit(pid, grid, w ? `${rkName(e)} → ${w.u.name}, ${rkShelfWord(w.s, w.u.shelves)}` : tr('rk_offShelf', rkName(e)));
+}
+
+/* --- drawing --- */
+function rkBoxEl(e, w, h, o){
+  const b = e.b, n = (b.items || []).length + childBoxes(b.id).length, big = w >= 54 && h >= 40;
+  const label = w >= 22 && h >= 16 ? `<span class="rklabel">${esc(boxNum(b))}</span>` : '';
+  const name = o.large && w >= 70 && h >= 52 ? `<span class="rkname">${esc(b.name || boxLabel(b))}</span>` : '';
+  const dims = o.measure && o.large && w >= 70 && h >= 66 ? `<span class="rkdim">${rkDims(e).w}×${rkDims(e).h}</span>` : '';
+  return `<button class="rkbox${b.out ? ' out' : ''}${o.tall ? ' tall' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-open="${esc(b.id)}" data-rk-ek="b:${esc(b.id)}" aria-label="${esc(b.code + ' ' + (b.name || ''))}">${label}${name}${dims}${big && n ? `<span class="rkcount">${n}</span>` : ''}</button>`;
+}
+function rkItemEl(e, w, h, o){
+  const it = e.it, p = (it.photos || [])[0], d = Math.max(10, Math.min(w, h));
+  return `<button class="rkitem${isOut(it) ? ' out' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-item="${esc(it.id)}" data-box="${esc(e.l.id)}" data-rk-ek="i:${esc(it.id)}" aria-label="${esc(it.name || '')}"><span class="lcirc" style="width:${d.toFixed(1)}px;height:${d.toFixed(1)}px">${p ? imgTag(p.ref, '') : ''}${d >= 26 ? `<span class="ticon${p ? ' fb' : ''}" style="font-size:${Math.min(40, d * .45).toFixed(0)}px">${guessIcon(it)}</span>` : ''}</span></button>`;
+}
+function rkDraw(u, data, width, o){
+  const {ents, grid} = data, inner = Math.max(40, width - 12), sc = inner / u.width, compact = width < 170, minPx = compact ? 6 : 16;
+  let rows = '';
+  for (let s = u.shelves - 1; s >= 0; s--){
+    const shelf = grid[u.id][s] || [], used = rkUsedW(ents, shelf), free = u.width - used;
+    const cols = shelf.map((col, c) => {
+      const tall = rkColH(ents, col) > rkGapOf(u, s);
+      return `<div class="rkcol" data-rk-col data-rk-c="${c}">${col.map(k => { const e = ents.get(k), d = rkDims(e), w = Math.max(minPx, d.w * sc - 2), h = Math.max(minPx, d.h * sc - 2);
+        return e.kind === 'box' ? rkBoxEl(e, w, h, {large: !compact, measure: o.measure, tall}) : rkItemEl(e, w, h); }).join('')}</div>`;
+    }).join('');
+    let add = '';
+    if (free >= 12){ const fpx = free * sc, fit = ['moving', 'banana', 'small'].find(t => RK_TYPES[t].w <= free && RK_TYPES[t].h <= rkGapOf(u, s));
+      add = compact || fpx < 76 ? (fpx >= 20 ? `<button class="rkfree sm" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}">+</button>` : '')
+        : `<button class="rkfree" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}"><b>+</b><span>${esc(o.measure || !fit ? tr('rk_free', free) : tr('rk_fits', tr('rk_bn_' + fit)))}</span></button>`; }
+    rows += (o.measure && !compact ? `<div class="rkfill"><span>${esc(tr('rk_shelfN', s + 1))}: ${esc(tr('rk_used', used, u.width, rkGapOf(u, s)))}</span><i style="width:${Math.min(100, Math.max(0, used / u.width * 100))}%"></i></div>` : '')
+      + `<div class="rkshelf${free < 0 ? ' wide' : ''}" data-rk-shelf data-rk-u="${esc(u.id)}" data-rk-s="${s}" style="min-height:${Math.round(rkGapOf(u, s) * sc)}px">${cols}${add}${free < 0 ? `<span class="rkwarn">${compact ? '!' : esc(tr('rk_tooWide', -free))}</span>` : ''}</div><div class="rkplank"></div>${rkQuestion(u, s, data, compact)}`;
+  }
+  return `${o.measure && !compact ? `<div class="rkruler"><span>${u.width} cm</span></div>` : ''}<div class="rkframe${compact ? ' thin' : ''}">${rows}</div><div class="rklegs" aria-hidden="true"><i></i><i></i></div>`;
+}
+/* something sticks out or is too tall: ask about it right below that shelf.
+   Measured shelf + measured boxes = a real warning that is hard to click away; otherwise one tap and the shelf follows the boxes. */
+const rkBoxMeasured = e => e.kind === 'box' && (e.b.boxTypeSet || e.b.boxType === 'custom');
+function rkProblem(u, s, data){
+  const {ents, grid} = data, shelf = grid[u.id][s] || [], gap = rkGapOf(u, s);
+  const used = rkUsedW(ents, shelf), tall = shelf.filter(c => rkColH(ents, c) > gap);
+  if (used <= u.width && !tall.length) return null;
+  const sig = shelf.map(c => c.join('+')).join('|');
+  const keys = [...new Set([...(used > u.width ? shelf.flat() : []), ...tall.flat()])];
+  const last = rkLastDrop && rkLastDrop.u === u.id && rkLastDrop.s === s && keys.includes(rkLastDrop.k) ? rkLastDrop.k : null;
+  const culprit = last || (tall.length ? tall[0][tall[0].length - 1] : shelf[shelf.length - 1][shelf[shelf.length - 1].length - 1]);
+  const strict = !!u.measured && keys.every(k => rkBoxMeasured(ents.get(k)));
+  return {used, wide: used - u.width, high: tall.length ? Math.max(...tall.map(c => rkColH(ents, c))) : 0, gap, sig, culprit, strict, accepted: (u.ok || {})[s] === sig};
+}
+function rkQuestion(u, s, data, compact){
+  const pr = rkProblem(u, s, data); if (!pr || pr.accepted) return '';
+  const name = rkName(data.ents.get(pr.culprit)), at = `data-rk-u="${esc(u.id)}" data-rk-s="${s}"`;
+  if (pr.strict) return `<div class="rkq strict" role="alert"><b>⚠ ${tr('rk_hard')}</b>
+    ${pr.wide > 0 ? `<span>${esc(tr('rk_hardW', pr.used, u.width))}</span>` : ''}${pr.high ? `<span>${esc(tr('rk_hardH', pr.high, pr.gap))}</span>` : ''}
+    <div class="rkqb"><button class="btn primary small" data-rk-q="edit" ${at}>${tr('rk_editM')}</button><button class="btn quiet small" data-rk-q="no" ${at} data-rk-k="${esc(pr.culprit)}">${tr('rk_qNo')}</button></div>
+    <button class="linkbtn rkforce" data-rk-q="force" ${at}>${tr('rk_force')}</button></div>`;
+  const why = pr.wide > 0 ? tr('rk_qW', pr.wide) : tr('rk_qH', pr.high - pr.gap);
+  return `<div class="rkq${compact ? ' cmp' : ''}"><span>${esc(tr('rk_q', name))}${compact ? '' : ' ' + esc(why)}</span>
+    <div class="rkqb"><button class="btn primary small" data-rk-q="yes" ${at}>${tr('rk_qYes')}</button><button class="btn quiet small" data-rk-q="no" ${at} data-rk-k="${esc(pr.culprit)}">${tr('rk_qNo')}</button></div></div>`;
+}
+function rkAnswer(pid, q, uid, s, k){
+  const p = findPlace(pid), u = (p.units || []).find(x => x.id === uid); if (!u) return;
+  const data = rkGrid(pid), pr = rkProblem(u, s, data); if (!pr && q !== 'edit') return render();
+  const save = () => { metaPut('places', places).catch(() => {}); render(); };
+  if (q === 'edit') return rkUnitSheet(pid, uid);
+  if (q === 'no'){
+    if (rkLastDrop && rkLastDrop.k === k && rkLastDrop.u === uid && rkLastDrop.s === s && undoStack.length){ rkLastDrop = null; undoApply(); return render(); }
+    return rkDrop(k, pid, {type: 'out'});
+  }
+  if (q === 'force') return askConfirm(tr('rk_forceQ'), tr('rk_forceOk')).then(y => { if (!y) return render(); u.ok = Object.assign({}, u.ok, {[s]: pr.sig}); save(); });
+  if (q === 'yes'){
+    if (u.measured){ u.ok = Object.assign({}, u.ok, {[s]: pr.sig}); return save(); }
+    const msgs = [];
+    if (pr.wide > 0){ u.width = pr.used; msgs.push(tr('rk_grewW', u.name, u.width)); }
+    if (pr.high){ u.gaps = Array.from({length: u.shelves}, (_, i) => rkGapOf(u, i)); u.gaps[s] = pr.high; msgs.push(tr('rk_grewH', tr('rk_shelfN', s + 1), pr.high)); }
+    rkLastDrop = null; save(); toast(msgs.join(' · '));
+  }
+}
+/* --- the room from above: walls, door and shelf units to scale; tap to jump, ✎ to edit --- */
+const RK_DOOR_X = {left: .2, mid: .5, right: .8};
+function rkRoomOf(p){ return Object.assign({w: 200, d: 250, door: 'mid', doorW: 80, measured: false}, p.room || {}); }
+function rkPlan(p){
+  const room = rkRoomOf(p), units = p.units || [], spots = [], need = {back: 0, left: 0, right: 0};
+  const backDepth = Math.max(0, ...units.filter(u => u.wall === 'back').map(u => u.depth || 40));
+  RK_WALLS.forEach(w => {
+    let run = w === 'back' ? 0 : (backDepth ? backDepth + 5 : 0);
+    units.filter(u => u.wall === w).forEach(u => {
+      const at = u.at !== undefined && u.at !== null && u.at !== '' ? +u.at : run, dp = u.depth || 40;
+      run = at + u.width + 5; need[w] = Math.max(need[w], at + u.width);
+      spots.push({u, wall: w, at, len: u.width, dp});
+    });
+  });
+  const sideDepth = Math.max(0, ...spots.filter(x => x.wall !== 'back').map(x => x.dp));
+  const W = room.measured ? room.w : Math.max(room.w, need.back, sideDepth * 2 + room.doorW);
+  const D = room.measured ? room.d : Math.max(room.d, need.left, need.right, backDepth + 60);
+  spots.forEach(sp => {
+    if (sp.wall === 'back') Object.assign(sp, {x: sp.at, y: 0, w: sp.len, h: sp.dp});
+    else if (sp.wall === 'left') Object.assign(sp, {x: 0, y: sp.at, w: sp.dp, h: sp.len});
+    else Object.assign(sp, {x: W - sp.dp, y: sp.at, w: sp.dp, h: sp.len});
+    const wallLen = sp.wall === 'back' ? W : D;
+    sp.over = sp.at + sp.len > wallLen;
+  });
+  const issues = [];
+  spots.filter(sp => sp.over).forEach(sp => issues.push(tr('rk_wallFull', sp.u.name, rkWallLabel(sp.wall).toLowerCase(), sp.at + sp.len, sp.wall === 'back' ? W : D)));
+  spots.forEach((a, i) => spots.slice(i + 1).forEach(b => { if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h){ a.clash = b.clash = true; issues.push(tr('rk_overlap', a.u.name, b.u.name)); } }));
+  const dw = Math.min(room.doorW, W), dx = Math.min(W - dw / 2, Math.max(dw / 2, W * RK_DOOR_X[room.door]));
+  return {room, W, D, spots, issues, door: {x: dx, w: dw}};
+}
+function rkPlanHTML(pid){
+  const p = findPlace(pid), pl = rkPlan(p), {W, D} = pl, fs = Math.max(W, D) / 16, pad = fs * 1.6;
+  const wall = (w, x1, y1, x2, y2) => `<g class="rkpw${rkWallFocus === w ? ' on' : ''}" data-rk-wall="${w}" role="button" tabindex="0" aria-label="${esc(rkWallLabel(w))}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hit"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="ln"/></g>`;
+  const dl = pl.door.x - pl.door.w / 2, dr = pl.door.x + pl.door.w / 2;
+  const fit = (t, len) => { const max = Math.max(2, Math.floor(len / (fs * .8 * .6))); return t.length > max ? t.slice(0, max - 1) + '…' : t; };
+  const units = pl.spots.map(sp => { const vert = sp.h > sp.w, cx = sp.x + sp.w / 2, cy = sp.y + sp.h / 2;
+    return `<g class="rkpu${sp.over || sp.clash ? ' bad' : ''}" data-rk-jump="${esc(sp.u.id)}" role="button" tabindex="0" aria-label="${esc(sp.u.name)}"><rect x="${sp.x}" y="${sp.y}" width="${sp.w}" height="${sp.h}" rx="${fs * .25}"/>
+      <text x="${cx}" y="${cy}" font-size="${fs * .8}" ${vert ? `transform="rotate(-90 ${cx} ${cy})"` : ''}>${esc(fit(sp.u.name, vert ? sp.h : sp.w))}</text></g>`; }).join('') + `<text class="rkpd rkpinfo" x="${W / 2}" y="${D - fs * 1.2}" font-size="${fs * .58}"></text>`;
+  const dims = pl.room.measured || rkMeasure ? `<text class="rkpd" x="${W / 2}" y="${-pad * .45}" font-size="${fs * .7}">${W} cm</text><text class="rkpd" x="${-pad * .45}" y="${D / 2}" font-size="${fs * .7}" transform="rotate(-90 ${-pad * .45} ${D / 2})">${D} cm</text>` : '';
+  return `<section class="rkplan"><div class="rkplanhead"><b>${tr('rk_room')}</b><span class="zcount">${esc(tr('rk_planHint'))}</span><button class="space-edit-btn rkpen" data-rk-act="room" aria-label="${esc(tr('rk_roomEdit'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
+    <svg class="rkpsvg" viewBox="${-pad} ${-pad} ${W + pad * 2} ${D + pad * 2}" style="aspect-ratio:${(W + pad * 2) / (D + pad * 2)}">
+      <rect x="0" y="0" width="${W}" height="${D}" class="fl"/>${units}
+      ${wall('back', 0, 0, W, 0)}${wall('left', 0, 0, 0, D)}${wall('right', W, 0, W, D)}
+      <line x1="0" y1="${D}" x2="${dl}" y2="${D}" class="front"/><line x1="${dr}" y1="${D}" x2="${W}" y2="${D}" class="front"/>
+      <line x1="${dl}" y1="${D}" x2="${dr}" y2="${D}" class="door"/><text class="rkpdoor" x="${pl.door.x}" y="${D + pad * .75}" font-size="${fs * .75}">${tr('rk_door')}</text>${dims}
+    </svg>${pl.issues.length ? `<p class="rkplanwarn">⚠ ${pl.issues.map(esc).join(' ')}</p>` : ''}</section>`;
+}
+let rkWallFocus = null;
+/* drag a shelf unit in the plan, like a home planner: it snaps to the closest wall and never overlaps another unit */
+let rkPP = null, rkPD = null, rkPlanSuppress = false;
+function rkPlanPoint(svg, x, y){ const pt = svg.createSVGPoint(); pt.x = x; pt.y = y; const m = svg.getScreenCTM(); return m ? pt.matrixTransform(m.inverse()) : {x: 0, y: 0}; }
+function rkPlanRect(wall, at, sp, W){ return wall === 'back' ? {x: at, y: 0, w: sp.len, h: sp.dp} : wall === 'left' ? {x: 0, y: at, w: sp.dp, h: sp.len} : {x: W - sp.dp, y: at, w: sp.dp, h: sp.len}; }
+const rkHits = (a, b) => a.x < b.x + b.w - .5 && b.x < a.x + a.w - .5 && a.y < b.y + b.h - .5 && b.y < a.y + a.h - .5;
+function rkPlanFit(d, wall, want){
+  const {sp, others, W, D} = d, max = (wall === 'back' ? W : D) - sp.len;
+  if (max < 0) return null;
+  const ok = at => at >= 0 && at <= max && !others.some(o => rkHits(rkPlanRect(wall, at, sp, W), o));
+  const cands = [Math.round(want / 5) * 5, want, 0, max];
+  others.forEach(o => { const [a, b] = wall === 'back' ? [o.x, o.x + o.w] : [o.y, o.y + o.h]; cands.push(a - sp.len, b, Math.floor((a - sp.len) / 5) * 5, Math.ceil(b / 5) * 5); });
+  const good = cands.map(c => Math.max(0, Math.min(max, c))).filter(ok).sort((a, b) => Math.abs(a - want) - Math.abs(b - want));
+  return good.length ? Math.round(good[0]) : null;
+}
+function rkPlanStart(g, e){
+  const svg = g.ownerSVGElement, p = findPlace(currentPlace), pl = rkPlan(p), sp = pl.spots.find(x => x.u.id === g.dataset.rkJump); if (!sp) return;
+  rkPD = {g, svg, pid: currentPlace, sp, W: pl.W, D: pl.D, others: pl.spots.filter(x => x !== sp).map(x => ({x: x.x, y: x.y, w: x.w, h: x.h})), all: pl.spots, wall: sp.wall, at: sp.at, ok: true, moved: false, sx: e.clientX, sy: e.clientY};
+  g.classList.add('drag'); g.parentNode.appendChild(g); document.body.classList.add('dragging-on');
+  if (navigator.vibrate) navigator.vibrate(12);
+}
+function rkPlanMove(x, y){
+  const d = rkPD, q = rkPlanPoint(d.svg, x, y), {W, D, sp} = d;
+  const dist = {left: Math.abs(q.x), right: Math.abs(W - q.x), back: Math.abs(q.y)};
+  const wall = Object.keys(dist).sort((a, b) => dist[a] - dist[b])[0];
+  const want = Math.round(((wall === 'back' ? q.x : q.y) - sp.len / 2) / 5) * 5;
+  const at = rkPlanFit(d, wall, want), free = at !== null;
+  const r = rkPlanRect(wall, free ? at : Math.max(0, Math.min((wall === 'back' ? W : D) - sp.len, want)), sp, W);
+  const rect = d.g.querySelector('rect'), txt = d.g.querySelector('text'), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  rect.setAttribute('x', r.x); rect.setAttribute('y', r.y); rect.setAttribute('width', r.w); rect.setAttribute('height', r.h);
+  txt.setAttribute('x', cx); txt.setAttribute('y', cy); if (r.h > r.w) txt.setAttribute('transform', `rotate(-90 ${cx} ${cy})`); else txt.removeAttribute('transform');
+  d.g.classList.toggle('bad', !free);
+  const info = d.svg.querySelector('.rkpinfo'); if (info) info.textContent = free ? tr('rk_planAt', rkWallLabel(wall), at) : tr('rk_planNoRoom');
+  if (free && (wall !== d.wall || at !== d.at) && navigator.vibrate) navigator.vibrate(4);
+  Object.assign(d, {wall, at: free ? at : d.at, ok: free});
+}
+function rkPlanEnd(drop){
+  const d = rkPD; rkPD = null; document.body.classList.remove('dragging-on'); if (!d) return;
+  if (!drop || !d.moved || !d.ok){ if (d.moved && !d.ok) toast(tr('rk_planNoRoom')); return render(); }
+  const p = findPlace(d.pid), prev = clone(p.units || []);
+  p.units = (p.units || []).map(u => { const sp = d.all.find(x => x.u.id === u.id), nu = Object.assign({}, u, {at: sp ? Math.round(sp.at) : u.at}); if (u.id === d.sp.u.id){ nu.wall = d.wall; nu.at = d.at; } return nu; });
+  metaPut('places', places).catch(() => {}); render();
+  toastAction(tr('rk_planMoved', d.sp.u.name, rkWallLabel(d.wall).toLowerCase()), tr('undo'), () => { p.units = prev; metaPut('places', places).catch(() => {}); render(); });
+}
+app.addEventListener('pointerdown', e => {
+  if (e.button > 0 || placeView !== 'racks') return;
+  const g = e.target.closest('.rkpu'); if (!g) return;
+  rkPP = {g, x: e.clientX, y: e.clientY, t: setTimeout(() => { if (!rkPP) return; rkPlanStart(rkPP.g, {clientX: rkPP.x, clientY: rkPP.y}); }, HOLD_MS)};
+});
+document.addEventListener('pointermove', e => {
+  if (rkPP && !rkPD && Math.hypot(e.clientX - rkPP.x, e.clientY - rkPP.y) > SLOP){ clearTimeout(rkPP.t); rkPP = null; return; }
+  if (!rkPD) return;
+  if (!rkPD.moved && Math.hypot(e.clientX - rkPD.sx, e.clientY - rkPD.sy) > 4) rkPD.moved = true;
+  if (rkPD.moved) rkPlanMove(e.clientX, e.clientY);
+}, {passive: true});
+document.addEventListener('touchmove', e => { if (rkPD) e.preventDefault(); }, {passive: false});
+document.addEventListener('pointerup', () => {
+  if (rkPP) clearTimeout(rkPP.t); rkPP = null;
+  if (rkPD){ const moved = rkPD.moved; if (moved){ rkPlanSuppress = true; setTimeout(() => { rkPlanSuppress = false; }, 400); } rkPlanEnd(true); }
+});
+document.addEventListener('pointercancel', () => { if (rkPP) clearTimeout(rkPP.t); rkPP = null; if (rkPD) rkPlanEnd(false); });
+function rkJump(sel){ setTimeout(() => { const el = app.querySelector(sel); if (!el) return; el.scrollIntoView({behavior: 'smooth', block: 'start'}); el.classList.add('rkflash'); setTimeout(() => el.classList.remove('rkflash'), 1400); }, 30); }
+function rkRoomSheet(pid){
+  const p = findPlace(pid), r = rkRoomOf(p), units = p.units || [];
+  openSheet(`<h3>${tr('rk_roomEdit')}</h3>
+    <div class="row2"><label class="field"><span>${tr('rk_roomW')}</span><input id="rmW" type="number" inputmode="numeric" value="${r.w}"></label>
+    <label class="field"><span>${tr('rk_roomD')}</span><input id="rmD" type="number" inputmode="numeric" value="${r.d}"></label></div>
+    <div class="field"><span>${tr('rk_door')}</span><div class="seg small" id="rmDoor">${['left', 'mid', 'right'].map(k => `<button class="${r.door === k ? 'on' : ''}" data-v="${k}">${tr('rk_door_' + k)}</button>`).join('')}</div></div>
+    <label class="field"><span>${tr('rk_doorW')}</span><input id="rmDW" type="number" inputmode="numeric" value="${r.doorW}"></label>
+    <label class="rkrule"><input type="checkbox" id="rmM" ${r.measured ? 'checked' : ''}><span><b>${tr('rk_roomMeasured')}</b><small>${tr('rk_roomMeasuredHint')}</small></span></label>
+    ${units.length ? `<h3 style="margin-top:16px">${tr('rk_unitsInRoom')}</h3><p class="hint">${tr('rk_cornerHint')}</p>
+    ${units.map(u => `<div class="rkroomu"><b>${esc(u.name)} <small>${u.width} cm</small></b><div class="rkdims">
+      <label class="field"><span>${tr('rk_wall')}</span><select data-ru="${esc(u.id)}" data-k="wall">${RK_WALLS.map(w => `<option value="${w}" ${u.wall === w ? 'selected' : ''}>${rkWallLabel(w)}</option>`).join('')}</select></label>
+      <label class="field"><span>${tr('rk_fromCorner')}</span><input data-ru="${esc(u.id)}" data-k="at" type="number" inputmode="numeric" placeholder="${tr('rk_auto')}" value="${u.at !== undefined && u.at !== null ? esc(u.at) : ''}"></label>
+      <label class="field"><span>${tr('rk_depth')}</span><input data-ru="${esc(u.id)}" data-k="depth" type="number" inputmode="numeric" value="${u.depth || 40}"></label></div></div>`).join('')}` : ''}
+    <div class="sheet-foot"><button class="btn quiet" id="rmX">${tr('cancel')}</button><button class="btn primary" id="rmOk">${tr('save')}</button></div>`);
+  let door = r.door;
+  $('#rmDoor').onclick = e => { const t = e.target.closest('[data-v]'); if (!t) return; door = t.dataset.v; sheet.querySelectorAll('#rmDoor [data-v]').forEach(x => x.classList.toggle('on', x === t)); };
+  $('#rmX').onclick = closeSheet;
+  $('#rmOk').onclick = () => {
+    const w = parseInt($('#rmW').value, 10), d = parseInt($('#rmD').value, 10), dw = parseInt($('#rmDW').value, 10);
+    if (!(w >= 50 && w <= 2000 && d >= 50 && d <= 2000 && dw >= 50 && dw <= 300)) return toast(tr('rk_roomBad'));
+    const next = units.map(u => Object.assign({}, u));
+    for (const el of sheet.querySelectorAll('[data-ru]')){
+      const u = next.find(x => x.id === el.dataset.ru), k = el.dataset.k, v = el.value.trim();
+      if (k === 'wall') u.wall = v;
+      else if (k === 'at'){ if (v === '') delete u.at; else { const n = parseInt(v, 10); if (!(n >= 0 && n <= 2000)) return toast(tr('rk_roomBad')); u.at = n; } }
+      else { const n = parseInt(v, 10); if (!(n >= 10 && n <= 200)) return toast(tr('rk_roomBad')); u.depth = n; }
+    }
+    p.room = {w, d, door, doorW: dw, measured: $('#rmM').checked}; p.units = next;
+    metaPut('places', places).catch(() => {}); closeSheet(); render();
+  };
+}
+function rkTileFor(e){
+  if (e.kind === 'box') return `<div class="rkt" data-rk-ek="b:${esc(e.b.id)}">${shelfTile(e.b).replace(/ data-lp="[^"]*"/, '')}</div>`;
+  return `<div class="rkt" data-rk-ek="i:${esc(e.it.id)}">${tokenHTML(e.it, e.l, {lp: false})}</div>`;
+}
+function rkTiles(u, data){
+  const {ents, grid} = data;
+  let rows = '';
+  for (let s = u.shelves - 1; s >= 0; s--){
+    const shelf = grid[u.id][s] || [];
+    rows += `<div class="rkrow" data-rk-shelf data-rk-u="${esc(u.id)}" data-rk-s="${s}"><span class="rkn" aria-label="${esc(tr('rk_shelfN', s + 1))}">${s + 1}</span>
+      ${shelf.map((col, c) => `<div class="rkcol tiles" data-rk-col data-rk-c="${c}">${[...col].reverse().map(k => rkTileFor(ents.get(k))).join('')}</div>`).join('')}
+      <button class="itile add rkadd" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}"><span class="timg">${PLUS_SVG}</span></button></div>${rkQuestion(u, s, data, false)}`;
+  }
+  return rows;
+}
+function rkAvail(){ return Math.min(app.clientWidth || 360, 560) - 32; }
+function racksHTML(pid){
+  if (rkMode === 'tidy') return rkTidyHTML(pid);
+  const data = rkGrid(pid), {units, ents, unplaced} = data;
+  const n = rkSize === 'M' ? 2 : 1, cardW = (rkAvail() - (n - 1) * 10) / n;
+  const sizeSeg = `<div class="seg small" role="group" aria-label="${esc(tr('rk_sizeL'))}">${[['S', 'rk_small'], ['M', 'rk_medium'], ['L', 'rk_large']].map(([v, k]) => `<button class="${rkSize === v ? 'on' : ''}" data-rk-size="${v}">${tr(k)}</button>`).join('')}</div>`;
+  const bar = `<div class="rkbar">${sizeSeg}${rkSize !== 'S' ? `<button class="btn quiet small${rkMeasure ? ' on' : ''}" data-rk-act="measure" aria-pressed="${rkMeasure}">📏 ${tr('rk_measure')}</button>` : ''}${units.length ? `<button class="btn quiet small" data-rk-act="tidy">${tr('rk_tidy')} ›</button>` : ''}</div>
+    ${rkMeasure && rkSize !== 'S' ? `<p class="maphint">${tr('rk_measureHint')}</p>` : ''}`;
+  const un = units.length ? `<section class="rkun${unplaced.length ? '' : ' empty'}" data-rk-unplaced="1"><div class="lhead"><b>${tr('rk_unplaced')}</b><span class="zcount">${unplaced.length || ''}</span>${unplaced.length ? `<button class="linkbtn" data-rk-act="auto">${tr('rk_autoPlace')} ›</button>` : ''}</div>
+    ${unplaced.length ? `<div class="lstrip rkstrip">${unplaced.map(k => rkTileFor(ents.get(k))).join('')}</div>` : `<p class="maphint">${tr('rk_unplacedEmpty')}</p>`}</section>` : '';
+  if (!units.length) return bar + rkPlanHTML(pid) + `<div class="rkempty"><p class="hint">${tr('rk_empty')}</p><div class="sheet-foot" style="justify-content:flex-start"><button class="btn primary" data-rk-act="quick">${tr('rk_quick')}</button><button class="btn quiet" data-rk-act="addunit">+ ${tr('rk_addUnit')}</button></div></div>`;
+  const walls = RK_WALLS.map(w => {
+    const list = units.filter(u => u.wall === w); if (!list.length) return '';
+    return `<h2 class="section rkwallh" id="rkw-${w}">${rkWallLabel(w)}</h2><div class="rkgrid" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${list.map(u => {
+      const cnt = (data.grid[u.id] || []).reduce((a, sh) => a + sh.reduce((x, c) => x + c.length, 0), 0);
+      return `<div class="rkcard${rkSize === 'S' ? ' tiles' : ''}" id="rku-${esc(u.id)}"><div class="rkhead"><span><b>${esc(u.name)}</b><small>${esc(tr('rk_unitMeta', u.width, u.shelves, cnt))}</small></span><button class="space-edit-btn" data-rk-edit="${esc(u.id)}" aria-label="${esc(tr('rk_editUnit'))} ${esc(u.name)}">⋯</button></div>
+        ${rkSize === 'S' ? rkTiles(u, data) : rkDraw(u, data, cardW - 16, {measure: rkMeasure})}</div>`;
+    }).join('')}</div>`;
+  }).join('');
+  return bar + rkPlanHTML(pid) + `<p class="maphint">${tr('rk_dragHint')}</p>` + un + `<div class="racks">${walls}</div><button class="btn quiet block" data-rk-act="addunit">+ ${tr('rk_addUnit')}</button>`;
+}
+
+/* --- shelf units --- */
+function rkUnitSheet(pid, uid, presetWall){
+  const p = findPlace(pid), u = uid ? rkUnits(pid).find(x => x.id === uid) : null;
+  const letter = String.fromCharCode(65 + rkUnits(pid).length % 26);
+  const v = u || {name: tr('rk_unitName', letter), wall: presetWall || 'left', width: 90, shelves: 4, gap: 45};
+  openSheet(`<h3>${u ? tr('rk_editUnit') : tr('rk_addUnit')}</h3>
+    <label class="field"><span>${tr('name')}</span><input id="rkN" value="${esc(v.name)}"></label>
+    <label class="field"><span>${tr('rk_wall')}</span><select id="rkW">${RK_WALLS.map(w => `<option value="${w}" ${v.wall === w ? 'selected' : ''}>${rkWallLabel(w)}</option>`).join('')}</select></label>
+    <div class="rkdims"><label class="field"><span>${tr('rk_width')}</span><input id="rkWi" type="number" inputmode="numeric" value="${v.width}"></label>
+    <label class="field"><span>${tr('rk_shelves')}</span><input id="rkS" type="number" inputmode="numeric" value="${v.shelves}"></label>
+    <label class="field"><span>${tr('rk_gap')}</span><input id="rkG" type="number" inputmode="numeric" value="${v.gap}"></label></div>
+    ${u && u.gaps ? `<p class="hint">${esc(tr('rk_gapsNote', u.gaps.map((g, i) => g !== u.gap ? `${tr('rk_shelfN', i + 1)}: ${g} cm` : '').filter(Boolean).join(', ')))}</p>` : ''}
+    <label class="rkrule"><input type="checkbox" id="rkM" ${v.measured ? 'checked' : ''}><span><b>${tr('rk_measured')}</b><small>${tr('rk_measuredHint')}</small></span></label>
+    <div class="sheet-foot">${u ? `<button class="btn danger" id="rkDel">${tr('rk_delUnit')}</button><span class="spacer"></span>` : ''}<button class="btn quiet" id="rkX">${tr('cancel')}</button><button class="btn primary" id="rkOk">${u ? tr('save') : tr('add')}</button></div>`);
+  $('#rkX').onclick = closeSheet;
+  $('#rkOk').onclick = () => {
+    const measured = $('#rkM').checked;
+    const name = $('#rkN').value.trim() || v.name, wall = $('#rkW').value, width = parseInt($('#rkWi').value, 10), shelves = parseInt($('#rkS').value, 10), gap = parseInt($('#rkG').value, 10);
+    if (!(width >= 30 && width <= 400 && shelves >= 1 && shelves <= 8 && gap >= 15 && gap <= 150)) return toast(tr('rk_badSize'));
+    const units = (p.units || []).slice();
+    if (u){ const i = units.findIndex(x => x.id === u.id), nu = Object.assign({}, u, {name, wall, width, shelves, gap, measured});
+      if (gap !== u.gap || shelves !== u.shelves) delete nu.gaps;
+      if (width !== u.width || gap !== u.gap || shelves !== u.shelves || measured !== !!u.measured) delete nu.ok;
+      units[i] = nu; }
+    else units.push({id: newId(), name, wall, width, shelves, gap, measured});
+    p.units = units; metaPut('places', places).catch(() => {});
+    closeSheet(); render();
+  };
+  if (u) $('#rkDel').onclick = async () => {
+    const data = rkGrid(pid), cnt = (data.grid[u.id] || []).reduce((a, sh) => a + sh.reduce((x, c) => x + c.length, 0), 0);
+    if (!(await askConfirm(tr('rk_delUnitQ', cnt), tr('rk_delUnit')))) return rkUnitSheet(pid, uid);
+    const grid = data.grid; delete grid[u.id];
+    p.units = (p.units || []).filter(x => x.id !== u.id); metaPut('places', places).catch(() => {});
+    closeSheet(); rkCommit(pid, grid);
+  };
+}
+function rkQuick(pid){
+  const p = findPlace(pid);
+  p.units = RK_WALLS.map((w, i) => ({id: newId(), name: tr('rk_unitName', String.fromCharCode(65 + i)), wall: w, width: 90, shelves: 4, gap: 45}));
+  metaPut('places', places).catch(() => {}); render();
+}
+function rkAddSheet(pid, uid, s){
+  const u = rkUnits(pid).find(x => x.id === uid); if (!u) return;
+  openSheet(`<h3>${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}</h3>
+    <div class="choice"><button class="btn primary big" id="rkAB">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="rkAI">${ICON.star}<span>${tr('itemNoBox')}</span></button></div>
+    <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="rkAX">${tr('cancel')}</button></div>`);
+  const at = () => { const {grid} = rkGrid(pid); return {u: uid, s, x: (grid[uid][s] || []).length, l: 0}; };
+  $('#rkAB').onclick = () => { closeSheet(); boxSheet(null, pid, null, null, at()); };
+  $('#rkAI').onclick = () => { closeSheet(); newItem(ensureLoose(pid).id); if (itemEdit && itemEdit.isNew) rkPendingItem = {id: itemEdit.itemId, pid, pos: at()}; };
+  $('#rkAX').onclick = closeSheet;
+}
+/* a thing added from a shelf gets its spot once it has been saved */
+function rkPlacePending(pid){
+  const pi = rkPendingItem; if (!pi || pi.pid !== pid || (itemEdit && itemEdit.itemId === pi.id)) return;
+  rkPendingItem = null;
+  const l = looseOf(pid), it = l && (l.items || []).find(i => i.id === pi.id); if (!it || it.shelf) return;
+  const nl = clone(l); nl.items.find(i => i.id === pi.id).shelf = pi.pos; putBox(nl, true);
+}
+
+/* --- drag: hold, move, drop (same feel as the map) --- */
+let rkPress = null, rkDrag = null;
+function rkHit(x, y){
+  const el = document.elementsFromPoint(x, y).find(n => !n.closest('.toast, .dropline, .rkghost')); if (!el) return null;
+  const out = el.closest('[data-rk-unplaced]');
+  if (out){ const r = out.getBoundingClientRect(); return {type: 'out', line: {x: r.left, y: r.top, w: r.width, h: r.height}, area: true}; }
+  const sh = el.closest('[data-rk-shelf]'); if (!sh) return null;
+  const u = sh.dataset.rkU, s = +sh.dataset.rkS, sr = sh.getBoundingClientRect();
+  const colEl = el.closest('[data-rk-col]'), drag = rkDrag;
+  if (colEl && sh.contains(colEl)){
+    const r = colEl.getBoundingClientRect(), mine = [...colEl.querySelectorAll('[data-rk-ek]')].every(n => n.dataset.rkEk === drag.ek);
+    if (!mine && Math.min(x - r.left, r.right - x) > r.width * .22){
+      const top = [...colEl.querySelectorAll('[data-rk-ek]')].reduce((m, n) => Math.min(m, n.getBoundingClientRect().top), r.bottom);
+      return {type: 'stack', u, s, c: +colEl.dataset.rkC, line: {x: r.left - 2, y: top - 4, w: r.width + 4, h: 3}};
+    }
+  }
+  const cols = [...sh.querySelectorAll('[data-rk-col]')];
+  const idx = cols.filter(c => { const r = c.getBoundingClientRect(); return r.left + r.width / 2 < x; }).length;
+  const lx = cols[idx] ? cols[idx].getBoundingClientRect().left - 3 : cols[idx - 1] ? cols[idx - 1].getBoundingClientRect().right + 1 : sr.left + 4;
+  return {type: 'insert', u, s, idx, line: {x: lx, y: sr.top + 3, w: 3, h: Math.max(28, sr.height - 6)}};
+}
+function rkStart(src, e){
+  const r = src.getBoundingClientRect(), ghost = src.cloneNode(true); ghost.classList.add('rkghost');
+  Object.assign(ghost.style, {left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px'});
+  const line = document.createElement('div'); line.className = 'dropline'; line.hidden = true;
+  document.body.append(ghost, line); src.classList.add('dragging'); document.body.classList.add('dragging-on');
+  rkDrag = {ek: src.dataset.rkEk, pid: currentPlace, src, ghost, line, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, moved: false, target: null};
+  if (navigator.vibrate) navigator.vibrate(12);
+  const tb = ($('.topbar') || {getBoundingClientRect: () => ({bottom: 0})}).getBoundingClientRect().bottom;
+  const loop = () => {
+    if (!rkDrag) return;
+    if (rkDrag.moved){
+      const top = tb + 40, bottom = innerHeight - 62 - 40;
+      if (rkDrag.y < top) window.scrollBy(0, -Math.min(14, (top - rkDrag.y) / 3)); else if (rkDrag.y > bottom) window.scrollBy(0, Math.min(14, (rkDrag.y - bottom) / 3));
+      const st = document.elementFromPoint(rkDrag.x, rkDrag.y), sc = st && st.closest('.rkstrip');
+      if (sc){ const sr = sc.getBoundingClientRect(); if (rkDrag.x < sr.left + 26) sc.scrollLeft -= 6; else if (rkDrag.x > sr.right - 26) sc.scrollLeft += 6; }
+      rkUpdate();
+    }
+    rkDrag.raf = requestAnimationFrame(loop);
+  };
+  rkDrag.raf = requestAnimationFrame(loop);
+}
+function rkUpdate(){
+  const d = rkDrag; if (!d) return;
+  d.ghost.style.transform = `translate3d(${d.x - d.sx}px, ${d.y - d.sy}px, 0) scale(1.06)`;
+  const hit = rkHit(d.x, d.y), key = hit ? [hit.type, hit.u, hit.s, hit.c, hit.idx].join('|') : '';
+  if (key !== d.key && hit && navigator.vibrate) navigator.vibrate(5);
+  d.key = key; d.target = hit;
+  if (hit){ Object.assign(d.line.style, {left: hit.line.x + 'px', top: hit.line.y + 'px', width: hit.line.w + 'px', height: hit.line.h + 'px'}); d.line.classList.toggle('area', !!hit.area); }
+  d.line.hidden = !hit;
+}
+function rkEnd(drop){
+  const d = rkDrag; if (!d) return; rkDrag = null;
+  cancelAnimationFrame(d.raf); d.ghost.remove(); d.line.remove(); d.src.classList.remove('dragging'); document.body.classList.remove('dragging-on');
+  if (drop && d.target) rkDrop(d.ek, d.pid, d.target);
+}
+app.addEventListener('pointerdown', e => {
+  if (e.button > 0 || placeView !== 'racks' || rkMode !== 'shelves') return;
+  const c = e.target.closest('[data-rk-ek]'); if (!c) return;
+  rkPress = {c, x: e.clientX, y: e.clientY, t: setTimeout(() => { if (!rkPress) return; rkStart(rkPress.c, {clientX: rkPress.x, clientY: rkPress.y}); }, HOLD_MS)};
+});
+document.addEventListener('pointermove', e => {
+  if (rkPress && !rkDrag && Math.hypot(e.clientX - rkPress.x, e.clientY - rkPress.y) > SLOP){ clearTimeout(rkPress.t); rkPress = null; return; }
+  if (!rkDrag) return;
+  rkDrag.x = e.clientX; rkDrag.y = e.clientY;
+  if (!rkDrag.moved && Math.hypot(e.clientX - rkDrag.sx, e.clientY - rkDrag.sy) > 6) rkDrag.moved = true;
+  if (rkDrag.moved) rkUpdate();
+}, {passive: true});
+document.addEventListener('touchmove', e => { if (rkDrag) e.preventDefault(); }, {passive: false});
+document.addEventListener('pointerup', () => {
+  if (rkPress) clearTimeout(rkPress.t);
+  if (rkDrag){
+    const d = rkDrag; lpFired = true; setTimeout(() => { lpFired = false; }, 400);
+    if (!d.moved){ rkEnd(false); const [kind, id] = [d.ek.slice(0, 1), d.ek.slice(2)]; if (kind === 'b') lpMenu('box:' + id); else { const l = looseOf(d.pid); if (l) lpMenu(`item:${l.id}:${id}`); } }
+    else rkEnd(true);
+  }
+  rkPress = null;
+});
+document.addEventListener('pointercancel', () => { if (rkPress) clearTimeout(rkPress.t); rkPress = null; if (rkDrag) rkEnd(false); });
+
+/* --- tidy up: suggestions from simple rules --- */
+const RK_SEASON_MONTHS = {christmas: [9, 10, 11], easter: [1, 2, 3], winter: [9, 10, 11, 0, 1], summer: [4, 5, 6, 7]};
+const rkUpcoming = s => !!s && RK_SEASON_MONTHS[s] && RK_SEASON_MONTHS[s].includes(new Date().getMonth());
+function rkProps(e){
+  const own = e.kind === 'box' ? (e.b.tidy || {}) : {};
+  const names = e.kind === 'box' ? [e.b.name, ...(e.b.items || []).map(i => i.name)] : [e.it.name];
+  const seasons = e.kind === 'box' ? (e.b.items || []).map(i => i.season) : [e.it.season];
+  const t = names.filter(Boolean).join(' ').toLowerCase();
+  const w = /verktyg|tool|borr|drill|hammare|hammer|färg|paint|bok|böcker|book|album|pärm|binder|kakel|tile|hantel|dumbbell|skruv|screw|spik|nail|porslin|china/.test(t) ? 'heavy'
+    : /kabel|kablar|cable|camping|tält|tent|jul|christmas|vinter|winter|skid|ski|kök|kitchen|spel|game|pussel|puzzle|skor|shoe|stövl|boot/.test(t) ? 'medium' : 'light';
+  const fragile = /glas|glass|porslin|porcelain|china|julkul|bauble|lampa|lamp|ljusstake|candle|telefon|phone|vas|vase|tavl|spegel|mirror|ägg|egg|figur/.test(t);
+  let season = /jul|christmas|advent/.test(t) ? 'christmas' : /påsk|easter/.test(t) ? 'easter' : /vinter|winter|skid|ski|pulka|sled/.test(t) ? 'winter' : /sommar|summer|camping|tält|tent|bad|beach|trädgård|garden/.test(t) ? 'summer' : '';
+  if (!season){ const c = {Winter: 0, Summer: 0}; seasons.forEach(x => { if (c[x] !== undefined) c[x]++; }); if (c.Winter || c.Summer) season = c.Winter >= c.Summer ? 'winter' : 'summer'; }
+  const lastUse = Math.min(e.kind === 'box' ? daysSince(e.b.openedAt) : Infinity, ...(e.kind === 'box' ? (e.b.items || []) : [e.it]).map(i => daysSince(i.lastUsed)));
+  const use = lastUse <= 45 ? 'often' : lastUse !== Infinity && lastUse >= 180 ? 'rarely'
+    : /verktyg|tool|kabel|cable|laddare|charger|skarvsladd|extension/.test(t) ? 'often' : /brev|letter|album|dagbok|diar|gamla|old |minne|keepsake|arkiv|archive|kvitto|receipt/.test(t) ? 'rarely' : 'sometimes';
+  const g = {w, use, fragile, season};
+  return {w: own.w || g.w, use: own.use || g.use, fragile: own.fragile !== undefined ? own.fragile : g.fragile, season: own.season !== undefined ? own.season : g.season, guessed: k => own[k] === undefined};
+}
+const rkZone = (s, n) => n === 1 ? 'mid' : s === 0 ? 'bottom' : s === n - 1 ? 'top' : 'mid';
+function rkNear(units, pid){
+  const pl = pid && rkPlan(findPlace(pid));
+  if (pl && pl.spots.length){
+    const dx = pl.door.x, D = pl.D, dist = {}; let max = 0;
+    pl.spots.forEach(sp => { const d = Math.hypot(sp.x + sp.w / 2 - dx, sp.y + sp.h / 2 - D); dist[sp.u.id] = d; max = Math.max(max, d); });
+    const r = {}; units.forEach(u => { r[u.id] = max ? 1 - (dist[u.id] || 0) / max : 1; }); return r;
+  }
+  const order = [], by = w => units.filter(u => u.wall === w);
+  const L = by('left'), R = by('right'), B = by('back');
+  for (let i = 0; i < Math.max(L.length, R.length); i++){ if (L[i]) order.push(L[i].id); if (R[i]) order.push(R[i].id); }
+  B.forEach(u => order.push(u.id));
+  const r = {}; order.forEach((id, i) => { r[id] = order.length > 1 ? 1 - i / (order.length - 1) : 1; }); return r;
+}
+function rkScore(p, u, s, near){
+  const R = rkRules, z = rkZone(s, u.shelves), nr = near[u.id];
+  const hot = p.use === 'often' || (R.season && rkUpcoming(p.season));
+  let sc = 0;
+  if (R.heavy) sc += p.w === 'heavy' ? {bottom: 4, mid: 1, top: -4}[z] : p.w === 'medium' ? {bottom: 1, mid: 1, top: 0}[z] : 0;
+  if (R.reach && p.use === 'often') sc += {bottom: 0, mid: 3, top: -3}[z] + 2 * nr;
+  if (R.season && p.season){ if (rkUpcoming(p.season)) sc += {bottom: 1, mid: 2, top: -2}[z] + 1.5 * nr; else sc += {bottom: -1, mid: -1, top: 2}[z] - nr; }
+  if (R.top && !hot && (p.use === 'rarely' || p.w === 'light')) sc += {bottom: -1, mid: 0, top: 2}[z] - .5 * nr;
+  return sc;
+}
+function rkWhy(p, z, wasPlaced){
+  if (p.w === 'heavy' && z === 'bottom') return tr('rk_why_heavy');
+  if (p.use === 'often' && z === 'mid') return tr('rk_why_reach');
+  if (p.season && rkUpcoming(p.season) && z !== 'top') return tr('rk_why_seasonUp', tr('rk_' + p.season));
+  if (p.season && !rkUpcoming(p.season) && z === 'top') return tr('rk_why_seasonOff');
+  if (z === 'top') return tr('rk_why_top');
+  return wasPlaced ? tr('rk_why_room') : tr('rk_why_place');
+}
+function rkPropose(pid){
+  const data = rkGrid(pid), {units, ents, grid: cur} = data, near = rkNear(units, pid);
+  const next = {}; units.forEach(u => { next[u.id] = Array.from({length: u.shelves}, () => []); });
+  const where = {}; [...ents.keys()].forEach(k => { const w = rkWhere(units, cur, k); where[k] = w ? w.u.id + ':' + w.s : ''; });
+  const props = new Map([...ents.values()].map(e => [e.k, rkProps(e)]));
+  const prio = e => { const p = props.get(e.k); return (p.w === 'heavy' ? 3 : 0) + (p.use === 'often' ? 2 : 0) + (rkUpcoming(p.season) ? 1 : 0) + rkDims(e).w / 100 + (e.kind === 'box' ? .5 : 0); };
+  const list = [...ents.values()].sort((a, c) => prio(c) - prio(a));
+  const noRoom = [];
+  list.forEach(e => {
+    const p = props.get(e.k), d = rkDims(e); let best = null;
+    units.forEach(u => next[u.id].forEach((sh, s) => {
+      const fitsNew = rkUsedW(ents, sh) + d.w <= u.width && d.h <= rkGapOf(u, s);
+      let col = -1;
+      if (!fitsNew) sh.forEach((c, i) => { if (col >= 0) return; const fragileBelow = rkRules.fragile && c.some(k => props.get(k).fragile); if (!fragileBelow && rkColH(ents, c) + d.h <= rkGapOf(u, s) && d.w <= rkColW(ents, c)) col = i; });
+      if (!fitsNew && col < 0) return;
+      const sc = rkScore(p, u, s, near) + (where[e.k] === u.id + ':' + s ? .6 : 0) - (col >= 0 ? .8 : 0);
+      if (!best || sc > best.sc) best = {sc, u, s, col};
+    }));
+    if (!best){ const w = rkWhere(units, cur, e.k); if (w) next[w.u.id][w.s].push([e.k]); else noRoom.push(e.k); return; }
+    const sh = next[best.u.id][best.s]; if (best.col >= 0) sh[best.col].push(e.k); else sh.push([e.k]);
+  });
+  const xOf = k => { const q = ents.get(k).pos; return q && where[k] ? q.x : 999; };
+  units.forEach(u => next[u.id].forEach(sh => sh.sort((a, c) => xOf(a[0]) - xOf(c[0]))));
+  const steps = [...ents.keys()].filter(k => { const w = rkWhere(units, next, k); return (w ? w.u.id + ':' + w.s : '') !== where[k]; })
+    .map(k => { const w = rkWhere(units, next, k); return {k, w, from: rkWhereText(units, cur, k), to: rkWhereText(units, next, k), why: w ? rkWhy(props.get(k), rkZone(w.s, w.u.shelves), !!where[k]) : ''}; })
+    .sort((a, c) => (a.w ? a.w.s : 99) - (c.w ? c.w.s : 99));
+  return {grid: next, steps, data, props, noRoom};
+}
+function rkIssues(units, grid, props){
+  const iss = {heavy: 0, reach: 0, top: 0, season: 0, fragile: 0};
+  units.forEach(u => (grid[u.id] || []).forEach((sh, s) => { const z = rkZone(s, u.shelves); sh.forEach(col => col.forEach((k, l) => {
+    const p = props.get(k);
+    if (p.w === 'heavy' && z !== 'bottom') iss.heavy++;
+    if (p.use === 'often' && z !== 'mid') iss.reach++;
+    if (p.use === 'rarely' && !rkUpcoming(p.season) && z !== 'top') iss.top++;
+    if (p.season && (rkUpcoming(p.season) ? z === 'top' : z === 'mid')) iss.season++;
+    if (p.fragile && l < col.length - 1) iss.fragile++;
+  })); }));
+  return iss;
+}
+function rkMini(u, data, grid, width, mark){
+  const {ents} = data, inner = Math.max(40, width - 6), sc = inner / u.width;
+  let rows = '';
+  for (let s = u.shelves - 1; s >= 0; s--){
+    rows += `<div class="rkmrow" style="min-height:${Math.round(rkGapOf(u, s) * sc)}px">${(grid[u.id][s] || []).map(col => `<div class="rkmcol">${col.map(k => { const d = rkDims(ents.get(k)), m = mark[k];
+      return `<span class="rkm ${m ? 'move' : 'keep'}${ents.get(k).kind === 'item' ? ' round' : ''}" style="width:${Math.max(5, d.w * sc - 1).toFixed(1)}px;height:${Math.max(5, d.h * sc - 1).toFixed(1)}px;font-size:${Math.max(9, Math.min(18, d.h * sc * .32)).toFixed(0)}px">${m && d.w * sc >= 12 ? m : ''}</span>`; }).join('')}</div>`).join('')}</div><div class="rkplank thin"></div>`;
+  }
+  return `<div class="rkframe thin">${rows}</div>`;
+}
+function rkTidyHTML(pid){
+  const P = rkPropose(pid), {data, props} = P, {units} = data; rkLastTidy = {pid, grid: P.grid};
+  const mark = {}; P.steps.forEach((s, i) => { mark[s.k] = String(i + 1); });
+  const det = rkTidyDetail, n = det ? 1 : 2, cardW = (rkAvail() - (n - 1) * 10) / n;
+  const grid = rkTidyShow === 'after' ? P.grid : data.grid;
+  const rules = ['heavy', 'reach', 'top', 'season', 'fragile'].map(k => `<label class="rkrule"><input type="checkbox" data-rk-rule="${k}" ${rkRules[k] ? 'checked' : ''}><span><b>${tr('rk_r_' + k)}</b>${det ? `<small>${tr('rk_r_' + k + 'D')}</small>` : ''}</span></label>`).join('');
+  let table = '';
+  if (det){ const a = rkIssues(units, data.grid, props), b = rkIssues(units, P.grid, props);
+    table = `<table class="rktable"><thead><tr><th>${tr('rk_ruleCol')}</th><th>${tr('rk_nowCol')}</th><th>${tr('rk_afterCol')}</th></tr></thead><tbody>${Object.keys(a).filter(k => rkRules[k]).map(k => `<tr><td>${tr('rk_r_' + k)}</td><td>${a[k]}</td><td class="${b[k] < a[k] ? 'good' : ''}">${b[k]}</td></tr>`).join('')}</tbody></table>`; }
+  const cards = units.map(u => `<div class="rkcard"><div class="rkhead"><span><b>${esc(u.name)}</b><small>${rkWallLabel(u.wall)}</small></span></div>${rkMini(u, data, grid, cardW - 16, mark)}</div>`).join('');
+  const moves = P.steps.length ? `<ol class="rkmoves">${P.steps.map((s, i) => { const e = data.ents.get(s.k), p = props.get(s.k), d = rkDims(e);
+      return `<li><span class="rkstep">${i + 1}</span><span><b>${esc(e.kind === 'box' ? `${e.b.code} ${e.b.name || ''}` : e.it.name || '')}</b><small>${tr('rk_to')}: ${esc(s.to)}</small>${det ? `<small>${tr('rk_from')}: ${esc(s.from)}</small><small>${d.w}×${d.h} cm · ${tr(p.w === 'heavy' ? 'rk_heavy' : p.w === 'medium' ? 'rk_mediumW' : 'rk_light')}${p.fragile ? ' · ' + tr('rk_fragileL').toLowerCase() : ''}</small>` : ''}<em>${esc(s.why)}</em></span></li>`; }).join('')}</ol>` : `<p class="hint">${tr('rk_nothing')}</p>`;
+  const sel = (k, key, v, opts) => `<select data-rk-guess="${esc(k)}" data-rk-key="${key}" class="${props.get(k).guessed(key) ? 'g' : ''}">${opts.map(([ov, t]) => `<option value="${ov}" ${String(v) === String(ov) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+  const boxEnts = [...data.ents.values()].filter(e => e.kind === 'box');
+  const guesses = det ? `<details class="rkguess"><summary>${tr('rk_guesses', boxEnts.length)}</summary><p class="hint">${tr('rk_guessHint')}</p>${boxEnts.map(e => { const p = props.get(e.k);
+      return `<div class="rkgrow"><b>${esc(e.b.code)} ${esc(e.b.name || '')}</b><div class="rkgsel">
+        <label><span>${tr('rk_weight')}</span>${sel(e.k, 'w', p.w, [['light', tr('rk_light')], ['medium', tr('rk_mediumW')], ['heavy', tr('rk_heavy')]])}</label>
+        <label><span>${tr('rk_use')}</span>${sel(e.k, 'use', p.use, [['often', tr('rk_often')], ['sometimes', tr('rk_sometimes')], ['rarely', tr('rk_rarely')]])}</label>
+        <label><span>${tr('rk_fragileL')}</span>${sel(e.k, 'fragile', p.fragile, [['false', tr('rk_no')], ['true', tr('rk_yes')]])}</label>
+        <label><span>${tr('rk_seasonL')}</span>${sel(e.k, 'season', p.season, [['', tr('rk_allYear')], ['christmas', tr('rk_christmas')], ['easter', tr('rk_easter')], ['winter', tr('rk_winter')], ['summer', tr('rk_summer')]])}</label></div></div>`; }).join('')}</details>` : '';
+  return `<div class="rkbar"><button class="btn quiet small" data-rk-act="back">‹ ${tr('rk_view')}</button><div class="seg small"><button class="${det ? '' : 'on'}" data-rk-detail="0">${tr('rk_simple')}</button><button class="${det ? 'on' : ''}" data-rk-detail="1">${tr('rk_detailed')}</button></div></div>
+    <p class="maphint">${tr('rk_tidyHint')}</p><div class="rkrules">${rules}</div>${det ? `<p class="maphint">${tr('rk_zones')}</p>` : ''}${guesses}
+    ${table}
+    <div class="rkbar"><div class="seg small"><button class="${rkTidyShow === 'before' ? 'on' : ''}" data-rk-show="before">${tr('rk_now')}</button><button class="${rkTidyShow === 'after' ? 'on' : ''}" data-rk-show="after">${tr('rk_after')}</button></div></div>
+    <div class="rkgrid" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${cards}</div>
+    <div class="legend rklegend"><span><i class="mv"></i>${tr('rk_toMove')}</span><span><i></i>${tr('rk_stays')}</span></div>
+    ${P.noRoom.length ? `<p class="hint">${esc(tr('rk_noRoom', P.noRoom.length))}</p>` : ''}
+    ${moves}
+    <div class="sheet-foot" style="margin-top:14px"><button class="btn primary" data-rk-act="apply" ${P.steps.length ? '' : 'disabled'}>${tr('rk_moved')}</button></div>`;
+}
+app.addEventListener('click', e => {
+  if (placeView !== 'racks') return;
+  const pid = currentPlace;
+  const sz = e.target.closest('[data-rk-size]'); if (sz){ rkSize = sz.dataset.rkSize; metaPut('rkSize', rkSize).catch(() => {}); return render(); }
+  const ed = e.target.closest('[data-rk-edit]'); if (ed) return rkUnitSheet(pid, ed.dataset.rkEdit);
+  const wj = e.target.closest('[data-rk-wall]'); if (wj){ const w = wj.dataset.rkWall; rkWallFocus = w; render(); if (rkUnits(pid).some(u => u.wall === w)) rkJump('#rkw-' + w); else rkUnitSheet(pid, null, w); return; }
+  const uj = e.target.closest('[data-rk-jump]'); if (uj){ if (rkPlanSuppress){ rkPlanSuppress = false; return; } rkJump('#rku-' + uj.dataset.rkJump); return; }
+  const q = e.target.closest('[data-rk-q]'); if (q) return rkAnswer(pid, q.dataset.rkQ, q.dataset.rkU, +q.dataset.rkS, q.dataset.rkK);
+  const ad = e.target.closest('[data-rk-add]'); if (ad) return rkAddSheet(pid, ad.dataset.rkU, +ad.dataset.rkS);
+  const dt = e.target.closest('[data-rk-detail]'); if (dt){ rkTidyDetail = dt.dataset.rkDetail === '1'; return render(); }
+  const sh = e.target.closest('[data-rk-show]'); if (sh){ rkTidyShow = sh.dataset.rkShow; return render(); }
+  const a = e.target.closest('[data-rk-act]'); if (!a) return;
+  const k = a.dataset.rkAct;
+  if (k === 'measure'){ rkMeasure = !rkMeasure; metaPut('rkMeasure', rkMeasure).catch(() => {}); return render(); }
+  if (k === 'tidy' || k === 'auto'){ rkMode = 'tidy'; render(); window.scrollTo(0, 0); arm(); return; }
+  if (k === 'back'){ rkMode = 'shelves'; return render(); }
+  if (k === 'addunit') return rkUnitSheet(pid);
+  if (k === 'room') return rkRoomSheet(pid);
+  if (k === 'quick') return rkQuick(pid);
+  if (k === 'apply' && rkLastTidy && rkLastTidy.pid === pid){ rkMode = 'shelves'; rkCommit(pid, rkLastTidy.grid, tr('rk_updated')); window.scrollTo(0, 0); }
+});
+app.addEventListener('change', e => {
+  if (placeView !== 'racks') return;
+  const r = e.target.closest('[data-rk-rule]'); if (r){ rkRules[r.dataset.rkRule] = r.checked; metaPut('rkRules', rkRules).catch(() => {}); return render(); }
+  const g = e.target.closest('[data-rk-guess]'); if (g){
+    const b = findBox(g.dataset.rkGuess.slice(2)); if (!b) return;
+    const nb = clone(b), key = g.dataset.rkKey; let v = g.value; if (key === 'fragile') v = v === 'true';
+    nb.tidy = Object.assign({}, nb.tidy, {[key]: v}); putBox(nb, true); render();
+  }
+});
+app.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-rk-wall],[data-rk-jump]')){ e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', {bubbles: true})); } });
+let rkResizeT = null;
+window.addEventListener('resize', () => { if (placeView !== 'racks') return; clearTimeout(rkResizeT); rkResizeT = setTimeout(() => { if (!rkDrag && !(sheet && sheet.open)) render(); }, 200); });
+
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
 })();
