@@ -1242,6 +1242,27 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .rkpu.drag.bad rect{fill:var(--danger)}
 .rkpsvg{touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .rkpinfo{pointer-events:none}
+
+/* ---------- 2026-10-27: consistency pass ---------- */
+/* text that must be readable: lavender only for lines and surfaces, never for text */
+h2.section,.tagline{color:var(--muted)}
+.input::placeholder,.search::placeholder,.fl input::placeholder,.fl textarea::placeholder,.title::placeholder{color:var(--muted)}
+/* one dropdown style everywhere, with the same arrow */
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237A7390' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:16px}
+.field select,.add-place-select,.docrow select,.rkgsel select,.fl.group .pair select,select.input,.langsel{min-height:44px;padding:9px 34px 9px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237A7390' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center/16px;color:var(--text);font-size:.9rem;font-weight:500}
+/* every form field: same border, radius and focus as the dropdowns */
+.field input,.field textarea,input.input:not(.search){border:1.5px solid var(--line);border-radius:10px;min-height:44px}
+.field input:focus,.field textarea:focus,input.input:not(.search):focus{border-color:var(--primary);outline:none}
+.fl select,.fl.group .pair select{padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237A7390' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:16px}
+.field select:focus,.add-place-select:focus,.docrow select:focus,.rkgsel select:focus,select.input:focus,.langsel:focus{border-color:var(--primary);outline:none}
+.rkgsel select.g{border-color:var(--dot)}
+/* item name grows instead of being cut */
+textarea.title{display:block;resize:none;overflow:hidden;line-height:1.3;min-height:1.3em}
+/* names on tiles: two lines and an ellipsis */
+.itile .tname{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.itile .tcap{max-height:2.6em;overflow:hidden}
+.field input[list]{padding-right:34px;background:var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237A7390' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center/16px}
+.field input[list]::-webkit-calendar-picker-indicator{opacity:0}
 </style>
 </head>
 <body>
@@ -13672,7 +13693,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-26.4';
+const APP_VERSION = '2026-10-27.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -13918,7 +13939,9 @@ function stems(tok){
   return [...new Set(out)];
 }
 function itemHay(it, b){
+  const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u);
   const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), itemOwner(it), it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
+    it.loanTo, it.status ? (STATUS_KEYS[it.status] ? tr(STATUS_KEYS[it.status]) : it.status) : '', it.out ? tr('outTag') : '', unit ? unit.name : '', b.moveRoom,
     it.color, it.season, it.brand, it.model, it.serial, b.loose || b.autoName ? '' : b.name, b.loose ? '' : b.code, b.location].filter(Boolean).join(' ').toLowerCase();
   return {hay, toks: new Set(hay.split(/[^a-zåäöéü0-9.-]+/).filter(Boolean))};
 }
@@ -14149,7 +14172,7 @@ function dropPhoto(ref){
 /* ---------- full-screen photo viewer with pinch and double-tap zoom ---------- */
 const viewer = document.createElement('dialog');
 viewer.id = 'viewer';
-viewer.innerHTML = '<div class="vwrap"><img id="vImg" alt=""></div><button class="vclose" aria-label="Close photo">×</button><p class="vhint">Pinch or double-tap to zoom</p>';
+viewer.innerHTML = '<div class="vwrap"><img id="vImg" alt=""></div><button class="vclose">×</button><p class="vhint"></p>';
 document.body.appendChild(viewer);
 (() => {
   const img = viewer.querySelector('#vImg'), wrap = viewer.querySelector('.vwrap');
@@ -14183,6 +14206,7 @@ document.body.appendChild(viewer);
   wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
   viewer.querySelector('.vclose').onclick = () => viewer.close();
   window.openViewer = async ref => {
+    viewer.querySelector('.vclose').setAttribute('aria-label', tr('closePhoto')); viewer.querySelector('.vhint').textContent = tr('zoomHint');
     const u = await photoURL(ref); if (!u) return;
     img.src = u; reset(); pts.clear(); viewer.showModal();
   };
@@ -14193,7 +14217,7 @@ const imgTag = (ref, cls, alt = '') => `<img class="${cls}" data-ph="${esc(ref)}
 let lang = (navigator.language || '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
 const STR = {
   en: {
-    space: 'SPACE', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
+    space: 'PLACES', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
     box_n: n => `BOX ${n}`, allPlaces: 'All places', addPlace: '+ Place', notInBox: 'Not in a box', notInBoxShort: 'not in a box',
     emptyPlace: 'Tap + to add a box, or something that isn’t in a box, like a bike.', addItem: 'Add item', addSeveral: 'Add several', addThingChoice: 'Add thing', addMultipleChoice: 'Add multiple', addBoxChoice: 'Add box', item: 'item', items: 'items',
     editBox: 'Edit box', label: 'Label', findStuff: 'FIND YOUR STUFF!', typeKeyword: 'Type keyword', searchIn: 'Search in', everywhere: 'Everywhere', allOf: p => `All of ${p}`,
@@ -14202,7 +14226,7 @@ const STR = {
     noAccount: 'No account needed for now. Everything stays on this phone.', writeName: 'Write your name first.',
     storrrage: 'STORRRAGE', profile: 'Profile', settings: 'Settings', notifications: 'Notifications', premium: 'Premium', version: v => `Storrrage version ${v}`,
     household: 'People in the household', addName: 'Add a name', add: 'Add', you: '(you)', remove: 'Remove', householdHint: 'Used for “whose is it” on items, and when talking to Storrrage (“Elsa’s boots”).', noOne: 'No one added yet.',
-    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Storage places', editPlace: n => `Edit ${n}`, foldSpace: n => `Collapse ${n}`, unfoldSpace: n => `Expand ${n}`, changePlaceIcon: n => `Choose an icon for ${n}`, backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
+    aiAssistant: 'AI assistant', off: 'Off', storagePlaces: 'Places', editPlace: n => `Edit ${n}`, foldSpace: n => `Collapse ${n}`, unfoldSpace: n => `Expand ${n}`, changePlaceIcon: n => `Choose an icon for ${n}`, backupNow: 'Back up now', never: 'Never', restore: 'Restore from backup', insurance: 'Insurance report',
     labelsAll: 'Labels for all boxes', scanLabel: 'Scan a box label', language: 'Language', usage: mb => `Everything is stored only on this phone. Storrrage uses about ${mb} MB.`,
     dueIntro: 'You haven’t used these for a while. Still worth keeping, or time to sell?', lastUsedOn: d => `Last used ${d}`, usedRecently: 'Used it recently', markSale: 'Mark for sale',
     nothingDue: 'Nothing needs your attention. On an item, set “Remind me if unused” to get a nudge when you haven’t used it in a while.',
@@ -14215,10 +14239,10 @@ const STR = {
     f_category: 'Category', f_spot: 'Where exactly', f_notes: 'Notes', whose: 'Whose is it', status: 'Status', loanTo: 'Lent to whom', shared: 'Shared',
     st_store: 'In storage', st_loan: 'On loan', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Given away', st_throw: 'Throw away', st_custom: 'Other…',
     customStatus: 'Enter a status',
-    addTo: p => `Add to ${p}`, addBoxOrItem: 'Add box or item', boxStorage: 'Box / storage', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
+    addTo: p => `Add to ${p}`, addBoxOrItem: 'Add box or item', boxStorage: 'Box', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
     moveX: n => `Move ${n}`, to: 'To', move: 'Move', movedTo: w => `Moved to ${w}.`, rename: 'Rename', del: 'Delete', edit: 'Edit', moveToPlace: 'Move to place', emptyFirst: 'Empty this place to delete it.',
     delQ: n => `Delete “${n}”? This can’t be undone.`, delNoteQ: 'Delete this voice note?', rmPhotoQ: 'Remove this photo?', rmQ: n => `Remove “${n}”?`, rmTagQ: n => `Remove the tag “${n}”?`,
-    newPlace: 'New storage place', newPlaceHint: 'For example Basement, Vinden or Garaget', renameX: n => `Rename ${n}`, newTag: 'Add a tag', tagHint: 'For example hiking or winter',
+    newPlace: 'New place', newPlaceHint: 'For example Basement, Vinden or Garaget', renameX: n => `Rename ${n}`, newTag: 'Add a tag', tagHint: 'For example hiking or winter',
     backupBanner: d => d ? `Last backup was ${d}. Everything is stored only on this phone, so keep a copy somewhere else.` : 'You haven’t made a backup yet. Everything is stored only on this phone, so keep a copy somewhere else.',
     voiceNotes: 'Voice notes', voiceNotesBox: 'Voice notes for this box', menu: 'Menu', allSettings: 'All settings', usedNoted: 'Noted. The reminder starts over.', markedSale: 'Marked for sale.',
     placesHint: 'For example the basement storage unit, the attic, the garage or the summer house. Only a name is stored, never an address.', placeNameHint: 'Name, e.g. Vinden',
@@ -14230,7 +14254,7 @@ const STR = {
     batchAdded: n => n === 1 ? 'Added 1 item.' : `Added ${n} items.`, namePh: 'Name', include: 'Include', morePhotos: '+ More photos', noneYet: 'No photos yet.', batchFound: n => n === 1 ? 'Found 1 thing.' : `Found ${n} things.`,
   },
   sv: {
-    space: 'FÖRVARING', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
+    space: 'PLATSER', places_n: n => n === 1 ? '1 PLATS' : `${n} PLATSER`, boxes_n: n => n === 1 ? '1 LÅDA' : `${n} LÅDOR`, items_n: n => n === 1 ? '1 SAK' : `${n} SAKER`,
     box_n: n => `LÅDA ${n}`, allPlaces: 'Alla platser', addPlace: '+ Plats', notInBox: 'Utan låda', notInBoxShort: 'utan låda',
     emptyPlace: 'Tryck på + för att lägga till en låda, eller något som inte ligger i en låda, som en cykel.', addItem: 'Lägg till sak', addSeveral: 'Lägg till flera', addThingChoice: 'Lägg till sak', addMultipleChoice: 'Lägg till flera', addBoxChoice: 'Lägg till låda', item: 'sak', items: 'saker',
     editBox: 'Ändra låda', label: 'Etikett', findStuff: 'HITTA DINA GREJER!', typeKeyword: 'Skriv ett sökord', searchIn: 'Sök i', everywhere: 'Överallt', allOf: p => `Hela ${p}`,
@@ -14239,7 +14263,7 @@ const STR = {
     noAccount: 'Inget konto behövs just nu. Allt stannar på den här telefonen.', writeName: 'Skriv ditt namn först.',
     storrrage: 'STORRRAGE', profile: 'Profil', settings: 'Inställningar', notifications: 'Notiser', premium: 'Premium', version: v => `Storrrage version ${v}`,
     household: 'Personer i hushållet', addName: 'Lägg till ett namn', add: 'Lägg till', you: '(du)', remove: 'Ta bort', householdHint: 'Används för ”vems är det” på saker, och när du pratar med Storrrage (”Elsas kängor”).', noOne: 'Ingen tillagd än.',
-    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Förvaringsplatser', editPlace: n => `Redigera ${n}`, foldSpace: n => `Fäll ihop ${n}`, unfoldSpace: n => `Visa ${n}`, changePlaceIcon: n => `Välj ikon för ${n}`, backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
+    aiAssistant: 'AI-assistent', off: 'Av', storagePlaces: 'Platser', editPlace: n => `Ändra ${n}`, foldSpace: n => `Fäll ihop ${n}`, unfoldSpace: n => `Visa ${n}`, changePlaceIcon: n => `Välj ikon för ${n}`, backupNow: 'Säkerhetskopiera nu', never: 'Aldrig', restore: 'Återställ från säkerhetskopia', insurance: 'Försäkringsrapport',
     labelsAll: 'Etiketter för alla lådor', scanLabel: 'Skanna en etikett', language: 'Språk', usage: mb => `Allt sparas bara på den här telefonen. Storrrage använder ungefär ${mb} MB.`,
     dueIntro: 'Du har inte använt de här på ett tag. Värda att behålla, eller dags att sälja?', lastUsedOn: d => `Senast använd ${d}`, usedRecently: 'Använt nyligen', markSale: 'Markera till salu',
     nothingDue: 'Inget behöver din uppmärksamhet. Välj ”Påminn om oanvänd” på en sak för att få en knuff när du inte använt den på ett tag.',
@@ -14252,10 +14276,10 @@ const STR = {
     f_category: 'Kategori', f_spot: 'Var exakt', f_notes: 'Anteckningar', whose: 'Vems är det', status: 'Status', loanTo: 'Utlånad till', shared: 'Gemensam',
     st_store: 'I förrådet', st_loan: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Bortskänkt', st_throw: 'Slängas', st_custom: 'Annat…',
     customStatus: 'Skriv en egen status',
-    addTo: p => `Lägg till i ${p}`, addBoxOrItem: 'Lägg till låda eller sak', boxStorage: 'Låda / förvaring', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
+    addTo: p => `Lägg till i ${p}`, addBoxOrItem: 'Lägg till låda eller sak', boxStorage: 'Låda', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
     moveX: n => `Flytta ${n}`, to: 'Till', move: 'Flytta', movedTo: w => `Flyttad till ${w}.`, rename: 'Byt namn', del: 'Ta bort', edit: 'Ändra', moveToPlace: 'Flytta till plats', emptyFirst: 'Töm platsen för att kunna ta bort den.',
     delQ: n => `Ta bort ”${n}”? Det går inte att ångra.`, delNoteQ: 'Ta bort röstanteckningen?', rmPhotoQ: 'Ta bort fotot?', rmQ: n => `Ta bort ”${n}”?`, rmTagQ: n => `Ta bort taggen ”${n}”?`,
-    newPlace: 'Ny förvaringsplats', newPlaceHint: 'Till exempel Källaren, Vinden eller Garaget', renameX: n => `Byt namn på ${n}`, newTag: 'Lägg till en tagg', tagHint: 'Till exempel vandring eller vinter',
+    newPlace: 'Ny plats', newPlaceHint: 'Till exempel Källaren, Vinden eller Garaget', renameX: n => `Byt namn på ${n}`, newTag: 'Lägg till en tagg', tagHint: 'Till exempel vandring eller vinter',
     backupBanner: d => d ? `Senaste säkerhetskopian gjordes ${d}. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.` : 'Du har inte gjort någon säkerhetskopia än. Allt sparas bara på den här telefonen, så spara en kopia någon annanstans.',
     voiceNotes: 'Röstanteckningar', voiceNotesBox: 'Röstanteckningar för lådan', menu: 'Meny', allSettings: 'Alla inställningar', usedNoted: 'Noterat. Påminnelsen börjar om.', markedSale: 'Markerad till salu.',
     placesHint: 'Till exempel källarförrådet, vinden, garaget eller sommarstugan. Bara ett namn sparas, aldrig en adress.', placeNameHint: 'Namn, t.ex. Vinden',
@@ -14268,6 +14292,22 @@ const STR = {
   },
 };
 Object.assign(STR.en, {moreBoxes: n => `+ ${n} more boxes`});
+Object.assign(STR.en, {whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom',
+  h_stopVoice: 'Stop the voice note first.', h_noRec: 'Recording isn’t available in this browser.', h_micBlocked: 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
+  h_aiBusy: 'Still thinking about the last thing you said.', h_boxLabels: 'Box labels', h_printHint: 'Print this page, cut out the labels and tape them to the boxes.',
+  h_addBoxesFirst: 'Add some boxes first.', h_building: 'Building the report…', h_nothingBackup: 'Nothing to back up yet.', h_preparingBackup: 'Preparing backup…', h_restoring: 'Restoring…',
+  rp_title: 'Storage inventory', rp_item: 'Item', rp_value: 'Est. value', rp_stored: 'Stored since', rp_registered: 'Registered', rp_photos: 'Photos', rp_photo: 'Photo', rp_empty: 'Empty.',
+  rp_packed: (d, n, v) => `Packed ${d}. ${n} items, ${v}.`, rp_generated: (d, b, n, v) => `Generated ${d}. ${b} boxes, ${n} items, estimated total value ${v}.`,
+  rp_note: '“Registered” is when the item was entered in the inventory. Photo times come from the image file.', rp_ready: 'Insurance report ready',
+  joinConfirmQ: 'Join this household? Everyone in it will see your things. Only join with a code from someone you know.'});
+Object.assign(STR.sv, {whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma',
+  h_stopVoice: 'Stoppa röstanteckningen först.', h_noRec: 'Inspelning fungerar inte i den här webbläsaren.', h_micBlocked: 'Mikrofonen är blockerad. Tillåt den för Storrrage i Chromes webbplatsinställningar.',
+  h_aiBusy: 'Tänker fortfarande på det du sa senast.', h_boxLabels: 'Lådetiketter', h_printHint: 'Skriv ut sidan, klipp ut etiketterna och tejpa fast dem på lådorna.',
+  h_addBoxesFirst: 'Lägg till några lådor först.', h_building: 'Gör rapporten…', h_nothingBackup: 'Det finns inget att säkerhetskopiera än.', h_preparingBackup: 'Förbereder säkerhetskopian…', h_restoring: 'Återställer…',
+  rp_title: 'Förrådsinventering', rp_item: 'Sak', rp_value: 'Uppskattat värde', rp_stored: 'Förvarad sedan', rp_registered: 'Registrerad', rp_photos: 'Foton', rp_photo: 'Foto', rp_empty: 'Tom.',
+  rp_packed: (d, n, v) => `Packad ${d}. ${n} saker, ${v}.`, rp_generated: (d, b, n, v) => `Skapad ${d}. ${b} lådor, ${n} saker, uppskattat totalvärde ${v}.`,
+  rp_note: '”Registrerad” är när saken lades in i inventeringen. Fototiderna kommer från bildfilen.', rp_ready: 'Försäkringsrapporten är klar',
+  joinConfirmQ: 'Gå med i hushållet? Alla i det ser dina saker. Gå bara med via en kod från någon du känner.'});
 Object.assign(STR.sv, {moreBoxes: n => `+ ${n} lådor till`});
 Object.assign(STR.en, {
     aiSuggest: 'Suggest from photo', testTag: 'TEST', aiLooking: 'Looking at the photo…', aiNothing: 'The AI didn’t recognise anything in the photo.',
@@ -14278,7 +14318,7 @@ Object.assign(STR.en, {
     newBox: 'New box',
     name: 'Name',
     boxNamePh: 'Winter clothes',
-    storagePlace: 'Storage place',
+    storagePlace: 'Place',
     whereInPlace: 'Where in that place',
     wherePh: 'Back wall, top shelf',
     boxPhoto: 'Photo of the box',
@@ -14340,7 +14380,7 @@ Object.assign(STR.sv, {
     newBox: 'Ny låda',
     name: 'Namn',
     boxNamePh: 'Vinterkläder',
-    storagePlace: 'Förvaringsplats',
+    storagePlace: 'Plats',
     whereInPlace: 'Var på platsen',
     wherePh: 'Bakre väggen, översta hyllan',
     boxPhoto: 'Foto av lådan',
@@ -14423,17 +14463,17 @@ STR.en.doorHint = 'Pick the side the door is on, and where the far end is. They�
 Object.assign(STR.sv, {showAll: 'Visa alla', dragLooseHint: 'Håll in en rund markör och dra in den i en zon för att visa var den står.', addZone: 'Lägg till zon', zoneExists: 'Det finns redan en zon med det namnet.',
   doorSide: 'Var är dörren?', doorHint: 'Kartan ritas från dörren och inåt. Välj vilken sida dörren sitter på.', door_top: 'Uppe', door_bottom: 'Nere', door_left: 'Vänster', door_right: 'Höger'});
 STR.sv.doorHint = 'Välj vilken sida dörren sitter på, och var längst in är. Det visas som markeringar runt kartan.'; STR.sv.doorSide = 'Dörr och längst in';
-Object.assign(STR.en, {dragHint: 'Hold a box or a round marker and drag it onto a stack or into a zone.', back: 'Back', switchSpace: 'Choose place', shelf: 'Shelf', map: 'Map', door: 'Door', farIn: 'Far end', noZone: 'No zone', placement: 'Placement',
+Object.assign(STR.en, {dragHint: 'Hold a box or a round marker and drag it onto a stack or into a zone.', back: 'Back', switchSpace: 'Choose place', shelf: 'Grid', map: 'Map', door: 'Door', farIn: 'Far end', noZone: 'No zone', placement: 'Placement',
   placementHint: 'Where the box stands: its zone (a spot in this place, like a shelf or by the door) and stack.', zone: 'Zone', zoneHint: 'A zone marks a spot in this place, e.g. a shelf or by the door',
   stack: 'Stack', newStack: 'A new stack', level: 'Level', onTop: 'On top', atBottom: 'At the bottom', stackOf: (n, codes) => codes ? `Stack ${n}: on ${codes}` : `Stack ${n}`, closerDoor: 'Move up', furtherIn: 'Move down'});
-Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra den till en stapel eller zon.', back: 'Tillbaka', switchSpace: 'Välj plats', shelf: 'Hylla', map: 'Karta', door: 'Dörren', farIn: 'Längst in', noZone: 'Utan zon', placement: 'Placering',
+Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra den till en stapel eller zon.', back: 'Tillbaka', switchSpace: 'Välj plats', shelf: 'Rutnät', map: 'Karta', door: 'Dörren', farIn: 'Längst in', noZone: 'Utan zon', placement: 'Placering',
   placementHint: 'Var lådan står: zonen (en del av platsen, som en hylla eller vid dörren) och stapeln.', zone: 'Zon', zoneHint: 'En zon markerar en del av platsen, t.ex. en hylla eller vid dörren',
   stack: 'Stapel', newStack: 'En ny stapel', level: 'Nivå', onTop: 'Överst', atBottom: 'Längst ner', stackOf: (n, codes) => codes ? `Stapel ${n}: ovanpå ${codes}` : `Stapel ${n}`, closerDoor: 'Flytta upp', furtherIn: 'Flytta ner'});
-Object.assign(STR.en, {collections: 'Collections', collection: 'Collection', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
-  toCollection: 'Collection', collHint: 'Things with the same tag form a collection, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
+Object.assign(STR.en, {collections: 'Tags', collection: 'Tag', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
+  toCollection: 'Tag', collHint: 'Things with the same tag are shown together, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
   isHere: 'is here', openItem: 'Open item', foundIn: 'Found in'});
-Object.assign(STR.sv, {collections: 'Samlingar', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 ställe' : `på ${n} ställen`, showOnMap: 'Visa på kartan', insideBox: 'inuti',
-  toCollection: 'Samling', collHint: 'Saker med samma tagg blir en samling, även om de ligger i olika lådor.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
+Object.assign(STR.sv, {collections: 'Taggar', collection: 'Tagg', inBoxes: n => n === 1 ? 'på 1 ställe' : `på ${n} ställen`, showOnMap: 'Visa på kartan', insideBox: 'inuti',
+  toCollection: 'Tagg', collHint: 'Saker med samma tagg visas tillsammans, även om de ligger i olika lådor.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
   isHere: 'ligger här', openItem: 'Öppna saken', foundIn: 'Hittad i'});
 Object.assign(STR.en, {list: 'List', takeOut: 'Take out', putBack: 'Put back', outTag: 'Out', outSince: d => `out since ${d}`, backBy: d => `back by ${d}`, outSection: 'Out of storage right now',
   outUntil: 'Out until (optional)', tookOut: (n, w) => `${n} taken out of ${w}. Its place is kept.`, putBackDone: (n, w) => `${n} is back in ${w}.`, deletedX: n => `${n} deleted.`, undo: 'Undo', more: 'More',
@@ -14609,7 +14649,7 @@ function goBack(){
   for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)){ go(backStack[i], {backIndex: i}); return true; }
   return goUp();
 }
-function arm(){ if (armed || !(prevView() || parentView())) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
+function arm(){ if (armed || !(prevView() || parentView() || (placeView === 'racks' && rkMode === 'tidy'))) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
 async function go(v, options = {}){
   if (sameView(v, view)) return true;
   if (view.name === 'item' && !(await prepareItemLeave())){ arm(); return false; }
@@ -14640,6 +14680,7 @@ window.addEventListener('popstate', () => {
   const vw = document.getElementById('viewer');
   if (vw && vw.open){ vw.close(); arm(); return; }
   if (sheet.open){ closeSheet(); arm(); return; }
+  if (view.name === 'home' && placeView === 'racks' && rkMode === 'tidy'){ rkMode = 'shelves'; render(); arm(); return; }
   if (goBack()) arm();
 });
 function goHome(pid){ navigate({name: 'home', place: pid || 'all'}); }
@@ -14656,7 +14697,8 @@ const possessive = () => {
   return lang === 'sv' ? (/[SXZ]$/.test(n) ? n : n + 'S') : (n.endsWith('S') ? n + '’' : n + '’S');
 };
 function crumbs(parts, sub){
-  return `<nav class="crumbs" aria-label="Where you are">${parts.map(p => p.nav ? `<button data-nav='${esc(JSON.stringify(p.nav))}'>${esc(p.label)}</button>` : `<span>${esc(p.label)}</span>`).join('<span class="sep"> - </span>')}</nav>${sub ? `<p class="tagline">${sub}</p>` : ''}`;
+  const short = l => { l = String(l); return l.length > 26 ? l.slice(0, 24).trimEnd() + '…' : l; };
+  return `<nav class="crumbs" aria-label="${esc(tr('whereYouAre'))}">${parts.map(p => p.nav ? `<button data-nav='${esc(JSON.stringify(p.nav))}' title="${esc(p.label)}">${esc(short(p.label))}</button>` : `<span title="${esc(p.label)}">${esc(short(p.label))}</span>`).join('<span class="sep"> - </span>')}</nav>${sub ? `<p class="tagline">${sub}</p>` : ''}`;
 }
 const crumbSpace = () => ({label: possessive(), nav: {name: 'home', place: 'all'}});
 const crumbPlace = pid => ({label: placeName(pid).toUpperCase(), nav: {name: 'home', place: pid}});
@@ -15308,7 +15350,7 @@ function renderSearch(){
   }
   if (q && !searchQuick){
     const {exact, related} = searchItems(q, {placeIds: P, boxIds: B});
-    const boxHits = searchQuick ? [] : realBoxes().filter(b => { if (!inScope(b)) return false; const h = [b.code, b.code.replace('B-', ''), b.name, b.location, b.notes, placeName(b.placeId)].join(' ').toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => h.includes(w)); }).sort(byCode);
+    const boxHits = searchQuick ? [] : realBoxes().filter(b => { if (!inScope(b)) return false; const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u); const h = [b.code, b.code.replace('B-', ''), b.name, b.location, b.notes, placeName(b.placeId), b.moveRoom, b.out ? tr('outTag') : '', unit ? unit.name : '', ...(b.documents || []).map(d => d.name)].join(' ').toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => h.includes(w)); }).sort(byCode);
     body = `${exact.length ? (viewMode === 'list' && !selecting ? rowsHTML(exact, {where: true}) : `<div class="igrid${viewCls()}">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}
       ${boxHits.length ? `<h2 class="section">${tr('boxesH')}</h2><div class="shelf${shelfCls()}">${boxHits.map(shelfTile).join('')}</div>` : ''}
       ${related.length ? `<h2 class="section">${tr('similar')}</h2><div class="igrid${viewCls()}">${related.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
@@ -15757,7 +15799,7 @@ function renderItem(){
     return input(k);
   };
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
-  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
+  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
   app.innerHTML = `${crumbs(crumbParts)}
     ${presenceNote(b.id, it.id)}
     <div class="hero">
@@ -15767,7 +15809,7 @@ function renderItem(){
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     ${isOut(it) ? `<p class="outline"><span>↗ ${tr('outTag')} · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="linkbtn" data-act="itemback">↩ ${tr('putBack')}</button></p>` : ''}
-    <div class="titlerow"><input class="title" id="fName" value="${esc(it.name)}" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" required>
+    <div class="titlerow"><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea>
       ${isOut(it) ? '' : `<button class="iconbtn outbtn" data-act="itemout" aria-label="${esc(tr('takeOut'))}" title="${esc(tr('takeOut'))}">↗</button>`}<button class="iconbtn star" data-act="favitem" aria-label="${esc(it.fav ? tr('unfav') : tr('fav'))}" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? '★' : '☆'}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     <div class="whereline"><button class="pinbtn" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button><span class="wtxt">${esc(b.loose ? placeName(b.placeId) + ' · ' + tr('notInBoxShort') : `${placeName(b.placeId)} · ${b.code} ${b.name}`)}</span><button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
@@ -15844,7 +15886,10 @@ function renderItem(){
     });
   });
   const nm = $('#fName');
-  nm.addEventListener('input', () => { clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
+  const fitName = () => { nm.style.height = 'auto'; nm.style.height = nm.scrollHeight + 'px'; };
+  requestAnimationFrame(fitName);
+  nm.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); nm.blur(); } });
+  nm.addEventListener('input', () => { if (/\n/.test(nm.value)) nm.value = nm.value.replace(/\s*\n\s*/g, ' '); fitName(); clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
   nm.addEventListener('change', () => { clearTimeout(timers.name); commit('name', nm.value); });
   if (app.querySelector('[data-where]')) app.querySelector('[data-where]').addEventListener('change', e => { if (flushItem) flushItem(); moveItemTo(view.boxId, view.itemId, e.target.value); render(); });
   const addPhotos = async e => {
@@ -15979,7 +16024,7 @@ function renderBatch(){
   if (!batch || batch.boxId !== view.boxId) batch = {boxId: view.boxId, mode: null, rows: [], busy: 0, refs: new Set()};
   const b = findBox(batch.boxId);
   const where = b.loose ? `${placeName(b.placeId)}, ${tr('notInBoxShort')}` : `${b.code} ${b.name}`;
-  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: boxLabel(b), nav: {name: 'box', boxId: b.id}}]);
+  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
   const rows = batch.rows, n = rows.filter(r => r.include && r.status !== 'thinking').length;
   const missing = rows.some(r => r.include && r.status !== 'thinking' && !(r.name || '').trim());
   const detail = f => [showColor(f.color), f.brand, f.size && (lang === 'sv' ? 'stl ' : 'size ') + f.size, f.value && kr(f.value), f.category].filter(Boolean).map(esc).join(' · ');
@@ -16953,7 +16998,9 @@ app.addEventListener('click', e => {
   const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
   const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt]'); if (!t) return;
   const d = t.dataset;
-  if (d.nav){ const v = JSON.parse(d.nav); if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
+  if (d.nav){ let v = JSON.parse(d.nav); if (v.name === 'home') v = {name: 'home', place: v.place || 'all'};
+    for (let i = backStack.length - 1; i >= 0; i--) if (sameView(backStack[i], v)) return go(backStack[i], {backIndex: i});
+    if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
   if (d.goplace) return goHome(d.goplace === 'all' ? null : d.goplace);
   if (selecting && (d.item || d.open) && !d.openItem){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; if (d.open) return; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
   if (d.open) return openBox(d.open);
@@ -17212,7 +17259,7 @@ function detailsHTML(attrs, kind, moreOpen){
       ${chips.length || k === 'owner' ? `<div class="chips">${chips.map(c => `<button type="button" class="chipbtn${v.toLowerCase() === c.toLowerCase() ? ' on' : ''}" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}${k === 'owner' ? '<button type="button" class="chipbtn add" data-addperson>+ Person</button>' : ''}</div>` : ''}
     </div>`;
   };
-  return main.map(field).join('') + `<details class="more" ${moreOpen ? 'open' : ''}><summary>More details</summary>${rest.map(field).join('')}</details>`;
+  return main.map(field).join('') + `<details class="more" ${moreOpen ? 'open' : ''}><summary>${tr('moreDetails')}</summary>${rest.map(field).join('')}</details>`;
 }
 function addPerson(name){
   name = (name || '').trim(); if (!name) return '';
@@ -17465,7 +17512,7 @@ function updateCtx(){
   const el = $('#vCtx'); if (!el) return;
   const b = curBox(), pid = scopePlace();
   const sv = lang === 'sv';
-  el.textContent = b ? `${sv ? 'Öppen låda' : 'Open box'}: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
+  el.textContent = b ? `${tr('openBoxNow')}: ${b.code} ${b.name}${places.length > 1 ? ` (${placeName(b.placeId)})` : ''}`
     : pid ? (sv ? `I ${placeName(pid)}, ingen låda öppen. Det du lägger till hamnar utan låda.` : `In ${placeName(pid)}, no box open. Things you add go in as “not in a box”.`)
     : (sv ? 'Alla platser. Säg var du är, till exempel ”jag är i garaget”.' : 'All places. Say where you are, for example “I’m in the garage”.');
 }
@@ -17820,9 +17867,9 @@ function doOutVoice(subject, out, where){
     setBoxOut(b.id, out); return say(out ? t('boxOutV', {box: boxSpoken(b)}) : t('boxBackV', {box: boxSpoken(b)}));
   }
   // a whole collection: "ta ut hela #jul", "take out the christmas collection"
-  const cm = subject.replace(/^(?:hela|samlingen|the|whole|collection)\s+/i, '').replace(/\s+(?:collection|samlingen)$/i, '').replace(/^#/, '').toLowerCase();
+  const cm = subject.replace(/^(?:hela|samlingen|taggen|the|whole|collection|tag)\s+/i, '').replace(/\s+(?:collection|samlingen|tag|taggen)$/i, '').replace(/^#/, '').toLowerCase();
   const coll = collectionsAll().find(c => c.tag === cm || stems(cm).includes(c.tag) || stems(c.tag).includes(cm));
-  if (coll && (/#|hela|samling|whole|collection/i.test(subject) || !findIn(subject))){ setOutMany(coll.list, out, null, '#' + tagLabel(coll.tag)); return say(out ? t('collOutV', {c: tagLabel(coll.tag), n: coll.list.length}) : t('collBackV', {c: tagLabel(coll.tag)})); }
+  if (coll && (/#|hela|samling|tagg|whole|collection|\btag\b/i.test(subject) || !findIn(subject))){ setOutMany(coll.list, out, null, '#' + tagLabel(coll.tag)); return say(out ? t('collOutV', {c: tagLabel(coll.tag), n: coll.list.length}) : t('collBackV', {c: tagLabel(coll.tag)})); }
   const pid = scopePlace();
   const hit = findIn(subject, curBox() ? {boxId: curBox().id} : pid ? {placeId: pid} : {}) || findIn(subject);
   if (!hit) return say(t('notFound', {q: cleanQ(subject)}));
@@ -17983,7 +18030,7 @@ function pickAlt(result){
 }
 function listen(){
   if (listening) return finishListening();
-  if (rec) return toast('Stop the voice note first.');
+  if (rec) return toast(tr('h_stopVoice'));
   if (window.speechSynthesis) speechSynthesis.cancel();
   listening = true; finished = false; heard = ''; listenStart = Date.now();
   setMic('on'); showLive('…'); startRecog(); armSilence(true);
@@ -18084,10 +18131,10 @@ function updRecBtn(){
 async function toggleRecord(){
   if (rec){ rec.stop(); return; }
   if (recog) stopListening();
-  if (!navigator.mediaDevices || !window.MediaRecorder) return toast('Recording isn’t available in this browser.');
+  if (!navigator.mediaDevices || !window.MediaRecorder) return toast(tr('h_noRec'));
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({audio: true}); }
-  catch { return toast('Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.'); }
+  catch { return toast(tr('h_micBlocked')); }
   const chunks = [], boxId = curBox() ? curBox().id : null;
   const r = new MediaRecorder(stream); rec = r;
   r.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
@@ -18358,7 +18405,7 @@ function applyPlan(actions){
   updateCtx();
 }
 async function aiTurn(text){
-  if (aiBusy) return toast('Still thinking about the last thing you said.');
+  if (aiBusy) return toast(tr('h_aiBusy'));
   aiBusy = true;
   const history = voiceLog.slice(-14).map(l => (l.who === 'you' ? 'User: ' : 'Assistant: ') + l.text).join('\n');
   logLine('you', text);
@@ -18472,11 +18519,11 @@ function deliver(filename, blob, title, onDone){
 }
 function labels(list){
   const ls = [...list].sort(byCode).map(b => `<div class="l"><div class="q">${qrSvg(labelText(b), 6)}</div><div>${b.moveRoom ? `<div class="r">${esc(b.moveRoom)}</div>` : ''}<div class="c">${esc(b.code)}</div><div class="n">${esc(b.name)}</div></div></div>`).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Box labels</title><style>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(tr('h_boxLabels'))}</title><style>
     body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
     .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
     .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.c{font:900 30pt/1 Impact,Arial Black,sans-serif}.r{font:900 22pt/1.05 Arial Black,Arial,sans-serif;text-transform:uppercase;margin-bottom:2mm}.n{font-size:12pt;margin-top:2mm}
-    p{color:#555}@media print{p{display:none}}</style></head><body><p>Print this page, cut out the labels and tape them to the boxes.</p><div class="g">${ls}</div></body></html>`;
+    p{color:#555}@media print{p{display:none}}</style></head><body><p>${esc(tr('h_printHint'))}</p><div class="g">${ls}</div></body></html>`;
   deliver(list.length === 1 ? `label-${list[0].code}.html` : 'box-labels.html', new Blob([html], {type: 'text/html'}), list.length === 1 ? `${tr('label')} ${list[0].code}` : tr('labelsAllH'));
 }
 async function thumbData(ref){
@@ -18484,8 +18531,8 @@ async function thumbData(ref){
   catch { return ''; }
 }
 async function insuranceReport(){
-  if (!boxes.length) return toast('Add some boxes first.');
-  toast('Building the report…');
+  if (!boxes.length) return toast(tr('h_addBoxesFirst'));
+  toast(tr('h_building'));
   const pi = b => places.findIndex(p => p.id === b.placeId);
   const all = [...boxes].filter(b => !b.loose || (b.items || []).length).sort((x, y) => pi(x) - pi(y) || (x.loose ? -1 : 0) - (y.loose ? -1 : 0) || byCode(x, y));
   const total = all.reduce((s, b) => s + boxValue(b), 0);
@@ -18494,27 +18541,27 @@ async function insuranceReport(){
     let rows = '';
     for (const it of (b.items || [])){
       const imgs = [];
-      for (const p of (it.photos || [])){ const d = await thumbData(p.ref); if (d) imgs.push(`<img src="${d}" alt=""><br><small>Photo ${esc(fmtStamp(p.takenAt))}</small>`); }
+      for (const p of (it.photos || [])){ const d = await thumbData(p.ref); if (d) imgs.push(`<img src="${d}" alt=""><br><small>${esc(tr('rp_photo'))} ${esc(fmtStamp(p.takenAt))}</small>`); }
       rows += `<tr><td><b>${esc(it.name)}</b>${it.category ? `<br>${esc(it.category)}` : ''}${it.notes ? `<br><small>${esc(it.notes)}</small>` : ''}</td>
         <td>${esc(kr(it.value))}</td><td>${esc(it.storedOn)}</td><td>${esc(fmtStamp(it.addedAt))}</td><td class="ph">${imgs.join('<br>')}</td></tr>`;
     }
     const bimg = b.photo ? await thumbData(b.photo.ref) : '';
-    body += `<section><h2>${b.loose ? `${esc(placeName(b.placeId))}: not in a box` : `${esc(b.code)} ${esc(b.name)}`}</h2><p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}. Packed ${esc(fmtDate(b.createdAt))}. ${(b.items || []).length} items, ${esc(kr(boxValue(b)) || '0 kr')}.</p>
+    body += `<section><h2>${b.loose ? `${esc(placeName(b.placeId))}: ${esc(tr('notInBoxShort'))}` : `${esc(b.code)} ${esc(b.name)}`}</h2><p>${esc([placeName(b.placeId), b.location].filter(Boolean).join(', '))}. ${esc(tr('rp_packed', fmtDate(b.createdAt), (b.items || []).length, kr(boxValue(b)) || '0 kr'))}</p>
       ${bimg ? `<img class="box" src="${bimg}" alt="">` : ''}
-      ${rows ? `<table><tr><th>Item</th><th>Est. value</th><th>Stored since</th><th>Registered</th><th>Photos</th></tr>${rows}</table>` : '<p>Empty.</p>'}</section>`;
+      ${rows ? `<table><tr><th>${esc(tr('rp_item'))}</th><th>${esc(tr('rp_value'))}</th><th>${esc(tr('rp_stored'))}</th><th>${esc(tr('rp_registered'))}</th><th>${esc(tr('rp_photos'))}</th></tr>${rows}</table>` : `<p>${esc(tr('rp_empty'))}</p>`}</section>`;
   }
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storage inventory ${today()}</title><style>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(tr('rp_title'))} ${today()}</title><style>
     body{font-family:Arial,sans-serif;margin:14mm;color:#111}h1{margin:0}table{border-collapse:collapse;width:100%;margin:8px 0 24px}
     th,td{border:1px solid #bbb;padding:6px;vertical-align:top;text-align:left;font-size:10pt}td.ph img{width:110px}img.box{width:200px}
     section{break-inside:avoid-page}small{color:#555}</style></head><body>
-    <h1>Storage inventory</h1><p>Generated ${esc(fmtStamp(new Date().toISOString()))}. ${all.filter(b => !b.loose).length} boxes, ${all.reduce((s, b) => s + (b.items || []).length, 0)} items, estimated total value ${esc(kr(total) || '0 kr')}.</p>
-    <p>"Registered" is when the item was entered in the inventory. Photo times come from the image file.</p>${body}</body></html>`;
-  deliver(`storage-inventory-${today()}.html`, new Blob([html], {type: 'text/html'}), 'Insurance report ready');
+    <h1>${esc(tr('rp_title'))}</h1><p>${esc(tr('rp_generated', fmtStamp(new Date().toISOString()), all.filter(b => !b.loose).length, all.reduce((s, b) => s + (b.items || []).length, 0), kr(total) || '0 kr'))}</p>
+    <p>${esc(tr('rp_note'))}</p>${body}</body></html>`;
+  deliver(`storage-inventory-${today()}.html`, new Blob([html], {type: 'text/html'}), tr('rp_ready'));
 }
 const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 async function backup(){
-  if (!boxes.length && !notes.length) return toast('Nothing to back up yet.');
-  toast('Preparing backup…');
+  if (!boxes.length && !notes.length) return toast(tr('h_nothingBackup'));
+  toast(tr('h_preparingBackup'));
   const photos = {};
   const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])]).filter(Boolean);
   for (const ref of refs){ const b = await phGet(ref).catch(() => null); if (b) photos[ref] = await blobToDataURL(b); }
@@ -18592,7 +18639,7 @@ $('#importFile').addEventListener('change', async e => {
       await validateAudioUpload(audio);
       preparedNotes.push({id: x.id, boxId: x.boxId || null, createdAt: x.createdAt || new Date().toISOString(), duration: Math.max(0, +x.duration || 0), by: String(x.by || '').slice(0, 80), blob: audio});
     }
-    toast('Restoring…');
+    toast(tr('h_restoring'));
     let n = 0;
     for (const [ref, blob] of safePhotos) await phPut(ref, blob);
     for (const b of prepared){ putBox(b); n++; }
@@ -18798,6 +18845,7 @@ async function joinFromLink(text){
   const pj = m[1] + (m[2] ? '.' + m[2] : '');
   if (!cloud.session){ await metaPutRaw('pendingJoin', pj).catch(() => {}); pendingJoinCode = pj; if (view.name === 'welcome') return render(); toast(tr('loginToJoin')); return cloudSheet(); }
   if (cloud.hid && boxes.some(b => !b.loose || (b.items || []).length) && !(await askConfirm(tr('switchHouseholdQ'), tr('join')))) return;
+  if (!cloud.hid && !(await askConfirm(tr('joinConfirmQ'), tr('join')))) return;
   const keep = (boxes.some(b => (b.items || []).length) || realBoxes().length) ? await askChoice(tr('mergeQ'), tr('mergeYes'), tr('mergeNo')) : false;
   try {
     const hid = await rpc('join_household', {c: m[1]});
@@ -19189,7 +19237,7 @@ function feedbackSheet(){
 Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with your household', cloudIntro: 'Log in to use Storrrage on several phones and share with the people you live with. Everything you store is encrypted on your phone before it’s sent – nobody else can read it, not even us.',
   email: 'E-mail', emailWhy: 'Only used to log in. No password, no newsletters.', sendLink: 'Send login link', checkMail: 'Check your e-mail', linkSent: e => `We sent a login link to ${e}.`, linkSamePhone: 'Open the link on this phone. It can take a minute – check the spam folder too.',
   tooMany: 'Too many links sent just now – try again in a while.', sendFailed: 'Couldn’t send. Try again.', loginFailed: 'Login didn’t work.', loggedIn: 'You’re logged in.', loggedOut: 'Logged out. Your things are still on this phone.', loginAgain: 'Log in again to keep syncing.',
-  loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded encrypted. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
+  loggedInAs: e => `Logged in as ${e}`, createHousehold: 'Start a household', createHint: 'Your things are uploaded to your household. Then you can invite others.', joinHousehold: 'Join with a QR code', joinHint: 'Scan the code on the other person’s phone.', logout: 'Log out', logoutQ: 'Log out? Your things stay on this phone but stop syncing.',
   householdCreated: 'Household created – now invite the others.', yourHousehold: 'Your household', membersN: n => n === 1 ? '1 member' : `${n} members`, e2eNote: 'Encrypted on your phones. The server only stores scrambled data.',
   invite: 'Invite someone', inviteHint: 'Let them scan this with the phone camera or inside Storrrage (☰ → Scan label).', shareLink: 'Share link instead', inviteSafe: 'The code works once, for 24 hours. The key is in the link itself and never passes our server.', inviteText: 'Join our storage in Storrrage', copied: 'Copied.',
   syncNow: 'Sync now', syncing: 'Syncing…', syncedAt: t => `Synced ${t}`, waitingN: n => `${n} changes waiting to sync`, offlineSync: 'Offline – syncs when you have signal.', syncFailed: 'Couldn’t sync right now.', notMember: 'You’re no longer in this household.',
@@ -19202,7 +19250,7 @@ Object.assign(STR.en, {cloudMenu: 'Account & sharing', cloudTitle: 'Share with y
 Object.assign(STR.sv, {cloudMenu: 'Konto & delning', cloudTitle: 'Dela med ditt hushåll', cloudIntro: 'Logga in för att använda Storrrage på flera telefoner och dela med dem du bor med. Allt du sparar krypteras på telefonen innan det skickas – ingen annan kan läsa det, inte ens vi.',
   email: 'E-post', emailWhy: 'Används bara för inloggning. Inget lösenord, inga nyhetsbrev.', sendLink: 'Skicka inloggningslänk', checkMail: 'Kolla din e-post', linkSent: e => `Vi har skickat en inloggningslänk till ${e}.`, linkSamePhone: 'Öppna länken på den här telefonen. Det kan ta en minut – kolla skräpposten också.',
   tooMany: 'För många länkar skickade just nu – försök igen om en stund.', sendFailed: 'Kunde inte skicka. Försök igen.', loginFailed: 'Inloggningen fungerade inte.', loggedIn: 'Du är inloggad.', loggedOut: 'Utloggad. Dina saker finns kvar på telefonen.', loginAgain: 'Logga in igen för att fortsätta synka.',
-  loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp krypterat. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
+  loggedInAs: e => `Inloggad som ${e}`, createHousehold: 'Starta ett hushåll', createHint: 'Dina saker laddas upp till hushållet. Sedan kan du bjuda in andra.', joinHousehold: 'Gå med via QR-kod', joinHint: 'Skanna koden på den andras telefon.', logout: 'Logga ut', logoutQ: 'Logga ut? Dina saker finns kvar på telefonen men slutar synkas.',
   householdCreated: 'Hushållet är skapat – bjud in de andra.', yourHousehold: 'Ditt hushåll', membersN: n => n === 1 ? '1 medlem' : `${n} medlemmar`, e2eNote: 'Krypterat på era telefoner. Servern sparar bara oläslig data.',
   invite: 'Bjud in någon', inviteHint: 'Låt dem skanna med telefonens kamera eller i Storrrage (☰ → Skanna etikett).', shareLink: 'Dela länk i stället', inviteSafe: 'Koden fungerar en gång i 24 timmar. Nyckeln ligger i själva länken och passerar aldrig vår server.', inviteText: 'Gå med i vår förvaring i Storrrage', copied: 'Kopierat.',
   syncNow: 'Synka nu', syncing: 'Synkar…', syncedAt: t => `Synkat ${t}`, waitingN: n => `${n} ändringar väntar på att synkas`, offlineSync: 'Offline – synkar när du har täckning.', syncFailed: 'Kunde inte synka just nu.', notMember: 'Du är inte längre med i det här hushållet.',
@@ -19271,15 +19319,15 @@ Object.assign(STR.sv, {adminTitle: 'Statistik & feedback', loading: 'Laddar…',
 
 
 
-Object.assign(STR.en, {usageSync: n => `Storrrage uses about ${n} MB on this phone. Everything is also synced, encrypted, with your household.`, nameShown: 'Shown to the others in your household.', loginEmail: 'Logged in with', mailReminders: 'E-mail me reminders (things to bring back, things not used for a long time)', otherEmail: 'Send to another address (optional)',
-  mailHint: 'Coming soon. The e-mail only says that something needs attention – what it is stays encrypted in the app.', loginForMore: 'Log in to share with your household and get reminders by e-mail.', logIn: 'Log in',
+Object.assign(STR.en, {usageSync: n => `Storrrage uses about ${n} MB on this phone. Everything is also synced with your household.`, nameShown: 'Shown to the others in your household.', loginEmail: 'Logged in with', mailReminders: 'E-mail me reminders (things to bring back, things not used for a long time)', otherEmail: 'Send to another address (optional)',
+  mailHint: 'Coming soon. The e-mail only says that something needs attention – what it is stays in the app.', loginForMore: 'Log in to share with your household and get reminders by e-mail.', logIn: 'Log in',
   appearance: 'Appearance', light: 'Light', dark: 'Dark', auto: 'Automatic', advanced: 'More', restoreHint: 'Only needed for old backup files. Your things are kept safe by syncing with your household.',
   inApp: 'In the app', youTag: '(you)', morePeople: 'Others in the household', morePeopleHint: 'People who don’t use the app but own things, e.g. kids. Pick them as owner of a thing.', editPlaces: 'Edit places', shareTitle: 'Share between phones',
   someone: 'Someone', activeNow: 'in the app now', inThisBox: n => `${n} is in this box right now.`, editingItem: n => `${n} has this thing open right now – wait a moment so your changes don’t clash.`,
   talkH: 'Talk or write to Storrrage', tapTalk: 'Tap and talk', chatPh: 'Write, e.g. “where is the tent?”', simpleMode: 'Simple commands, works offline', aiOn: 'Turn on AI', offlineSimple: 'offline – simple commands',
   whatSay: 'What can I say? (also without signal)', noSignal: 'Without signal:', noSignalTxt2: 'all the commands above work offline. If the microphone needs signal on your phone, use the microphone on your keyboard instead.'});
-Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på telefonen. Allt synkas också, krypterat, med hushållet.`, nameShown: 'Visas för de andra i hushållet.', loginEmail: 'Inloggad med', mailReminders: 'Mejla mig påminnelser (saker som ska tillbaka, saker som inte använts på länge)', otherEmail: 'Skicka till en annan adress (valfritt)',
-  mailHint: 'Kommer snart. Mejlet säger bara att något behöver kollas – vad det är stannar krypterat i appen.', loginForMore: 'Logga in för att dela med hushållet och få påminnelser via e-post.', logIn: 'Logga in',
+Object.assign(STR.sv, {usageSync: n => `Storrrage använder ungefär ${n} MB på telefonen. Allt synkas också med hushållet.`, nameShown: 'Visas för de andra i hushållet.', loginEmail: 'Inloggad med', mailReminders: 'Mejla mig påminnelser (saker som ska tillbaka, saker som inte använts på länge)', otherEmail: 'Skicka till en annan adress (valfritt)',
+  mailHint: 'Kommer snart. Mejlet säger bara att något behöver kollas – vad det är stannar i appen.', loginForMore: 'Logga in för att dela med hushållet och få påminnelser via e-post.', logIn: 'Logga in',
   appearance: 'Utseende', light: 'Ljust', dark: 'Mörkt', auto: 'Automatiskt', advanced: 'Mer', restoreHint: 'Behövs bara för gamla säkerhetskopior. Dina saker skyddas nu av synken med hushållet.',
   inApp: 'I appen', youTag: '(du)', morePeople: 'Fler i hushållet', morePeopleHint: 'Personer som inte använder appen men äger saker, t.ex. barn. Välj dem som ägare på en sak.', editPlaces: 'Ändra platser', shareTitle: 'Dela mellan telefoner',
   someone: 'Någon', activeNow: 'i appen nu', inThisBox: n => `${n} är i den här lådan just nu.`, editingItem: n => `${n} har den här saken öppen just nu – vänta en stund så era ändringar inte krockar.`,
@@ -19422,7 +19470,7 @@ async function blankLabels(){
   const v = await askText(tr('blankHowMany'), {value: '12', placeholder: '12', ok: tr('printLabel')}); if (!v) return;
   const n = Math.max(1, Math.min(60, parseInt(v, 10) || 12));
   const ls = Array.from({length: n}, () => `<div class="l"><div class="q">${qrSvg('STRG:L:' + newLabelId(), 6)}</div><div class="w"><div class="ln"></div><div class="ln"></div></div></div>`).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storrrage labels</title><style>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Storrrage – ${esc(tr('h_boxLabels'))}</title><style>
     body{font-family:Arial,sans-serif;margin:12mm}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
     .l{border:1.5px dashed #888;padding:6mm;display:flex;gap:6mm;align-items:center;break-inside:avoid}
     .q{width:34mm;height:34mm;flex:none}.q svg{width:100%;height:100%}.w{flex:1}.ln{border-bottom:1.5px solid #999;height:12mm}
@@ -19535,7 +19583,7 @@ function moveAction(a){
   if (a === 'moveend') return askConfirm(tr('moveEndQ'), tr('moveEnd')).then(y => { if (!y) return; moveBoxes().forEach(b => { const nb = clone(b); delete nb.moveState; delete nb.moveRoom; putBox(nb, true); }); move = {active: false, rooms: move.rooms}; saveMove(); track('move_end'); toast(tr('moveEnded')); render(); });
 }
 function moveBanner(){
-  if (!move.active) return '';
+  if (!move.active || !moveBoxes().length) return '';
   const all = moveBoxes(), done = all.filter(b => b.moveState === 'unpacked').length;
   return `<button class="movebanner" data-act="gomove">${ICON.truck}<span>${tr('moveOngoing', done, all.length)}</span><b>›</b></button>`;
 }
@@ -19775,11 +19823,11 @@ STR.da = {
   col_owner: 'Ejer', col_status: 'Status', col_qty: 'Antal', col_value: 'Værdi (kr)', col_stored: 'Opbevaret siden', col_used: 'Sidst brugt', col_tags: 'Tags', col_notes: 'Noter', col_serial: 'Serienr.',
   listTitle: 'Opbevaringsliste', total: 'Total', showAll: 'Vis alle', dragLooseHint: 'Hold på en rund markør og træk den ind i en zone.', addZone: 'Tilføj zone', zoneExists: 'Der findes allerede en zone med det navn.',
   doorSide: 'Dør og bagende', doorHint: 'Vælg hvilken side døren er på, og hvor bagenden er.', door_top: 'Top', door_bottom: 'Bund', door_left: 'Venstre', door_right: 'Højre',
-  dragHint: 'Hold på en kasse eller rund markør og træk den til en stabel eller zone.', back: 'Tilbage', switchSpace: 'Vælg sted', shelf: 'Hylde', map: 'Kort', door: 'Dør', farIn: 'Bagest',
+  dragHint: 'Hold på en kasse eller rund markør og træk den til en stabel eller zone.', back: 'Tilbage', switchSpace: 'Vælg sted', shelf: 'Gitter', map: 'Kort', door: 'Dør', farIn: 'Bagest',
   noZone: 'Ingen zone', placement: 'Placering', placementHint: 'Hvor kassen står: zonen (fx “Ved døren”, “Hylde 2”) og hvilken stabel.', zone: 'Zone', zoneHint: 'Fx Ved døren, Hylde 2, Bagest',
   stack: 'Stabel', newStack: 'En ny stabel', level: 'Niveau', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
-  closerDoor: 'Flyt op', furtherIn: 'Flyt ned', collections: 'Samlinger', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kort',
-  insideBox: 'indeni', toCollection: 'Samling', collHint: 'Ting med samme tag udgør en samling, også når de ligger i forskellige kasser.', collPh: 'Fx Jul eller Vinter',
+  closerDoor: 'Flyt op', furtherIn: 'Flyt ned', collections: 'Tags', collection: 'Tag', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kort',
+  insideBox: 'indeni', toCollection: 'Tag', collHint: 'Ting med samme tag vises samlet, også når de ligger i forskellige kasser.', collPh: 'Fx Jul eller Vinter',
   addedToColl: (n, t) => `Føjede ${n} til #${t}.`, isHere: 'er her', openItem: 'Åbn ting', foundIn: 'Fundet i', list: 'Liste', takeOut: 'Tag frem', putBack: 'Læg tilbage', outTag: 'Fremme',
   outSince: d => `fremme siden ${d}`, backBy: d => `tilbage senest ${d}`, outSection: 'Fremme lige nu', outUntil: 'Fremme til (valgfrit)',
   tookOut: (n, w) => `${n} taget frem fra ${w}. Pladsen beholdes.`, putBackDone: (n, w) => `${n} er tilbage i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Fortryd', more: 'Mere',
@@ -19918,12 +19966,12 @@ STR.fi = {
   col_owner: 'Omistaja', col_status: 'Tila', col_qty: 'Määrä', col_value: 'Arvo (kr)', col_stored: 'Säilytetty alkaen', col_used: 'Viimeksi käytetty', col_tags: 'Tunnisteet', col_notes: 'Muistiinpanot', col_serial: 'Sarjanro',
   listTitle: 'Varastolista', total: 'Yhteensä', showAll: 'Näytä kaikki', dragLooseHint: 'Pidä pyöreää merkkiä painettuna ja vedä se vyöhykkeelle.', addZone: 'Lisää vyöhyke', zoneExists: 'Samanniminen vyöhyke on jo olemassa.',
   doorSide: 'Ovi ja perä', doorHint: 'Valitse millä puolella ovi on ja missä perä on.', door_top: 'Ylhäällä', door_bottom: 'Alhaalla', door_left: 'Vasemmalla', door_right: 'Oikealla',
-  dragHint: 'Pidä laatikkoa tai pyöreää merkkiä painettuna ja vedä se pinoon tai vyöhykkeelle.', back: 'Takaisin', switchSpace: 'Valitse paikka', shelf: 'Hylly', map: 'Kartta', door: 'Ovi', farIn: 'Perällä',
+  dragHint: 'Pidä laatikkoa tai pyöreää merkkiä painettuna ja vedä se pinoon tai vyöhykkeelle.', back: 'Takaisin', switchSpace: 'Valitse paikka', shelf: 'Ruudukko', map: 'Kartta', door: 'Ovi', farIn: 'Perällä',
   noZone: 'Ei vyöhykettä', placement: 'Sijoitus', placementHint: 'Missä laatikko on: vyöhyke (esim. ”Oven vieressä”, ”Hylly 2”) ja mikä pino.', zone: 'Vyöhyke', zoneHint: 'Esim. Oven vieressä, Hylly 2, Perällä',
   stack: 'Pino', newStack: 'Uusi pino', level: 'Taso', onTop: 'Päällimmäisenä', atBottom: 'Alimmaisena', stackOf: (n, codes) => codes ? `Pino ${n}: päällä ${codes}` : `Pino ${n}`,
-  closerDoor: 'Siirrä ylös', furtherIn: 'Siirrä alas', collections: 'Kokoelmat', collection: 'Kokoelma', inBoxes: n => n === 1 ? '1 paikassa' : `${n} paikassa`, showOnMap: 'Näytä kartalla',
-  insideBox: 'sisällä', toCollection: 'Kokoelma', collHint: 'Saman tunnisteen tavarat muodostavat kokoelman, vaikka ne olisivat eri laatikoissa.', collPh: 'Esim. Joulu tai Talvi',
-  addedToColl: (n, t) => `Lisättiin ${n} kokoelmaan #${t}.`, isHere: 'on täällä', openItem: 'Avaa tavara', foundIn: 'Löytyy', list: 'Lista', takeOut: 'Ota esiin', putBack: 'Palauta', outTag: 'Esillä',
+  closerDoor: 'Siirrä ylös', furtherIn: 'Siirrä alas', collections: 'Tunnisteet', collection: 'Tunniste', inBoxes: n => n === 1 ? '1 paikassa' : `${n} paikassa`, showOnMap: 'Näytä kartalla',
+  insideBox: 'sisällä', toCollection: 'Tunniste', collHint: 'Saman tunnisteen tavarat näytetään yhdessä, vaikka ne olisivat eri laatikoissa.', collPh: 'Esim. Joulu tai Talvi',
+  addedToColl: (n, t) => `Lisättiin ${n} tunnisteeseen #${t}.`, isHere: 'on täällä', openItem: 'Avaa tavara', foundIn: 'Löytyy', list: 'Lista', takeOut: 'Ota esiin', putBack: 'Palauta', outTag: 'Esillä',
   outSince: d => `esillä ${d} alkaen`, backBy: d => `takaisin viimeistään ${d}`, outSection: 'Esillä juuri nyt', outUntil: 'Esillä asti (valinnainen)',
   tookOut: (n, w) => `${n} otettu esiin kohteesta ${w}. Paikka säilyy.`, putBackDone: (n, w) => `${n} on taas kohteessa ${w}.`, deletedX: n => `${n} poistettu.`, undo: 'Kumoa', more: 'Lisää',
   quickAddPh: w => `Lisää kohteeseen ${w}…`, boxEmpty: 'Täällä ei ole vielä mitään.', backQ: 'Onko se palautettu?', stillOut: 'Yhä esillä', isBack: 'Se on palautettu',
@@ -20061,11 +20109,11 @@ STR.nb = {
   col_owner: 'Eier', col_status: 'Status', col_qty: 'Antall', col_value: 'Verdi (kr)', col_stored: 'Lagret siden', col_used: 'Sist brukt', col_tags: 'Stikkord', col_notes: 'Notater', col_serial: 'Serienr.',
   listTitle: 'Lagerliste', total: 'Totalt', showAll: 'Vis alle', dragLooseHint: 'Hold på en rund markør og dra den inn i en sone.', addZone: 'Legg til sone', zoneExists: 'Det finnes allerede en sone med det navnet.',
   doorSide: 'Dør og innerste del', doorHint: 'Velg hvilken side døren er på, og hvor innerst er.', door_top: 'Topp', door_bottom: 'Bunn', door_left: 'Venstre', door_right: 'Høyre',
-  dragHint: 'Hold på en eske eller rund markør og dra den til en stabel eller sone.', back: 'Tilbake', switchSpace: 'Velg sted', shelf: 'Hylle', map: 'Kart', door: 'Dør', farIn: 'Innerst',
+  dragHint: 'Hold på en eske eller rund markør og dra den til en stabel eller sone.', back: 'Tilbake', switchSpace: 'Velg sted', shelf: 'Rutenett', map: 'Kart', door: 'Dør', farIn: 'Innerst',
   noZone: 'Ingen sone', placement: 'Plassering', placementHint: 'Hvor esken står: sonen (f.eks. «Ved døren», «Hylle 2») og hvilken stabel.', zone: 'Sone', zoneHint: 'F.eks. Ved døren, Hylle 2, Innerst',
   stack: 'Stabel', newStack: 'En ny stabel', level: 'Nivå', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
-  closerDoor: 'Flytt opp', furtherIn: 'Flytt ned', collections: 'Samlinger', collection: 'Samling', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kart',
-  insideBox: 'inni', toCollection: 'Samling', collHint: 'Ting med samme stikkord blir en samling, også når de ligger i ulike esker.', collPh: 'F.eks. Jul eller Vinter',
+  closerDoor: 'Flytt opp', furtherIn: 'Flytt ned', collections: 'Stikkord', collection: 'Stikkord', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kart',
+  insideBox: 'inni', toCollection: 'Stikkord', collHint: 'Ting med samme stikkord vises samlet, også når de ligger i ulike esker.', collPh: 'F.eks. Jul eller Vinter',
   addedToColl: (n, t) => `La ${n} til #${t}.`, isHere: 'er her', openItem: 'Åpne ting', foundIn: 'Funnet i', list: 'Liste', takeOut: 'Ta fram', putBack: 'Legg tilbake', outTag: 'Framme',
   outSince: d => `framme siden ${d}`, backBy: d => `tilbake innen ${d}`, outSection: 'Framme akkurat nå', outUntil: 'Framme til (valgfritt)',
   tookOut: (n, w) => `${n} tatt fram fra ${w}. Plassen beholdes.`, putBackDone: (n, w) => `${n} er tilbake i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Angre', more: 'Mer',
@@ -20534,9 +20582,10 @@ function rkPlanHTML(pid){
   const p = findPlace(pid), pl = rkPlan(p), {W, D} = pl, fs = Math.max(W, D) / 16, pad = fs * 1.6;
   const wall = (w, x1, y1, x2, y2) => `<g class="rkpw${rkWallFocus === w ? ' on' : ''}" data-rk-wall="${w}" role="button" tabindex="0" aria-label="${esc(rkWallLabel(w))}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hit"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="ln"/></g>`;
   const dl = pl.door.x - pl.door.w / 2, dr = pl.door.x + pl.door.w / 2;
+  const fit = (t, len) => { const max = Math.max(2, Math.floor(len / (fs * .8 * .6))); return t.length > max ? t.slice(0, max - 1) + '…' : t; };
   const units = pl.spots.map(sp => { const vert = sp.h > sp.w, cx = sp.x + sp.w / 2, cy = sp.y + sp.h / 2;
     return `<g class="rkpu${sp.over || sp.clash ? ' bad' : ''}" data-rk-jump="${esc(sp.u.id)}" role="button" tabindex="0" aria-label="${esc(sp.u.name)}"><rect x="${sp.x}" y="${sp.y}" width="${sp.w}" height="${sp.h}" rx="${fs * .25}"/>
-      <text x="${cx}" y="${cy}" font-size="${fs * .8}" ${vert ? `transform="rotate(-90 ${cx} ${cy})"` : ''}>${esc(sp.u.name)}</text></g>`; }).join('') + `<text class="rkpd rkpinfo" x="${W / 2}" y="${D - fs * 1.2}" font-size="${fs * .58}"></text>`;
+      <text x="${cx}" y="${cy}" font-size="${fs * .8}" ${vert ? `transform="rotate(-90 ${cx} ${cy})"` : ''}>${esc(fit(sp.u.name, vert ? sp.h : sp.w))}</text></g>`; }).join('') + `<text class="rkpd rkpinfo" x="${W / 2}" y="${D - fs * 1.2}" font-size="${fs * .58}"></text>`;
   const dims = pl.room.measured || rkMeasure ? `<text class="rkpd" x="${W / 2}" y="${-pad * .45}" font-size="${fs * .7}">${W} cm</text><text class="rkpd" x="${-pad * .45}" y="${D / 2}" font-size="${fs * .7}" transform="rotate(-90 ${-pad * .45} ${D / 2})">${D} cm</text>` : '';
   return `<section class="rkplan"><div class="rkplanhead"><b>${tr('rk_room')}</b><span class="zcount">${esc(tr('rk_planHint'))}</span><button class="space-edit-btn rkpen" data-rk-act="room" aria-label="${esc(tr('rk_roomEdit'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
     <svg class="rkpsvg" viewBox="${-pad} ${-pad} ${W + pad * 2} ${D + pad * 2}" style="aspect-ratio:${(W + pad * 2) / (D + pad * 2)}">
@@ -20959,7 +21008,7 @@ app.addEventListener('click', e => {
   const a = e.target.closest('[data-rk-act]'); if (!a) return;
   const k = a.dataset.rkAct;
   if (k === 'measure'){ rkMeasure = !rkMeasure; metaPut('rkMeasure', rkMeasure).catch(() => {}); return render(); }
-  if (k === 'tidy' || k === 'auto'){ rkMode = 'tidy'; render(); window.scrollTo(0, 0); return; }
+  if (k === 'tidy' || k === 'auto'){ rkMode = 'tidy'; render(); window.scrollTo(0, 0); arm(); return; }
   if (k === 'back'){ rkMode = 'shelves'; return render(); }
   if (k === 'addunit') return rkUnitSheet(pid);
   if (k === 'room') return rkRoomSheet(pid);

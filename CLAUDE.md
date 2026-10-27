@@ -31,7 +31,7 @@ Keep committing the built `index.html` (GitHub Pages serves it). After the split
 
 - Place (`meta.places`): `id, name, icon, zones[], door, far`, `units[]` (Shelves test: `{id, name, wall: left|back|right, width, shelves, gap, gaps[]?, measured, ok{shelf: contents}}` in cm; `gaps` = shelves made higher, `ok` = a misfit the owner accepted for exactly those contents; per unit also `at` (cm from the far corner along side walls / from the left corner along the far wall, empty = auto) and `depth`), `room {w, d, door: left|mid|right, doorW, measured}` for the room plan (an unmeasured room grows to fit its units; a measured one shows warnings); hold a unit in the plan to drag it to any wall – it snaps to the closest wall and to free space so units never overlap, and the drop can be undone.
 - Box: `id, code` (B-001, numbered per place by default; setting `meta.numbering`), `name, autoName, placeId, parentId` (box inside a box), `location` (= zone), `stack, level, fav, out {since, until}, checkedAt, openedAt, updatedAt, items[], documents[]`, `shelf {u, s, x, l}` (unit, shelf from the bottom, column from the left, level in the column), `boxType` (`moving` 60×40×40 = default, `banana` 50×40×25, `small` 40×30×30, `custom` + `boxDims {w,h,d}`; `boxTypeSet` = the owner chose the size), `tidy` (own overrides for Tidy up: `w, use, fragile, season`). Box documents store `id, ref, name, type, itemId` (optional link to an item); their files use the existing `photos` store. Each place has one hidden box with `loose: true` for things not in a box.
-- Item: `id, name, photos[], files[], tags[]` (tags = collections), `owner, status, loanTo, size, color, season, brand, model, serial, qty, value, storedOn, lastUsed, remindMonths, remindAt, icon, fav, out {since, until}, outLog[]`; loose items also have `zone, stack, level` on the map and `shelf` in the Shelves test.
+- Item: `id, name, photos[], files[], tags[]` (tags; the UI calls them Taggar/Tags everywhere – never "Samling"/"Collection"), `owner, status, loanTo, size, color, season, brand, model, serial, qty, value, storedOn, lastUsed, remindMonths, remindAt, icon, fav, out {since, until}, outLog[]`; loose items also have `zone, stack, level` on the map and `shelf` in the Shelves test.
 
 ## Design principles (decided with the owner – keep them)
 
@@ -52,3 +52,12 @@ Keep committing the built `index.html` (GitHub Pages serves it). After the split
 ## Roadmap (not built yet)
 
 Login and a shared database for the household (with the privacy rules above), selling via Blocket/Tradera/Vinted, affiliate placements, moving the AI to a paid option.
+
+## Consistency rules (2026-10-27)
+
+- Words: "Ändra" (never "Redigera"), "Plats" (never "Förvaring"/"Förvaringsplats"), "Tagg", a box is called by its code (B-001) also in the breadcrumbs.
+- Lavender (`--lav`) is for lines and surfaces only, never for text; use `--muted` for quiet text.
+- Every dropdown and form field: 1.5px `--line` border, radius 10px, min-height 44px, focus `--primary`, the same chevron.
+- Names on tiles: two lines and an ellipsis; the item name field grows instead of cutting the name.
+- Tapping a breadcrumb that is already in the history goes back to it (it shortens the history).
+- The cloud sync is NOT end-to-end encrypted today (`cloud.plain`); never promise encryption in UI text.
