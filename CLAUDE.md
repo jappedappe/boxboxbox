@@ -61,3 +61,13 @@ Login and a shared database for the household (with the privacy rules above), se
 - Names on tiles: two lines and an ellipsis; the item name field grows instead of cutting the name.
 - Tapping a breadcrumb that is already in the history goes back to it (it shortens the history).
 - The cloud sync is NOT end-to-end encrypted today (`cloud.plain`); never promise encryption in UI text.
+
+## Design system (2026-10-27)
+
+- `styleguide.html` is built by `build.py` from `src/styleguide.html` with the same CSS as the app. Open it to see every token and component; update it when you add a component.
+- Tokens in `:root`: text `--fs-0`…`--fs-6` (10, 12, 13, 15, 17, 21, 28 px), radii `--r-1`…`--r-4` (4, 8, 12, 16 px) and `--r-round`, shadows `--sh-1` (lift) and `--sh-2` (sheet), status `--ok --ok-2 --warn`, cardboard `--box --box-lid --box-tape --box-edge --box-label --box-ink --box-text`. Never add loose values.
+- One button: `.btn` + `.primary` / `.quiet` / `.danger`, size `.small`, layout `.block` / `.big`; pressed state `.on` or `aria-pressed="true"` = filled `--primary`.
+- A box is the cardboard box everywhere (grid, list, map `.crate`, Hyllor `.rkbox`).
+- Actions are buttons with icon + text (`.btn.quiet.small.icontext`), e.g. take out `ICON.takeout`, put back `ICON.putback`, add several `ICON.stack` – the same icon wherever the action appears. No ↗/↩ glyphs in buttons.
+- Choice cards (what/how to add) are `.btn.big.addopt` light cards with the icon in a square, never filled purple side by side.
+- One photo button (camera) without `capture`, so the phone offers camera or gallery. One expand/collapse button: `.lgh-fold`.
