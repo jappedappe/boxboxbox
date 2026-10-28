@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-27.5';
+const APP_VERSION = '2026-10-28.6';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -200,7 +200,14 @@ function matchIcon(text){
 }
 // default picture for a thing: a few items popping up out of an open box
 const DEFAULT_ITEM_ICON = '<svg class="itemico" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 8.5l2 4M32 4v4.5M49 8.5l-2 4" stroke="#F97F26" stroke-width="2.6" stroke-linecap="round" fill="none"/><rect x="12" y="30" width="40" height="7" rx="2" fill="#6F4A24"/><g transform="rotate(-9 32 26)"><rect x="26.5" y="11" width="12" height="25" rx="2" fill="#6C4CC9"/><rect x="28.5" y="13" width="2.2" height="21" rx="1" fill="#A49CD6"/></g><circle cx="19" cy="26.5" r="7.5" fill="#F97F26"/><path d="M12.5 24.5c4 2.2 9 2.2 13 0" stroke="#FFF7EA" stroke-width="1.8" fill="none" stroke-linecap="round"/><g transform="rotate(10 45 25)"><rect x="40" y="18" width="10.5" height="13" rx="2.2" fill="#3D8BFD"/><path d="M50.5 21.5h1.6a3 3 0 0 1 0 6h-1.6" stroke="#3D8BFD" stroke-width="2.2" fill="none"/></g><path d="M10 33h44l-2.5 24.5a3 3 0 0 1-3 2.5H15.5a3 3 0 0 1-3-2.5z" fill="#B5824A"/><path d="M10 33L3 26.5h12.5L19 33z" fill="#C99A62"/><path d="M54 33l7-6.5H48.5L45 33z" fill="#C99A62"/><rect x="10" y="33" width="44" height="3.2" fill="#8C5E2E"/><rect x="23.5" y="42" width="17" height="9.5" rx="1.6" fill="#FFF7EA"/><path d="M26.3 45.4h11.4M26.3 48.3h7.4" stroke="#2F1160" stroke-width="1.5" stroke-linecap="round"/></svg>';
-const guessIcon = it => (it && it.icon) || matchIcon(it.name) || matchIcon(it.category) || DEFAULT_ITEM_ICON;
+function singleIcon(value){
+  const icon = String(value || '').trim();
+  if (!icon || icon.length > 32 || /[<>&"'`]/.test(icon)) return '';
+  if (typeof Intl.Segmenter === 'function')
+    return [...new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(icon)].length === 1 ? icon : '';
+  return Array.from(icon).length <= 8 && !/[\u0000-\u001f]/.test(icon) ? icon : '';
+}
+const guessIcon = it => singleIcon(it && it.icon) ? esc(singleIcon(it.icon)) : matchIcon(it.name) || matchIcon(it.category) || DEFAULT_ITEM_ICON;
 
 /* ---------- search: synonyms, Swedish/English, related things ---------- */
 // Words that mean the same thing. A match on any of them counts as a direct match.
@@ -257,7 +264,7 @@ function stems(tok){
 function itemHay(it, b){
   const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u);
   const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), itemOwner(it), it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
-    it.loanTo, it.status ? (STATUS_KEYS[it.status] ? tr(STATUS_KEYS[it.status]) : it.status) : '', it.out ? tr('outTag') : '', unit ? unit.name : '', b.moveRoom,
+    it.loanTo, it.givenTo, it.status ? showStatus(it.status) : '', it.out ? tr('outTag') : '', unit ? unit.name : '', b.moveRoom,
     it.color, it.season, it.brand, it.model, it.serial, b.loose || b.autoName ? '' : b.name, b.loose ? '' : b.code, b.location].filter(Boolean).join(' ').toLowerCase();
   return {hay, toks: new Set(hay.split(/[^a-zåäöéü0-9.-]+/).filter(Boolean))};
 }
@@ -552,8 +559,10 @@ const STR = {
     tags: 'Tags', registered: (d, by) => `Registered ${d}${by ? ` by ${by}` : ''}.`, storedSince: d => `Stored since ${d}.`, changed: d => `Last changed ${d}.`,
     delItem: 'Delete item', done: 'Done', save: 'Save', saveAnother: 'Save + add another', saved: 'Saved.', savedNext: n => `${n} saved. Add the next one.`, nameFirst: 'Give it a name first.',
     f_size: 'Size', f_brand: 'Brand', f_value: 'Price / value (kr)', f_model: 'Model', f_qty: 'Quantity', f_owner: 'Whose & status', f_color: 'Colour', f_season: 'Season', f_serial: 'Serial number',
-    f_category: 'Category', f_spot: 'Where exactly', f_notes: 'Notes', whose: 'Whose is it', status: 'Status', loanTo: 'Lent to whom', shared: 'Shared',
-    st_store: 'In storage', st_loan: 'On loan', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Given away', st_throw: 'Throw away', st_custom: 'Other…',
+    f_category: 'Category', f_spot: 'Where exactly', f_notes: 'Notes', whose: 'Whose is it', belongsTo: 'Belongs to', status: 'Status', loanTo: 'Loaned out to', givenAwayTo: 'Given away to', shared: 'Shared',
+    st_store: 'In storage', st_loan: 'Loaned', st_loan_out: 'Loaned out', st_sale: 'For sale', st_sold: 'Sold', st_given: 'Give away', st_throw: 'Throw away', st_custom: 'Other…',
+    borrowedFrom: 'Borrowed from / owner', customIcon: 'Choose an icon', customIconHint: 'Type or paste one symbol or emoji using your device keyboard. Common Unicode icons display on Android and iPhone.', iconOneOnly: 'Enter one symbol or emoji.',
+    movingStatus: s => `Moving · ${s}`, moveDestination: room => `New room: ${room}`, moveRoomNotSet: 'New room not set',
     customStatus: 'Enter a status',
     addTo: p => `Add to ${p}`, addBoxOrItem: 'Add box or item', boxStorage: 'Box', itemNoBox: 'Item without a box', severalPhotos: 'Several items from photos', cancel: 'Cancel', close: 'Close', ok: 'OK',
     moveX: n => `Move ${n}`, to: 'To', move: 'Move', movedTo: w => `Moved to ${w}.`, rename: 'Rename', del: 'Delete', edit: 'Edit', moveToPlace: 'Move to place', emptyFirst: 'Empty this place to delete it.',
@@ -589,8 +598,10 @@ const STR = {
     tags: 'Taggar', registered: (d, by) => `Registrerad ${d}${by ? ` av ${by}` : ''}.`, storedSince: d => `Förvaras sedan ${d}.`, changed: d => `Senast ändrad ${d}.`,
     delItem: 'Ta bort sak', done: 'Klar', save: 'Spara', saveAnother: 'Spara + lägg till nästa', saved: 'Sparat.', savedNext: n => `${n} sparad. Lägg till nästa.`, nameFirst: 'Ge den ett namn först.',
     f_size: 'Storlek', f_brand: 'Märke', f_value: 'Pris / värde (kr)', f_model: 'Modell', f_qty: 'Antal', f_owner: 'Vems & status', f_color: 'Färg', f_season: 'Säsong', f_serial: 'Serienummer',
-    f_category: 'Kategori', f_spot: 'Var exakt', f_notes: 'Anteckningar', whose: 'Vems är det', status: 'Status', loanTo: 'Utlånad till', shared: 'Gemensam',
-    st_store: 'I förrådet', st_loan: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Bortskänkt', st_throw: 'Slängas', st_custom: 'Annat…',
+    f_category: 'Kategori', f_spot: 'Var exakt', f_notes: 'Anteckningar', whose: 'Vems är det', belongsTo: 'Tillhör', status: 'Status', loanTo: 'Utlånad till', givenAwayTo: 'Bortskänkt till', shared: 'Gemensam',
+    st_store: 'I förrådet', st_loan: 'Lånad', st_loan_out: 'Utlånad', st_sale: 'Till salu', st_sold: 'Såld', st_given: 'Skänk bort', st_throw: 'Släng', st_custom: 'Annat…',
+    borrowedFrom: 'Lånad från / ägare', customIcon: 'Välj en ikon', customIconHint: 'Skriv eller klistra in en symbol eller emoji från enhetens tangentbord. Vanliga Unicode-ikoner visas på Android och iPhone.', iconOneOnly: 'Ange en symbol eller emoji.',
+    movingStatus: s => `Flytt · ${s}`, moveDestination: room => `Nytt rum: ${room}`, moveRoomNotSet: 'Nytt rum inte valt',
     customStatus: 'Skriv en egen status',
     addTo: p => `Lägg till i ${p}`, addBoxOrItem: 'Lägg till låda eller sak', boxStorage: 'Låda', itemNoBox: 'Sak utan låda', severalPhotos: 'Flera saker från foton', cancel: 'Avbryt', close: 'Stäng', ok: 'OK',
     moveX: n => `Flytta ${n}`, to: 'Till', move: 'Flytta', movedTo: w => `Flyttad till ${w}.`, rename: 'Byt namn', del: 'Ta bort', edit: 'Ändra', moveToPlace: 'Flytta till plats', emptyFirst: 'Töm platsen för att kunna ta bort den.',
@@ -641,6 +652,7 @@ Object.assign(STR.en, {
     delBox: 'Delete box',
     saveBox: 'Save box',
     addBox: 'Add box',
+    addBoxAnother: 'Add box + another',
     waitPhoto: 'Wait for the photo to finish saving.',
     nameBox: 'Give the box a name.',
     whoPhone: 'Who uses this phone?',
@@ -703,6 +715,7 @@ Object.assign(STR.sv, {
     delBox: 'Ta bort låda',
     saveBox: 'Spara låda',
     addBox: 'Lägg till låda',
+    addBoxAnother: 'Lägg till låda + en till',
     waitPhoto: 'Vänta tills fotot har sparats.',
     nameBox: 'Ge lådan ett namn.',
     whoPhone: 'Vem använder den här telefonen?',
@@ -835,10 +848,22 @@ Object.assign(STR.sv, {sortBy: 'Sortera', sort_manual: 'Egen ordning', sort_az: 
   outNow: 'Framme nu', allBoxes: 'Alla lådor', allItems: 'Alla saker', itemsH: 'Saker', nothingOut: 'Inget är framme just nu.'});
 function tr(k, ...a){ const v = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : (v ?? k); }
 const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
-const STATUS_KEYS = {'In storage': 'st_store', 'On loan': 'st_loan', 'For sale': 'st_sale', 'Sold': 'st_sold', 'Given away': 'st_given', 'Throw away': 'st_throw'};
+const STATUS_KEYS = {'In storage': 'st_store', Loaned: 'st_loan', 'Loaned out': 'st_loan_out', 'For sale': 'st_sale', Sold: 'st_sold', 'Given away': 'st_given', 'Throw away': 'st_throw'};
+function normalizeStatus(status){
+  if (status === 'On loan' || /^On loan \((.+)\)$/.test(status || '')) return 'Loaned out';
+  return status;
+}
+function migrateLoanStatus(x){
+  const legacy = /^On loan \((.+)\)$/.exec(x.status || '');
+  if (legacy && !x.loanTo) x.loanTo = legacy[1];
+  const status = normalizeStatus(x.status);
+  if (status === x.status) return false;
+  x.status = status;
+  return true;
+}
 const showColor = c => !c ? '' : lang === 'sv' ? cap(COLOR_SV[c] || c) : c;
 const showSeason = s => !s ? '' : lang === 'sv' ? (SEASON_SV[s] || s) : s;
-const showStatus = s => !s ? '' : STATUS_KEYS[s] ? tr(STATUS_KEYS[s]) : s;
+const showStatus = s => { const status = normalizeStatus(s); return !status ? '' : STATUS_KEYS[status] ? tr(STATUS_KEYS[status]) : status; };
 const showOwner = o => (Array.isArray(o) ? o : [o]).filter(Boolean).map(n => n === 'Shared' ? tr('shared') : n).join(', ');
 const ownerNames = it => [...new Set((Array.isArray(it.owners) ? it.owners : it.owner ? [it.owner] : []).map(n => String(n || '').trim()).filter(Boolean))];
 const itemOwner = it => showOwner(ownerNames(it));
@@ -851,7 +876,7 @@ function setItemOwners(it, names){
   if (clean.length){ it.owners = clean; it.owner = clean[0]; recordRecentOwners(clean); }
   else { delete it.owners; delete it.owner; }
 }
-const statusOptions = selected => `<option value="">${tr('status')}…</option>${Object.keys(STATUS_KEYS).map(s => `<option value="${esc(s)}" ${selected === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${selected && !STATUS_KEYS[selected] ? `<option value="${esc(selected)}" selected>${esc(selected)}</option>` : ''}<option value="__custom__">${tr('st_custom')}</option>`;
+const statusOptions = selected => { selected = normalizeStatus(selected); return `<option value="">${tr('status')}…</option>${Object.keys(STATUS_KEYS).map(s => `<option value="${esc(s)}" ${selected === s ? 'selected' : ''}>${tr(STATUS_KEYS[s])}</option>`).join('')}${selected && !STATUS_KEYS[selected] ? `<option value="${esc(selected)}" selected>${esc(selected)}</option>` : ''}<option value="__custom__">${tr('st_custom')}</option>`; };
 // map typed Swedish values back to the stored (English) value
 const fromColor = v => { if (!v) return ''; const s = v.trim().toLowerCase(); const en = Object.keys(COLOR_SV).find(k => k.toLowerCase() === s || COLOR_SV[k] === s); return en || findColor(s) || cap(v.trim()); };
 const fromSeason = v => { if (!v) return ''; const s = v.trim().toLowerCase(); return Object.keys(SEASON_SV).find(k => k.toLowerCase() === s || SEASON_SV[k].toLowerCase() === s) || cap(v.trim()); };
@@ -945,7 +970,7 @@ function parentView(v){
   v = v || view;
   if (v.name === 'item' || v.name === 'batch'){ const b = findBox(v.boxId); if (!b) return {name: 'home', place: currentPlace}; return b.loose ? {name: 'home', place: b.placeId} : {name: 'box', boxId: b.id}; }
   if (v.name === 'box'){ const b = findBox(v.boxId); if (!b) return {name: 'home', place: currentPlace}; if (!b.loose && b.parentId && findBox(b.parentId)) return {name: 'box', boxId: b.parentId}; return {name: 'home', place: b.placeId}; }
-  if (v.name === 'mapfocus') return v.back || {name: 'home', place: v.place};
+  if (v.name === 'mapfocus') return {name: 'home', place: v.place};
   if (v.name === 'collection') return {name: 'search'};
   if (v.name === 'profile' && v.sub) return {name: 'profile'};
   if (v.name === 'search' || v.name === 'profile' || v.name === 'settings' || v.name === 'move' || v.name === 'loans') return {name: 'home', place: currentPlace};
@@ -953,28 +978,12 @@ function parentView(v){
   return null;
 }
 let armed = false;
-/* Back goes to where you came from (a history stack). If there is nothing to go back to, it goes one step up the hierarchy. */
-let backStack = [];
 const sameView = (a, b) => a && b && a.name === b.name && a.boxId === b.boxId && a.itemId === b.itemId && (a.place || '') === (b.place || '') && a.sub === b.sub && a.tag === b.tag;
-function viewValid(v){
-  if (!v) return false;
-  if (v.name === 'box' || v.name === 'batch') return !!findBox(v.boxId);
-  if (v.name === 'item'){ const b = findBox(v.boxId); return !!(b && (b.items || []).some(i => i.id === v.itemId)); }
-  if (v.name === 'home' || v.name === 'mapfocus') return !v.place || v.place === 'all' || !!findPlace(v.place);
-  return v.name !== 'welcome';
-}
-function pushBack(){ if (!view || view.name === 'welcome') return; const v = Object.assign({}, view); delete v.asked; backStack.push(v); if (backStack.length > 40) backStack.shift(); }
-function prevView(){ for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)) return backStack[i]; return null; }
-function goBack(){
-  for (let i = backStack.length - 1; i >= 0; i--) if (viewValid(backStack[i]) && !sameView(backStack[i], view)){ go(backStack[i], {backIndex: i}); return true; }
-  return goUp();
-}
-function arm(){ if (armed || !(prevView() || parentView() || (placeView === 'racks' && rkMode === 'tidy'))) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
+function goBack(){ return goUp(); }
+function arm(){ if (armed || !(parentView() || (placeView === 'racks' && rkMode === 'tidy'))) return; try { history.pushState({guard: 1}, ''); armed = true; } catch {} }
 async function go(v, options = {}){
   if (sameView(v, view)) return true;
   if (view.name === 'item' && !(await prepareItemLeave())){ arm(); return false; }
-  if (options.pushBack) pushBack();
-  if (options.backIndex !== undefined) backStack = backStack.slice(0, options.backIndex);
   if (options.navigation){
     if (v.name === 'box'){ const b = findBox(v.boxId); if (b && currentPlace !== b.placeId) setPlace(b.placeId); remember('box', v.boxId); touchOpened(b); if (view.name === 'search' && v.hl) v.fromSearch = true; }
     if (v.name === 'item' && v.itemId !== itemDraft) remember('item', v.itemId, v.boxId);
@@ -993,7 +1002,7 @@ async function go(v, options = {}){
 }
 function goUp(){ const p = parentView(); if (!p) return false; go(p); return true; }
 function navigate(v){
-  go(v, {pushBack: !sameView(v, view), navigation: true});
+  go(v, {navigation: true});
 }
 window.addEventListener('popstate', () => {
   armed = false;
@@ -1055,6 +1064,16 @@ function render(){
   topbarUpdate();
   hydrate(app); hydrateNotes(app);
 }
+function renderKeepingAnchor(getAnchor){
+  const top = getAnchor()?.getBoundingClientRect().top;
+  render();
+  if (top === undefined) return;
+  requestAnimationFrame(() => {
+    const anchor = getAnchor(); if (!anchor) return;
+    const delta = anchor.getBoundingClientRect().top - top;
+    if (Math.abs(delta) > 0.5) window.scrollTo(window.scrollX, window.scrollY + delta);
+  });
+}
 STR.en.tab_home = 'Home'; STR.en.tab_search = 'Search'; STR.en.tab_profile = 'Profile'; STR.en.tab_add = 'Add'; STR.sv.tab_add = 'Lägg till';
 STR.sv.tab_home = 'Hem'; STR.sv.tab_search = 'Sök'; STR.sv.tab_profile = 'Profil';
 
@@ -1065,9 +1084,73 @@ function itemTile(it, b, caption){
   const p = (it.photos || [])[0];
   const sel = selecting && selecting.has('i:' + b.id + ':' + it.id);
   const hl = view.name === 'box' && view.hl === it.id;
-  return `<button class="itile${sel ? ' sel' : ''}${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
+  const stateClass = entityStateClass(it, b);
+  return `<button class="itile${sel ? ' sel' : ''}${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
     <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${it.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
-    <span class="ttext"><span class="tname">${esc(it.name || tr('unnamed'))}</span>${caption ? `<span class="tcap">${caption}</span>` : ''}</span></button>`;
+    <span class="ttext"><span class="tname">${esc(it.name || tr('unnamed'))}</span>${entityRibbon(it, b)}${caption ? `<span class="tcap">${caption}</span>` : ''}</span></button>`;
+}
+const STATUS_ICONS = {
+  Loaned: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20c.5-3.5 3.2-5 7-5s6.5 1.5 7 5"/></svg>',
+  'Loaned out': '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="2.5"/><circle cx="17" cy="9" r="2"/><path d="M3.5 19c.4-3 2.4-4.5 5.5-4.5 2 0 3.5.6 4.5 1.8M14.5 14.5c3.4-.2 5.5 1.3 6 4.5"/></svg>',
+  'For sale': '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13 13 20 4 11V4h7z"/><circle cx="8" cy="8" r="1"/></svg>',
+  Sold: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
+  'Given away': '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h18v11H3zM2 6h20v4H2zM12 6v15"/><path d="M12 6H8.5a2.5 2.5 0 1 1 2.5-2.5V6zm0 0h3.5A2.5 2.5 0 1 0 13 3.5V6z"/></svg>',
+  'Throw away': '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg>'
+};
+function tileStatus(status){
+  status = normalizeStatus(status);
+  const icon = STATUS_ICONS[status];
+  return icon ? `<span class="tilestatus" title="${esc(showStatus(status))}"><span aria-hidden="true">${icon}</span>${esc(showStatus(status))}</span>` : '';
+}
+const tileOutStatus = x => isOut(x) ? `<span class="tileout">${ICON.takeout}<span>${esc(tr('outTag'))}</span></span>` : '';
+const STATUS_CLASS = {'In storage': '', Loaned: 'loaned', 'Loaned out': 'loaned-out', 'For sale': 'for-sale', Sold: 'sold', 'Given away': 'given-away', 'Throw away': 'throw-away'};
+function moveBoxFor(x, parent){
+  if (!move.active) return null;
+  const status = normalizeStatus(x.status);
+  if (isOut(x) || status && status !== 'In storage') return null;
+  if (x.moveState) return x;
+  let box = parent;
+  while (box){
+    const boxStatus = normalizeStatus(box.status);
+    if (isOut(box) || boxStatus && boxStatus !== 'In storage') return null;
+    if (box.moveState) return box;
+    box = box.parentId ? findBox(box.parentId) : null;
+  }
+  return null;
+}
+function entityStateClass(x, parent){
+  const status = normalizeStatus(x.status);
+  if (isOut(x)) return 'state-out';
+  if (status && status !== 'In storage') return `state-${STATUS_CLASS[status] || 'custom'}`;
+  const moving = moveBoxFor(x, parent);
+  return moving ? `state-moving move-${moving.moveState}` : '';
+}
+function entityRibbon(x, parent){
+  const status = normalizeStatus(x.status);
+  const statusTag = status && status !== 'In storage' ? tileStatus(status) || `<span class="tilestatus state-custom-label">${esc(showStatus(status))}</span>` : '';
+  if (isOut(x)) return `${tileOutStatus(x)}${statusTag}`;
+  if (statusTag) return statusTag;
+  const moving = moveBoxFor(x, parent);
+  if (moving) return `<span class="statusribbon moving-ribbon">${ICON.truck}<span>${esc(tr('mv_' + moving.moveState))}${moving.moveRoom ? ` · ${esc(moving.moveRoom)}` : ''}</span></span>`;
+  return '';
+}
+function entityInfo(x, parent){
+  const status = normalizeStatus(x.status), moving = moveBoxFor(x, parent);
+  if ((!status || status === 'In storage') && !isOut(x) && !moving) return '';
+  const heading = isOut(x) ? tr('outTag') : status && status !== 'In storage' ? showStatus(status) : tr('movingStatus', tr('mv_' + moving.moveState));
+  const details = [];
+  if (isOut(x) && status && status !== 'In storage') details.push(showStatus(status));
+  if (['Loaned', 'For sale'].includes(status) && itemOwner(x)) details.push(`${tr('belongsTo')}: ${itemOwner(x)}`);
+  if (status === 'Loaned out' && x.loanTo) details.push(`${tr('loanTo')}: ${x.loanTo}`);
+  if (status === 'Given away' && x.givenTo) details.push(`${tr('givenAwayTo')}: ${x.givenTo}`);
+  if (isOut(x)) details.push(tr('outSince', x.out.since), x.out.until ? tr('backBy', x.out.until) : '');
+  if (moving) details.push(moving.moveRoom ? tr('moveDestination', moving.moveRoom) : tr('moveRoomNotSet'));
+  const icon = isOut(x) ? ICON.takeout : status && status !== 'In storage' ? STATUS_ICONS[status] || '' : ICON.truck;
+  const content = `${icon ? `<span class="entity-info-icon">${icon}</span>` : ''}<span class="entity-info-text"><b>${esc(heading)}</b>${details.filter(Boolean).length ? `<small>${details.filter(Boolean).map(esc).join(' · ')}</small>` : ''}</span>`;
+  const cls = entityStateClass(x, parent);
+  return moving
+    ? `<button class="entity-info ${cls}" data-act="gomove">${content}<span class="entity-info-more">›</span></button>`
+    : `<div class="entity-info ${cls}">${content}</div>`;
 }
 const whereCaption = b => b.loose ? `${esc(placeName(b.placeId))}` : `${ICON.box}${esc(b.code)} · ${esc(placeName(b.placeId))}`;
 const PLACE_ICONS = ['🚪','🔒','🏠','🏡','🏚️','🚗','🛖','🗄️','🏢','⛵','🧳','🪜','🔑','🏗️'];
@@ -1132,7 +1215,7 @@ function topbarUpdate(){
   const pid = view.name === 'box' || view.name === 'item' || view.name === 'batch' ? (findBox(view.boxId) || {}).placeId : (places.length === 1 ? places[0].id : currentPlace);
   const p = pid && pid !== 'all' ? findPlace(pid) : null;
   sw.innerHTML = p ? `<span class="picon">${placeIcon(p)}</span><span class="sname">${esc(p.name)}</span><span class="caret">▾</span>` : `<span class="sname">${tr('allPlaces')}</span><span class="caret">▾</span>`;
-  const up = prevView() || parentView();
+  const up = parentView();
   bk.hidden = !up; lg.hidden = false;
   bk.setAttribute('aria-label', tr('back'));
 }
@@ -1153,9 +1236,10 @@ function spaceSheet(){
 function shelfTile(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
-  return `<button class="itile btile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">
-    <span class="timg">${boxArt(boxNum(b))}${b.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${b.out ? `<span class="boxouttag">↗</span>` : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
-    <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span></span></button>`;
+  const stateClass = entityStateClass(b);
+  return `<button class="itile btile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">
+    <span class="timg">${boxArt(boxNum(b))}${b.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
+    <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span>${entityRibbon(b)}</span></button>`;
 }
 /* the freshness dot only shows when a box is about to stop being "fresh" (not checked for ~5 months) */
 const PLUS_SVG = '<svg class="plusic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg>';
@@ -1164,7 +1248,7 @@ function shelfTileOld(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
   const where = [b.location, b.stack ? `${tr('stack')} ${b.stack}` : '', b.level > 1 ? `${tr('level')} ${b.level}` : ''].filter(Boolean).join(' · ');
-  return `<button class="stile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">${freshDot(b)}${b.out ? `<span class="boxouttag"><span class="oarrow">↗</span><span class="otext"> ${tr('outTag')}</span></span>` : ''}<span class="scode"><span class="sico">${ICON.box}</span>${esc(b.code.replace('B-', ''))}</span><span class="sname">${esc(b.name)}</span>${where ? `<span class="swhere">${esc(where)}</span>` : ''}<span class="scount">${n}</span>${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</button>`;
+  return `<button class="stile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">${freshDot(b)}${b.out ? `<span class="boxouttag">${ICON.takeout}<span class="otext"> ${tr('outTag')}</span></span>` : ''}<span class="scode"><span class="sico">${ICON.box}</span>${esc(b.code.replace('B-', ''))}</span><span class="sname">${esc(b.name)}</span>${where ? `<span class="swhere">${esc(where)}</span>` : ''}<span class="scount">${n}</span>${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</button>`;
 }
 function looseItems(pid){ const l = looseOf(pid); return l ? [...(l.items || [])].sort(byName) : []; }
 function tokenHTML(it, l, opts = {}){
@@ -1297,16 +1381,16 @@ function renderBox(b){
   const askOut = hlIt && view.fromSearch && !view.asked && !isOut(hlIt);
   const needCheck = !b.loose && items.length && daysSince(b.checkedAt || b.createdAt) > 60 && view.checkReady && !view.checkDismissed;
   if (!b.loose && items.length && !view.checkReady && daysSince(b.checkedAt || b.createdAt) > 60){ clearTimeout(window._ckT); const vid = b.id; window._ckT = setTimeout(() => { if (view.name === 'box' && view.boxId === vid){ view.checkReady = true; render(); } }, 25000); }
-  app.innerHTML = `${b.out ? `<div class="findhint outhint"><span>${ICON.takeout} <b>${tr('boxIsOut')}</b> · ${esc(tr('outSince', b.out.since))}${b.out.until ? ' · ' + esc(tr('backBy', b.out.until)) : ''}</span><button class="btn primary small" data-act="boxback">↩ ${tr('putBackBox')}</button></div>` : ''}
+  app.innerHTML = `
     ${askOut ? `<div class="askout"><span>${esc(tr('askOut', hlIt.name))}</span><span class="fhbtns"><button class="btn primary small" data-askout="temp">${tr('yesTemp')}</button><button class="btn quiet small" data-askout="gone">${tr('yesGone')}</button><button class="btn quiet small" data-askout="no">${tr('no')}</button></span></div>` : ''}
     ${hlIt ? `<div class="findhint"><span>🔎 <b>${esc(hlIt.name)}</b> ${tr('isHere')}</span><span class="fhbtns"><button class="btn primary small" data-item="${esc(hlIt.id)}" data-box="${esc(b.id)}" data-open-item="1">${tr('openItem')}</button><button class="btn quiet small" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? hlIt.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button></span></div>` : ''}
     ${presenceNote(b.id)}
     <div class="bhead">
       ${b.loose ? `<h1 class="btitle"><span class="bname">${tr('notInBox')}</span></h1>` : `<h1 class="btitle"><span class="bcode">${esc(b.code)}</span><span class="bname">${esc(b.name)}</span></h1>`}
-      <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}${nOut ? ` · <b class="outsum">↗ ${esc(tr('outOfN', nOut, items.length))}</b>` : ''}</p>
-      ${b.status ? `<p class="bstatus">${esc(showStatus(b.status))}</p>` : ''}
+      <p class="bpath"><button data-goplace="${esc(b.placeId)}">${esc(path)}</button>${where ? ` · ${esc(where)}` : ''} · ${tr('items_n', items.length).toLowerCase()}${nOut ? ` · <b class="outsum">${ICON.takeout} ${esc(tr('outOfN', nOut, items.length))}</b>` : ''}</p>
       ${b.loose ? '' : `<p class="bfresh">${freshDot(b)} ${esc(freshText(b))}</p>`}
     </div>
+    ${entityInfo(b)}
     ${needCheck ? `<div class="checkbar"><span>${tr('checkQ')}</span><span class="fhbtns"><button class="btn primary small" data-act="checkyes">${tr('checkYes')}</button><button class="btn quiet small" data-act="checkno">${tr('checkNo')}</button></span></div>` : ''}
     ${b.loose ? `<div class="boxbar">${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}${viewToggle()}</div>` : `<div class="boxbar">
       <button class="qr" data-act="label" aria-label="${esc(tr('label'))} ${esc(b.code)}">${qrSvg(labelText(b), 2)}</button>
@@ -1314,7 +1398,7 @@ function renderBox(b){
       <button class="btn quiet small" data-act="placement">${tr('placement')}</button>
       <button class="btn quiet small iconly" data-mapbox="${esc(b.id)}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button>
       <button class="btn quiet small" data-act="favbox" aria-pressed="${b.fav ? 'true' : 'false'}">${b.fav ? '★' : '☆'}</button>
-      ${b.out ? '' : `<button class="btn quiet small icontext" data-act="boxout">${ICON.takeout}${tr('takeOut')}</button>`}
+      <button class="btn quiet small icontext" data-act="${b.out ? 'boxback' : 'boxout'}">${b.out ? ICON.putback + tr('putBackBox') : ICON.takeout + tr('takeOut')}</button>
       ${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}
       ${viewToggle()}
     </div>`}
@@ -1397,12 +1481,14 @@ function stacksIn(pid, zone){
 function crate(b, ci){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const hl = view.name === 'mapfocus' && (view.hlBoxes || []).includes(b.id);
-  return `<button class="crate${b.fav ? ' fav' : ''}${hl ? ' hl' : ''}${b.out ? ' out' : ''}" data-open="${esc(b.id)}" data-ek="b:${esc(b.id)}" data-ci="${ci}"><span class="ccode"><span class="sico">${ICON.box}</span>${esc(b.code.replace('B-', ''))}</span><span class="cname">${esc(b.name)}</span><span class="ccount">${n}</span>${dot(dueCount(x => x.id === b.id))}</button>`;
+  const stateClass = entityStateClass(b);
+  return `<button class="crate${b.fav ? ' fav' : ''}${hl ? ' hl' : ''}${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-open="${esc(b.id)}" data-ek="b:${esc(b.id)}" data-ci="${ci}"><span class="ccode"><span class="sico">${ICON.box}</span>${esc(b.code.replace('B-', ''))}</span><span class="cname">${esc(b.name)}</span><span class="ccount">${n}</span>${dot(dueCount(x => x.id === b.id))}</button>`;
 }
 function mtoken(it, l, ci){
   const p = (it.photos || [])[0];
   const hl = view.name === 'mapfocus' && (view.hlItems || []).includes(it.id);
-  return `<button class="mtoken${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}" data-item="${esc(it.id)}" data-box="${esc(l.id)}" data-ek="i:${esc(it.id)}" data-ci="${ci}"><span class="lcirc">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}</span><span class="lname">${esc(it.name)}</span></button>`;
+  const stateClass = entityStateClass(it, l);
+  return `<button class="mtoken${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-item="${esc(it.id)}" data-box="${esc(l.id)}" data-ek="i:${esc(it.id)}" data-ci="${ci}"><span class="lcirc">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${dot(isDue(it))}</span><span class="lname">${esc(it.name)}</span></button>`;
 }
 const OPP = {top: 'bottom', bottom: 'top', left: 'right', right: 'left'};
 const doorOf = p => p.door || 'top', farOf = p => (p.far && p.far !== doorOf(p)) ? p.far : OPP[doorOf(p)];
@@ -1657,7 +1743,7 @@ function quickChipsInner(){ return quickChips().replace(/^<div class="chips quic
 function quickChips(){
   const nOut = outItems().length + realBoxes().filter(b => b.out).length, nLoose = boxes.filter(b => b.loose).reduce((s, b) => s + (b.items || []).length, 0);
   const c = (k, label, n) => `<button class="chipbtn${searchQuick === k ? ' on' : ''}" data-quick="${k}">${label}${n !== undefined ? ` <small>${n}</small>` : ''}</button>`;
-  return `<div class="chips quick">${c('out', '↗ ' + tr('outNow'), nOut)}${c('loose', tr('notInBox'), nLoose)}${c('boxes', tr('allBoxes'), realBoxes().length)}${c('items', tr('allItems'), boxes.reduce((s, b) => s + (b.items || []).length, 0))}</div>`;
+  return `<div class="chips quick">${c('out', ICON.takeout + ' ' + tr('outNow'), nOut)}${c('loose', tr('notInBox'), nLoose)}${c('boxes', tr('allBoxes'), realBoxes().length)}${c('items', tr('allItems'), boxes.reduce((s, b) => s + (b.items || []).length, 0))}</div>`;
 }
 function renderSearch(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
@@ -1858,7 +1944,7 @@ function renderProfile(){
       ${loanOld().length ? `<h2 class="section">${tr('loansOld')}</h2><div class="dues">${loanOld().map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}<div class="dueact"><span class="hint">${esc((it.loanTo || '') + ' · ' + tr('lentSince', loanDays(it)))}</span><button class="btn quiet small" data-m="loans">${tr('loansTitle')}</button></div></div>`).join('')}</div>` : ''}
       ${lateBoxes.length ? `<h2 class="section">${tr('backQ')}</h2><div class="shelf">${lateBoxes.map(shelfTile).join('')}</div>` : ''}
       ${late.length ? `<h2 class="section">${tr('backQ')}</h2><div class="dues">${late.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
-        <div class="dueact"><span class="hint">${esc(tr('backBy', it.out.until))}</span><button class="btn primary small" data-backok="${esc(b.id)}:${esc(it.id)}">↩ ${tr('isBack')}</button><button class="btn quiet small" data-more="${esc(b.id)}:${esc(it.id)}">${tr('stillOut')}</button></div></div>`).join('')}</div>` : ''}
+        <div class="dueact"><span class="hint">${esc(tr('backBy', it.out.until))}</span><button class="btn primary small icontext" data-backok="${esc(b.id)}:${esc(it.id)}">${ICON.putback}${tr('isBack')}</button><button class="btn quiet small" data-more="${esc(b.id)}:${esc(it.id)}">${tr('stillOut')}</button></div></div>`).join('')}</div>` : ''}
       ${due.length ? `<p class="hint">${tr('dueIntro')}</p>
         <div class="dues">${due.map(([it, b]) => `<div class="due">${itemTile(it, b, whereCaption(b))}
           <div class="dueact"><span class="hint">${esc(tr('lastUsedOn', it.lastUsed || it.storedOn || ''))}</span>
@@ -1909,7 +1995,7 @@ function renderSettings(){
   if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(est => { const el = $('#usage'); if (el && est.usage) el.textContent = tr(cloud.hid ? 'usageSync' : 'usage', Math.max(1, Math.round(est.usage / 1048576))); }).catch(() => {});
 }
 /* ---------- item page: name under the photo, place as a field, optional details ---------- */
-let itemDraft = null, itemEdit = null, itemLeavePending = false, flushItem = null, shownOpt = new Set(), shownFor = null;
+let itemDraft = null, itemEdit = null, itemCreationReturn = null, itemLeavePending = false, flushItem = null, shownOpt = new Set(), shownFor = null;
 function itemLocation(id){ return boxes.find(b => (b.items || []).some(i => i.id === id)) || null; }
 function itemRefs(it){ return [...(it.photos || []), ...(it.files || [])].map(x => x.ref).filter(Boolean); }
 function persistEditedBoxes(state, currentBoxId){
@@ -2006,13 +2092,13 @@ function leaveItemPage(){
 }
 async function newItem(boxId, replace){
   if (view.name === 'item' && !(await prepareItemLeave())) return;
+  if (!replace){ itemCreationReturn = clone(view); delete itemCreationReturn.asked; }
   leaveItemPage();
   const b = findBox(boxId); if (!b) return;
   const it = {id: newId(), name: '', category: '', value: '', storedOn: today(), notes: '', photos: [], tags: [], addedAt: new Date().toISOString(), addedBy: me || ''};
   itemDraft = it.id;
   itemEdit = {boxId, itemId: it.id, original: clone(it), boxUpdatedAt: b.updatedAt, removedRefs: new Set(), isNew: true};
   const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
-  if (!replace) pushBack();
   view = {name: 'item', boxId, itemId: it.id};
   render(); window.scrollTo(0, 0); arm();
   setTimeout(() => { const n = $('#fName'); if (n) n.focus(); }, 80);
@@ -2038,7 +2124,8 @@ function finishItem(again){
   track('item_save', {photo: !!(it.photos || []).length, fields: Object.keys(it).length});
   toast(again ? tr('savedNext', it.name) : tr('saved'));
   if (again) return newItem(b.id, true);
-  goBack();
+  const destination = itemCreationReturn; itemCreationReturn = null;
+  if (destination) go(destination, {navigation: true}); else goBack();
 }
 async function cancelNewItem(){
   if (flushItem) flushItem();
@@ -2058,7 +2145,8 @@ async function cancelNewItem(){
     itemDraft = null; itemEdit = null;
   }
   flushItem = null;
-  goBack();
+  const destination = itemCreationReturn; itemCreationReturn = null;
+  if (destination) go(destination, {navigation: true}); else goBack();
 }
 function cancelItem(){
   const [it] = curItem(); if (!it) return;
@@ -2100,8 +2188,8 @@ function renderItem(){
   const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
   const linkedDocs = boxes.flatMap(owner => (owner.documents || []).filter(doc => doc.itemId === it.id).map(doc => ({doc, owner})));
   const input = (k, opts = {}) => `<div class="fl"><input data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}><label>${esc(tr('f_' + k))}</label></div>`;
-  let status = it.status || '', loanTo = it.loanTo || '';
-  const legacy = /^On loan \((.+)\)$/.exec(status); if (legacy){ status = 'On loan'; loanTo = loanTo || legacy[1]; }
+  let status = normalizeStatus(it.status), loanTo = it.loanTo || '';
+  const legacy = /^On loan \((.+)\)$/.exec(it.status || ''); if (legacy) loanTo = loanTo || legacy[1];
   const field = k => {
     if (!show(k)) return '';
     if (k === 'value' || k === 'qty') return input(k, {attrs: `type="number" inputmode="numeric" min="${k === 'qty' ? 1 : 0}"`});
@@ -2112,10 +2200,15 @@ function renderItem(){
     if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
     if (k === 'spot') return b.loose ? input(k) : '';
     if (k === 'notes') return `<div class="fl"><textarea data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea><label>${tr('f_notes')}</label></div>`;
-    if (k === 'owner') return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
-      <div class="pair"><input data-f="owners" value="${esc(itemOwner(it))}" placeholder="${esc(tr('whose'))}" list="people" autocapitalize="words">
-      <select data-f="status" aria-label="${esc(tr('status'))}">${statusOptions(status)}</select></div>
-      ${status === 'On loan' ? `<input class="sub" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">${loanFields(it)}` : ''}</div>`;
+    if (k === 'owner'){
+      const ownerField = status === 'Sold' || status === 'Throw away' ? '' :
+        status === 'Loaned out' ? `<input data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">` :
+        status === 'Given away' ? `<input data-f="givenTo" value="${esc(it.givenTo || '')}" placeholder="${esc(tr('givenAwayTo'))}" list="people" autocapitalize="words">` :
+        `<input data-f="owners" value="${esc(itemOwner(it))}" placeholder="${esc(tr('belongsTo'))}" list="people" autocapitalize="words">`;
+      return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
+        <div class="pair">${ownerField}<select data-f="status" aria-label="${esc(tr('status'))}">${statusOptions(status)}</select></div>
+        ${status === 'Loaned out' ? loanFields(it) : ''}</div>`;
+    }
     return input(k);
   };
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
@@ -2127,9 +2220,9 @@ function renderItem(){
       <label class="cam" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="fPhoto" multiple hidden></label>
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
-    ${isOut(it) ? `<p class="outline"><span>${ICON.takeout} ${tr('outTag')} · ${esc(tr('outSince', it.out.since))}${it.out.until ? ' · ' + esc(tr('backBy', it.out.until)) : ''}</span><button class="btn quiet small icontext" data-act="itemback">${ICON.putback}${tr('putBack')}</button></p>` : ''}
     <label class="titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
-    <div class="itemacts">${isOut(it) ? '' : `<button class="btn quiet small icontext" data-act="itemout">${ICON.takeout}${tr('takeOut')}</button>`}<button class="btn quiet small icontext favbtn" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button><button class="btn quiet small icontext" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button></div>
+    ${entityInfo(it, b)}
+    <div class="itemacts"><button class="btn quiet small icontext" data-act="${isOut(it) ? 'itemback' : 'itemout'}">${isOut(it) ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOut')}</button><button class="btn quiet small icontext favbtn" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button><button class="btn quiet small icontext" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     <div class="whereline"><button class="pinbtn" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button><span class="wtxt">${esc(b.loose ? placeName(b.placeId) + ' · ' + tr('notInBoxShort') : `${placeName(b.placeId)} · ${b.code} ${b.name}`)}</span><button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
     ${OPT.map(field).join('')}
@@ -2156,6 +2249,7 @@ function renderItem(){
     v = typeof v === 'string' ? v.trim() : v;
     if (k === 'owners' && v) return String(v).split(/[,;]+/).map(n => n.trim()).filter(Boolean).map(n => n.toLowerCase() === tr('shared').toLowerCase() || n.toLowerCase() === 'shared' ? 'Shared' : addPerson(cap(n)));
     if (k === 'loanTo' && v) return addPerson(cap(v));
+    if (k === 'givenTo' && v) return cap(v);
     if (k === 'color') return fromColor(v);
     if (k === 'season') return fromSeason(v);
     if (k === 'size' && v){ const c = cleanSize(v); return c.ok ? c.v : v; }
@@ -2170,9 +2264,10 @@ function renderItem(){
       setItemOwners(x, v);
       return;
     }
-    if (k === 'status' && v !== 'On loan'){ delete x.loanTo; delete x.loanSince; }
-    if (k === 'status' && v === 'On loan'){ if (!x.loanSince) x.loanSince = today(); if (!x.loanDue) x.loanDue = addDays(x.loanSince, 30); }
-    if (k === 'status' && v !== 'On loan') delete x.loanDue;
+    if (k === 'status' && v !== 'Loaned out'){ delete x.loanTo; delete x.loanSince; }
+    if (k === 'status' && v === 'Loaned out'){ if (!x.loanSince) x.loanSince = today(); if (!x.loanDue) x.loanDue = addDays(x.loanSince, 30); }
+    if (k === 'status' && v !== 'Loaned out') delete x.loanDue;
+    if (k === 'status' && v !== 'Given away') delete x.givenTo;
     if (v === '' || v == null) delete x[k]; else x[k] = v;
   }, false);
   const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty', 'loanSince', 'loanDue'];
@@ -2251,7 +2346,7 @@ async function openFile(f){
 let batch = null;
 function openBatch(boxId){
   if (batch){ const previous = batch; batch = null; previous.refs.forEach(dropPhoto); }
-  batch = {boxId, mode: null, rows: [], busy: 0, refs: new Set()};
+  batch = {boxId, returnView: clone(view), mode: null, rows: [], busy: 0, refs: new Set()};
   navigate({name: 'batch', boxId});
 }
 const blobToB64 = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); });
@@ -2386,7 +2481,8 @@ function finishBatch(add){
   batch = null;
   refs.forEach(r => { if (!used.has(r)) dropPhoto(r); });
   if (count) toast(tr('batchAdded', count));
-  if (!goUp()) go({name: 'home', place: currentPlace});
+  if (session.returnView) go(session.returnView, {navigation: true});
+  else if (!goUp()) go({name: 'home', place: currentPlace});
 }
 
 /* ---------- test: recognise a single item from its photo ---------- */
@@ -2453,7 +2549,7 @@ function exportRows(pid){
       rows.push({
         [tr('col_place')]: p.name, [tr('col_box')]: b.loose ? tr('notInBox') : `${b.code} ${b.name}`, [tr('col_inbox')]: parent ? `${parent.code} ${parent.name}` : '',
         [tr('col_item')]: it.name, [tr('col_cat')]: it.category || '', [tr('col_brand')]: it.brand || '', [tr('col_model')]: it.model || '', [tr('col_size')]: it.size || '',
-        [tr('col_color')]: showColor(it.color), [tr('col_owner')]: itemOwner(it), [tr('col_status')]: [showStatus(it.status), it.loanTo].filter(Boolean).join(' '),
+        [tr('col_color')]: showColor(it.color), [tr('col_owner')]: itemOwner(it), [tr('col_status')]: [showStatus(it.status), it.loanTo, it.givenTo].filter(Boolean).join(' '),
         [tr('col_qty')]: it.qty || '', [tr('col_value')]: it.value ? +it.value : '', [tr('col_stored')]: it.storedOn || '', [tr('col_used')]: it.lastUsed || '',
         [tr('col_serial')]: it.serial || '', [tr('col_tags')]: (it.tags || []).join(', '), [tr('col_notes')]: it.notes || '',
       });
@@ -2641,12 +2737,14 @@ function itemSub(it, b, showWhere){
 }
 function rowHTML(it, b, opts = {}){
   const p = (it.photos || [])[0];
+  const stateClass = entityStateClass(it, b), status = normalizeStatus(it.status);
+  const cue = isOut(it) ? (status && status !== 'In storage' ? tileStatus(status) : '') : entityRibbon(it, b);
   return `<div class="lrow-wrap" data-sw="${esc(b.id)}:${esc(it.id)}">
-    <div class="lrow-bg"><span class="swl">${isOut(it) ? '↩ ' + tr('putBack') : '↗ ' + tr('takeOut')}</span><span class="swr">${tr('del')} 🗑</span></div>
-    <div class="lrow${isOut(it) ? ' out' : ''}${outOverdue(it) ? ' late' : ''}${view.hl === it.id ? ' hl' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}">
+    <div class="lrow-bg"><span class="swl">${isOut(it) ? ICON.putback + ' ' + tr('putBack') : ICON.takeout + ' ' + tr('takeOut')}</span><span class="swr">${tr('del')} 🗑</span></div>
+    <div class="lrow${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${outOverdue(it) ? ' late' : ''}${view.hl === it.id ? ' hl' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}">
       <span class="lthumb">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span></span>
-      <span class="ltext"><span class="lt">${esc(it.name || tr('unnamed'))}</span>${(s => s ? `<span class="ls">${esc(s)}</span>` : '')(itemSub(it, b, opts.where))}</span>
-      ${isOut(it) ? `<span class="outtag">${tr('outTag')}</span>` : ''}${dot(isDue(it) || outOverdue(it))}
+      <span class="ltext"><span class="lt">${esc(it.name || tr('unnamed'))}</span>${(s => s ? `<span class="ls">${esc(s)}</span>` : '')(itemSub(it, b, opts.where))}${cue}</span>
+      ${isOut(it) ? `<span class="outtag">${ICON.takeout}${tr('outTag')}</span>` : ''}${dot(isDue(it) || outOverdue(it))}
       <button class="lstar${it.fav ? ' on' : ''}" data-favtoggle="${esc(b.id)}:${esc(it.id)}" aria-pressed="${it.fav ? 'true' : 'false'}" aria-label="${esc(it.fav ? tr('unfav') : tr('fav'))}">${it.fav ? ICON.star : ICON.starO}</button>
       <button class="lmore" data-more="${esc(b.id)}:${esc(it.id)}" aria-label="${esc(tr('more'))}">•••</button>
     </div></div>`;
@@ -2659,7 +2757,7 @@ function groupHeader(b){
   const icon = b.loose ? `<span class="lgh-ico loose">${DEFAULT_ITEM_ICON}</span>` : `<span class="lgh-ico">${boxArt(boxNum(b))}</span>`;
   return `<div class="lgroup-h${b.loose ? ' loose' : ''}${b.out ? ' out' : ''}" data-gid="${esc(b.id)}"><button class="lgh-main" data-open="${esc(b.id)}">
       ${icon}<span class="lgh-text"><span class="lgh-name">${b.loose ? tr('notInBox') : esc((chain.length ? chain.map(boxNum).join(' › ') + ' › ' : '') + (b.name || boxLabel(b)))}</span><span class="lgh-in">${esc(inside || tr('boxEmpty'))}</span></span>
-      <span class="lgh-count">${b.out ? '↗ ' : ''}${n}${nOut ? ` · ↗${nOut}` : ''}</span></button>
+      <span class="lgh-count">${b.out ? `${ICON.takeout} ` : ''}${n}${nOut ? ` · ${ICON.takeout}${nOut}` : ''}</span></button>
     <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">${PLUS_SVG}</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-expanded="${!folded.has(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
 }
 let quickAddFor = null;
@@ -2694,7 +2792,7 @@ function orderedGroups(pid){
 }
 function sortBar(){
   const ids = orderedGroups(currentPlace).map(b => b.id), anyOpen = ids.some(i => !folded.has(i));
-  return `<div class="sortbar"><span class="lab">${tr('sortBy')}</span><button class="linkbtn foldall" data-foldall="${anyOpen ? 1 : 0}">${anyOpen ? tr('foldAll') : tr('unfoldAll')}</button><div class="chips">${SORTS.map(k => `<button class="chipbtn small${listSort === k ? ' on' : ''}" data-sort="${k}">${tr('sort_' + k)}</button>`).join('')}</div></div>`;
+  return `<div class="sortbar"><div class="sortbar-controls"><span class="lab">${tr('sortBy')}</span><div class="chips">${SORTS.map(k => `<button class="chipbtn small${listSort === k ? ' on' : ''}" data-sort="${k}">${tr('sort_' + k)}</button>`).join('')}</div></div><div class="sortbar-fold"><button class="linkbtn foldall" data-foldall="${anyOpen ? 1 : 0}">${anyOpen ? tr('foldAll') : tr('unfoldAll')}</button></div></div>`;
 }
 function listHTML(pid){
   const all = orderedGroups(pid);
@@ -2900,8 +2998,16 @@ function iconSheet(){
   openSheet(`<h3>${tr('pickIcon')}</h3><p class="hint">${tr('pickIconHint')}</p>
     <button class="btn ${it.icon ? 'quiet' : 'primary'} block" data-ic="">${auto} ${tr('autoIcon')}</button>
     <div class="iconpick big">${all.map(e => `<button class="${it.icon === e ? 'on' : ''}" data-ic="${e}">${e}</button>`).join('')}</div>
-    <div class="sheet-foot"><button class="btn" id="icX">${tr('close')}</button></div>`);
+    <label class="fl custom-icon-field"><input id="customIcon" type="text" maxlength="32" value="${esc(singleIcon(it.icon))}" placeholder="✨" autocomplete="off"><span>${esc(tr('customIcon'))}</span></label>
+    <p class="hint">${esc(tr('customIconHint'))}</p>
+    <div class="sheet-foot"><button class="btn" id="icX">${tr('close')}</button><button class="btn primary" id="icSave">${tr('save')}</button></div>`);
   sheet.querySelectorAll('[data-ic]').forEach(btn => btn.onclick = () => { const v = btn.dataset.ic; saveItem(x => { if (v) x.icon = v; else delete x.icon; }, true); closeSheet(); });
+  $('#icSave').onclick = () => {
+    const raw = $('#customIcon').value.trim(), value = singleIcon(raw);
+    if (raw && !value) return toast(tr('iconOneOnly'));
+    saveItem(x => { if (value) x.icon = value; else delete x.icon; }, true);
+    closeSheet();
+  };
   $('#icX').onclick = closeSheet;
 }
 
@@ -3307,8 +3413,8 @@ app.addEventListener('click', e => {
   const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
   const bo = e.target.closest('[data-backok]'); if (bo){ const [bid, iid] = bo.dataset.backok.split(':'); return setOut(bid, iid, false); }
   const sf = e.target.closest('[data-space-fold]'); if (sf){ const id = sf.dataset.spaceFold; foldedPlaces.has(id) ? foldedPlaces.delete(id) : foldedPlaces.add(id); saveFoldedPlaces(); return render(); }
-  const fo = e.target.closest('[data-fold]'); if (fo){ const id = fo.dataset.fold; folded.has(id) ? folded.delete(id) : folded.add(id); saveFolded(); return render(); }
-  const fa = e.target.closest('[data-foldall]'); if (fa){ const ids = orderedGroups(currentPlace).map(b => b.id); if (fa.dataset.foldall === '1') ids.forEach(i => folded.add(i)); else ids.forEach(i => folded.delete(i)); saveFolded(); track('fold_all'); return render(); }
+  const fo = e.target.closest('[data-fold]'); if (fo){ const id = fo.dataset.fold; folded.has(id) ? folded.delete(id) : folded.add(id); saveFolded(); return renderKeepingAnchor(() => [...app.querySelectorAll('.lgroup-h')].find(h => h.dataset.gid === id)); }
+  const fa = e.target.closest('[data-foldall]'); if (fa){ const ids = orderedGroups(currentPlace).map(b => b.id); if (fa.dataset.foldall === '1') ids.forEach(i => folded.add(i)); else ids.forEach(i => folded.delete(i)); saveFolded(); track('fold_all'); return renderKeepingAnchor(() => app.querySelector('.sortbar-fold')); }
   const so = e.target.closest('[data-sort]'); if (so){ listSort = so.dataset.sort; track('sort', {by: listSort}); metaPut('listSort', listSort).catch(() => {}); return render(); }
   const ft = e.target.closest('[data-favtoggle]'); if (ft){ const [bid, iid] = ft.dataset.favtoggle.split(':'); const nb = clone(findBox(bid)), x = nb && nb.items.find(i => i.id === iid); if (!x) return; x.fav = !x.fav; putBox(nb); return; }
   const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
@@ -3316,7 +3422,6 @@ app.addEventListener('click', e => {
   const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt]'); if (!t) return;
   const d = t.dataset;
   if (d.nav){ let v = JSON.parse(d.nav); if (v.name === 'home') v = {name: 'home', place: v.place || 'all'};
-    for (let i = backStack.length - 1; i >= 0; i--) if (sameView(backStack[i], v)) return go(backStack[i], {backIndex: i});
     if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
   if (d.goplace) return goHome(d.goplace === 'all' ? null : d.goplace);
   if (selecting && (d.item || d.open) && !d.openItem){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; if (d.open) return; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
@@ -3487,6 +3592,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     <div class="sheet-foot">
       ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button><span class="spacer"></span>` : ''}
       <button class="btn quiet" id="bCancel">${tr('cancel')}</button>
+      ${existing ? '' : `<button class="btn quiet" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
       <button class="btn primary" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
     </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
@@ -3499,7 +3605,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   $('#bCancel').onclick = closeSheet;
   let typeSet = !!b.boxTypeSet;
   $('#bType').onchange = e => { typeSet = true; $('#bDims').hidden = e.target.value !== 'custom'; };
-  $('#bSave').onclick = () => {
+  const saveBox = addAnother => {
     if (ps.busy) return toast(tr('waitPhoto'));
     b.boxType = $('#bType').value; if (typeSet) b.boxTypeSet = true;
     if (b.boxType === 'custom'){ const v = k => parseInt($('#bD' + k).value, 10); const dm = {w: v('w'), h: v('h'), d: v('d')}; if (!(dm.w > 0 && dm.h > 0 && dm.d > 0 && dm.w < 400 && dm.h < 400 && dm.d < 400)) return toast(tr('rk_badSize')); b.boxDims = dm; }
@@ -3520,8 +3626,11 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     putBox(b);
     if (parent){ const pb = findBox(parent); if (pb && pb.autoName) putBox(clone(pb), true); }
     closeSheet();
-    if (!existing){ openBox(b.id); toast(`${b.code} ✓`); } else render();
+    if (!existing && addAnother){ toast(`${b.code} ✓`); boxSheet(null, newPlace, parent, b.location); }
+    else if (!existing){ openBox(b.id); toast(`${b.code} ✓`); } else render();
   };
+  $('#bSave').onclick = () => saveBox(false);
+  if ($('#bSaveAnother')) $('#bSaveAnother').onclick = () => saveBox(true);
   if (existing) $('#bDel').onclick = async () => {
     const n = (existing.items || []).length;
     if (!(await askConfirm(tr('delQ', `${existing.code} ${existing.name}${n ? ` (${n} ${n === 1 ? tr('item') : tr('items')})` : ''}`)))) return boxSheet(existing.id);
@@ -5926,7 +6035,8 @@ const daysTo = d => Math.round((new Date(d + 'T00:00:00') - new Date(today() + '
 const warrantySoon = () => boxes.flatMap(b => (b.items || []).filter(it => it.warranty && daysTo(it.warranty) >= -7 && daysTo(it.warranty) <= 30).map(it => [it, b]));
 const valueOf = filter => boxes.filter(filter).reduce((s, b) => s + (b.items || []).reduce((t, i) => t + (+i.value || 0) * Math.max(1, +i.qty || 1), 0), 0);
 const valueLine = filter => { const v = valueOf(filter); return v ? ` · ${tr('worth', kr(v))}` : ''; };
-const loans = () => boxes.flatMap(b => (b.items || []).filter(it => it.status === 'On loan').map(it => [it, b]));
+const isLoanedOut = it => normalizeStatus(it && it.status) === 'Loaned out';
+const loans = () => boxes.flatMap(b => (b.items || []).filter(isLoanedOut).map(it => [it, b]));
 const loanDays = it => { const s = it.loanSince || (it.updatedAt || '').slice(0, 10); return s ? -daysTo(s) : 0; };
 const loanOld = () => loans().filter(([it]) => loanIsDue(it));
 const attention = () => warrantySoon().length + loanOld().length;
@@ -5943,7 +6053,7 @@ function renderLoans(){
   app.querySelectorAll('[data-open-item]').forEach(c => c.onclick = () => navigate({name: 'item', boxId: c.dataset.box, itemId: c.dataset.item}));
 }
 Object.assign(STR.en, {f_warranty: 'Warranty until', warrantyLeft: n => n < 0 ? `Warranty ended ${-n} days ago` : n === 0 ? 'Warranty ends today' : `Warranty ends in ${n} days`, warrantyH: 'Warranty ending soon', worth: v => `worth ${v}`,
-  loansTitle: 'Lent out', loansHint: 'Things you’ve lent, by person. Set a thing’s status to “On loan” and write who has it.', loansEmpty: 'Nothing is lent out. 🎉', unknownPerson: 'Someone', lentSince: d => d <= 0 ? 'lent today' : d === 1 ? 'lent 1 day ago' : `lent ${d} days ago`,
+  loansTitle: 'Lent out', loansHint: 'Things you’ve lent, by person. Set a thing’s status to “Loaned out” and write who has it.', loansEmpty: 'Nothing is lent out. 🎉', unknownPerson: 'Someone', lentSince: d => d <= 0 ? 'lent today' : d === 1 ? 'lent 1 day ago' : `lent ${d} days ago`,
   gotBack: 'Got it back', remindLoan: 'Remind', loanMsg: (who, item, me) => `Hi${who ? ' ' + who : ''}! Do you still have my ${item}? I’d like it back when you’re done 🙂${me ? ' /' + me : ''}`, loansOld: 'Lent out for over a month'});
 Object.assign(STR.sv, {f_warranty: 'Garanti till', warrantyLeft: n => n < 0 ? `Garantin gick ut för ${-n} dagar sedan` : n === 0 ? 'Garantin går ut i dag' : `Garantin går ut om ${n} dagar`, warrantyH: 'Garanti går ut snart', worth: v => `värt ${v}`,
   loansTitle: 'Utlånat', loansHint: 'Saker du lånat ut, per person. Sätt status ”Utlånad” på en sak och skriv vem som har den.', loansEmpty: 'Inget är utlånat. 🎉', unknownPerson: 'Någon', lentSince: d => d <= 0 ? 'utlånad i dag' : d === 1 ? 'utlånad för 1 dag sedan' : `utlånad för ${d} dagar sedan`,
@@ -5957,7 +6067,7 @@ function alertsNow(){
     const where = b.loose ? placeName(b.placeId) : `${b.code} ${b.name}`;
     if (isDue(it)) out.push({key: `due:${it.id}:${notifyAt(it)}`, title: tr('n_dueT'), body: tr('n_due', it.name), box: b.id, item: it.id});
     if (it.warranty){ const d = daysTo(it.warranty); if (d <= 30 && d >= -1) out.push({key: `w:${it.id}:${it.warranty}:${d <= 7 ? 7 : 30}`, title: tr('warrantyH'), body: `${it.name}: ${tr('warrantyLeft', d)}`, box: b.id, item: it.id}); }
-    if (it.status === 'On loan' && loanIsDue(it)) out.push({key: `loan:${it.id}:${it.loanDue || ''}`, title: tr('loansTitle'), body: tr('n_loan', it.name, (it.loanTo || '').trim() || tr('unknownPerson')), box: b.id, item: it.id});
+    if (isLoanedOut(it) && loanIsDue(it)) out.push({key: `loan:${it.id}:${it.loanDue || ''}`, title: tr('loansTitle'), body: tr('n_loan', it.name, (it.loanTo || '').trim() || tr('unknownPerson')), box: b.id, item: it.id});
     if (isOut(it) && outOverdue(it)) out.push({key: `out:${it.id}:${it.out.until}`, title: tr('backQ'), body: tr('n_out', it.name, where), box: b.id, item: it.id});
   }));
   return out;
@@ -6095,8 +6205,8 @@ STR.da = {
   registered: (d, by) => `Registreret ${d}${by ? ` af ${by}` : ''}.`, storedSince: d => `Opbevaret siden ${d}.`, changed: d => `Sidst ændret ${d}.`,
   delItem: 'Slet ting', done: 'Færdig', save: 'Gem', saveAnother: 'Gem + tilføj en til', saved: 'Gemt.', savedNext: n => `${n} gemt. Tilføj den næste.`, nameFirst: 'Giv den et navn først.',
   f_size: 'Størrelse', f_brand: 'Mærke', f_value: 'Pris / værdi (kr)', f_model: 'Model', f_qty: 'Antal', f_owner: 'Ejer & status', f_color: 'Farve', f_season: 'Sæson',
-  f_serial: 'Serienummer', f_category: 'Kategori', f_spot: 'Præcis hvor', f_notes: 'Noter', whose: 'Hvis er den', status: 'Status', loanTo: 'Lånt ud til', shared: 'Fælles',
-  st_store: 'Opbevares', st_loan: 'Udlånt', st_sale: 'Til salg', st_sold: 'Solgt', st_given: 'Givet væk',
+  f_serial: 'Serienummer', f_category: 'Kategori', f_spot: 'Præcis hvor', f_notes: 'Noter', whose: 'Hvis er den', belongsTo: 'Tilhører', status: 'Status', loanTo: 'Lånt ud til', givenAwayTo: 'Givet væk til', shared: 'Fælles',
+  st_store: 'Opbevares', st_loan: 'Lånt', st_loan_out: 'Lånt ud', st_sale: 'Til salg', st_sold: 'Solgt', st_given: 'Giv væk', borrowedFrom: 'Lånt fra / ejer',
   addTo: p => `Tilføj til ${p}`, boxStorage: 'Kasse / opbevaring', itemNoBox: 'Ting uden kasse', severalPhotos: 'Flere ting fra fotos',
   cancel: 'Annuller', close: 'Luk', ok: 'OK', moveX: n => `Flyt ${n}`, to: 'Til', move: 'Flyt', movedTo: w => `Flyttet til ${w}.`, rename: 'Omdøb', del: 'Slet', edit: 'Rediger',
   moveToPlace: 'Flyt til sted', emptyFirst: 'Tøm stedet for at slette det.', delQ: n => `Slet “${n}”? Det kan ikke fortrydes.`, delNoteQ: 'Slet denne stemmenote?',
@@ -6113,7 +6223,7 @@ STR.da = {
   aiLooking: 'Kigger på fotoet…', aiNothing: 'AI’en genkendte intet på fotoet.', aiSuggestH: 'Forslag fra fotoet', aiSuggestHint: 'Sæt hak ved det, du vil bruge. Afkrydsede detaljer erstatter det nuværende.',
   aiNow: v => `nu: ${v}`, apply: 'Brug valgte', aiApplied: n => n === 1 ? 'Opdaterede 1 detalje.' : `Opdaterede ${n} detaljer.`, aiNeedPhoto: 'Tilføj et foto først.',
   rmPhoto: 'Fjern foto', addPhoto: 'Tilføj foto', editBoxH: 'Rediger kasse', newBox: 'Ny kasse', name: 'Navn', boxNamePh: 'Vintertøj', storagePlace: 'Opbevaringssted',
-  whereInPlace: 'Hvor på stedet', wherePh: 'Bagvæggen, øverste hylde', boxPhoto: 'Foto af kassen', delBox: 'Slet kasse', saveBox: 'Gem kasse', addBox: 'Tilføj kasse',
+  whereInPlace: 'Hvor på stedet', wherePh: 'Bagvæggen, øverste hylde', boxPhoto: 'Foto af kassen', delBox: 'Slet kasse', saveBox: 'Gem kasse', addBox: 'Tilføj kasse', addBoxAnother: 'Tilføj kasse + en til',
   waitPhoto: 'Vent til fotoet er gemt.', nameBox: 'Giv kassen et navn.', whoPhone: 'Hvem bruger denne telefon?', whoPhoneHint: 'Så “min” og “mine” betyder denne person, når du taler med Storrrage. Det viser også, hvem der registrerede hver ting.',
   notSet: 'Ikke valgt', scanH: 'Scan en etiket', pointCam: 'Ret kameraet mod QR-koden på kassen.', typeCode: 'Eller skriv kassens kode', openBox: 'Åbn kasse',
   noCam: 'Kameraet er ikke tilgængeligt her. Skriv koden fra etiketten i stedet.', camBlocked: 'Kameraet blev blokeret. Skriv koden fra etiketten, eller tillad kameraet for appen i browserens indstillinger.',
@@ -6209,7 +6319,7 @@ STR.da = {
   pasteCode: 'Indsæt koden', noCodeCopied: 'Ingen kode kopieret – kopiér tallene i mailen først.', pasteManually: 'Hold fingeren på feltet og vælg Indsæt.', nameQ: 'Hvad hedder du?', next: 'Næste', hiName: n => `Hej ${n}!`,
   placeQ: 'Hvad kalder du stedet, hvor du opbevarer ting?', kitQ: 'Hvordan vil du starte?', kitYes: 'Startsæt', kitYesSub: '10 almindelige kasser langs tre vægge – omdøb eller fjern som du vil', kitNo: 'Start tomt',
   kitDone: 'Dit startsæt er klar. Tryk på en kasse for at fylde den.', zoneLeft: 'Venstre væg', zoneBack: 'Bagvæggen', zoneRight: 'Højre væg',
-  kitXmas: 'Julepynt', kitEaster: 'Påske & højtider', kitTools: 'Værktøj', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Børnetøj', kitBooks: 'Bøger', kitCables: 'Ledninger & elektronik', kitKitchen: 'Køkken & porcelæn', kitMisc: 'Diverse',
+  kitXmas: 'Julepynt', kitEaster: 'Påske & højtider', kitTools: 'Værktøj', kitCamping: 'Campingudstyr', kitSport: 'Sport', kitKidsClothes: 'Børnetøj', kitBooks: 'Bøger', kitCables: 'Ledninger & elektronik', kitKitchen: 'Køkken & porcelæn', kitMisc: 'Diverse',
   newThing: 'Ny ting', askAI: 'Spørg · beta', searchWord: 'Søg', searchOrAsk: 'Søg, eller spørg Storrrage…', askAbout: q => `Spørg Storrrage: “${q}”`,
   tab_home: 'Hjem', tab_search: 'Søg', tab_profile: 'Profil', tab_add: 'Tilføj'
 };
@@ -6238,8 +6348,8 @@ STR.fi = {
   registered: (d, by) => `Rekisteröity ${d}${by ? `, ${by}` : ''}.`, storedSince: d => `Säilytetty ${d} alkaen.`, changed: d => `Muutettu viimeksi ${d}.`,
   delItem: 'Poista tavara', done: 'Valmis', save: 'Tallenna', saveAnother: 'Tallenna + lisää toinen', saved: 'Tallennettu.', savedNext: n => `${n} tallennettu. Lisää seuraava.`, nameFirst: 'Anna ensin nimi.',
   f_size: 'Koko', f_brand: 'Merkki', f_value: 'Hinta / arvo (kr)', f_model: 'Malli', f_qty: 'Määrä', f_owner: 'Omistaja & tila', f_color: 'Väri', f_season: 'Kausi',
-  f_serial: 'Sarjanumero', f_category: 'Luokka', f_spot: 'Tarkka paikka', f_notes: 'Muistiinpanot', whose: 'Kenen se on', status: 'Tila', loanTo: 'Lainattu kenelle', shared: 'Yhteinen',
-  st_store: 'Säilössä', st_loan: 'Lainassa', st_sale: 'Myynnissä', st_sold: 'Myyty', st_given: 'Annettu pois',
+  f_serial: 'Sarjanumero', f_category: 'Luokka', f_spot: 'Tarkka paikka', f_notes: 'Muistiinpanot', whose: 'Kenen se on', belongsTo: 'Kuuluu henkilölle', status: 'Tila', loanTo: 'Lainattu eteenpäin henkilölle', givenAwayTo: 'Annettu henkilölle', shared: 'Yhteinen',
+  st_store: 'Säilössä', st_loan: 'Lainattu', st_loan_out: 'Lainattu eteenpäin', st_sale: 'Myynnissä', st_sold: 'Myyty', st_given: 'Anna pois', borrowedFrom: 'Lainattu henkilöltä / omistaja',
   addTo: p => `Lisää kohteeseen ${p}`, boxStorage: 'Laatikko / säilytys', itemNoBox: 'Tavara ilman laatikkoa', severalPhotos: 'Useita tavaroita kuvista',
   cancel: 'Peruuta', close: 'Sulje', ok: 'OK', moveX: n => `Siirrä ${n}`, to: 'Kohde', move: 'Siirrä', movedTo: w => `Siirretty: ${w}.`, rename: 'Nimeä uudelleen', del: 'Poista', edit: 'Muokkaa',
   moveToPlace: 'Siirrä paikkaan', emptyFirst: 'Tyhjennä paikka ennen poistamista.', delQ: n => `Poistetaanko ”${n}”? Tätä ei voi perua.`, delNoteQ: 'Poistetaanko tämä äänimuistio?',
@@ -6256,7 +6366,7 @@ STR.fi = {
   aiLooking: 'Katsotaan kuvaa…', aiNothing: 'Tekoäly ei tunnistanut kuvasta mitään.', aiSuggestH: 'Ehdotukset kuvasta', aiSuggestHint: 'Valitse mitä haluat käyttää. Valitut tiedot korvaavat nykyiset.',
   aiNow: v => `nyt: ${v}`, apply: 'Käytä valittuja', aiApplied: n => n === 1 ? 'Päivitettiin 1 tieto.' : `Päivitettiin ${n} tietoa.`, aiNeedPhoto: 'Lisää ensin kuva.',
   rmPhoto: 'Poista kuva', addPhoto: 'Lisää kuva', editBoxH: 'Muokkaa laatikkoa', newBox: 'Uusi laatikko', name: 'Nimi', boxNamePh: 'Talvivaatteet', storagePlace: 'Säilytyspaikka',
-  whereInPlace: 'Missä kohtaa paikkaa', wherePh: 'Takaseinä, ylähylly', boxPhoto: 'Kuva laatikosta', delBox: 'Poista laatikko', saveBox: 'Tallenna laatikko', addBox: 'Lisää laatikko',
+  whereInPlace: 'Missä kohtaa paikkaa', wherePh: 'Takaseinä, ylähylly', boxPhoto: 'Kuva laatikosta', delBox: 'Poista laatikko', saveBox: 'Tallenna laatikko', addBox: 'Lisää laatikko', addBoxAnother: 'Lisää laatikko + toinen',
   waitPhoto: 'Odota, että kuva tallentuu.', nameBox: 'Anna laatikolle nimi.', whoPhone: 'Kuka käyttää tätä puhelinta?', whoPhoneHint: 'Silloin ”minun” tarkoittaa tätä henkilöä, kun puhut Storrragelle. Näkyy myös kuka lisäsi minkäkin tavaran.',
   notSet: 'Ei asetettu', scanH: 'Skannaa laatikon tarra', pointCam: 'Osoita kameralla laatikon QR-koodia.', typeCode: 'Tai kirjoita laatikon koodi', openBox: 'Avaa laatikko',
   noCam: 'Kamera ei ole käytettävissä. Kirjoita tarran koodi.', camBlocked: 'Kameran käyttö estettiin. Kirjoita tarran koodi tai salli kamera selaimen asetuksista.',
@@ -6381,8 +6491,8 @@ STR.nb = {
   registered: (d, by) => `Registrert ${d}${by ? ` av ${by}` : ''}.`, storedSince: d => `Lagret siden ${d}.`, changed: d => `Sist endret ${d}.`,
   delItem: 'Slett ting', done: 'Ferdig', save: 'Lagre', saveAnother: 'Lagre + legg til en til', saved: 'Lagret.', savedNext: n => `${n} lagret. Legg til den neste.`, nameFirst: 'Gi den et navn først.',
   f_size: 'Størrelse', f_brand: 'Merke', f_value: 'Pris / verdi (kr)', f_model: 'Modell', f_qty: 'Antall', f_owner: 'Eier & status', f_color: 'Farge', f_season: 'Sesong',
-  f_serial: 'Serienummer', f_category: 'Kategori', f_spot: 'Nøyaktig hvor', f_notes: 'Notater', whose: 'Hvem eier den', status: 'Status', loanTo: 'Lånt ut til', shared: 'Felles',
-  st_store: 'Lagret', st_loan: 'Utlånt', st_sale: 'Til salgs', st_sold: 'Solgt', st_given: 'Gitt bort',
+  f_serial: 'Serienummer', f_category: 'Kategori', f_spot: 'Nøyaktig hvor', f_notes: 'Notater', whose: 'Hvem eier den', belongsTo: 'Tilhører', status: 'Status', loanTo: 'Lånt ut til', givenAwayTo: 'Gitt bort til', shared: 'Felles',
+  st_store: 'Lagret', st_loan: 'Lånt', st_loan_out: 'Lånt ut', st_sale: 'Til salgs', st_sold: 'Solgt', st_given: 'Gi bort', borrowedFrom: 'Lånt fra / eier',
   addTo: p => `Legg til i ${p}`, boxStorage: 'Eske / oppbevaring', itemNoBox: 'Ting uten eske', severalPhotos: 'Flere ting fra bilder',
   cancel: 'Avbryt', close: 'Lukk', ok: 'OK', moveX: n => `Flytt ${n}`, to: 'Til', move: 'Flytt', movedTo: w => `Flyttet til ${w}.`, rename: 'Gi nytt navn', del: 'Slett', edit: 'Rediger',
   moveToPlace: 'Flytt til sted', emptyFirst: 'Tøm stedet for å slette det.', delQ: n => `Slette «${n}»? Det kan ikke angres.`, delNoteQ: 'Slette dette talenotatet?',
@@ -6399,7 +6509,7 @@ STR.nb = {
   aiLooking: 'Ser på bildet…', aiNothing: 'AI-en kjente ikke igjen noe på bildet.', aiSuggestH: 'Forslag fra bildet', aiSuggestHint: 'Huk av det du vil bruke. Avhukede detaljer erstatter det som står nå.',
   aiNow: v => `nå: ${v}`, apply: 'Bruk valgte', aiApplied: n => n === 1 ? 'Oppdaterte 1 detalj.' : `Oppdaterte ${n} detaljer.`, aiNeedPhoto: 'Legg til et bilde først.',
   rmPhoto: 'Fjern bilde', addPhoto: 'Legg til bilde', editBoxH: 'Rediger eske', newBox: 'Ny eske', name: 'Navn', boxNamePh: 'Vinterklær', storagePlace: 'Lagringssted',
-  whereInPlace: 'Hvor på stedet', wherePh: 'Bakveggen, øverste hylle', boxPhoto: 'Bilde av esken', delBox: 'Slett eske', saveBox: 'Lagre eske', addBox: 'Legg til eske',
+  whereInPlace: 'Hvor på stedet', wherePh: 'Bakveggen, øverste hylle', boxPhoto: 'Bilde av esken', delBox: 'Slett eske', saveBox: 'Lagre eske', addBox: 'Legg til eske', addBoxAnother: 'Legg til eske + en til',
   waitPhoto: 'Vent til bildet er lagret.', nameBox: 'Gi esken et navn.', whoPhone: 'Hvem bruker denne telefonen?', whoPhoneHint: 'Så «min» og «mine» betyr denne personen når du snakker med Storrrage. Det viser også hvem som registrerte hver ting.',
   notSet: 'Ikke valgt', scanH: 'Skann en etikett', pointCam: 'Rett kameraet mot QR-koden på esken.', typeCode: 'Eller skriv eskens kode', openBox: 'Åpne eske',
   noCam: 'Kameraet er ikke tilgjengelig her. Skriv koden fra etiketten i stedet.', camBlocked: 'Kameraet ble blokkert. Skriv koden fra etiketten, eller tillat kameraet i nettleserens innstillinger.',
@@ -6495,7 +6605,7 @@ STR.nb = {
   pasteCode: 'Lim inn koden', noCodeCopied: 'Ingen kode kopiert – kopier tallene i e-posten først.', pasteManually: 'Hold inne i feltet og velg Lim inn.', nameQ: 'Hva heter du?', next: 'Neste', hiName: n => `Hei ${n}!`,
   placeQ: 'Hva kaller du stedet der du oppbevarer ting?', kitQ: 'Hvordan vil du starte?', kitYes: 'Startpakke', kitYesSub: '10 vanlige esker langs tre vegger – gi nytt navn eller fjern som du vil', kitNo: 'Start tomt',
   kitDone: 'Startpakken er klar. Trykk på en eske for å fylle den.', zoneLeft: 'Venstre vegg', zoneBack: 'Bakveggen', zoneRight: 'Høyre vegg',
-  kitXmas: 'Julepynt', kitEaster: 'Påske & høytider', kitTools: 'Verktøy', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barneklær', kitBooks: 'Bøker', kitCables: 'Ledninger & elektronikk', kitKitchen: 'Kjøkken & servise', kitMisc: 'Diverse',
+  kitXmas: 'Julepynt', kitEaster: 'Påske & høytider', kitTools: 'Verktøy', kitCamping: 'Campingutstyr', kitSport: 'Sport', kitKidsClothes: 'Barneklær', kitBooks: 'Bøker', kitCables: 'Ledninger & elektronikk', kitKitchen: 'Kjøkken & servise', kitMisc: 'Diverse',
   newThing: 'Ny ting', askAI: 'Spør · beta', searchWord: 'Søk', searchOrAsk: 'Søk, eller spør Storrrage…', askAbout: q => `Spør Storrrage: «${q}»`,
   tab_home: 'Hjem', tab_search: 'Søk', tab_profile: 'Profil', tab_add: 'Legg til'
 };
@@ -6522,13 +6632,13 @@ Object.assign(STR.fi, {editRooms: 'Muokkaa huoneita', labelLinked: c => `Tarra k
   mv_packed: 'Pakattu', mv_moved: 'Muutettu', mv_unpacked: 'Purettu', allRooms: 'Kaikki huoneet', pickRoom: 'Valitse huone', newRoom: 'Uusi huone', moveEmpty: 'Muutossa ei ole vielä laatikoita.', moveNewBox: 'Uusi muuttolaatikko', moveAddExisting: 'Lisää olemassa olevia laatikoita',
   moveLabels: 'Tulosta muuton tarrat', moveRooms: 'Huoneet (pilkulla erotettuna)', moveEnd: 'Päätä muutto', moveEndQ: 'Päätetäänkö muutto? Laatikot jäävät paikoilleen ilman huonetta ja muuttotilaa.', moveEnded: 'Muutto valmis. Tervetuloa kotiin!', moveOngoing: (d, n) => `Muutto: ${d}/${n} laatikkoa purettu`});
 Object.assign(STR.da, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien udløb for ${-n} dage siden` : n === 0 ? 'Garantien udløber i dag' : `Garantien udløber om ${n} dage`, warrantyH: 'Garanti udløber snart', worth: v => `værdi ${v}`,
-  loansTitle: 'Udlånt', loansHint: 'Ting du har lånt ud, pr. person. Sæt status “Udlånt” på en ting og skriv, hvem der har den.', loansEmpty: 'Intet er lånt ud. 🎉', unknownPerson: 'Nogen', lentSince: d => d <= 0 ? 'lånt ud i dag' : d === 1 ? 'lånt ud for 1 dag siden' : `lånt ud for ${d} dage siden`,
+  loansTitle: 'Udlånt', loansHint: 'Ting du har lånt ud, pr. person. Sæt status “Lånt ud” på en ting og skriv, hvem der har den.', loansEmpty: 'Intet er lånt ud. 🎉', unknownPerson: 'Nogen', lentSince: d => d <= 0 ? 'lånt ud i dag' : d === 1 ? 'lånt ud for 1 dag siden' : `lånt ud for ${d} dage siden`,
   gotBack: 'Fået tilbage', remindLoan: 'Påmind', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du stadig min ${item}? Vil gerne have den tilbage, når du er færdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ud i over en måned'});
 Object.assign(STR.nb, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien gikk ut for ${-n} dager siden` : n === 0 ? 'Garantien går ut i dag' : `Garantien går ut om ${n} dager`, warrantyH: 'Garanti går ut snart', worth: v => `verdi ${v}`,
-  loansTitle: 'Utlånt', loansHint: 'Ting du har lånt ut, per person. Sett status «Utlånt» på en ting og skriv hvem som har den.', loansEmpty: 'Ingenting er lånt ut. 🎉', unknownPerson: 'Noen', lentSince: d => d <= 0 ? 'lånt ut i dag' : d === 1 ? 'lånt ut for 1 dag siden' : `lånt ut for ${d} dager siden`,
+  loansTitle: 'Utlånt', loansHint: 'Ting du har lånt ut, per person. Sett status «Lånt ut» på en ting og skriv hvem som har den.', loansEmpty: 'Ingenting er lånt ut. 🎉', unknownPerson: 'Noen', lentSince: d => d <= 0 ? 'lånt ut i dag' : d === 1 ? 'lånt ut for 1 dag siden' : `lånt ut for ${d} dager siden`,
   gotBack: 'Fått tilbake', remindLoan: 'Påminn', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Har du fortsatt ${item} min? Vil gjerne ha den tilbake når du er ferdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ut i over en måned'});
 Object.assign(STR.fi, {f_warranty: 'Takuu päättyy', warrantyLeft: n => n < 0 ? `Takuu päättyi ${-n} päivää sitten` : n === 0 ? 'Takuu päättyy tänään' : `Takuu päättyy ${n} päivän kuluttua`, warrantyH: 'Takuu päättymässä', worth: v => `arvo ${v}`,
-  loansTitle: 'Lainassa', loansHint: 'Lainaamasi tavarat henkilöittäin. Aseta tavaran tilaksi ”Lainassa” ja kirjoita kenellä se on.', loansEmpty: 'Mitään ei ole lainassa. 🎉', unknownPerson: 'Joku', lentSince: d => d <= 0 ? 'lainattu tänään' : d === 1 ? 'lainattu 1 päivä sitten' : `lainattu ${d} päivää sitten`,
+  loansTitle: 'Lainassa', loansHint: 'Lainaamasi tavarat henkilöittäin. Aseta tavaran tilaksi ”Lainattu eteenpäin” ja kirjoita kenellä se on.', loansEmpty: 'Mitään ei ole lainassa. 🎉', unknownPerson: 'Joku', lentSince: d => d <= 0 ? 'lainattu tänään' : d === 1 ? 'lainattu 1 päivä sitten' : `lainattu ${d} päivää sitten`,
   gotBack: 'Sain takaisin', remindLoan: 'Muistuta', loanMsg: (who, item, me) => `Hei${who ? ' ' + who : ''}! Onko ${item} vielä sinulla? Haluaisin sen takaisin, kun olet valmis 🙂${me ? ' /' + me : ''}`, loansOld: 'Lainassa yli kuukauden'});
 Object.assign(STR.da, {n_many: (n, first) => `${n} ting skal tjekkes. Først: ${first}`, notifTitle: 'Notifikationer', notifSetting: 'Send notifikationer til denne telefon', notifHint: 'Påmindelser, garantier der udløber, ting der burde være tilbage, og ændringer andre i husstanden laver.', notifBlocked: 'Notifikationer er blokeret. Tillad dem for Storrrage i telefonens indstillinger.', notifUnsupported: 'Denne browser kan ikke vise notifikationer.', notifOnToast: 'Notifikationer er slået til.',
   n_dueT: 'Tid til at tjekke', n_due: n => `${n} er ikke brugt længe. Beholde eller sælge?`, n_loan: (n, w) => `${w} har stadig din ${n}. Tid til at bede om den tilbage?`, n_out: (n, w) => `Er ${n} tilbage i ${w}?`, n_hh: (w, list) => `${w} har lavet ændringer: ${list}`,
@@ -6562,6 +6672,11 @@ async function init(){
   try {
     idb = await openDB();
     boxes = await dbAll();
+    for (const b of boxes){
+      let changed = migrateLoanStatus(b);
+      for (const it of b.items || []) changed = migrateLoanStatus(it) || changed;
+      if (changed) await dbPut(clone(b));
+    }
     lastBackup = await metaGet('lastBackup') || null;
     household = await metaGet('household') || [];
     recentOwners = await metaGet('recentOwners') || [];
@@ -6795,14 +6910,16 @@ function rkDrop(ek, pid, t){
 /* --- drawing --- */
 function rkBoxEl(e, w, h, o){
   const b = e.b, n = (b.items || []).length + childBoxes(b.id).length, big = w >= 54 && h >= 40;
+  const stateClass = entityStateClass(b);
   const label = w >= 22 && h >= 16 ? `<span class="rklabel">${esc(boxNum(b))}</span>` : '';
   const name = o.large && w >= 70 && h >= 52 ? `<span class="rkname">${esc(b.name || boxLabel(b))}</span>` : '';
   const dims = o.measure && o.large && w >= 70 && h >= 66 ? `<span class="rkdim">${rkDims(e).w}×${rkDims(e).h}</span>` : '';
-  return `<button class="rkbox${b.out ? ' out' : ''}${o.tall ? ' tall' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-open="${esc(b.id)}" data-rk-ek="b:${esc(b.id)}" aria-label="${esc(b.code + ' ' + (b.name || ''))}">${label}${name}${dims}${big && n ? `<span class="rkcount">${n}</span>` : ''}</button>`;
+  return `<button class="rkbox${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${o.tall ? ' tall' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-open="${esc(b.id)}" data-rk-ek="b:${esc(b.id)}" aria-label="${esc(b.code + ' ' + (b.name || ''))}">${label}${name}${dims}${big && n ? `<span class="rkcount">${n}</span>` : ''}</button>`;
 }
 function rkItemEl(e, w, h, o){
   const it = e.it, p = (it.photos || [])[0], d = Math.max(10, Math.min(w, h));
-  return `<button class="rkitem${isOut(it) ? ' out' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-item="${esc(it.id)}" data-box="${esc(e.l.id)}" data-rk-ek="i:${esc(it.id)}" aria-label="${esc(it.name || '')}"><span class="lcirc" style="width:${d.toFixed(1)}px;height:${d.toFixed(1)}px">${p ? imgTag(p.ref, '') : ''}${d >= 26 ? `<span class="ticon${p ? ' fb' : ''}" style="font-size:${Math.min(40, d * .45).toFixed(0)}px">${guessIcon(it)}</span>` : ''}</span></button>`;
+  const stateClass = entityStateClass(it, e.l);
+  return `<button class="rkitem${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-item="${esc(it.id)}" data-box="${esc(e.l.id)}" data-rk-ek="i:${esc(it.id)}" aria-label="${esc(it.name || '')}"><span class="lcirc" style="width:${d.toFixed(1)}px;height:${d.toFixed(1)}px">${p ? imgTag(p.ref, '') : ''}${d >= 26 ? `<span class="ticon${p ? ' fb' : ''}" style="font-size:${Math.min(40, d * .45).toFixed(0)}px">${guessIcon(it)}</span>` : ''}</span></button>`;
 }
 function rkDraw(u, data, width, o){
   const {ents, grid} = data, inner = Math.max(40, width - 12), sc = inner / u.width, compact = width < 170, minPx = compact ? 6 : 16;
@@ -7351,6 +7468,8 @@ Object.assign(STR.da, {
   photoAdd: 'Tilføj foto', editPlace: n => `Ret ${n}`, foldSpace: n => `Fold ${n} sammen`, unfoldSpace: n => `Fold ${n} ud`, changePlaceIcon: n => `Vælg ikon til ${n}`,
   documents: 'Dokumenter og kvitteringer', addDocument: '+ Tilføj dokument eller kvittering', noDocuments: 'Ingen dokumenter endnu.', linkToItem: 'Knyt til ting', notLinked: 'Ikke knyttet til en ting', linkedDocuments: 'Tilknyttede dokumenter', document: 'Dokument',
   st_throw: 'Smides ud', st_custom: 'Andet…', customStatus: 'Skriv en status', addBoxOrItem: 'Tilføj kasse eller ting',
+  customIcon: 'Vælg et ikon', customIconHint: 'Skriv eller indsæt ét symbol eller en emoji med enhedens tastatur. Almindelige Unicode-ikoner vises på Android og iPhone.', iconOneOnly: 'Indtast ét symbol eller én emoji.',
+  movingStatus: s => `Flytning · ${s}`, moveDestination: room => `Nyt rum: ${room}`, moveRoomNotSet: 'Nyt rum er ikke valgt',
   backupBanner: d => d ? `Seneste backup var ${d}. Alt ligger kun på denne telefon, så gem en kopi et andet sted.` : 'Du har ikke taget en backup endnu. Alt ligger kun på denne telefon, så gem en kopi et andet sted.',
   savingDocument: 'Gemmer dokument…', moreBoxes: n => `+ ${n} kasser mere`,
   whereYouAre: 'Hvor du er', moreDetails: 'Flere detaljer', openBoxNow: 'Åben kasse', closePhoto: 'Luk billedet', zoomHint: 'Knib eller dobbelttryk for at zoome',
@@ -7406,6 +7525,8 @@ Object.assign(STR.nb, {
   photoAdd: 'Legg til bilde', editPlace: n => `Endre ${n}`, foldSpace: n => `Fold sammen ${n}`, unfoldSpace: n => `Fold ut ${n}`, changePlaceIcon: n => `Velg ikon for ${n}`,
   documents: 'Dokumenter og kvitteringer', addDocument: '+ Legg til dokument eller kvittering', noDocuments: 'Ingen dokumenter ennå.', linkToItem: 'Knytt til ting', notLinked: 'Ikke knyttet til en ting', linkedDocuments: 'Tilknyttede dokumenter', document: 'Dokument',
   st_throw: 'Kastes', st_custom: 'Annet…', customStatus: 'Skriv en status', addBoxOrItem: 'Legg til eske eller ting',
+  customIcon: 'Velg et ikon', customIconHint: 'Skriv eller lim inn ett symbol eller én emoji med tastaturet på enheten. Vanlige Unicode-ikoner vises på Android og iPhone.', iconOneOnly: 'Skriv inn ett symbol eller én emoji.',
+  movingStatus: s => `Flytting · ${s}`, moveDestination: room => `Nytt rom: ${room}`, moveRoomNotSet: 'Nytt rom er ikke angitt',
   backupBanner: d => d ? `Siste sikkerhetskopi var ${d}. Alt ligger bare på denne telefonen, så ta vare på en kopi et annet sted.` : 'Du har ikke tatt sikkerhetskopi ennå. Alt ligger bare på denne telefonen, så ta vare på en kopi et annet sted.',
   savingDocument: 'Lagrer dokument…', moreBoxes: n => `+ ${n} esker til`,
   whereYouAre: 'Hvor du er', moreDetails: 'Flere detaljer', openBoxNow: 'Åpen eske', closePhoto: 'Lukk bildet', zoomHint: 'Knip eller dobbelttrykk for å zoome',
@@ -7461,6 +7582,8 @@ Object.assign(STR.fi, {
   photoAdd: 'Lisää kuva', editPlace: n => `Muokkaa: ${n}`, foldSpace: n => `Pienennä ${n}`, unfoldSpace: n => `Laajenna ${n}`, changePlaceIcon: n => `Valitse kuvake: ${n}`,
   documents: 'Asiakirjat ja kuitit', addDocument: '+ Lisää asiakirja tai kuitti', noDocuments: 'Ei asiakirjoja vielä.', linkToItem: 'Liitä tavaraan', notLinked: 'Ei liitetty tavaraan', linkedDocuments: 'Liitetyt asiakirjat', document: 'Asiakirja',
   st_throw: 'Heitetään pois', st_custom: 'Muu…', customStatus: 'Kirjoita tila', addBoxOrItem: 'Lisää laatikko tai tavara',
+  customIcon: 'Valitse kuvake', customIconHint: 'Kirjoita tai liitä yksi symboli tai emoji laitteen näppäimistöllä. Yleiset Unicode-kuvakkeet näkyvät Androidilla ja iPhonella.', iconOneOnly: 'Anna yksi symboli tai emoji.',
+  movingStatus: s => `Muutto · ${s}`, moveDestination: room => `Uusi huone: ${room}`, moveRoomNotSet: 'Uutta huonetta ei ole valittu',
   backupBanner: d => d ? `Viimeisin varmuuskopio: ${d}. Kaikki on vain tässä puhelimessa, joten säilytä kopio muualla.` : 'Et ole vielä tehnyt varmuuskopiota. Kaikki on vain tässä puhelimessa, joten säilytä kopio muualla.',
   savingDocument: 'Tallennetaan asiakirjaa…', moreBoxes: n => `+ ${n} laatikkoa lisää`,
   whereYouAre: 'Missä olet', moreDetails: 'Lisätietoja', openBoxNow: 'Avoin laatikko', closePhoto: 'Sulje kuva', zoomHint: 'Nipistä tai kaksoisnapauta zoomataksesi',

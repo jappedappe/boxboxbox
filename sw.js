@@ -1,6 +1,6 @@
 /* Storrrage offline cache. Only the app's own files are cached;
    calls to Supabase (login, sync, statistics) always go straight to the network. */
-const CACHE = 'storrrage-2026-10-27.5';
+const CACHE = 'storrrage-2026-10-28.6';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -42,7 +42,7 @@ async function backgroundCheck(){
   for (const b of boxes) for (const it of (b.items || [])){
     if (fresh(it)) continue;
     if (it.warranty){ const d = days(it.warranty); if (d <= 30 && d >= -1){ const a = add(`w:${it.id}:${it.warranty}:${d <= 7 ? 7 : 30}`, T.w(it.name, Math.max(0, d)), b.id, it.id); if (a) out.push(a); } }
-    if (it.status === 'On loan' && it.loanDue && it.loanDue <= today){ const a = add(`loan:${it.id}:${it.loanDue}`, T.l(it.name, it.loanTo || '…'), b.id, it.id); if (a) out.push(a); }
+    if ((it.status === 'Loaned out' || it.status === 'On loan' || /^On loan \(.+\)$/.test(it.status || '')) && it.loanDue && it.loanDue <= today){ const a = add(`loan:${it.id}:${it.loanDue}`, T.l(it.name, it.loanTo || '…'), b.id, it.id); if (a) out.push(a); }
     if (it.remindAt && it.remindAt <= today){ const a = add(`due:${it.id}:${it.remindAt}`, T.u(it.name), b.id, it.id); if (a) out.push(a); }
   }
   if (!out.length) return;
