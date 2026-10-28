@@ -61,6 +61,7 @@ body.onboarding .tabbar,body.onboarding .fab,body.onboarding .topbar{display:non
 h2.section{font-family:var(--caps);font-weight:700;font-size:var(--fs-1);letter-spacing:.05em;color:var(--lav);text-transform:uppercase;margin:26px 0 10px}
 .hint{color:var(--muted);font-size:var(--fs-3)}
 .proof{color:var(--muted);font-size:var(--fs-1)}
+.pf-name-hint{margin:-6px 0 10px}
 .center{text-align:center}
 .status{margin-top:40px;color:var(--muted);text-align:center}
 
@@ -975,7 +976,7 @@ h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .wcard .hint{margin:0;font-size:var(--fs-2)}
 .wor{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:var(--fs-2);margin:6px 0}
 .wor::before,.wor::after{content:"";flex:1;height:1px;background:var(--line)}
-.pitch{background:var(--lav-3);border-radius:var(--r-3);padding:10px 12px;margin:0 0 10px;font-size:var(--fs-2);color:var(--ink)}
+.pitch{background:var(--lav-3);border-radius:var(--r-3);padding:10px 12px;margin:0 0 14px;font-size:var(--fs-2);color:var(--ink)}
 .pitch ul{margin:6px 0 0;padding:0;list-style:none}
 .pitch li{padding:2px 0 2px 22px;position:relative}
 .pitch li::before{content:"✓";position:absolute;left:2px;color:var(--primary);font-weight:700}
@@ -13798,7 +13799,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-28.6';
+const APP_VERSION = '2026-10-28.7';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -15703,7 +15704,7 @@ function renderProfile(){
     const nN = due.length + outItems().filter(([it]) => outOverdue(it)).length + realBoxes().filter(boxOutLate).length + nudges().length + attention();
     app.innerHTML = `${crumbs([{label: tr('profile').toUpperCase()}])}
       <div class="fl" style="margin-top:14px"><input id="pfName" value="${esc(me)}" placeholder="${esc(tr('yourName'))}" autocapitalize="words"><label>${tr('yourName')}</label></div>
-      <p class="proof">${tr('nameShown')}</p>
+      <p class="proof pf-name-hint">${tr('nameShown')}</p>
       ${cloud.session ? `<div class="fl"><input value="${esc(cloud.email || '')}" disabled><label class="always">${tr('loginEmail')}</label></div>
         <div class="pfacts">${pfacts()}</div>
         <label class="check"><input type="checkbox" id="pfMail" ${prof.notify_email ? 'checked' : ''}> ${tr('mailReminders')}</label>
@@ -15712,7 +15713,7 @@ function renderProfile(){
       : `<div class="loginbox">${accountPitch()}${loginForm()}</div>`}
       <div class="list">
         <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}</span>${nN ? `<b class="count">${nN}</b>` : ''}</button>
-        <button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>
+        ${PREMIUM_FEATURES_ENABLED ? `<button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>` : ''}
       </div>
       ${cloud.session ? `<div class="list"><button class="btn block" id="pfOut">${tr('logout')}</button><button class="btn danger block" id="pfOutAll">${tr('logoutAll')}</button></div><p class="proof">${tr('logoutAllHint')}</p>` : ''}`;
     if ($('#pfOut')){ $('#pfOut').onclick = () => askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); }); $('#pfOutAll').onclick = () => askConfirm(tr('logoutAllQ'), tr('logoutAll')).then(y => { if (y) logout(true); }); }
@@ -16771,9 +16772,10 @@ document.addEventListener('keydown', e => {
 });
 
 /* ad slots (test): only a house ad for Premium until there's an ad partner */
+const PREMIUM_FEATURES_ENABLED = false;
 let adsPreview = true;
 function adSlot(kind){
-  if (!adsPreview) return '';
+  if (!adsPreview || !PREMIUM_FEATURES_ENABLED) return '';
   return `<aside class="adslot ad-${kind}" aria-label="${esc(tr('adLabel'))}"><span class="adtag">${tr('adLabel')}</span>
     <div class="admain"><span class="adlogo">${logoSVG()}</span><span class="adtext"><b>${tr('adTitle')}</b><small>${tr('adText')}</small></span>
     <button class="btn quiet small" data-sub="premium">${tr('readMore')}</button></div></aside>`;
@@ -19228,7 +19230,7 @@ function loginForm(compact){
     <button class="btn primary block" id="clSend" style="margin-top:8px">${tr('sendCode')}</button>${compact ? '' : `<p class="proof">${tr('loginHint')}</p>`}`;
 }
 function accountPitch(){
-  return `<div class="pitch"><b>${tr('pitchTitle')}</b><ul>${['pitch1', 'pitch2', 'pitch3', 'pitch4'].map(k => `<li>${tr(k)}</li>`).join('')}</ul></div>`;
+  return `<div class="pitch"><b>${tr('pitchTitle')}</b><ul>${['pitch1', 'pitch2', 'pitch3'].map(k => `<li>${tr(k)}</li>`).join('')}</ul></div>`;
 }
 function codeSheet(email){
   openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))} <button class="linkbtn" id="cdWrong">${tr('wrongAddress')}</button></p>
@@ -19565,25 +19567,25 @@ Object.assign(STR.en, {cloudIntro: 'Log in with your e-mail to keep your storage
   e2eNote: 'Stored in your account on servers in the EU. Only you and the people you invite can see it.', inviteSafe: 'The code works once, for 24 hours.', connectNow: 'Save in my account',
   joinOther: 'Join another household (QR)', mergedIntoAccount: 'What was on this phone was added to your account.', logoutQ: 'Log out? Your storage is removed from this device but stays in your account – log in again to get it back.',
   unsyncedQ: n => `${n} changes haven’t been saved to your account yet (no signal?). Log out anyway? They will be lost.`, logoutAll: 'Log out on all devices', logoutAllQ: 'Log out on all your devices? Use this if a phone is lost. Each device removes your storage the next time it’s online.',
-  logoutAllHint: 'Lost a phone? Log in here or on your computer and choose “Log out on all devices”.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.'});
+  logoutAllHint: 'Lost a phone? Log out on all devices, then log in again on the devices you still use.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.'});
 Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förrådet i ditt konto. Då kommer du åt det från datorn och andra telefoner, kan dela med hushållet och logga ut om telefonen kommer bort.',
   e2eNote: 'Sparas i ditt konto på servrar i EU. Bara du och de du bjuder in kan se det.', inviteSafe: 'Koden fungerar en gång i 24 timmar.', connectNow: 'Spara i mitt konto',
   joinOther: 'Gå med i ett annat hushåll (QR)', mergedIntoAccount: 'Det som fanns på telefonen lades till i ditt konto.', logoutQ: 'Logga ut? Förrådet tas bort från den här enheten men finns kvar i ditt konto – logga in igen så kommer det tillbaka.',
   unsyncedQ: n => `${n} ändringar har inte sparats i kontot än (ingen täckning?). Logga ut ändå? De försvinner då.`, logoutAll: 'Logga ut på alla enheter', logoutAllQ: 'Logga ut på alla dina enheter? Använd det om en telefon kommit bort. Varje enhet tar bort förrådet nästa gång den är online.',
-  logoutAllHint: 'Tappat telefonen? Logga in här eller på datorn och välj ”Logga ut på alla enheter”.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
+  logoutAllHint: 'Tappat telefonen? Logga ut från alla enheter och logga sedan in igen på de enheter du fortfarande använder.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
 
 Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, wrongAddress: 'Wrong address?', orTapLink: 'Or tap the button in the e-mail (on this device).', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
 Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, wrongAddress: 'Fel adress?', orTapLink: 'Eller tryck på knappen i mejlet (på den här enheten).', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
 
 Object.assign(STR.en, {slogan: 'Know what you have – and where it is.', startNew: 'Start my storage', startNewHint: 'New here? Just enter your name and start. No account needed – everything is saved on your phone.',
-  or: 'or', loginHint: 'Already have an account, or want one? We e-mail you a code – no password. You can share with others and reach everything from your computer.', yourEmail: 'Your e-mail', sendCode: 'Send code',
+  or: 'or', loginHint: 'New here? Enter your e-mail to create a free account. Already have an account? Enter the same e-mail to log in. We’ll send you a one-time code—no password.', yourEmail: 'Your e-mail', sendCode: 'Send code',
   invitedTitle: 'You’re invited!', invitedIntro: 'Enter your e-mail and we’ll send you a code. Then you’re straight into the shared storage.',
-  pitchTitle: 'Create a free account – all you need is your e-mail', pitch1: 'Share with the people you live with', pitch2: 'Reach everything from your computer and other phones', pitch3: 'Safe if your phone gets lost', pitch4: 'More features coming for account holders',
+  pitchTitle: 'Create a free account – all you need is your e-mail', pitch1: 'Share with the people you live with', pitch2: 'Reach everything from your computer and other phones', pitch3: 'Safe if your phone gets lost',
   fold: 'Fold', unfold: 'Unfold', foldAll: 'Fold all', unfoldAll: 'Unfold all'});
 Object.assign(STR.sv, {slogan: 'Ha koll på allt du har – och var det finns.', startNew: 'Starta mitt förråd', startNewHint: 'Ny här? Skriv bara ditt namn och kör igång. Inget konto behövs – allt sparas på telefonen.',
-  or: 'eller', loginHint: 'Har du redan ett konto, eller vill skapa ett? Vi mejlar en kod – inget lösenord. Då kan du dela med andra och nå allt från datorn.', yourEmail: 'Din e-post', sendCode: 'Skicka kod',
+  or: 'eller', loginHint: 'Ny här? Ange din e-post för att skapa ett gratis konto. Har du redan ett konto? Ange samma e-post för att logga in. Vi skickar en engångskod – inget lösenord.', yourEmail: 'Din e-post', sendCode: 'Skicka kod',
   invitedTitle: 'Du är inbjuden!', invitedIntro: 'Skriv din e-post så mejlar vi en kod. Sedan kommer du direkt in i det delade förrådet.',
-  pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt från datorn och andra telefoner', pitch3: 'Tryggt om telefonen kommer bort', pitch4: 'Fler funktioner på väg för kontoinnehavare',
+  pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt från datorn och andra telefoner', pitch3: 'Tryggt om telefonen kommer bort',
   fold: 'Fäll ihop', unfold: 'Fäll ut', foldAll: 'Fäll ihop alla', unfoldAll: 'Fäll ut alla'});
 
 Object.assign(STR.en, {badEmail: 'Check the e-mail address.', sending: 'Sending…', sendTimeout: 'The mail server didn’t answer in time. Try again in a minute.', mailNotSent: 'The e-mail wasn’t sent', errorCode: 'Details'});
@@ -20093,12 +20095,12 @@ STR.da = {
   scanQR: 'Scan QR-kode', whatName: 'Hvad hedder du?', startNew: 'Start mit opbevaringssted', loginWelcome: 'Vi sender en kode til din e-mail – ingen adgangskode.',
   invitedIntro: 'Skriv din e-mail, så sender vi en kode. Så kommer du direkte ind i det delte opbevaringssted.', connectNow: 'Gem på min konto', joinOther: 'Deltag i en anden husstand (QR)',
   mergedIntoAccount: 'Det der lå på telefonen blev føjet til din konto.', unsyncedQ: n => `${n} ændringer er ikke gemt på kontoen endnu. Log ud alligevel? De går tabt.`,
-  logoutAll: 'Log ud på alle enheder', logoutAllQ: 'Log ud på alle dine enheder? Brug det, hvis en telefon er blevet væk.', logoutAllHint: 'Mistet telefonen? Log ind på computeren og vælg “Log ud på alle enheder”.',
+  logoutAll: 'Log ud på alle enheder', logoutAllQ: 'Log ud på alle dine enheder? Brug det, hvis en telefon er blevet væk.', logoutAllHint: 'Mistet en telefon? Log ud på alle enheder, og log derefter ind igen på de enheder, du stadig bruger.',
   wipedRemote: 'Du blev logget ud fra en anden enhed, så dine ting blev fjernet herfra.', codeSent: e => `Vi har sendt en e-mail til ${e}. Skriv koden her:`, wrongAddress: 'Forkert adresse?',
   orTapLink: 'Eller tryk på knappen i mailen (på denne enhed).', sendAgain: 'Send igen', sentAgain: 'Sendt igen.', codeWrong: 'Koden er forkert eller for gammel. Prøv igen eller send en ny.',
   slogan: 'Hav styr på alt, du har – og hvor det er.', startNewHint: 'Ny her? Skriv bare dit navn og kom i gang. Ingen konto nødvendig – alt gemmes på telefonen.', or: 'eller',
-  loginHint: 'Har du en konto, eller vil du oprette en? Vi mailer en kode – ingen adgangskode. Så kan du dele og nå alt fra computeren.', yourEmail: 'Din e-mail', sendCode: 'Send kode',
-  invitedTitle: 'Du er inviteret!', pitchTitle: 'Opret en gratis konto – det kræver kun din e-mail', pitch1: 'Del med dem, du bor med', pitch2: 'Nå alt fra computeren og andre telefoner', pitch3: 'Trygt, hvis telefonen bliver væk', pitch4: 'Flere funktioner på vej',
+  loginHint: 'Ny her? Skriv din e-mail for at oprette en gratis konto. Har du allerede en konto? Brug samme e-mail for at logge ind. Vi sender en engangskode – ingen adgangskode.', yourEmail: 'Din e-mail', sendCode: 'Send kode',
+  invitedTitle: 'Du er inviteret!', pitchTitle: 'Opret en gratis konto – det kræver kun din e-mail', pitch1: 'Del med dem, du bor med', pitch2: 'Nå alt fra computeren og andre telefoner', pitch3: 'Trygt, hvis telefonen bliver væk',
   fold: 'Fold sammen', unfold: 'Fold ud', foldAll: 'Fold alle sammen', unfoldAll: 'Fold alle ud', badEmail: 'Tjek e-mailadressen.', sending: 'Sender…', sendTimeout: 'Mailserveren svarede ikke. Prøv igen om et minut.',
   mailNotSent: 'Mailen blev ikke sendt', errorCode: 'Detaljer', moveLocalQ: n => `Telefonen har kasser og ting (${n}), som ikke er på din konto. Flyt dem ind? De markeres “Ny”.`, moveLocalYes: 'Ja, flyt dem ind', moveLocalNo: 'Nej, fjern dem',
   logInOrCreate: 'Log ind eller opret konto', yourAccount: 'Din konto', peopleTitle: 'Personer i husstanden', peopleHint: 'Tilføj alle, der har ting her. Invitér dem, der selv vil bruge appen.',
@@ -20236,12 +20238,12 @@ STR.fi = {
   scanQR: 'Skannaa QR-koodi', whatName: 'Mikä on nimesi?', startNew: 'Aloita oma varasto', loginWelcome: 'Lähetämme koodin sähköpostiisi – ei salasanaa.',
   invitedIntro: 'Kirjoita sähköpostisi, niin lähetämme koodin. Sitten pääset suoraan yhteiseen varastoon.', connectNow: 'Tallenna tililleni', joinOther: 'Liity toiseen kotitalouteen (QR)',
   mergedIntoAccount: 'Puhelimessa olleet tiedot lisättiin tilillesi.', unsyncedQ: n => `${n} muutosta ei ole vielä tallennettu tilille. Kirjaudutaanko silti ulos? Ne katoavat.`,
-  logoutAll: 'Kirjaudu ulos kaikilta laitteilta', logoutAllQ: 'Kirjaudutaanko ulos kaikilta laitteilta? Käytä tätä, jos puhelin on kadonnut.', logoutAllHint: 'Katosiko puhelin? Kirjaudu tietokoneella ja valitse ”Kirjaudu ulos kaikilta laitteilta”.',
+  logoutAll: 'Kirjaudu ulos kaikilta laitteilta', logoutAllQ: 'Kirjaudutaanko ulos kaikilta laitteilta? Käytä tätä, jos puhelin on kadonnut.', logoutAllHint: 'Katosiko puhelin? Kirjaudu ulos kaikilta laitteilta ja kirjaudu sitten uudelleen niillä laitteilla, joita käytät edelleen.',
   wipedRemote: 'Sinut kirjattiin ulos toiselta laitteelta, joten varasto poistettiin tästä laitteesta.', codeSent: e => `Lähetimme viestin osoitteeseen ${e}. Kirjoita koodi tähän:`, wrongAddress: 'Väärä osoite?',
   orTapLink: 'Tai napauta viestin painiketta (tällä laitteella).', sendAgain: 'Lähetä uudelleen', sentAgain: 'Lähetetty uudelleen.', codeWrong: 'Koodi on väärä tai vanhentunut. Yritä uudelleen tai pyydä uusi.',
   slogan: 'Tiedä mitä sinulla on – ja missä se on.', startNewHint: 'Uusi täällä? Kirjoita nimesi ja aloita. Tiliä ei tarvita – kaikki tallentuu puhelimeen.', or: 'tai',
-  loginHint: 'Onko sinulla tili, tai haluatko luoda sellaisen? Lähetämme koodin sähköpostiin – ei salasanaa. Voit jakaa ja käyttää kaikkea tietokoneelta.', yourEmail: 'Sähköpostisi', sendCode: 'Lähetä koodi',
-  invitedTitle: 'Sinut on kutsuttu!', pitchTitle: 'Luo ilmainen tili – tarvitset vain sähköpostin', pitch1: 'Jaa asuinkumppaneidesi kanssa', pitch2: 'Käytä kaikkea tietokoneella ja muilla puhelimilla', pitch3: 'Turvassa, jos puhelin katoaa', pitch4: 'Lisää ominaisuuksia tulossa',
+  loginHint: 'Uusi käyttäjä? Luo maksuton tili kirjoittamalla sähköpostiosoitteesi. Onko sinulla jo tili? Kirjaudu samalla sähköpostiosoitteella. Lähetämme kertakäyttöisen koodin – et tarvitse salasanaa.', yourEmail: 'Sähköpostisi', sendCode: 'Lähetä koodi',
+  invitedTitle: 'Sinut on kutsuttu!', pitchTitle: 'Luo ilmainen tili – tarvitset vain sähköpostin', pitch1: 'Jaa asuinkumppaneidesi kanssa', pitch2: 'Käytä kaikkea tietokoneella ja muilla puhelimilla', pitch3: 'Turvassa, jos puhelin katoaa',
   fold: 'Pienennä', unfold: 'Laajenna', foldAll: 'Pienennä kaikki', unfoldAll: 'Laajenna kaikki', badEmail: 'Tarkista sähköpostiosoite.', sending: 'Lähetetään…', sendTimeout: 'Sähköpostipalvelin ei vastannut ajoissa. Yritä minuutin päästä.',
   mailNotSent: 'Viestiä ei lähetetty', errorCode: 'Tiedot', moveLocalQ: n => `Puhelimessa on laatikoita ja tavaroita (${n}), jotka eivät ole tililläsi. Siirretäänkö ne tilille? Ne merkitään ”Uusi”.`, moveLocalYes: 'Kyllä, siirrä', moveLocalNo: 'Ei, poista ne',
   logInOrCreate: 'Kirjaudu tai luo tili', yourAccount: 'Tilisi', peopleTitle: 'Kotitalouden ihmiset', peopleHint: 'Lisää kaikki, joilla on tavaroita täällä. Kutsu ne, jotka haluavat käyttää sovellusta itse.',
@@ -20379,12 +20381,12 @@ STR.nb = {
   scanQR: 'Skann QR-kode', whatName: 'Hva heter du?', startNew: 'Start lageret mitt', loginWelcome: 'Vi sender en kode til e-posten din – ikke noe passord.',
   invitedIntro: 'Skriv e-posten din, så sender vi en kode. Da kommer du rett inn i det delte lageret.', connectNow: 'Lagre på kontoen min', joinOther: 'Bli med i en annen husstand (QR)',
   mergedIntoAccount: 'Det som lå på telefonen ble lagt til på kontoen din.', unsyncedQ: n => `${n} endringer er ikke lagret på kontoen ennå. Logge ut likevel? De går tapt.`,
-  logoutAll: 'Logg ut på alle enheter', logoutAllQ: 'Logge ut på alle enhetene dine? Bruk dette hvis en telefon er borte.', logoutAllHint: 'Mistet telefonen? Logg inn på PC-en og velg «Logg ut på alle enheter».',
+  logoutAll: 'Logg ut på alle enheter', logoutAllQ: 'Logge ut på alle enhetene dine? Bruk dette hvis en telefon er borte.', logoutAllHint: 'Mistet telefonen? Logg ut på alle enheter, og logg deretter inn igjen på enhetene du fortsatt bruker.',
   wipedRemote: 'Du ble logget ut fra en annen enhet, så tingene ble fjernet herfra.', codeSent: e => `Vi har sendt en e-post til ${e}. Skriv inn koden her:`, wrongAddress: 'Feil adresse?',
   orTapLink: 'Eller trykk på knappen i e-posten (på denne enheten).', sendAgain: 'Send igjen', sentAgain: 'Sendt igjen.', codeWrong: 'Koden er feil eller for gammel. Prøv igjen eller send en ny.',
   slogan: 'Ha oversikt over alt du har – og hvor det er.', startNewHint: 'Ny her? Skriv navnet ditt og sett i gang. Ingen konto trengs – alt lagres på telefonen.', or: 'eller',
-  loginHint: 'Har du en konto, eller vil du lage en? Vi sender en kode på e-post – ikke noe passord. Da kan du dele og nå alt fra PC-en.', yourEmail: 'E-posten din', sendCode: 'Send kode',
-  invitedTitle: 'Du er invitert!', pitchTitle: 'Lag en gratis konto – du trenger bare e-post', pitch1: 'Del med dem du bor med', pitch2: 'Nå alt fra PC-en og andre telefoner', pitch3: 'Trygt hvis telefonen blir borte', pitch4: 'Flere funksjoner på vei',
+  loginHint: 'Ny her? Skriv inn e-posten din for å opprette en gratis konto. Har du allerede en konto? Bruk samme e-post for å logge inn. Vi sender en engangskode – ikke noe passord.', yourEmail: 'E-posten din', sendCode: 'Send kode',
+  invitedTitle: 'Du er invitert!', pitchTitle: 'Lag en gratis konto – du trenger bare e-post', pitch1: 'Del med dem du bor med', pitch2: 'Nå alt fra PC-en og andre telefoner', pitch3: 'Trygt hvis telefonen blir borte',
   fold: 'Slå sammen', unfold: 'Utvid', foldAll: 'Slå sammen alle', unfoldAll: 'Utvid alle', badEmail: 'Sjekk e-postadressen.', sending: 'Sender…', sendTimeout: 'E-postserveren svarte ikke. Prøv igjen om et minutt.',
   mailNotSent: 'E-posten ble ikke sendt', errorCode: 'Detaljer', moveLocalQ: n => `Telefonen har esker og ting (${n}) som ikke er på kontoen din. Flytte dem inn? De merkes «Ny».`, moveLocalYes: 'Ja, flytt dem inn', moveLocalNo: 'Nei, fjern dem',
   logInOrCreate: 'Logg inn eller lag konto', yourAccount: 'Kontoen din', peopleTitle: 'Personer i husstanden', peopleHint: 'Legg til alle som har ting her. Inviter dem som vil bruke appen selv.',
