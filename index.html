@@ -964,7 +964,8 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .welcome .wform{gap:10px}
 .welcome .wform .field{text-align:left}
-.codein{font-size:var(--fs-6);letter-spacing:.35em;text-align:center;font-weight:700;margin:8px 0}
+.code-field{margin:8px 0}
+.codein{font-size:var(--fs-6);letter-spacing:.35em;text-align:center;font-weight:700}
 /* 2026-10-21.3 */
 [hidden]{display:none!important}
 .welcome{padding-top:24px;gap:10px}
@@ -1158,6 +1159,12 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .mvrow.unpacked{opacity:.55}
 .mvopen{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;color:var(--text);text-align:left;font:inherit;padding:0}
 .mvico svg{width:38px;height:38px;display:block}
+.mvitemphoto{width:38px;height:38px;flex:none;display:grid;place-items:center;font-size:26px;overflow:hidden}
+.mvitemphoto img{width:100%;height:100%;object-fit:cover;border-radius:var(--r-2)}
+.move-pick-row>span{display:flex;flex-direction:column;min-width:0}
+.move-pick-row small{color:var(--muted);font-size:var(--fs-1)}
+.move-pick-filters{margin:8px 0}
+.move-pick-filters .chipbtn{min-height:32px;padding:4px 10px}
 .mvtx{display:flex;flex-direction:column;min-width:0}
 .mvtx b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvtx small{color:var(--muted);font-size:var(--fs-1)}
@@ -1167,6 +1174,17 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .mvstate.moved{background:var(--primary)}
 .mvstate.unpacked{background:var(--ok)}
 .mvactions{display:flex;flex-direction:column;gap:8px}
+.move-room-filters{gap:4px}
+.move-room-filters .chipbtn{min-height:32px;padding:3px 8px;font-size:var(--fs-1)}
+.move-sort-row{display:flex;justify-content:flex-end;margin:2px 0 4px}
+.move-sort-row .btn{min-height:28px;padding:3px 8px;font-size:var(--fs-1)}
+.move-sort-row .btn svg{width:16px;height:16px;flex:none}
+.mv-sort-options{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.move-room-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px;margin:0 0 8px}
+.move-room-row .input{min-width:0;margin:0}
+.move-room-add{display:flex;align-items:center;gap:8px;margin-top:12px}
+.move-room-add .input{flex:1;min-width:0;margin:0}
+.move-room-editor .btn.small{min-height:32px;padding:4px 10px;font-size:var(--fs-1)}
 .chips.quick small{opacity:.7}
 .wnote{margin:-8px 0 12px;font-size:var(--fs-2);color:var(--muted)}
 .wnote.soon{color:var(--dot);font-weight:600}
@@ -13799,7 +13817,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-28.7';
+const APP_VERSION = '2026-10-30.10';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -15576,9 +15594,9 @@ function renderSearch(){
     <div class="chips quick">${quickChipsInner()}${scopeChip()}</div>
     ${askOpen ? `<div class="askpanel"><div class="askhead"><b>✨ Storrrage</b><small>beta · ${ai.provider === 'off' ? tr('simpleMode') : 'AI'}</small><button class="linkbtn" id="askX" aria-label="${esc(tr('close'))}">✕</button></div><div class="vlog chat" id="vlog"></div><div class="vlive" id="vLive" hidden></div></div>` : ''}
     ${collectionChips(q)}
-    ${(q || P.size || B.size) && !selecting && /itile/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
+    ${(q || P.size || B.size || searchQuick) && !selecting && /(itile|btile|stile)/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
     <div id="results">${body}</div>
-    ${selBar(['tag', 'move', 'del'])}`;
+    ${selBar(['tag', 'move', 'del', ...(move.active ? ['addtomove'] : [])])}`;
   document.body.classList.toggle('selecting', !!selecting);
   if ($('#scopeBtn')) $('#scopeBtn').onclick = scopeSheet;
   const s = $('#q');
@@ -15658,10 +15676,16 @@ function renderWelcome(){
       <button class="btn block" id="wLog">${tr('logInOrCreate')}</button>
       <div class="wform" id="wLogF" hidden>${loginForm(true)}</div>
       <p class="hint" id="wLogHint">${tr('loginHint')}</p></div>`}</div>`;
-  wireLogin();
+  wireLogin(() => { view = {name: 'welcome'}; render(); });
   if (pendingJoinCode) return;
-  $('#wNew').onclick = () => { $('#wNew').hidden = true; $('#wNewHint').hidden = true; $('#wNewF').hidden = false; $('#wName').focus(); };
-  $('#wLog').onclick = () => { $('#wLog').hidden = true; $('#wLogHint').hidden = true; $('#wLogF').hidden = false; $('#clEmail').focus(); };
+  const showWelcomeForm = panel => {
+    const newOpen = panel === 'new', loginOpen = panel === 'login';
+    $('#wNew').hidden = newOpen; $('#wNewHint').hidden = newOpen; $('#wNewF').hidden = !newOpen;
+    $('#wLog').hidden = loginOpen; $('#wLogHint').hidden = loginOpen; $('#wLogF').hidden = !loginOpen;
+    (newOpen ? $('#wName') : $('#clEmail')).focus();
+  };
+  $('#wNew').onclick = () => showWelcomeForm('new');
+  $('#wLog').onclick = () => showWelcomeForm('login');
   const go = () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
     me = addPerson(n); metaPut('me', me).catch(() => {});
@@ -16460,9 +16484,19 @@ function selBar(acts){
   return `<div class="donebar selbar"><span class="selcount">${tr('selected', n)}</span><button class="btn quiet" data-act="selcancel">${tr('cancel')}</button>
     ${acts.includes('tag') ? `<button class="btn quiet" data-act="seltag" ${n ? '' : 'disabled'}>#&nbsp;${tr('toCollection')}</button>` : ''}
     ${acts.includes('move') ? `<button class="btn quiet" data-act="selmove" ${n ? '' : 'disabled'}>${tr('moveSel')}</button>` : ''}
+    ${acts.includes('addtomove') ? `<button class="btn primary" data-act="seladdtomove" ${n ? '' : 'disabled'}>${tr('addSelectedToMove')}</button>` : ''}
     ${acts.includes('del') ? `<button class="btn danger" data-act="seldel" ${n ? '' : 'disabled'}>${tr('delSel')}</button>` : ''}</div>`;
 }
 function selectedItems(){ return [...(selecting || [])].filter(k => k.startsWith('i:')).map(k => { const [, bid, iid] = k.split(':'); const b = findBox(bid), it = b && (b.items || []).find(i => i.id === iid); return it ? [it, b] : null; }).filter(Boolean); }
+function selAddToMove(){
+  const keys = [...(selecting || [])].map(key => {
+    const [kind, boxId, itemId] = key.split(':');
+    return kind === 'i' ? `item:${itemId}` : `box:${boxId}`;
+  });
+  const count = addMoveEntries(keys);
+  selecting = null; render();
+  if (count) toast(tr('moveAdded', count));
+}
 async function selTag(){
   const sel = selectedItems(); if (!sel.length) return;
   const existing = collectionsAll().map(c => c.tag);
@@ -17268,6 +17302,7 @@ app.addEventListener('click', e => {
     case 'clearrq': recentQ = []; metaPut('recentQ', recentQ).catch(() => {}); render(); break;
     case 'pickicon': iconSheet(); break;
     case 'install': installApp(); break;
+    case 'seladdtomove': selAddToMove(); break;
     case 'movestart': case 'movenew': case 'moveadd': case 'movelabels': case 'moverooms': case 'moveend': moveAction(d.act); break;
     case 'gomove': navigate({name: 'move'}); break;
     case 'scanbarcode': scanItemBarcode(); break;
@@ -18879,7 +18914,7 @@ function menuSheet(){
     ${row('feedback', ICON.chat, tr('feedback'))}
     ${canInstall() ? row('install', ICON.install, tr('installTitle')) : ''}
     ${row('loans', ICON.lend, tr('loansTitle'), loans().length ? `<b class="count${loanOld().length ? '' : ' muted'}">${loans().length}</b>` : '')}
-    ${row('move', ICON.truck, tr('moveTitle'), move.active ? `<b class="count muted">${moveBoxes().filter(b => b.moveState !== 'unpacked').length}</b>` : '')}
+    ${row('move', ICON.truck, tr('moveTitle'), move.active ? `<b class="count muted">${moveEntries().filter(entry => entry.state !== 'unpacked').length}</b>` : '')}
     ${row('settings', ICON.gear, tr('settings'))}
     ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
     ${cloud.admin ? row('admin', ICON.chart, tr('adminTitle')) : ''}
@@ -19227,30 +19262,31 @@ function syncText(){
 function updateCloudLine(){ const el = $('#cloudLine'); if (el) el.textContent = syncText(); }
 function loginForm(compact){
   return `<input class="input" id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="${esc(tr('yourEmail'))}" value="${esc(cloud.email || '')}">
-    <button class="btn primary block" id="clSend" style="margin-top:8px">${tr('sendCode')}</button>${compact ? '' : `<p class="proof">${tr('loginHint')}</p>`}`;
+    <button class="btn primary block" id="clSend"${compact ? '' : ' style="margin-top:8px"'}>${tr('sendCode')}</button>${compact ? '' : `<p class="proof">${tr('loginHint')}</p>`}`;
 }
 function accountPitch(){
   return `<div class="pitch"><b>${tr('pitchTitle')}</b><ul>${['pitch1', 'pitch2', 'pitch3'].map(k => `<li>${tr(k)}</li>`).join('')}</ul></div>`;
 }
-function codeSheet(email){
-  openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))} <button class="linkbtn" id="cdWrong">${tr('wrongAddress')}</button></p>
-    <input class="input codein" id="cdIn" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+function codeSheet(email, onWrong){
+  openSheet(`<h3>📬 ${tr('checkMail')}</h3><p>${esc(tr('codeSent', email))}</p>
+    <label class="field code-field"><span>${tr('enterCode')}</span><input class="input codein" id="cdIn" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" aria-label="${esc(tr('enterCode'))}"></label>
     ${navigator.clipboard && navigator.clipboard.readText ? `<button class="btn block icontext" id="cdPaste">📋 <span>${tr('pasteCode')}</span></button>` : ''}
     <button class="btn primary block" id="cdGo">${tr('logIn')}</button>
     <p class="hint">${tr('orTapLink')}</p>
-    <div class="sheet-foot"><button class="btn" id="cdAgain">${tr('sendAgain')}</button><button class="btn" id="cdX">${tr('close')}</button></div>`);
+    <div class="sheet-foot"><button class="btn quiet small" id="cdWrong">${tr('wrongEmail')}</button><button class="btn small" id="cdAgain">${tr('sendAgain')}</button><button class="btn small" id="cdX">${tr('close')}</button></div>`);
   const go = async () => {
-    const c = $('#cdIn').value.replace(/\D/g, ''); if (c.length < 6) return $('#cdIn').focus();
+    const c = $('#cdIn').value.replace(/\D/g, '');
+    if (c.length !== 6 && c.length !== 8){ $('#cdIn').focus(); return toast(tr('codeLength')); }
     $('#cdGo').disabled = true;
     try { await verifyCode(email, c); closeSheet(); location.replace(APP_URL); }
     catch (e){ $('#cdGo').disabled = false; toast(e.status === 403 || e.status === 400 ? tr('codeWrong') : tr('sendFailed')); }
   };
   $('#cdGo').onclick = go;
   const clean = v => (v || '').replace(/\D/g, '');
-  $('#cdIn').addEventListener('input', e => { const d = clean(e.target.value); if (d !== e.target.value) e.target.value = d; if (e.inputType === 'insertFromPaste' && (d.length === 6 || d.length === 8)) go(); });
-  if ($('#cdPaste')) $('#cdPaste').onclick = async () => { try { const d = clean(await navigator.clipboard.readText()); if (d.length >= 6){ $('#cdIn').value = d.slice(0, 10); go(); } else toast(tr('noCodeCopied')); } catch { $('#cdIn').focus(); toast(tr('pasteManually')); } };
+  $('#cdIn').addEventListener('input', e => { const d = clean(e.target.value).slice(0, 8); if (d !== e.target.value) e.target.value = d; if (e.inputType === 'insertFromPaste' && (d.length === 6 || d.length === 8)) go(); });
+  if ($('#cdPaste')) $('#cdPaste').onclick = async () => { try { const d = clean(await navigator.clipboard.readText()); if (d.length === 6 || d.length === 8){ $('#cdIn').value = d; go(); } else toast(tr('noCodeCopied')); } catch { $('#cdIn').focus(); toast(tr('pasteManually')); } };
   $('#cdIn').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-  $('#cdWrong').onclick = () => { closeSheet(); cloudSheet(); };
+  $('#cdWrong').onclick = () => { closeSheet(); onWrong(); };
   $('#cdAgain').onclick = async () => { try { await sendLoginLink(email); toast(tr('sentAgain')); } catch (er){ toast(er.status === 429 ? tr('tooMany') : tr('sendFailed')); } };
   $('#cdX').onclick = closeSheet;
 }
@@ -19259,7 +19295,7 @@ function sendErrorSheet(msg, status, detail){
     <div class="sheet-foot"><button class="btn primary" id="seOk">${tr('ok')}</button></div>`);
   $('#seOk').onclick = closeSheet;
 }
-function wireLogin(){
+function wireLogin(onWrong = cloudSheet){
   const b = $('#clSend'); if (!b) return;
   b.onclick = async () => {
     const e = $('#clEmail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(e)){ $('#clEmail').focus(); return toast(tr('badEmail')); }
@@ -19267,7 +19303,7 @@ function wireLogin(){
     const label = b.textContent; b.disabled = true; b.textContent = tr('sending');
     try {
       await Promise.race([sendLoginLink(e), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), {status: 'timeout'})), 25000))]);
-      cloud.email = e; await saveCloud(); b.disabled = false; b.textContent = label; codeSheet(e);
+      cloud.email = e; await saveCloud(); b.disabled = false; b.textContent = label; codeSheet(e, onWrong);
     } catch (er){
       b.disabled = false; b.textContent = label;
       const detail = er.status === 'timeout' ? '' : (String(er.message || '').match(/"(?:msg|message|error_description)":"([^"]+)"/) || [])[1] || '';
@@ -19563,29 +19599,29 @@ Object.assign(STR.sv, {noPlaceYet: 'Ingen plats än', unsorted: 'Osorterat', add
   unlockTitle: 'Lås upp på den här telefonen', unlockHint: 'Du är med i ett hushåll, men nyckeln finns bara på era telefoner. På en annan telefon i hushållet: ☰ → Hushåll & synk → Bjud in någon. Skanna sedan koden här.', scanQR: 'Skanna QR-kod',
   whatName: 'Vad heter du?', startNew: 'Starta ett nytt förråd', loginWelcome: 'Vi skickar en länk till din e-post. Öppna den på den här telefonen så är du inne – inget lösenord.', invitedIntro: 'Du har blivit inbjuden till ett hushåll! Logga in med din e-post så kommer du direkt in i det.'});
 
-Object.assign(STR.en, {cloudIntro: 'Log in with your e-mail to keep your storage in your account. Then you can use it on your computer and other phones, share it with your household and log out if your phone gets lost.',
+Object.assign(STR.en, {cloudIntro: 'Log in with your e-mail to keep your storage in your account. Then you can use it on the web and other phones, share it with your household and log out if your phone gets lost.',
   e2eNote: 'Stored in your account on servers in the EU. Only you and the people you invite can see it.', inviteSafe: 'The code works once, for 24 hours.', connectNow: 'Save in my account',
   joinOther: 'Join another household (QR)', mergedIntoAccount: 'What was on this phone was added to your account.', logoutQ: 'Log out? Your storage is removed from this device but stays in your account – log in again to get it back.',
   unsyncedQ: n => `${n} changes haven’t been saved to your account yet (no signal?). Log out anyway? They will be lost.`, logoutAll: 'Log out on all devices', logoutAllQ: 'Log out on all your devices? Use this if a phone is lost. Each device removes your storage the next time it’s online.',
   logoutAllHint: 'Lost a phone? Log out on all devices, then log in again on the devices you still use.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.'});
-Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förrådet i ditt konto. Då kommer du åt det från datorn och andra telefoner, kan dela med hushållet och logga ut om telefonen kommer bort.',
+Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förrådet i ditt konto. Då kommer du åt det på webben och andra telefoner, kan dela med hushållet och logga ut om telefonen kommer bort.',
   e2eNote: 'Sparas i ditt konto på servrar i EU. Bara du och de du bjuder in kan se det.', inviteSafe: 'Koden fungerar en gång i 24 timmar.', connectNow: 'Spara i mitt konto',
   joinOther: 'Gå med i ett annat hushåll (QR)', mergedIntoAccount: 'Det som fanns på telefonen lades till i ditt konto.', logoutQ: 'Logga ut? Förrådet tas bort från den här enheten men finns kvar i ditt konto – logga in igen så kommer det tillbaka.',
   unsyncedQ: n => `${n} ändringar har inte sparats i kontot än (ingen täckning?). Logga ut ändå? De försvinner då.`, logoutAll: 'Logga ut på alla enheter', logoutAllQ: 'Logga ut på alla dina enheter? Använd det om en telefon kommit bort. Varje enhet tar bort förrådet nästa gång den är online.',
   logoutAllHint: 'Tappat telefonen? Logga ut från alla enheter och logga sedan in igen på de enheter du fortfarande använder.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
 
-Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, wrongAddress: 'Wrong address?', orTapLink: 'Or tap the button in the e-mail (on this device).', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
-Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, wrongAddress: 'Fel adress?', orTapLink: 'Eller tryck på knappen i mejlet (på den här enheten).', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
+Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, enterCode: 'Email code', codeLength: 'Enter a 6- or 8-digit code.', wrongEmail: 'Wrong email?', orTapLink: 'Or tap the button in the e-mail to continue in Storrrage.', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
+Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, enterCode: 'E-postkod', codeLength: 'Skriv in en kod med 6 eller 8 siffror.', wrongEmail: 'Fel e-post?', orTapLink: 'Eller tryck på knappen i mejlet för att fortsätta i Storrrage.', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
 
 Object.assign(STR.en, {slogan: 'Know what you have – and where it is.', startNew: 'Start my storage', startNewHint: 'New here? Just enter your name and start. No account needed – everything is saved on your phone.',
   or: 'or', loginHint: 'New here? Enter your e-mail to create a free account. Already have an account? Enter the same e-mail to log in. We’ll send you a one-time code—no password.', yourEmail: 'Your e-mail', sendCode: 'Send code',
   invitedTitle: 'You’re invited!', invitedIntro: 'Enter your e-mail and we’ll send you a code. Then you’re straight into the shared storage.',
-  pitchTitle: 'Create a free account – all you need is your e-mail', pitch1: 'Share with the people you live with', pitch2: 'Reach everything from your computer and other phones', pitch3: 'Safe if your phone gets lost',
+  pitchTitle: 'Create a free account – all you need is your e-mail', pitch1: 'Share with the people you live with', pitch2: 'Reach everything on the web and from other phones', pitch3: 'Safe if your phone gets lost',
   fold: 'Fold', unfold: 'Unfold', foldAll: 'Fold all', unfoldAll: 'Unfold all'});
 Object.assign(STR.sv, {slogan: 'Ha koll på allt du har – och var det finns.', startNew: 'Starta mitt förråd', startNewHint: 'Ny här? Skriv bara ditt namn och kör igång. Inget konto behövs – allt sparas på telefonen.',
   or: 'eller', loginHint: 'Ny här? Ange din e-post för att skapa ett gratis konto. Har du redan ett konto? Ange samma e-post för att logga in. Vi skickar en engångskod – inget lösenord.', yourEmail: 'Din e-post', sendCode: 'Skicka kod',
   invitedTitle: 'Du är inbjuden!', invitedIntro: 'Skriv din e-post så mejlar vi en kod. Sedan kommer du direkt in i det delade förrådet.',
-  pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt från datorn och andra telefoner', pitch3: 'Tryggt om telefonen kommer bort',
+  pitchTitle: 'Skapa ett gratis konto – det räcker med e-post', pitch1: 'Dela med dem du bor med', pitch2: 'Nå allt på webben och från andra telefoner', pitch3: 'Tryggt om telefonen kommer bort',
   fold: 'Fäll ihop', unfold: 'Fäll ut', foldAll: 'Fäll ihop alla', unfoldAll: 'Fäll ut alla'});
 
 Object.assign(STR.en, {badEmail: 'Check the e-mail address.', sending: 'Sending…', sendTimeout: 'The mail server didn’t answer in time. Try again in a minute.', mailNotSent: 'The e-mail wasn’t sent', errorCode: 'Details'});
@@ -19745,12 +19781,23 @@ function scanItemBarcode(){
   });
 }
 
-/* ---- moving house: runs next to the normal storage, boxes get a room and a state ---- */
+/* ---- moving house: boxes and individual items get a room and a state ---- */
 let move = {active: false, rooms: []};
 const MOVE_STATES = ['created', 'packed', 'moved', 'unpacked'];
 const DEFAULT_ROOMS = {sv: ['Kök', 'Vardagsrum', 'Sovrum', 'Barnrum', 'Badrum', 'Hall', 'Förråd'], en: ['Kitchen', 'Living room', 'Bedroom', 'Kids’ room', 'Bathroom', 'Hall', 'Storage'], da: ['Køkken', 'Stue', 'Soveværelse', 'Børneværelse', 'Badeværelse', 'Entré', 'Depot'], nb: ['Kjøkken', 'Stue', 'Soverom', 'Barnerom', 'Bad', 'Gang', 'Bod'], fi: ['Keittiö', 'Olohuone', 'Makuuhuone', 'Lastenhuone', 'Kylpyhuone', 'Eteinen', 'Varasto']};
-const moveBoxes = () => realBoxes().filter(b => b.moveState);
-function saveMove(){ metaPut('move', move).catch(() => {}); }
+function hasMovingAncestor(box){
+  let parent = box.parentId ? findBox(box.parentId) : null;
+  while (parent){ if (parent.moveState) return true; parent = parent.parentId ? findBox(parent.parentId) : null; }
+  return false;
+}
+const moveBoxes = () => realBoxes().filter(box => box.moveState && !hasMovingAncestor(box));
+const moveItems = () => boxes.flatMap(box => !hasMovingAncestor(box) && !box.moveState ? (box.items || []).filter(item => item.moveState).map(item => ({it: item, box})) : []);
+const moveEntries = () => [
+  ...moveBoxes().map(box => ({kind: 'box', box, id: box.id, state: box.moveState, room: box.moveRoom})),
+  ...moveItems().map(({it, box}) => ({kind: 'item', box, item: it, id: it.id, state: it.moveState, room: it.moveRoom}))
+];
+const moveRoomNames = () => [...new Set([...(move.rooms || []), ...moveEntries().map(entry => entry.room).filter(Boolean)])];
+function saveMove(){ metaPut('move', move).catch(err => toast(saveErr(err))); }
 let moveFilter = '';
 function renderMove(){
   if (!move.active){
@@ -19758,51 +19805,196 @@ function renderMove(){
       <button class="btn primary block" data-act="movestart">${tr('moveStart')}</button></div>`;
     return;
   }
-  const all = moveBoxes(), cnt = s => all.filter(b => b.moveState === s).length, done = cnt('unpacked');
-  const list = all.filter(b => !moveFilter || (moveFilter === '-' ? !b.moveRoom : b.moveRoom === moveFilter)).sort((x, y) => MOVE_STATES.indexOf(x.moveState) - MOVE_STATES.indexOf(y.moveState) || byCode(x, y));
-  const rooms = [...new Set([...(move.rooms || []), ...all.map(b => b.moveRoom).filter(Boolean)])];
+  const all = moveEntries(), cnt = s => all.filter(entry => entry.state === s).length, done = cnt('unpacked');
+  const rooms = moveRoomNames(), sortMode = MOVE_SORTS.some(key => key === move.sort) ? move.sort : 'status';
+  const list = sortMoveEntries(all.filter(entry => !moveFilter || (moveFilter === '-' ? !entry.room : entry.room === moveFilter)), sortMode, rooms);
   app.innerHTML = `${crumbs([{label: tr('moveTitle').toUpperCase()}])}
     <div class="moveprog"><div class="mpbar"><i style="width:${all.length ? Math.round(done / all.length * 100) : 0}%"></i></div>
       <div class="mpcounts">${MOVE_STATES.map(s => `<span class="mpc ${s}"><b>${cnt(s)}</b> ${tr('mv_' + s)}</span>`).join('')}</div></div>
-    <div class="chips quick"><button class="chipbtn${!moveFilter ? ' on' : ''}" data-mvf="">${tr('allRooms')}</button>${rooms.map(r => `<button class="chipbtn${moveFilter === r ? ' on' : ''}" data-mvf="${esc(r)}">${esc(r)} <small>${all.filter(b => b.moveRoom === r).length}</small></button>`).join('')}</div>
-    <div class="mvlist">${list.map(b => `<div class="mvrow ${b.moveState}"><button class="mvopen" data-open="${esc(b.id)}"><span class="mvico">${boxArt(boxNum(b))}</span><span class="mvtx"><b>${esc(b.name || b.code)}</b><small>${esc(b.code)} · ${(b.items || []).length} ${tr('items').toLowerCase()}</small></span></button>
-      <button class="mvroom" data-mvroom="${esc(b.id)}">${esc(b.moveRoom || tr('pickRoom'))}</button>
-      <button class="mvstate ${b.moveState}" data-mvnext="${esc(b.id)}">${tr('mv_' + b.moveState)}</button></div>`).join('') || `<p class="hint center">${tr('moveEmpty')}</p>`}</div>
+    <div class="chips quick move-room-filters"><button class="chipbtn${!moveFilter ? ' on' : ''}" data-mvf="">${tr('allRooms')}</button><button class="chipbtn${moveFilter === '-' ? ' on' : ''}" data-mvf="-">${tr('moveRoomUnset')} <small>${all.filter(entry => !entry.room).length}</small></button>${rooms.map(r => `<button class="chipbtn${moveFilter === r ? ' on' : ''}" data-mvf="${esc(r)}">${esc(r)} <small>${all.filter(entry => entry.room === r).length}</small></button>`).join('')}</div>
+    <div class="move-sort-row"><button class="btn quiet small icontext" data-mv-sort aria-label="${esc(tr('moveSortTitle'))}"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10m-7 7h4M9 5l3 7 3-7"/></svg>${tr('moveSortLabel')}</button></div>
+    <div class="mvlist">${list.map(entry => `<div class="mvrow ${entry.state} ${entry.kind === 'item' ? 'mv-item-row' : ''}"><button class="mvopen" ${entry.kind === 'box' ? `data-open="${esc(entry.box.id)}"` : `data-open-item="1" data-item="${esc(entry.item.id)}" data-box="${esc(entry.box.id)}"`}><span class="mvico">${entry.kind === 'box' ? boxArt(boxNum(entry.box)) : moveItemIcon(entry.item)}</span><span class="mvtx"><b>${esc(moveEntryName(entry))}</b><small>${esc(entry.kind === 'box' ? `${entry.box.code} · ${(entry.box.items || []).length} ${tr('items').toLowerCase()}` : moveItemWhere(entry.box))}</small></span></button>
+      <button class="mvroom" data-mvroom="${esc(entry.kind)}:${esc(entry.id)}">${esc(entry.room || tr('pickRoom'))}</button>
+      <button class="mvstate ${entry.state}" data-mvnext="${esc(entry.kind)}:${esc(entry.id)}">${tr('mv_' + entry.state)}</button></div>`).join('') || `<p class="hint center">${tr('moveEmpty')}</p>`}</div>
     <div class="mvactions"><button class="btn primary block" data-act="movenew">${tr('moveNewBox')}</button>
       <button class="btn block" data-act="moveadd">${tr('moveAddExisting')}</button>
       <button class="btn block" data-act="movelabels">${tr('moveLabels')}</button>
-      <button class="btn block" data-act="moverooms">${tr('editRooms')}</button>
+      <button class="btn block" data-act="moverooms">${rooms.length ? tr('editRooms') : tr('addMoveRoom')}</button>
       <button class="btn danger block" data-act="moveend">${tr('moveEnd')}</button></div>`;
   app.querySelectorAll('[data-mvf]').forEach(c => c.onclick = () => { moveFilter = c.dataset.mvf; render(); });
-  app.querySelectorAll('[data-mvnext]').forEach(c => c.onclick = () => { const nb = clone(findBox(c.dataset.mvnext)); nb.moveState = MOVE_STATES[(MOVE_STATES.indexOf(nb.moveState) + 1) % MOVE_STATES.length]; putBox(nb); track('move_state', {s: nb.moveState}); });
-  app.querySelectorAll('[data-mvroom]').forEach(c => c.onclick = () => roomPick(c.dataset.mvroom));
+  app.querySelector('[data-mv-sort]').onclick = moveSortSheet;
+  app.querySelectorAll('[data-mvnext]').forEach(c => c.onclick = () => { let state; updateMoveEntry(c.dataset.mvnext, entry => { entry.moveState = MOVE_STATES[(MOVE_STATES.indexOf(entry.moveState) + 1) % MOVE_STATES.length]; state = entry.moveState; }); track('move_state', {s: state}); });
+  app.querySelectorAll('[data-mvroom]').forEach(c => c.onclick = () => { const [kind, id] = c.dataset.mvroom.split(':'); roomPick(kind, id); });
+  app.querySelectorAll('[data-open-item]').forEach(c => c.onclick = () => navigate({name: 'item', boxId: c.dataset.box, itemId: c.dataset.item}));
 }
-function roomPick(boxId){
-  const b = findBox(boxId); const rooms = move.rooms || [];
-  openSheet(`<h3>${tr('pickRoom')} – ${esc(b.code)}</h3><div class="chips">${rooms.map(r => `<button class="chipbtn${b.moveRoom === r ? ' on' : ''}" data-rp="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+const MOVE_SORTS = ['status', 'asIs', 'number', 'room'];
+function sortMoveEntries(entries, mode, rooms){
+  if (mode === 'status') return entries.sort((x, y) => MOVE_STATES.indexOf(x.state) - MOVE_STATES.indexOf(y.state) || (x.kind === 'box' && y.kind === 'box' ? byCode(x.box, y.box) : moveEntryName(x).localeCompare(moveEntryName(y), 'sv')));
+  if (mode === 'number') return entries.sort((x, y) => byCode(x.box, y.box) || (x.kind === y.kind ? moveEntryName(x).localeCompare(moveEntryName(y), 'sv') : x.kind === 'box' ? -1 : 1));
+  if (mode === 'room'){
+    const roomOrder = new Map(rooms.map((room, index) => [room, index]));
+    return entries.sort((x, y) => (roomOrder.get(x.room) ?? rooms.length) - (roomOrder.get(y.room) ?? rooms.length));
+  }
+  return entries;
+}
+function moveSortSheet(){
+  openSheet(`<h3>${tr('moveSortTitle')}</h3><div class="mv-sort-options">${MOVE_SORTS.map(mode => `<button class="btn block${move.sort === mode || (!move.sort && mode === 'status') ? ' on' : ''}" data-mv-sort-choice="${mode}">${tr('moveSort_' + mode)}</button>`).join('')}</div><div class="sheet-foot"><button class="btn quiet" id="mvSortClose">${tr('close')}</button></div>`);
+  $('#mvSortClose').onclick = closeSheet;
+  sheet.querySelectorAll('[data-mv-sort-choice]').forEach(button => button.onclick = () => {
+    move.sort = button.dataset.mvSortChoice;
+    saveMove(); closeSheet(); renderMove();
+  });
+}
+function moveEntryName(entry){ return entry.kind === 'box' ? entry.box.name || entry.box.code : entry.item.name || tr('unnamed'); }
+function moveItemWhere(box){ return box.loose ? placeName(box.placeId) + ' · ' + tr('notInBoxShort') : `${box.code} ${box.name}`; }
+function moveItemIcon(item){
+  const photo = (item.photos || [])[0];
+  return photo ? `<span class="mvitemphoto">${imgTag(photo.ref, '')}</span>` : `<span class="mvitemphoto">${guessIcon(item)}</span>`;
+}
+function findMoveEntry(key){
+  const [kind, id] = key.split(':');
+  if (kind === 'box'){ const box = findBox(id); return box ? {kind, box, entry: box} : null; }
+  const box = boxes.find(b => (b.items || []).some(item => item.id === id)), entry = box && box.items.find(item => item.id === id);
+  return entry ? {kind, box, entry} : null;
+}
+function updateMoveEntry(key, update){
+  const found = findMoveEntry(key); if (!found) return;
+  const parent = clone(found.box);
+  const entry = found.kind === 'box' ? parent : parent.items.find(item => item.id === found.entry.id);
+  update(entry); putBox(parent);
+}
+function moveCandidates(){
+  const boxCandidates = realBoxes().filter(box => !box.moveState && !hasMovingAncestor(box)).map(box => ({kind: 'box', box, key: `box:${box.id}`, name: box.name || box.code,
+      hay: [box.code, box.name, box.location, box.notes, placeName(box.placeId), ...(box.items || []).map(item => item.name), ...(box.documents || []).map(doc => doc.name)].join(' ').toLowerCase()}));
+  const itemCandidates = boxes.flatMap(box => (box.items || []).filter(item => !item.moveState && !box.moveState && !hasMovingAncestor(box)).map(item => ({kind: 'item', box, item, key: `item:${item.id}`, name: item.name || tr('unnamed'),
+      hay: itemHay(item, box).hay})));
+  return [...boxCandidates, ...itemCandidates].sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+}
+function addMoveEntries(keys){
+  const groups = new Map();
+  const selectedBoxes = new Set(keys.filter(key => key.startsWith('box:')).map(key => key.slice(4)));
+  const isIncludedBySelectedBox = box => {
+    let current = box;
+    while (current){ if (selectedBoxes.has(current.id)) return true; current = current.parentId ? findBox(current.parentId) : null; }
+    return false;
+  };
+  for (const key of keys){
+    const found = findMoveEntry(key); if (!found || found.entry.moveState) continue;
+    if (hasMovingAncestor(found.box) || found.kind === 'item' && found.box.moveState) continue;
+    if (found.kind === 'item' && isIncludedBySelectedBox(found.box)) continue;
+    if (!groups.has(found.box.id)) groups.set(found.box.id, {box: clone(found.box), changes: []});
+    groups.get(found.box.id).changes.push(found);
+  }
+  let added = 0;
+  for (const {box, changes} of groups.values()){
+    changes.forEach(({kind, entry}) => { const target = kind === 'box' ? box : box.items.find(item => item.id === entry.id); if (!target.moveState){ target.moveState = 'packed'; added++; } });
+    putBox(box, true);
+  }
+  return added;
+}
+function addExistingMoveSheet(){
+  let kind = 'all';
+  const draw = () => {
+    const q = $('#meQ').value.trim().toLowerCase();
+    const list = moveCandidates().filter(entry => (kind === 'all' || entry.kind === kind) && (!q || entry.hay.includes(q)));
+    $('#meList').innerHTML = list.map(entry => `<div class="prow pick move-pick-row"><span><b>${entry.kind === 'box' ? esc(entry.box.code) : esc(entry.name)}</b>${entry.kind === 'box' ? ` ${esc(entry.name)}` : ''}<small>${esc(entry.kind === 'box' ? placeName(entry.box.placeId) : moveItemWhere(entry.box))}</small></span><button class="btn primary small" data-me-add="${esc(entry.key)}">${tr('add')}</button></div>`).join('') || `<p class="hint">${tr('nothingHere')}</p>`;
+    $('#meList').querySelectorAll('[data-me-add]').forEach(button => button.onclick = () => {
+      const count = addMoveEntries([button.dataset.meAdd]);
+      if (!count) return;
+      saveMove(); closeSheet(); render(); toast(tr('moveAdded', count));
+    });
+  };
+  openSheet(`<h3>${tr('moveAddExisting')}</h3><input class="input" id="meQ" type="search" placeholder="${esc(tr('typeKeyword'))}" autocomplete="off">
+    <div class="chips move-pick-filters"><button class="chipbtn small on" data-me-kind="all">${tr('moveAll')}</button><button class="chipbtn small" data-me-kind="box">${tr('allBoxes')}</button><button class="chipbtn small" data-me-kind="item">${tr('allItems')}</button></div>
+    <div class="pblist" id="meList"></div><div class="sheet-foot"><button class="btn" id="meClose">${tr('cancel')}</button></div>`);
+  $('#meQ').oninput = draw;
+  sheet.querySelectorAll('[data-me-kind]').forEach(button => button.onclick = () => { kind = button.dataset.meKind; sheet.querySelectorAll('[data-me-kind]').forEach(el => el.classList.toggle('on', el === button)); draw(); });
+  $('#meClose').onclick = closeSheet;
+  draw();
+}
+function roomPick(kind, id){
+  const key = `${kind}:${id}`, found = findMoveEntry(key); if (!found) return;
+  const rooms = moveRoomNames(), currentRoom = found.entry.moveRoom;
+  openSheet(`<h3>${tr('pickRoom')} – ${esc(found.kind === 'box' ? found.box.code : found.entry.name || tr('unnamed'))}</h3><div class="chips"><button class="chipbtn${!currentRoom ? ' on' : ''}" data-rp="">${tr('moveRoomUnset')}</button>${rooms.map(r => `<button class="chipbtn${currentRoom === r ? ' on' : ''}" data-rp="${esc(r)}">${esc(r)}</button>`).join('')}</div>
     <div class="vtype" style="margin-top:10px"><input class="input" id="rpNew" placeholder="${esc(tr('newRoom'))}"><button class="btn" id="rpAdd">${tr('add')}</button></div>
     <div class="sheet-foot"><button class="btn" id="rpX">${tr('close')}</button></div>`);
-  const set = r => { const nb = clone(findBox(boxId)); nb.moveRoom = r; putBox(nb); closeSheet(); };
+  const set = r => { updateMoveEntry(key, entry => { if (r) entry.moveRoom = r; else delete entry.moveRoom; }); closeSheet(); };
   sheet.querySelectorAll('[data-rp]').forEach(c => c.onclick = () => set(c.dataset.rp));
-  $('#rpAdd').onclick = () => { const r = $('#rpNew').value.trim(); if (!r) return; if (!rooms.includes(r)){ move.rooms = [...rooms, r]; saveMove(); } set(r); };
+  $('#rpAdd').onclick = () => { const r = $('#rpNew').value.trim(); if (!r) return; if (!rooms.some(room => room.toLocaleLowerCase() === r.toLocaleLowerCase())){ move.rooms = [...rooms, r]; saveMove(); } set(r); };
   $('#rpX').onclick = closeSheet;
+}
+function editMoveRooms(){
+  const draw = () => {
+    const rooms = moveRoomNames();
+    const rows = rooms.map((r, i) => `<div class="move-room-row"><input class="input" aria-label="${esc(r)}" data-mr-name="${i}" value="${esc(r)}"><button class="btn danger small" data-mr-del="${i}">${tr('del')}</button><button class="btn primary small" data-mr-save="${i}">${tr('save')}</button></div>`).join('');
+    sheet.querySelector('.sheet').innerHTML = `<div class="move-room-editor"><h3>${tr('editRooms')}</h3>${rows || `<p class="hint">${tr('moveEmptyRooms')}</p>`}<div class="move-room-add"><input class="input" id="mrNew" placeholder="${esc(tr('newRoom'))}"><button class="btn primary small" id="mrAdd">${tr('addMoveRoom')}</button></div><div class="sheet-foot"><button class="btn quiet" id="mrClose">${tr('close')}</button></div></div>`;
+    $('#mrClose').onclick = closeSheet;
+    $('#mrAdd').onclick = () => {
+      const name = $('#mrNew').value.trim();
+      if (!name) return toast(tr('moveRoomNameRequired'));
+      if (rooms.some(room => room.toLocaleLowerCase() === name.toLocaleLowerCase())) return toast(tr('moveRoomExists'));
+      move.rooms = [...rooms, name];
+      saveMove(); renderMove(); draw();
+    };
+    sheet.querySelectorAll('[data-mr-save]').forEach(button => button.onclick = () => {
+      const oldName = rooms[+button.dataset.mrSave], newName = $(`[data-mr-name="${button.dataset.mrSave}"]`).value.trim();
+      if (!newName) return toast(tr('moveRoomNameRequired'));
+      move.rooms = [...new Set(moveRoomNames().map(r => r === oldName ? newName : r))];
+      boxes.forEach(box => {
+        const updated = clone(box); let changed = false;
+        if (updated.moveRoom === oldName){ updated.moveRoom = newName; changed = true; }
+        updated.items = (updated.items || []).map(item => {
+          if (item.moveRoom !== oldName) return item;
+          changed = true; return {...item, moveRoom: newName};
+        });
+        if (changed) putBox(updated, true);
+      });
+      if (moveFilter === oldName) moveFilter = newName;
+      saveMove(); renderMove(); draw();
+    });
+    sheet.querySelectorAll('[data-mr-del]').forEach(button => button.onclick = () => {
+      const name = rooms[+button.dataset.mrDel];
+      move.rooms = moveRoomNames().filter(r => r !== name);
+      boxes.forEach(box => {
+        const updated = clone(box); let changed = false;
+        if (updated.moveRoom === name){ delete updated.moveRoom; changed = true; }
+        updated.items = (updated.items || []).map(item => {
+          if (item.moveRoom !== name) return item;
+          changed = true; const {moveRoom, ...rest} = item; return rest;
+        });
+        if (changed) putBox(updated, true);
+      });
+      if (moveFilter === name) moveFilter = '';
+      saveMove(); renderMove(); draw();
+    });
+  };
+  openSheet('<div></div>');
+  draw();
 }
 function moveAction(a){
   if (a === 'movestart'){ move = {active: true, rooms: DEFAULT_ROOMS[lang] || DEFAULT_ROOMS.en, startedAt: new Date().toISOString()}; saveMove(); track('move_start'); return render(); }
-  if (a === 'movenew') return (async () => {
-    const n = await askText(tr('boxNameQ'), {placeholder: tr('boxNamePh'), ok: tr('saveBox')}); if (n === null || n === undefined) return;
-    const pid = scopePlace() || places.find(p => !p.inbox)?.id || ensureInbox().id, now = new Date().toISOString();
-    const b = {id: newId(), code: nextCode(pid), name: (n || '').trim() || tr('unnamed'), placeId: pid, items: [], moveState: 'created', createdAt: now, updatedAt: now, checkedAt: now};
-    putBox(b, true); render(); roomPick(b.id);
-  })();
-  if (a === 'moveadd') return pickBoxSheet(tr('moveAddExisting'), id => { const nb = clone(findBox(id)); nb.moveState = 'packed'; putBox(nb); }, b => !b.moveState);
-  if (a === 'movelabels'){ const l = moveBoxes(); if (!l.length) return toast(tr('moveEmpty')); return labels(l); }
-  if (a === 'moverooms') return (async () => { const v = await askText(tr('moveRooms'), {value: (move.rooms || []).join(', '), ok: tr('save')}); if (v === null || v === undefined) return; move.rooms = v.split(',').map(x => x.trim()).filter(Boolean); saveMove(); render(); })();
-  if (a === 'moveend') return askConfirm(tr('moveEndQ'), tr('moveEnd')).then(y => { if (!y) return; moveBoxes().forEach(b => { const nb = clone(b); delete nb.moveState; delete nb.moveRoom; putBox(nb, true); }); move = {active: false, rooms: move.rooms}; saveMove(); track('move_end'); toast(tr('moveEnded')); render(); });
+  if (a === 'movenew'){
+    const storagePlaces = places.filter(p => !p.inbox), scopedPlace = scopePlace();
+    const selectedPlace = findPlace(scopedPlace)?.inbox ? 'inbox' : storagePlaces.some(p => p.id === scopedPlace) ? scopedPlace : storagePlaces[0]?.id || 'inbox';
+    openSheet(`<h3>${tr('moveNewBox')}</h3><label class="field"><span>${tr('name')}</span><input id="mnName" placeholder="${esc(tr('boxNamePh'))}"></label>
+      <label class="field"><span>${tr('storagePlace')}</span><select id="mnPlace">${storagePlaces.map(p => `<option value="${esc(p.id)}"${p.id === selectedPlace ? ' selected' : ''}>${esc(placeIcon(p) + ' ' + p.name)}</option>`).join('')}<option value="inbox"${selectedPlace === 'inbox' ? ' selected' : ''}>📥 ${tr('noPlaceYet')}</option></select></label>
+      <div class="sheet-foot"><button class="btn quiet" id="mnCancel">${tr('cancel')}</button><button class="btn primary" id="mnCreate">${tr('addBox')}</button></div>`);
+    $('#mnCancel').onclick = closeSheet;
+    $('#mnCreate').onclick = () => {
+      const choice = $('#mnPlace').value, pid = choice === 'inbox' ? ensureInbox().id : choice, now = new Date().toISOString();
+      const b = {id: newId(), code: nextCode(pid), name: $('#mnName').value.trim() || tr('unnamed'), placeId: pid, items: [], moveState: 'created', createdAt: now, updatedAt: now, checkedAt: now};
+      putBox(b, true); closeSheet(); render(); roomPick('box', b.id);
+    };
+    return;
+  }
+  if (a === 'moveadd') return addExistingMoveSheet();
+  if (a === 'movelabels'){ const l = moveBoxes(); if (!l.length) return toast(tr('moveNoBoxLabels')); return labels(l); }
+  if (a === 'moverooms') return editMoveRooms();
+  if (a === 'moveend') return askConfirm(tr('moveEndQ'), tr('moveEnd')).then(y => { if (!y) return; boxes.forEach(b => { const nb = clone(b); delete nb.moveState; delete nb.moveRoom; nb.items = (nb.items || []).map(item => { const {moveState, moveRoom, ...rest} = item; return rest; }); putBox(nb, true); }); move = {active: false, rooms: move.rooms}; saveMove(); track('move_end'); toast(tr('moveEnded')); render(); });
 }
 function moveBanner(){
-  if (!move.active || !moveBoxes().length) return '';
-  const all = moveBoxes(), done = all.filter(b => b.moveState === 'unpacked').length;
+  if (!move.active || !moveEntries().length) return '';
+  const all = moveEntries(), done = all.filter(entry => entry.state === 'unpacked').length;
   return `<button class="movebanner" data-act="gomove">${ICON.truck}<span>${tr('moveOngoing', done, all.length)}</span><b>›</b></button>`;
 }
 
@@ -19810,16 +20002,18 @@ Object.assign(STR.en, {editRooms: 'Edit rooms', labelLinked: c => `The label now
   printLabel: 'Print label', useOtherLabel: 'Use another label (scan it)', moveLabel: 'Move this label to another box', labelMenuHint: 'Labels can be moved between boxes. Pre-printed blank labels are linked the first time you scan them.',
   blankLabels: 'Blank labels', blankHowMany: 'How many blank labels?', blankPrintHint: 'Print, cut out and stick them on boxes. The first scan links each label to a box.',
   scanBarcode: 'Scan barcode', pointBarcode: 'Point the camera at the barcode.', noBarcodeCam: 'Barcode scanning isn’t available in this browser. Type the number instead.', lookingUp: 'Looking up the product…', barcodeFound: n => `Found: ${n}`, barcodeSaved: 'Barcode saved. No product info found – write the name yourself.',
-  moveTitle: 'Moving', moveIntroH: 'Moving house?', moveIntro: 'Create boxes, then follow them from created to packed to moved to unpacked. Your normal storage keeps working as usual.', moveStart: 'Start a move',
-  mv_packed: 'Packed', mv_moved: 'Moved', mv_unpacked: 'Unpacked', allRooms: 'All rooms', pickRoom: 'Choose room', newRoom: 'New room', moveEmpty: 'No boxes in the move yet.', moveNewBox: 'New moving box', moveAddExisting: 'Add existing boxes',
-  moveLabels: 'Print labels for the move', moveRooms: 'Rooms (separate with commas)', moveEnd: 'Finish the move', moveEndQ: 'Finish the move? The boxes stay where they are, without room and moving status.', moveEnded: 'Move finished. Welcome home!', moveOngoing: (d, n) => `Moving: ${d} of ${n} boxes unpacked`});
+  moveTitle: 'Moving', moveIntroH: 'Moving house?', moveIntro: 'Add boxes and individual items to the move, then follow each from packed to moved to unpacked. Their normal storage stays unchanged.', moveStart: 'Start a move',
+  mv_packed: 'Packed', mv_moved: 'Moved', mv_unpacked: 'Unpacked', allRooms: 'All rooms', pickRoom: 'Choose room', newRoom: 'New room', moveEmpty: 'No boxes or items in the move yet.', moveNewBox: 'New moving box', moveAddExisting: 'Add existing',
+  moveLabels: 'Print box labels', moveNoBoxLabels: 'No boxes in the move to label.', moveRooms: 'Rooms (separate with commas)', moveEnd: 'Finish the move', moveEndQ: 'Finish the move? Items and boxes keep their normal storage location, but lose their moving status and room.', moveEnded: 'Move finished. Welcome home!', moveOngoing: (d, n) => `Moving: ${d} of ${n} things unpacked`,
+  moveRoomUnset: 'No room yet', moveRoomNameRequired: 'Give the room a name first.', moveEmptyRooms: 'No rooms yet.', addMoveRoom: 'Add room', moveRoomExists: 'That room already exists.', moveSortTitle: 'Sort and group', moveSortLabel: 'Sort', moveSort_status: 'By status', moveSort_asIs: 'Keep current order', moveSort_number: 'By box number', moveSort_room: 'Group by room', moveAll: 'All', addSelectedToMove: 'Add selected to move', moveAdded: n => `Added ${n} ${n === 1 ? 'thing' : 'things'} to the move.`});
 Object.assign(STR.sv, {editRooms: 'Ändra rum', labelLinked: c => `Etiketten hör nu till ${c}.`, newLabelH: 'Ny etikett', newLabelHint: 'Den här etiketten används inte än. Vad ska den höra till?', newLabelBox: 'Skapa en ny låda', newLabelLink: 'Koppla till en befintlig låda', boxNameQ: 'Vad finns i lådan?',
   printLabel: 'Skriv ut etikett', useOtherLabel: 'Använd en annan etikett (skanna den)', moveLabel: 'Flytta etiketten till en annan låda', labelMenuHint: 'Etiketter kan flyttas mellan lådor. Förtryckta tomma etiketter kopplas första gången du skannar dem.',
   blankLabels: 'Tomma etiketter', blankHowMany: 'Hur många tomma etiketter?', blankPrintHint: 'Skriv ut, klipp och sätt på lådorna. Första skanningen kopplar etiketten till en låda.',
   scanBarcode: 'Skanna streckkod', pointBarcode: 'Rikta kameran mot streckkoden.', noBarcodeCam: 'Streckkodsläsning finns inte i den här webbläsaren. Skriv in numret i stället.', lookingUp: 'Söker produkten…', barcodeFound: n => `Hittade: ${n}`, barcodeSaved: 'Streckkoden sparad. Ingen produktinfo hittades – skriv namnet själv.',
-  moveTitle: 'Flytt', moveIntroH: 'Ska du flytta?', moveIntro: 'Skapa lådor och följ dem från skapad till packad, flyttad och uppackad. Ditt vanliga förråd fungerar som vanligt under tiden.', moveStart: 'Starta en flytt',
-  mv_packed: 'Packad', mv_moved: 'Flyttad', mv_unpacked: 'Uppackad', allRooms: 'Alla rum', pickRoom: 'Välj rum', newRoom: 'Nytt rum', moveEmpty: 'Inga lådor i flytten än.', moveNewBox: 'Ny flyttlåda', moveAddExisting: 'Lägg till befintliga lådor',
-  moveLabels: 'Skriv ut etiketter för flytten', moveRooms: 'Rum (separera med komma)', moveEnd: 'Avsluta flytten', moveEndQ: 'Avsluta flytten? Lådorna stannar där de är, utan rum och flyttstatus.', moveEnded: 'Flytten är klar. Välkommen hem!', moveOngoing: (d, n) => `Flytt: ${d} av ${n} lådor uppackade`});
+  moveTitle: 'Flytt', moveIntroH: 'Ska du flytta?', moveIntro: 'Lägg till lådor och enskilda saker i flytten och följ varje sak från packad till flyttad och uppackad. Den vanliga förvaringen påverkas inte.', moveStart: 'Starta en flytt',
+  mv_packed: 'Packad', mv_moved: 'Flyttad', mv_unpacked: 'Uppackad', allRooms: 'Alla rum', pickRoom: 'Välj rum', newRoom: 'Nytt rum', moveEmpty: 'Inga lådor eller saker i flytten än.', moveNewBox: 'Ny flyttlåda', moveAddExisting: 'Lägg till befintliga',
+  moveLabels: 'Skriv ut lådetiketter', moveNoBoxLabels: 'Det finns inga lådor i flytten att märka.', moveRooms: 'Rum (separera med komma)', moveEnd: 'Avsluta flytten', moveEndQ: 'Avsluta flytten? Saker och lådor behåller sin vanliga förvaring, men får inte längre flyttstatus eller rum.', moveEnded: 'Flytten är klar. Välkommen hem!', moveOngoing: (d, n) => `Flytt: ${d} av ${n} saker uppackade`,
+  moveRoomUnset: 'Inget rum än', moveRoomNameRequired: 'Skriv ett rumsnamn först.', moveEmptyRooms: 'Inga rum än.', addMoveRoom: 'Lägg till rum', moveRoomExists: 'Rummet finns redan.', moveSortTitle: 'Sortera och gruppera', moveSortLabel: 'Sortera', moveSort_status: 'Efter status', moveSort_asIs: 'Behåll ordningen', moveSort_number: 'Efter lådnummer', moveSort_room: 'Gruppera efter rum', moveAll: 'Alla', addSelectedToMove: 'Lägg till valda i flytten', moveAdded: n => `${n} ${n === 1 ? 'sak' : 'saker'} lades till i flytten.`});
 
 /* ---- warranties, total value and lending ---- */
 const daysTo = d => Math.round((new Date(d + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 864e5);
@@ -19964,13 +20158,13 @@ Object.assign(STR.en, {n_many: (n, first) => `${n} things need a look. First: ${
   loanSinceL: 'Lent since', remindBack: 'Remind me to ask for it back in', w1: '1 week', w2: '2 weeks', m1: '1 month', m3: '3 months', pickDate: 'Pick a date', remindOn: d => `Reminder on ${d}`, addInto: c => `Add to box ${c}`, boxInsideX: c => `Box inside ${c}`,
   uploadImageOnly: 'Choose a valid JPEG, PNG, WebP or GIF image.', uploadPdfOnly: 'Choose a valid PDF document.', uploadTooLarge: 'That file is too large. The limit is 25 MB per file.', uploadUnsafeType: 'This file type or content is not supported.', backupInvalid: 'That file isn’t a valid Storrrage backup.',
   takePhoto: 'Take a photo', pickPhoto: 'Choose from photos', photoUploadCancelled: 'The item was closed before the upload finished, so the file was not attached.', reminderNudgeTitle: 'Turn on reminders?', reminderNudgeText: 'This reminder is saved, but Storrrage cannot notify you until notifications are allowed on this phone.', reminderNudgeAction: 'Enable notifications',
-  mv_created: 'Created — not packed'});
+  mv_created: 'Created'});
 Object.assign(STR.sv, {n_many: (n, first) => `${n} saker behöver kollas. Först: ${first}`, notifTitle: 'Notiser', notifSetting: 'Skicka notiser till den här telefonen', notifHint: 'Påminnelser, garantier som går ut, saker som borde vara tillbaka och ändringar som andra i hushållet gör.', notifBlocked: 'Notiser är blockerade. Tillåt dem för Storrrage i telefonens inställningar.', notifUnsupported: 'Den här webbläsaren kan inte visa notiser.', notifOnToast: 'Notiser är på.',
   n_dueT: 'Dags att kolla', n_due: n => `${n} har inte använts på länge. Behålla eller sälja?`, n_loan: (n, w) => `${w} har fortfarande din ${n}. Dags att be om den tillbaka?`, n_out: (n, w) => `Är ${n} tillbaka i ${w}?`, n_hh: (w, list) => `${w} har gjort ändringar: ${list}`,
   loanSinceL: 'Utlånad sedan', remindBack: 'Påminn mig att be om den tillbaka om', w1: '1 vecka', w2: '2 veckor', m1: '1 månad', m3: '3 månader', pickDate: 'Välj datum', remindOn: d => `Påminnelse ${d}`, addInto: c => `Lägg till i lådan ${c}`, boxInsideX: c => `Låda inuti ${c}`,
   uploadImageOnly: 'Välj en giltig JPEG-, PNG-, WebP- eller GIF-bild.', uploadPdfOnly: 'Välj ett giltigt PDF-dokument.', uploadTooLarge: 'Filen är för stor. Gränsen är 25 MB per fil.', uploadUnsafeType: 'Filtypen eller innehållet stöds inte.', backupInvalid: 'Filen är inte en giltig Storrrage-säkerhetskopia.',
   takePhoto: 'Ta ett foto', pickPhoto: 'Välj bland foton', photoUploadCancelled: 'Saken stängdes innan uppladdningen blev klar, så filen bifogades inte.', reminderNudgeTitle: 'Aktivera påminnelser?', reminderNudgeText: 'Påminnelsen sparas, men Storrrage kan inte meddela dig förrän notiser är tillåtna på telefonen.', reminderNudgeAction: 'Aktivera notiser',
-  mv_created: 'Skapad — inte packad'});
+  mv_created: 'Skapad'});
 
 STR.da = {
   space: 'RUM', places_n: n => n === 1 ? '1 STED' : `${n} STEDER`, boxes_n: n => n === 1 ? '1 KASSE' : `${n} KASSER`, items_n: n => n === 1 ? '1 TING' : `${n} TING`, box_n: n => `KASSE ${n}`,
@@ -20067,7 +20261,7 @@ STR.da = {
   daysLeft: n => n === 1 ? '1 dag tilbage' : `${n} dage tilbage`, restoreItem: 'Gendan', trashEmpty: 'Intet slettet.', emptyTrash: 'Tøm nu', emptyTrashQ: n => `Slet ${n} ting for altid?`,
   restoredTo: (n, w) => `${n} er tilbage i ${w}.`, inTrash: 'Gemmes i Slettet i 30 dage.', remindDate: 'Eller vælg en dato', toCalendar: 'Føj til kalender',
   outNow: 'Fremme nu', allBoxes: 'Alle kasser', allItems: 'Alle ting', itemsH: 'Ting', nothingOut: 'Intet er fremme lige nu.',
-  cloudMenu: 'Konto & deling', cloudTitle: 'Del med din husstand', cloudIntro: 'Log ind med din e-mail, så gemmes dit opbevaringssted på kontoen. Så kan du bruge det på computeren og andre telefoner, dele med husstanden og logge ud, hvis telefonen bliver væk.',
+  cloudMenu: 'Konto & deling', cloudTitle: 'Del med din husstand', cloudIntro: 'Log ind med din e-mail, så gemmes dit opbevaringssted på kontoen. Så kan du bruge det på nettet og andre telefoner, dele med husstanden og logge ud, hvis telefonen bliver væk.',
   email: 'E-mail', emailWhy: 'Bruges kun til login. Ingen adgangskode, ingen nyhedsbreve.', sendLink: 'Send login-link', checkMail: 'Tjek din e-mail', linkSent: e => `Vi har sendt et login-link til ${e}.`,
   linkSamePhone: 'Åbn linket på denne telefon. Det kan tage et minut – tjek også spam.', tooMany: 'For mange links sendt lige nu – prøv igen om lidt.', sendFailed: 'Kunne ikke sende. Prøv igen.',
   loginFailed: 'Login virkede ikke.', loggedIn: 'Du er logget ind.', loggedOut: 'Logget ud. Dine ting er trygt gemt på kontoen.', loginAgain: 'Log ind igen for at fortsætte synkroniseringen.',
@@ -20096,11 +20290,11 @@ STR.da = {
   invitedIntro: 'Skriv din e-mail, så sender vi en kode. Så kommer du direkte ind i det delte opbevaringssted.', connectNow: 'Gem på min konto', joinOther: 'Deltag i en anden husstand (QR)',
   mergedIntoAccount: 'Det der lå på telefonen blev føjet til din konto.', unsyncedQ: n => `${n} ændringer er ikke gemt på kontoen endnu. Log ud alligevel? De går tabt.`,
   logoutAll: 'Log ud på alle enheder', logoutAllQ: 'Log ud på alle dine enheder? Brug det, hvis en telefon er blevet væk.', logoutAllHint: 'Mistet en telefon? Log ud på alle enheder, og log derefter ind igen på de enheder, du stadig bruger.',
-  wipedRemote: 'Du blev logget ud fra en anden enhed, så dine ting blev fjernet herfra.', codeSent: e => `Vi har sendt en e-mail til ${e}. Skriv koden her:`, wrongAddress: 'Forkert adresse?',
-  orTapLink: 'Eller tryk på knappen i mailen (på denne enhed).', sendAgain: 'Send igen', sentAgain: 'Sendt igen.', codeWrong: 'Koden er forkert eller for gammel. Prøv igen eller send en ny.',
+  wipedRemote: 'Du blev logget ud fra en anden enhed, så dine ting blev fjernet herfra.', codeSent: e => `Vi har sendt en e-mail til ${e}. Skriv koden her:`, wrongEmail: 'Forkert e-mail?',
+  orTapLink: 'Eller tryk på knappen i mailen for at fortsætte i Storrrage.', sendAgain: 'Send igen', sentAgain: 'Sendt igen.', codeWrong: 'Koden er forkert eller for gammel. Prøv igen eller send en ny.',
   slogan: 'Hav styr på alt, du har – og hvor det er.', startNewHint: 'Ny her? Skriv bare dit navn og kom i gang. Ingen konto nødvendig – alt gemmes på telefonen.', or: 'eller',
   loginHint: 'Ny her? Skriv din e-mail for at oprette en gratis konto. Har du allerede en konto? Brug samme e-mail for at logge ind. Vi sender en engangskode – ingen adgangskode.', yourEmail: 'Din e-mail', sendCode: 'Send kode',
-  invitedTitle: 'Du er inviteret!', pitchTitle: 'Opret en gratis konto – det kræver kun din e-mail', pitch1: 'Del med dem, du bor med', pitch2: 'Nå alt fra computeren og andre telefoner', pitch3: 'Trygt, hvis telefonen bliver væk',
+  invitedTitle: 'Du er inviteret!', pitchTitle: 'Opret en gratis konto – det kræver kun din e-mail', pitch1: 'Del med dem, du bor med', pitch2: 'Brug det på nettet og fra andre telefoner', pitch3: 'Trygt, hvis telefonen bliver væk',
   fold: 'Fold sammen', unfold: 'Fold ud', foldAll: 'Fold alle sammen', unfoldAll: 'Fold alle ud', badEmail: 'Tjek e-mailadressen.', sending: 'Sender…', sendTimeout: 'Mailserveren svarede ikke. Prøv igen om et minut.',
   mailNotSent: 'Mailen blev ikke sendt', errorCode: 'Detaljer', moveLocalQ: n => `Telefonen har kasser og ting (${n}), som ikke er på din konto. Flyt dem ind? De markeres “Ny”.`, moveLocalYes: 'Ja, flyt dem ind', moveLocalNo: 'Nej, fjern dem',
   logInOrCreate: 'Log ind eller opret konto', yourAccount: 'Din konto', peopleTitle: 'Personer i husstanden', peopleHint: 'Tilføj alle, der har ting her. Invitér dem, der selv vil bruge appen.',
@@ -20210,7 +20404,7 @@ STR.fi = {
   daysLeft: n => n === 1 ? '1 päivä jäljellä' : `${n} päivää jäljellä`, restoreItem: 'Palauta', trashEmpty: 'Ei poistettuja.', emptyTrash: 'Tyhjennä nyt', emptyTrashQ: n => `Poistetaanko ${n} pysyvästi?`,
   restoredTo: (n, w) => `${n} on taas kohteessa ${w}.`, inTrash: 'Säilyy Poistetuissa 30 päivää.', remindDate: 'Tai valitse päivä', toCalendar: 'Lisää kalenteriin',
   outNow: 'Esillä nyt', allBoxes: 'Kaikki laatikot', allItems: 'Kaikki tavarat', itemsH: 'Tavarat', nothingOut: 'Mikään ei ole nyt esillä.',
-  cloudMenu: 'Tili & jakaminen', cloudTitle: 'Jaa kotitaloutesi kanssa', cloudIntro: 'Kirjaudu sähköpostilla, niin varastosi tallentuu tilillesi. Voit käyttää sitä tietokoneella ja muilla puhelimilla, jakaa sen kotitaloutesi kanssa ja kirjautua ulos, jos puhelin katoaa.',
+  cloudMenu: 'Tili & jakaminen', cloudTitle: 'Jaa kotitaloutesi kanssa', cloudIntro: 'Kirjaudu sähköpostilla, niin varastosi tallentuu tilillesi. Voit käyttää sitä verkossa ja muilla puhelimilla, jakaa sen kotitaloutesi kanssa ja kirjautua ulos, jos puhelin katoaa.',
   email: 'Sähköposti', emailWhy: 'Käytetään vain kirjautumiseen. Ei salasanaa, ei uutiskirjeitä.', sendLink: 'Lähetä kirjautumislinkki', checkMail: 'Tarkista sähköpostisi', linkSent: e => `Lähetimme kirjautumislinkin osoitteeseen ${e}.`,
   linkSamePhone: 'Avaa linkki tällä puhelimella. Saapuminen voi kestää minuutin – tarkista myös roskaposti.', tooMany: 'Liian monta linkkiä juuri nyt – yritä hetken päästä.', sendFailed: 'Lähetys epäonnistui. Yritä uudelleen.',
   loginFailed: 'Kirjautuminen epäonnistui.', loggedIn: 'Olet kirjautunut.', loggedOut: 'Kirjauduttu ulos. Varastosi on tallessa tililläsi.', loginAgain: 'Kirjaudu uudelleen jatkaaksesi synkronointia.',
@@ -20239,11 +20433,11 @@ STR.fi = {
   invitedIntro: 'Kirjoita sähköpostisi, niin lähetämme koodin. Sitten pääset suoraan yhteiseen varastoon.', connectNow: 'Tallenna tililleni', joinOther: 'Liity toiseen kotitalouteen (QR)',
   mergedIntoAccount: 'Puhelimessa olleet tiedot lisättiin tilillesi.', unsyncedQ: n => `${n} muutosta ei ole vielä tallennettu tilille. Kirjaudutaanko silti ulos? Ne katoavat.`,
   logoutAll: 'Kirjaudu ulos kaikilta laitteilta', logoutAllQ: 'Kirjaudutaanko ulos kaikilta laitteilta? Käytä tätä, jos puhelin on kadonnut.', logoutAllHint: 'Katosiko puhelin? Kirjaudu ulos kaikilta laitteilta ja kirjaudu sitten uudelleen niillä laitteilla, joita käytät edelleen.',
-  wipedRemote: 'Sinut kirjattiin ulos toiselta laitteelta, joten varasto poistettiin tästä laitteesta.', codeSent: e => `Lähetimme viestin osoitteeseen ${e}. Kirjoita koodi tähän:`, wrongAddress: 'Väärä osoite?',
-  orTapLink: 'Tai napauta viestin painiketta (tällä laitteella).', sendAgain: 'Lähetä uudelleen', sentAgain: 'Lähetetty uudelleen.', codeWrong: 'Koodi on väärä tai vanhentunut. Yritä uudelleen tai pyydä uusi.',
+  wipedRemote: 'Sinut kirjattiin ulos toiselta laitteelta, joten varasto poistettiin tästä laitteesta.', codeSent: e => `Lähetimme viestin osoitteeseen ${e}. Kirjoita koodi tähän:`, wrongEmail: 'Väärä sähköposti?',
+  orTapLink: 'Tai napauta viestin painiketta jatkaaksesi Storrragessa.', sendAgain: 'Lähetä uudelleen', sentAgain: 'Lähetetty uudelleen.', codeWrong: 'Koodi on väärä tai vanhentunut. Yritä uudelleen tai pyydä uusi.',
   slogan: 'Tiedä mitä sinulla on – ja missä se on.', startNewHint: 'Uusi täällä? Kirjoita nimesi ja aloita. Tiliä ei tarvita – kaikki tallentuu puhelimeen.', or: 'tai',
   loginHint: 'Uusi käyttäjä? Luo maksuton tili kirjoittamalla sähköpostiosoitteesi. Onko sinulla jo tili? Kirjaudu samalla sähköpostiosoitteella. Lähetämme kertakäyttöisen koodin – et tarvitse salasanaa.', yourEmail: 'Sähköpostisi', sendCode: 'Lähetä koodi',
-  invitedTitle: 'Sinut on kutsuttu!', pitchTitle: 'Luo ilmainen tili – tarvitset vain sähköpostin', pitch1: 'Jaa asuinkumppaneidesi kanssa', pitch2: 'Käytä kaikkea tietokoneella ja muilla puhelimilla', pitch3: 'Turvassa, jos puhelin katoaa',
+  invitedTitle: 'Sinut on kutsuttu!', pitchTitle: 'Luo ilmainen tili – tarvitset vain sähköpostin', pitch1: 'Jaa asuinkumppaneidesi kanssa', pitch2: 'Käytä kaikkea verkossa ja muilla puhelimilla', pitch3: 'Turvassa, jos puhelin katoaa',
   fold: 'Pienennä', unfold: 'Laajenna', foldAll: 'Pienennä kaikki', unfoldAll: 'Laajenna kaikki', badEmail: 'Tarkista sähköpostiosoite.', sending: 'Lähetetään…', sendTimeout: 'Sähköpostipalvelin ei vastannut ajoissa. Yritä minuutin päästä.',
   mailNotSent: 'Viestiä ei lähetetty', errorCode: 'Tiedot', moveLocalQ: n => `Puhelimessa on laatikoita ja tavaroita (${n}), jotka eivät ole tililläsi. Siirretäänkö ne tilille? Ne merkitään ”Uusi”.`, moveLocalYes: 'Kyllä, siirrä', moveLocalNo: 'Ei, poista ne',
   logInOrCreate: 'Kirjaudu tai luo tili', yourAccount: 'Tilisi', peopleTitle: 'Kotitalouden ihmiset', peopleHint: 'Lisää kaikki, joilla on tavaroita täällä. Kutsu ne, jotka haluavat käyttää sovellusta itse.',
@@ -20353,7 +20547,7 @@ STR.nb = {
   daysLeft: n => n === 1 ? '1 dag igjen' : `${n} dager igjen`, restoreItem: 'Gjenopprett', trashEmpty: 'Ingenting slettet.', emptyTrash: 'Tøm nå', emptyTrashQ: n => `Slette ${n} ting for godt?`,
   restoredTo: (n, w) => `${n} er tilbake i ${w}.`, inTrash: 'Tas vare på i Slettet i 30 dager.', remindDate: 'Eller velg en dato', toCalendar: 'Legg i kalenderen',
   outNow: 'Framme nå', allBoxes: 'Alle esker', allItems: 'Alle ting', itemsH: 'Ting', nothingOut: 'Ingenting er framme nå.',
-  cloudMenu: 'Konto & deling', cloudTitle: 'Del med husstanden', cloudIntro: 'Logg inn med e-posten din, så lagres lageret ditt på kontoen. Da kan du bruke det på PC-en og andre telefoner, dele med husstanden og logge ut hvis telefonen blir borte.',
+  cloudMenu: 'Konto & deling', cloudTitle: 'Del med husstanden', cloudIntro: 'Logg inn med e-posten din, så lagres lageret ditt på kontoen. Da kan du bruke det på nettet og andre telefoner, dele med husstanden og logge ut hvis telefonen blir borte.',
   email: 'E-post', emailWhy: 'Brukes bare til innlogging. Ikke passord, ikke nyhetsbrev.', sendLink: 'Send innloggingslenke', checkMail: 'Sjekk e-posten din', linkSent: e => `Vi har sendt en innloggingslenke til ${e}.`,
   linkSamePhone: 'Åpne lenken på denne telefonen. Det kan ta et minutt – sjekk søppelpost også.', tooMany: 'For mange lenker sendt akkurat nå – prøv igjen om litt.', sendFailed: 'Kunne ikke sende. Prøv igjen.',
   loginFailed: 'Innloggingen fungerte ikke.', loggedIn: 'Du er logget inn.', loggedOut: 'Logget ut. Tingene dine er trygt lagret på kontoen.', loginAgain: 'Logg inn igjen for å fortsette å synkronisere.',
@@ -20382,11 +20576,11 @@ STR.nb = {
   invitedIntro: 'Skriv e-posten din, så sender vi en kode. Da kommer du rett inn i det delte lageret.', connectNow: 'Lagre på kontoen min', joinOther: 'Bli med i en annen husstand (QR)',
   mergedIntoAccount: 'Det som lå på telefonen ble lagt til på kontoen din.', unsyncedQ: n => `${n} endringer er ikke lagret på kontoen ennå. Logge ut likevel? De går tapt.`,
   logoutAll: 'Logg ut på alle enheter', logoutAllQ: 'Logge ut på alle enhetene dine? Bruk dette hvis en telefon er borte.', logoutAllHint: 'Mistet telefonen? Logg ut på alle enheter, og logg deretter inn igjen på enhetene du fortsatt bruker.',
-  wipedRemote: 'Du ble logget ut fra en annen enhet, så tingene ble fjernet herfra.', codeSent: e => `Vi har sendt en e-post til ${e}. Skriv inn koden her:`, wrongAddress: 'Feil adresse?',
-  orTapLink: 'Eller trykk på knappen i e-posten (på denne enheten).', sendAgain: 'Send igjen', sentAgain: 'Sendt igjen.', codeWrong: 'Koden er feil eller for gammel. Prøv igjen eller send en ny.',
+  wipedRemote: 'Du ble logget ut fra en annen enhet, så tingene ble fjernet herfra.', codeSent: e => `Vi har sendt en e-post til ${e}. Skriv inn koden her:`, wrongEmail: 'Feil e-post?',
+  orTapLink: 'Eller trykk på knappen i e-posten for å fortsette i Storrrage.', sendAgain: 'Send igjen', sentAgain: 'Sendt igjen.', codeWrong: 'Koden er feil eller for gammel. Prøv igjen eller send en ny.',
   slogan: 'Ha oversikt over alt du har – og hvor det er.', startNewHint: 'Ny her? Skriv navnet ditt og sett i gang. Ingen konto trengs – alt lagres på telefonen.', or: 'eller',
   loginHint: 'Ny her? Skriv inn e-posten din for å opprette en gratis konto. Har du allerede en konto? Bruk samme e-post for å logge inn. Vi sender en engangskode – ikke noe passord.', yourEmail: 'E-posten din', sendCode: 'Send kode',
-  invitedTitle: 'Du er invitert!', pitchTitle: 'Lag en gratis konto – du trenger bare e-post', pitch1: 'Del med dem du bor med', pitch2: 'Nå alt fra PC-en og andre telefoner', pitch3: 'Trygt hvis telefonen blir borte',
+  invitedTitle: 'Du er invitert!', pitchTitle: 'Lag en gratis konto – du trenger bare e-post', pitch1: 'Del med dem du bor med', pitch2: 'Bruk alt på nettet og fra andre telefoner', pitch3: 'Trygt hvis telefonen blir borte',
   fold: 'Slå sammen', unfold: 'Utvid', foldAll: 'Slå sammen alle', unfoldAll: 'Utvid alle', badEmail: 'Sjekk e-postadressen.', sending: 'Sender…', sendTimeout: 'E-postserveren svarte ikke. Prøv igjen om et minutt.',
   mailNotSent: 'E-posten ble ikke sendt', errorCode: 'Detaljer', moveLocalQ: n => `Telefonen har esker og ting (${n}) som ikke er på kontoen din. Flytte dem inn? De merkes «Ny».`, moveLocalYes: 'Ja, flytt dem inn', moveLocalNo: 'Nei, fjern dem',
   logInOrCreate: 'Logg inn eller lag konto', yourAccount: 'Kontoen din', peopleTitle: 'Personer i husstanden', peopleHint: 'Legg til alle som har ting her. Inviter dem som vil bruke appen selv.',
@@ -20405,23 +20599,26 @@ Object.assign(STR.da, {editRooms: 'Rediger rum', labelLinked: c => `Etiketten h�
   printLabel: 'Udskriv etiket', useOtherLabel: 'Brug en anden etiket (scan den)', moveLabel: 'Flyt etiketten til en anden kasse', labelMenuHint: 'Etiketter kan flyttes mellem kasser. Fortrykte tomme etiketter knyttes første gang, du scanner dem.',
   blankLabels: 'Tomme etiketter', blankHowMany: 'Hvor mange tomme etiketter?', blankPrintHint: 'Udskriv, klip ud og sæt på kasserne. Første scanning knytter etiketten til en kasse.',
   scanBarcode: 'Scan stregkode', pointBarcode: 'Ret kameraet mod stregkoden.', noBarcodeCam: 'Stregkodescanning findes ikke i denne browser. Skriv nummeret i stedet.', lookingUp: 'Søger efter produktet…', barcodeFound: n => `Fundet: ${n}`, barcodeSaved: 'Stregkoden er gemt. Ingen produktinfo fundet – skriv navnet selv.',
-  moveTitle: 'Flytning', moveIntroH: 'Skal du flytte?', moveIntro: 'Giv kasserne et rum i det nye hjem, og følg dem fra pakket til flyttet til pakket ud. Dit normale opbevaringssted virker som altid.', moveStart: 'Start en flytning',
-  mv_packed: 'Pakket', mv_moved: 'Flyttet', mv_unpacked: 'Pakket ud', allRooms: 'Alle rum', pickRoom: 'Vælg rum', newRoom: 'Nyt rum', moveEmpty: 'Ingen kasser i flytningen endnu.', moveNewBox: 'Ny flyttekasse', moveAddExisting: 'Tilføj eksisterende kasser',
-  moveLabels: 'Udskriv etiketter til flytningen', moveRooms: 'Rum (adskil med komma)', moveEnd: 'Afslut flytningen', moveEndQ: 'Afslut flytningen? Kasserne bliver, hvor de er, uden rum og flyttestatus.', moveEnded: 'Flytningen er færdig. Velkommen hjem!', moveOngoing: (d, n) => `Flytning: ${d} af ${n} kasser pakket ud`});
+  moveTitle: 'Flytning', moveIntroH: 'Skal du flytte?', moveIntro: 'Tilføj kasser og enkelte ting til flytningen, og følg hver fra pakket til flyttet til pakket ud. Den normale opbevaring ændres ikke.', moveStart: 'Start en flytning',
+  mv_packed: 'Pakket', mv_moved: 'Flyttet', mv_unpacked: 'Pakket ud', allRooms: 'Alle rum', pickRoom: 'Vælg rum', newRoom: 'Nyt rum', moveEmpty: 'Ingen kasser eller ting i flytningen endnu.', moveNewBox: 'Ny flyttekasse', moveAddExisting: 'Tilføj eksisterende',
+  moveLabels: 'Udskriv kasseetiketter', moveNoBoxLabels: 'Der er ingen kasser i flytningen at mærke.', moveRooms: 'Rum (adskil med komma)', moveEnd: 'Afslut flytningen', moveEndQ: 'Afslut flytningen? Ting og kasser beholder deres normale opbevaringssted, men mister flyttestatus og rum.', moveEnded: 'Flytningen er færdig. Velkommen hjem!', moveOngoing: (d, n) => `Flytning: ${d} af ${n} ting pakket ud`,
+  moveRoomUnset: 'Intet rum endnu', moveRoomNameRequired: 'Skriv et rumnavn først.', moveEmptyRooms: 'Ingen rum endnu.', addMoveRoom: 'Tilføj rum', moveRoomExists: 'Rummet findes allerede.', moveAll: 'Alle', addSelectedToMove: 'Tilføj valgte til flytning', moveAdded: n => `${n} ting føjet til flytningen.`});
 Object.assign(STR.nb, {editRooms: 'Rediger rom', labelLinked: c => `Etiketten hører nå til ${c}.`, newLabelH: 'Ny etikett', newLabelHint: 'Denne etiketten er ikke i bruk ennå. Hva skal den høre til?', newLabelBox: 'Lag en ny eske', newLabelLink: 'Koble til en eksisterende eske', boxNameQ: 'Hva er i esken?',
   printLabel: 'Skriv ut etikett', useOtherLabel: 'Bruk en annen etikett (skann den)', moveLabel: 'Flytt etiketten til en annen eske', labelMenuHint: 'Etiketter kan flyttes mellom esker. Forhåndstrykte tomme etiketter kobles første gang du skanner dem.',
   blankLabels: 'Tomme etiketter', blankHowMany: 'Hvor mange tomme etiketter?', blankPrintHint: 'Skriv ut, klipp ut og fest på eskene. Første skanning kobler etiketten til en eske.',
   scanBarcode: 'Skann strekkode', pointBarcode: 'Rett kameraet mot strekkoden.', noBarcodeCam: 'Strekkodeskanning finnes ikke i denne nettleseren. Skriv inn nummeret i stedet.', lookingUp: 'Søker etter produktet…', barcodeFound: n => `Fant: ${n}`, barcodeSaved: 'Strekkoden er lagret. Fant ingen produktinfo – skriv navnet selv.',
-  moveTitle: 'Flytting', moveIntroH: 'Skal du flytte?', moveIntro: 'Gi eskene et rom i det nye hjemmet og følg dem fra pakket til flyttet til pakket ut. Det vanlige lageret virker som før.', moveStart: 'Start en flytting',
-  mv_packed: 'Pakket', mv_moved: 'Flyttet', mv_unpacked: 'Pakket ut', allRooms: 'Alle rom', pickRoom: 'Velg rom', newRoom: 'Nytt rom', moveEmpty: 'Ingen esker i flyttingen ennå.', moveNewBox: 'Ny flytteeske', moveAddExisting: 'Legg til eksisterende esker',
-  moveLabels: 'Skriv ut etiketter for flyttingen', moveRooms: 'Rom (skill med komma)', moveEnd: 'Avslutt flyttingen', moveEndQ: 'Avslutte flyttingen? Eskene blir der de er, uten rom og flyttestatus.', moveEnded: 'Flyttingen er ferdig. Velkommen hjem!', moveOngoing: (d, n) => `Flytting: ${d} av ${n} esker pakket ut`});
+  moveTitle: 'Flytting', moveIntroH: 'Skal du flytte?', moveIntro: 'Legg til esker og enkelte ting i flyttingen, og følg hver fra pakket til flyttet til pakket ut. Vanlig lagring endres ikke.', moveStart: 'Start en flytting',
+  mv_packed: 'Pakket', mv_moved: 'Flyttet', mv_unpacked: 'Pakket ut', allRooms: 'Alle rom', pickRoom: 'Velg rom', newRoom: 'Nytt rom', moveEmpty: 'Ingen esker eller ting i flyttingen ennå.', moveNewBox: 'Ny flytteeske', moveAddExisting: 'Legg til eksisterende',
+  moveLabels: 'Skriv ut eskeetiketter', moveNoBoxLabels: 'Ingen esker i flyttingen å merke.', moveRooms: 'Rom (skill med komma)', moveEnd: 'Avslutt flyttingen', moveEndQ: 'Avslutte flyttingen? Ting og esker beholder vanlig lagringssted, men mister flyttestatus og rom.', moveEnded: 'Flyttingen er ferdig. Velkommen hjem!', moveOngoing: (d, n) => `Flytting: ${d} av ${n} ting pakket ut`,
+  moveRoomUnset: 'Ikke noe rom ennå', moveRoomNameRequired: 'Skriv et romnavn først.', moveEmptyRooms: 'Ingen rom ennå.', addMoveRoom: 'Legg til rom', moveRoomExists: 'Rommet finnes allerede.', moveAll: 'Alle', addSelectedToMove: 'Legg valgte til i flyttingen', moveAdded: n => `${n} ting lagt til i flyttingen.`});
 Object.assign(STR.fi, {editRooms: 'Muokkaa huoneita', labelLinked: c => `Tarra kuuluu nyt laatikolle ${c}.`, newLabelH: 'Uusi tarra', newLabelHint: 'Tätä tarraa ei ole vielä käytetty. Mihin se kuuluu?', newLabelBox: 'Luo uusi laatikko', newLabelLink: 'Yhdistä olemassa olevaan laatikkoon', boxNameQ: 'Mitä laatikossa on?',
   printLabel: 'Tulosta tarra', useOtherLabel: 'Käytä toista tarraa (skannaa se)', moveLabel: 'Siirrä tarra toiseen laatikkoon', labelMenuHint: 'Tarroja voi siirtää laatikoiden välillä. Valmiiksi tulostetut tyhjät tarrat yhdistetään ensimmäisellä skannauksella.',
   blankLabels: 'Tyhjät tarrat', blankHowMany: 'Kuinka monta tyhjää tarraa?', blankPrintHint: 'Tulosta, leikkaa ja kiinnitä laatikoihin. Ensimmäinen skannaus yhdistää tarran laatikkoon.',
   scanBarcode: 'Skannaa viivakoodi', pointBarcode: 'Osoita kameralla viivakoodia.', noBarcodeCam: 'Viivakoodin luku ei ole käytettävissä tässä selaimessa. Kirjoita numero.', lookingUp: 'Haetaan tuotetta…', barcodeFound: n => `Löytyi: ${n}`, barcodeSaved: 'Viivakoodi tallennettu. Tuotetietoja ei löytynyt – kirjoita nimi itse.',
-  moveTitle: 'Muutto', moveIntroH: 'Oletko muuttamassa?', moveIntro: 'Anna laatikoille huone uudessa kodissa ja seuraa niitä pakatusta muutettuun ja purettuun. Tavallinen varastosi toimii normaalisti.', moveStart: 'Aloita muutto',
-  mv_packed: 'Pakattu', mv_moved: 'Muutettu', mv_unpacked: 'Purettu', allRooms: 'Kaikki huoneet', pickRoom: 'Valitse huone', newRoom: 'Uusi huone', moveEmpty: 'Muutossa ei ole vielä laatikoita.', moveNewBox: 'Uusi muuttolaatikko', moveAddExisting: 'Lisää olemassa olevia laatikoita',
-  moveLabels: 'Tulosta muuton tarrat', moveRooms: 'Huoneet (pilkulla erotettuna)', moveEnd: 'Päätä muutto', moveEndQ: 'Päätetäänkö muutto? Laatikot jäävät paikoilleen ilman huonetta ja muuttotilaa.', moveEnded: 'Muutto valmis. Tervetuloa kotiin!', moveOngoing: (d, n) => `Muutto: ${d}/${n} laatikkoa purettu`});
+  moveTitle: 'Muutto', moveIntroH: 'Oletko muuttamassa?', moveIntro: 'Lisää muuttoon laatikoita ja yksittäisiä tavaroita. Seuraa jokaista pakatusta muutettuun ja purettuun. Tavallinen säilytyspaikka ei muutu.', moveStart: 'Aloita muutto',
+  mv_packed: 'Pakattu', mv_moved: 'Muutettu', mv_unpacked: 'Purettu', allRooms: 'Kaikki huoneet', pickRoom: 'Valitse huone', newRoom: 'Uusi huone', moveEmpty: 'Muutossa ei ole vielä laatikoita tai tavaroita.', moveNewBox: 'Uusi muuttolaatikko', moveAddExisting: 'Lisää olemassa olevia',
+  moveLabels: 'Tulosta muuttolaatikoiden tarrat', moveNoBoxLabels: 'Muutossa ei ole laatikoita merkittäväksi.', moveRooms: 'Huoneet (pilkulla erotettuna)', moveEnd: 'Päätä muutto', moveEndQ: 'Päätetäänkö muutto? Tavalliset säilytyspaikat säilyvät, mutta muuton tila ja huone poistetaan.', moveEnded: 'Muutto valmis. Tervetuloa kotiin!', moveOngoing: (d, n) => `Muutto: ${d}/${n} tavaraa purettu`,
+  moveRoomUnset: 'Ei huonetta vielä', moveRoomNameRequired: 'Anna huoneelle nimi ensin.', moveEmptyRooms: 'Ei huoneita vielä.', addMoveRoom: 'Lisää huone', moveRoomExists: 'Huone on jo olemassa.', moveAll: 'Kaikki', addSelectedToMove: 'Lisää valitut muuttoon', moveAdded: n => `${n} tavaraa lisätty muuttoon.`});
 Object.assign(STR.da, {f_warranty: 'Garanti til', warrantyLeft: n => n < 0 ? `Garantien udløb for ${-n} dage siden` : n === 0 ? 'Garantien udløber i dag' : `Garantien udløber om ${n} dage`, warrantyH: 'Garanti udløber snart', worth: v => `værdi ${v}`,
   loansTitle: 'Udlånt', loansHint: 'Ting du har lånt ud, pr. person. Sæt status “Lånt ud” på en ting og skriv, hvem der har den.', loansEmpty: 'Intet er lånt ud. 🎉', unknownPerson: 'Nogen', lentSince: d => d <= 0 ? 'lånt ud i dag' : d === 1 ? 'lånt ud for 1 dag siden' : `lånt ud for ${d} dage siden`,
   gotBack: 'Fået tilbage', remindLoan: 'Påmind', loanMsg: (who, item, me) => `Hej${who ? ' ' + who : ''}! Har du stadig min ${item}? Vil gerne have den tilbage, når du er færdig 🙂${me ? ' /' + me : ''}`, loansOld: 'Lånt ud i over en måned'});
@@ -21278,7 +21475,7 @@ Object.assign(STR.da, {
   lockedHere: 'Låst på denne telefon – scan en QR-kode fra en anden telefon', unlockTitle: 'Lås op på denne telefon', unlockHint: 'Åbn ☰ → Husstand og synk → Invitér nogen på en anden telefon i husstanden, og scan koden her.',
   uploadImageOnly: 'Vælg et gyldigt JPEG-, PNG-, WebP- eller GIF-billede.', uploadPdfOnly: 'Vælg et gyldigt PDF-dokument.', uploadTooLarge: 'Filen er for stor. Grænsen er 25 MB pr. fil.', uploadUnsafeType: 'Denne filtype eller dette indhold understøttes ikke.', backupInvalid: 'Filen er ikke en gyldig Storrrage-backup.',
   takePhoto: 'Tag et billede', pickPhoto: 'Vælg fra billeder', photoUploadCancelled: 'Tingen blev lukket, før uploaden var færdig, så filen blev ikke vedhæftet.',
-  reminderNudgeTitle: 'Slå påmindelser til?', reminderNudgeText: 'Påmindelsen er gemt, men Storrrage kan ikke give besked, før notifikationer er tilladt på telefonen.', reminderNudgeAction: 'Tillad notifikationer', mv_created: 'Oprettet – ikke pakket',
+  reminderNudgeTitle: 'Slå påmindelser til?', reminderNudgeText: 'Påmindelsen er gemt, men Storrrage kan ikke give besked, før notifikationer er tilladt på telefonen.', reminderNudgeAction: 'Tillad notifikationer', mv_created: 'Oprettet',
   rk_view: 'Reoler', rk_small: 'Lille', rk_medium: 'Mellem', rk_large: 'Stor', rk_sizeL: 'Størrelse', rk_measure: 'Mål', rk_measureHint: 'Viser centimeter: hvor bred hver reol er, hvor fuld hver hylde er, og hvor stor hver kasse er.',
   rk_tidy: 'Ryd op', rk_wall_left: 'Venstre væg', rk_wall_back: 'Bageste væg', rk_wall_right: 'Højre væg', rk_wall: 'Væg', rk_unitName: n => `Reol ${n}`, rk_addUnit: 'Tilføj reol', rk_editUnit: 'Ret reol',
   rk_width: 'Bredde (cm)', rk_shelves: 'Hylder', rk_gap: 'Højde mellem hylderne (cm)', rk_delUnit: 'Fjern reolen',
@@ -21335,7 +21532,7 @@ Object.assign(STR.nb, {
   lockedHere: 'Låst på denne telefonen – skann en QR-kode fra en annen telefon', unlockTitle: 'Lås opp på denne telefonen', unlockHint: 'Åpne ☰ → Husstand og synk → Inviter noen på en annen telefon i husstanden, og skann koden her.',
   uploadImageOnly: 'Velg et gyldig JPEG-, PNG-, WebP- eller GIF-bilde.', uploadPdfOnly: 'Velg et gyldig PDF-dokument.', uploadTooLarge: 'Filen er for stor. Grensen er 25 MB per fil.', uploadUnsafeType: 'Denne filtypen eller dette innholdet støttes ikke.', backupInvalid: 'Filen er ikke en gyldig Storrrage-sikkerhetskopi.',
   takePhoto: 'Ta et bilde', pickPhoto: 'Velg fra bilder', photoUploadCancelled: 'Tingen ble lukket før opplastingen var ferdig, så filen ble ikke lagt ved.',
-  reminderNudgeTitle: 'Slå på påminnelser?', reminderNudgeText: 'Påminnelsen er lagret, men Storrrage kan ikke varsle deg før varsler er tillatt på telefonen.', reminderNudgeAction: 'Tillat varsler', mv_created: 'Opprettet – ikke pakket',
+  reminderNudgeTitle: 'Slå på påminnelser?', reminderNudgeText: 'Påminnelsen er lagret, men Storrrage kan ikke varsle deg før varsler er tillatt på telefonen.', reminderNudgeAction: 'Tillat varsler', mv_created: 'Opprettet',
   rk_view: 'Reoler', rk_small: 'Liten', rk_medium: 'Middels', rk_large: 'Stor', rk_sizeL: 'Størrelse', rk_measure: 'Mål', rk_measureHint: 'Viser centimeter: hvor bred hver reol er, hvor full hver hylle er og hvor stor hver eske er.',
   rk_tidy: 'Rydd', rk_wall_left: 'Venstre vegg', rk_wall_back: 'Bakre vegg', rk_wall_right: 'Høyre vegg', rk_wall: 'Vegg', rk_unitName: n => `Reol ${n}`, rk_addUnit: 'Legg til reol', rk_editUnit: 'Endre reol',
   rk_width: 'Bredde (cm)', rk_shelves: 'Hyller', rk_gap: 'Høyde mellom hyllene (cm)', rk_delUnit: 'Fjern reolen',
@@ -21392,7 +21589,7 @@ Object.assign(STR.fi, {
   lockedHere: 'Lukittu tässä puhelimessa – skannaa QR-koodi toisesta puhelimesta', unlockTitle: 'Avaa tässä puhelimessa', unlockHint: 'Avaa toisessa kotitalouden puhelimessa ☰ → Kotitalous ja synkronointi → Kutsu joku, ja skannaa koodi tässä.',
   uploadImageOnly: 'Valitse kelvollinen JPEG-, PNG-, WebP- tai GIF-kuva.', uploadPdfOnly: 'Valitse kelvollinen PDF-asiakirja.', uploadTooLarge: 'Tiedosto on liian suuri. Raja on 25 Mt tiedostoa kohden.', uploadUnsafeType: 'Tätä tiedostotyyppiä tai sisältöä ei tueta.', backupInvalid: 'Tiedosto ei ole kelvollinen Storrrage-varmuuskopio.',
   takePhoto: 'Ota kuva', pickPhoto: 'Valitse kuvista', photoUploadCancelled: 'Tavara suljettiin ennen kuin lataus valmistui, joten tiedostoa ei liitetty.',
-  reminderNudgeTitle: 'Otetaanko muistutukset käyttöön?', reminderNudgeText: 'Muistutus on tallennettu, mutta Storrrage voi ilmoittaa vasta, kun ilmoitukset on sallittu puhelimessa.', reminderNudgeAction: 'Salli ilmoitukset', mv_created: 'Luotu – ei pakattu',
+  reminderNudgeTitle: 'Otetaanko muistutukset käyttöön?', reminderNudgeText: 'Muistutus on tallennettu, mutta Storrrage voi ilmoittaa vasta, kun ilmoitukset on sallittu puhelimessa.', reminderNudgeAction: 'Salli ilmoitukset', mv_created: 'Luotu',
   rk_view: 'Hyllyt', rk_small: 'Pieni', rk_medium: 'Keski', rk_large: 'Suuri', rk_sizeL: 'Koko', rk_measure: 'Mitat', rk_measureHint: 'Näyttää senttimetrit: kunkin hyllyn leveyden, tasojen täyttöasteen ja laatikoiden koon.',
   rk_tidy: 'Järjestä', rk_wall_left: 'Vasen seinä', rk_wall_back: 'Takaseinä', rk_wall_right: 'Oikea seinä', rk_wall: 'Seinä', rk_unitName: n => `Hylly ${n}`, rk_addUnit: 'Lisää hylly', rk_editUnit: 'Muokkaa hyllyä',
   rk_width: 'Leveys (cm)', rk_shelves: 'Tasot', rk_gap: 'Tasojen väli (cm)', rk_delUnit: 'Poista hylly',

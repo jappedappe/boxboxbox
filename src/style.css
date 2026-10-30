@@ -951,7 +951,8 @@ body.ldragging{-webkit-user-select:none;user-select:none}
 h3 svg.stroke{width:20px;height:20px;vertical-align:-4px;color:var(--primary)}
 .welcome .wform{gap:10px}
 .welcome .wform .field{text-align:left}
-.codein{font-size:var(--fs-6);letter-spacing:.35em;text-align:center;font-weight:700;margin:8px 0}
+.code-field{margin:8px 0}
+.codein{font-size:var(--fs-6);letter-spacing:.35em;text-align:center;font-weight:700}
 /* 2026-10-21.3 */
 [hidden]{display:none!important}
 .welcome{padding-top:24px;gap:10px}
@@ -1145,6 +1146,12 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .mvrow.unpacked{opacity:.55}
 .mvopen{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;color:var(--text);text-align:left;font:inherit;padding:0}
 .mvico svg{width:38px;height:38px;display:block}
+.mvitemphoto{width:38px;height:38px;flex:none;display:grid;place-items:center;font-size:26px;overflow:hidden}
+.mvitemphoto img{width:100%;height:100%;object-fit:cover;border-radius:var(--r-2)}
+.move-pick-row>span{display:flex;flex-direction:column;min-width:0}
+.move-pick-row small{color:var(--muted);font-size:var(--fs-1)}
+.move-pick-filters{margin:8px 0}
+.move-pick-filters .chipbtn{min-height:32px;padding:4px 10px}
 .mvtx{display:flex;flex-direction:column;min-width:0}
 .mvtx b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvtx small{color:var(--muted);font-size:var(--fs-1)}
@@ -1154,6 +1161,17 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .mvstate.moved{background:var(--primary)}
 .mvstate.unpacked{background:var(--ok)}
 .mvactions{display:flex;flex-direction:column;gap:8px}
+.move-room-filters{gap:4px}
+.move-room-filters .chipbtn{min-height:32px;padding:3px 8px;font-size:var(--fs-1)}
+.move-sort-row{display:flex;justify-content:flex-end;margin:2px 0 4px}
+.move-sort-row .btn{min-height:28px;padding:3px 8px;font-size:var(--fs-1)}
+.move-sort-row .btn svg{width:16px;height:16px;flex:none}
+.mv-sort-options{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.move-room-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px;margin:0 0 8px}
+.move-room-row .input{min-width:0;margin:0}
+.move-room-add{display:flex;align-items:center;gap:8px;margin-top:12px}
+.move-room-add .input{flex:1;min-width:0;margin:0}
+.move-room-editor .btn.small{min-height:32px;padding:4px 10px;font-size:var(--fs-1)}
 .chips.quick small{opacity:.7}
 .wnote{margin:-8px 0 12px;font-size:var(--fs-2);color:var(--muted)}
 .wnote.soon{color:var(--dot);font-weight:600}
