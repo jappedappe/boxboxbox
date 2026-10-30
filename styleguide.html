@@ -338,12 +338,11 @@ label.btn{cursor:pointer;text-align:center}
 .bico svg{width:16px;height:16px}
 .favstar{position:absolute;top:4px;right:6px;color:var(--dot);font-size:var(--fs-4);line-height:1}
 .tile .favstar{top:6px;right:8px}
-.selbox{position:absolute;bottom:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);color:#fff;display:grid;place-items:center;font-size:var(--fs-2);font-weight:700}
-.sel .selbox,.itile.sel .selbox{background:var(--accent);border-color:var(--accent)}
-.itile.sel .timg{outline:2px solid var(--accent);outline-offset:2px}
-.selbar{align-items:center}
-.selbar .selcount{flex:1;font-size:var(--fs-2);color:var(--muted)}
-.selbar .btn{flex:0 1 auto}
+.selmark{position:absolute;bottom:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);color:#fff;display:grid;place-items:center;font-size:var(--fs-2);font-weight:700;line-height:1;z-index:3}
+.selmark.on{background:var(--accent);border-color:#fff}
+.selbar{align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
+.selbar .selcount{flex:0 0 auto;font-size:var(--fs-1);color:var(--muted)}
+.selbar .btn,.selbar .btn.primary{flex:0 0 auto;width:auto;max-width:none;height:36px;min-height:36px;padding:6px 10px;font-size:var(--fs-1);line-height:1.2}
 body.selecting .fab{display:none}
 .strip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
@@ -803,7 +802,6 @@ dialog::backdrop{background:rgba(25,18,45,.45)}
 .btile .favstar,.itile .favstar{position:absolute;top:3px;left:5px;color:var(--dot);font-size:var(--fs-2);line-height:1}
 .btile > .timg > .fresh{position:absolute;left:5px;bottom:5px}
 .btile.out .timg{outline:1.5px dashed var(--dot);outline-offset:-1.5px}
-.btile.sel .timg{outline:2px solid var(--accent);outline-offset:2px}
 .btile .dot{top:-4px;right:-4px}
 .shelf .itile.add .timg,.kids .itile.add .timg{font-size:var(--fs-5)}
 .itemico,.boxart{display:block}
@@ -1110,6 +1108,7 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .micin.on{background:var(--dot);color:#fff;animation:hlpulse 1.2s ease-in-out infinite}
 .chips.quick .chipbtn{font-size:var(--fs-2);padding:5px 11px}
 .chips.quick .chipbtn svg{width:14px;height:14px;vertical-align:-3px}
+.quick-filter-hint{margin:-3px 0 8px;color:var(--muted);font-size:var(--fs-1)}
 .askbtn{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:10px 12px;border-radius:var(--r-3);border:1.5px solid var(--primary);background:linear-gradient(90deg,rgba(106,81,196,.12),rgba(249,127,38,.10));color:var(--ink);font-weight:600;font-size:var(--fs-3);text-align:left}
 .askbtn span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .askbtn small{font-size:var(--fs-0);text-transform:uppercase;letter-spacing:.05em;color:var(--primary);border:1px solid var(--primary);border-radius:var(--r-2);padding:1px 5px}
@@ -1420,7 +1419,7 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
 <body>
 <div class="sg">
   <div class="sgbar">
-    <h1>Designsystem</h1><span class="hint">Storrrage 2026-10-30.10</span>
+    <h1>Designsystem</h1><span class="hint">Storrrage 2026-10-30.14</span>
     <div class="seg small" id="themeSeg"><button class="on" data-t="">Auto</button><button data-t="light">Ljust</button><button data-t="dark">Mörkt</button></div>
     <nav><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
   </div>

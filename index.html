@@ -341,12 +341,11 @@ label.btn{cursor:pointer;text-align:center}
 .bico svg{width:16px;height:16px}
 .favstar{position:absolute;top:4px;right:6px;color:var(--dot);font-size:var(--fs-4);line-height:1}
 .tile .favstar{top:6px;right:8px}
-.selbox{position:absolute;bottom:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);color:#fff;display:grid;place-items:center;font-size:var(--fs-2);font-weight:700}
-.sel .selbox,.itile.sel .selbox{background:var(--accent);border-color:var(--accent)}
-.itile.sel .timg{outline:2px solid var(--accent);outline-offset:2px}
-.selbar{align-items:center}
-.selbar .selcount{flex:1;font-size:var(--fs-2);color:var(--muted)}
-.selbar .btn{flex:0 1 auto}
+.selmark{position:absolute;bottom:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);color:#fff;display:grid;place-items:center;font-size:var(--fs-2);font-weight:700;line-height:1;z-index:3}
+.selmark.on{background:var(--accent);border-color:#fff}
+.selbar{align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
+.selbar .selcount{flex:0 0 auto;font-size:var(--fs-1);color:var(--muted)}
+.selbar .btn,.selbar .btn.primary{flex:0 0 auto;width:auto;max-width:none;height:36px;min-height:36px;padding:6px 10px;font-size:var(--fs-1);line-height:1.2}
 body.selecting .fab{display:none}
 .strip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
@@ -806,7 +805,6 @@ dialog::backdrop{background:rgba(25,18,45,.45)}
 .btile .favstar,.itile .favstar{position:absolute;top:3px;left:5px;color:var(--dot);font-size:var(--fs-2);line-height:1}
 .btile > .timg > .fresh{position:absolute;left:5px;bottom:5px}
 .btile.out .timg{outline:1.5px dashed var(--dot);outline-offset:-1.5px}
-.btile.sel .timg{outline:2px solid var(--accent);outline-offset:2px}
 .btile .dot{top:-4px;right:-4px}
 .shelf .itile.add .timg,.kids .itile.add .timg{font-size:var(--fs-5)}
 .itemico,.boxart{display:block}
@@ -1113,6 +1111,7 @@ body[data-view="search"]:not(.selecting) .fab{display:flex}
 .micin.on{background:var(--dot);color:#fff;animation:hlpulse 1.2s ease-in-out infinite}
 .chips.quick .chipbtn{font-size:var(--fs-2);padding:5px 11px}
 .chips.quick .chipbtn svg{width:14px;height:14px;vertical-align:-3px}
+.quick-filter-hint{margin:-3px 0 8px;color:var(--muted);font-size:var(--fs-1)}
 .askbtn{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:10px 12px;border-radius:var(--r-3);border:1.5px solid var(--primary);background:linear-gradient(90deg,rgba(106,81,196,.12),rgba(249,127,38,.10));color:var(--ink);font-weight:600;font-size:var(--fs-3);text-align:left}
 .askbtn span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .askbtn small{font-size:var(--fs-0);text-transform:uppercase;letter-spacing:.05em;color:var(--primary);border:1px solid var(--primary);border-radius:var(--r-2);padding:1px 5px}
@@ -13817,7 +13816,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-30.10';
+const APP_VERSION = '2026-10-30.14';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -13832,6 +13831,11 @@ function openDB(){
     r.onupgradeneeded = () => { const d = r.result; for (const [n, o] of [['boxes', {keyPath: 'id'}], ['photos'], ['meta'], ['notes', {keyPath: 'id'}]]) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, o); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   });
+}
+function clearAutoSearchScope(){
+  if (!searchQuickAuto) return;
+  searchQuick = null; searchQuickAuto = false;
+  searchScope.places.clear(); searchScope.boxes.clear();
 }
 function tx(store, mode, fn){
   return new Promise((res, rej) => {
@@ -14573,7 +14577,7 @@ Object.assign(STR.sv, {
 Object.assign(STR.en, {
   inside: 'Inside', topLevel: p => `${p}, directly`, nameOptional: 'Leave empty to name it after what’s inside', boxInBox: 'Box inside this box', boxesInside: 'Boxes inside',
   addHereBox: b => `Add to ${b}`, notes: 'Notes', recent: 'Recently viewed', favorites: 'Favorites', fav: 'Favorite', unfav: 'Remove favorite',
-  viewLarge: 'Large tiles', viewSmall: 'Small tiles', viewList: 'List', select: 'Select', selected: n => `${n} selected`, moveSel: 'Move to…', delSel: 'Delete',
+  viewLarge: 'Large tiles', viewSmall: 'Small tiles', viewList: 'List', select: 'Select', selected: n => `${n} selected`, moveSel: 'Move', delSel: 'Delete',
   delSelQ: n => n === 1 ? 'Delete 1 item? This can’t be undone.' : `Delete ${n} items? This can’t be undone.`, movedN: (n, w) => `Moved ${n} to ${w}.`, deletedN: n => `Deleted ${n}.`,
   didYouMean: 'Did you mean', share: 'Share where it is', copied: 'Copied. Paste it in a message.', shareCopy: 'Share a copy of this place', shareCopyHint: 'The other person opens Storrrage and chooses Restore from backup. They get their own copy; it doesn’t stay in sync until login and sharing arrive.',
   icon: 'Picture', numbering: 'Box numbers', numPlace: 'Separate for each place (B-001 in every place)', numAccount: 'One series for all places',
@@ -14585,7 +14589,7 @@ Object.assign(STR.en, {
 Object.assign(STR.sv, {
   inside: 'Inuti', topLevel: p => `${p}, direkt`, nameOptional: 'Lämna tomt så får den namn efter innehållet', boxInBox: 'Låda i den här lådan', boxesInside: 'Lådor inuti',
   addHereBox: b => `Lägg till i ${b}`, notes: 'Anteckningar', recent: 'Nyligen visade', favorites: 'Favoriter', fav: 'Favorit', unfav: 'Ta bort favorit',
-  viewLarge: 'Stora rutor', viewSmall: 'Små rutor', viewList: 'Lista', select: 'Välj', selected: n => `${n} valda`, moveSel: 'Flytta till…', delSel: 'Ta bort',
+  viewLarge: 'Stora rutor', viewSmall: 'Små rutor', viewList: 'Lista', select: 'Välj', selected: n => `${n} valda`, moveSel: 'Flytta', delSel: 'Ta bort',
   delSelQ: n => n === 1 ? 'Ta bort 1 sak? Det går inte att ångra.' : `Ta bort ${n} saker? Det går inte att ångra.`, movedN: (n, w) => `Flyttade ${n} till ${w}.`, deletedN: n => `Tog bort ${n}.`,
   didYouMean: 'Menade du', share: 'Dela var den finns', copied: 'Kopierat. Klistra in i ett meddelande.', shareCopy: 'Dela en kopia av platsen', shareCopyHint: 'Mottagaren öppnar Storrrage och väljer Återställ från säkerhetskopia. Hen får en egen kopia; den synkas inte förrän inloggning och delning finns.',
   icon: 'Bild', numbering: 'Lådnummer', numPlace: 'Egen serie per plats (B-001 på varje plats)', numAccount: 'En serie för alla platser',
@@ -14654,6 +14658,28 @@ Object.assign(STR.sv, {sortBy: 'Sortera', sort_manual: 'Egen ordning', sort_az: 
   daysLeft: n => n === 1 ? '1 dag kvar' : `${n} dagar kvar`, restoreItem: 'Ta tillbaka', trashEmpty: 'Inget borttaget.', emptyTrash: 'Töm nu', emptyTrashQ: n => `Ta bort ${n} ${n === 1 ? 'sak' : 'saker'} för gott?`,
   restoredTo: (n, w) => `${n} är tillbaka i ${w}.`, inTrash: 'Sparas i Borttaget i 30 dagar.', remindDate: 'Eller välj datum', toCalendar: 'Lägg i kalendern',
   outNow: 'Framme nu', allBoxes: 'Alla lådor', allItems: 'Alla saker', itemsH: 'Saker', nothingOut: 'Inget är framme just nu.'});
+Object.assign(STR.en, {
+  quickFilterHint: 'Filters narrow the results. Searching looks everywhere.',
+  quickAutoSuggestion: type => `Showing ${type} because that’s all that’s in your storage so far. Search to look everywhere.`,
+  quick_out: 'Show boxes and things currently taken out.',
+  quick_loose: 'Show things that are not inside a box.',
+  quick_boxes: 'Show boxes only.',
+  quick_items: 'Show individual things only.',
+  takeOutSel: 'Take out', putBackSel: 'Put back',
+  selectedTakenOut: n => `Took out ${n} selected ${n === 1 ? 'thing or box' : 'things and boxes'}.`,
+  selectedPutBack: n => `Put back ${n} selected ${n === 1 ? 'thing or box' : 'things and boxes'}.`
+});
+Object.assign(STR.sv, {
+  quickFilterHint: 'Filtren begränsar resultaten. Sökningen letar överallt.',
+  quickAutoSuggestion: type => `Visar ${type} eftersom det är det enda som finns i ditt förråd än. Sök för att leta överallt.`,
+  quick_out: 'Visa lådor och saker som är framme just nu.',
+  quick_loose: 'Visa saker som inte ligger i en låda.',
+  quick_boxes: 'Visa bara lådor.',
+  quick_items: 'Visa bara enskilda saker.',
+  takeOutSel: 'Ta ut', putBackSel: 'Ställ tillbaka',
+  selectedTakenOut: n => `Tog ut ${n} valda ${n === 1 ? 'sak eller låda' : 'saker och lådor'}.`,
+  selectedPutBack: n => `Ställde tillbaka ${n} valda ${n === 1 ? 'sak eller låda' : 'saker och lådor'}.`
+});
 function tr(k, ...a){ const v = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : (v ?? k); }
 const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
 const STATUS_KEYS = {'In storage': 'st_store', Loaned: 'st_loan', 'Loaned out': 'st_loan_out', 'For sale': 'st_sale', Sold: 'st_sold', 'Given away': 'st_given', 'Throw away': 'st_throw'};
@@ -14729,6 +14755,7 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5"/><path d="M3.5 21c.6-4.6 4.1-7.5 8.5-7.5s7.9 2.9 8.5 7.5z"/></svg>',
   mic: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>',
   pin: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
+  mapView: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15"/></svg>',
   starO: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.2 2.7 5.5 6 .9-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2 6-.9z"/></svg>',
   chat: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 3.5v-3.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/></svg>',
   scan: '<svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg>',
@@ -14893,8 +14920,8 @@ function itemTile(it, b, caption){
   const sel = selecting && selecting.has('i:' + b.id + ':' + it.id);
   const hl = view.name === 'box' && view.hl === it.id;
   const stateClass = entityStateClass(it, b);
-  return `<button class="itile${sel ? ' sel' : ''}${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}">
-    <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${it.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selbox">${sel ? '✓' : ''}</span>` : ''}</span>
+  return `<button class="itile${hl ? ' hl' : ''}${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" data-lp="item:${esc(b.id)}:${esc(it.id)}"${selecting ? ` aria-pressed="${sel}"` : ''}>
+    <span class="timg">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span>${it.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}${dot(isDue(it))}${it.fav ? '<span class="favstar">★</span>' : ''}${selecting ? `<span class="selmark${sel ? ' on' : ''}" aria-hidden="true">${sel ? '✓' : ''}</span>` : ''}</span>
     <span class="ttext"><span class="tname">${esc(it.name || tr('unnamed'))}</span>${entityRibbon(it, b)}${caption ? `<span class="tcap">${caption}</span>` : ''}</span></button>`;
 }
 const STATUS_ICONS = {
@@ -15045,8 +15072,8 @@ function shelfTile(b){
   const n = (b.items || []).length + childBoxes(b.id).length;
   const sel = selecting && selecting.has('b:' + b.id);
   const stateClass = entityStateClass(b);
-  return `<button class="itile btile${b.fav ? ' fav' : ''}${sel ? ' sel' : ''}${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}">
-    <span class="timg">${boxArt(boxNum(b))}${b.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}</span>
+  return `<button class="itile btile${b.fav ? ' fav' : ''}${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" data-open="${esc(b.id)}" data-lp="box:${esc(b.id)}"${selecting ? ` aria-pressed="${sel}"` : ''}>
+    <span class="timg">${boxArt(boxNum(b))}${b.isNew ? `<span class="newrib">${tr('newTag')}</span>` : ''}<span class="bcount">${n}</span>${presenceBadge(b.id)}${tileFresh(b)}${b.fav ? '<span class="favstar">★</span>' : ''}${dot(dueCount(x => x.id === b.id || x.parentId === b.id))}${selecting ? `<span class="selmark${sel ? ' on' : ''}" aria-hidden="true">${sel ? '✓' : ''}</span>` : ''}</span>
     <span class="ttext"><span class="tname">${esc(b.name || boxLabel(b))}</span>${entityRibbon(b)}</span></button>`;
 }
 /* the freshness dot only shows when a box is about to stop being "fresh" (not checked for ~5 months) */
@@ -15216,7 +15243,7 @@ function renderBox(b){
     ${(items.length || viewMode === 'list') && !selecting ? `<div class="addrow"><button class="btn quiet small" data-act="addinbox">${PLUS_SVG} ${tr('addNav')}</button></div>` : ''}
     ${boxDocumentsHTML(b)}
     ${notesHTML(notes.filter(n => n.boxId === b.id), tr('voiceNotesBox'))}
-    ${selBar(['tag', 'move', 'del'])}`;
+    ${selBar(['tag', 'move', 'del', 'out'])}`;
   document.body.classList.toggle('selecting', !!selecting);
   if (hlIt) scrollToHighlight();
 }
@@ -15526,14 +15553,14 @@ function rowsOrTiles(entries){
   const bx = entries.filter(e => e[0] === 'box').map(e => e[1]), its = entries.filter(e => e[0] === 'item').map(e => [e[1], e[2]]);
   return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
 }
-let searchQuick = null;
+let searchQuick = null, searchQuickAuto = false, searchSuggestionChecked = false;
 let searchOpen = false, askOpen = false;
 const looksLikeQuestion = t => /\?\s*$/.test(t) || /^(var|vart|vad|hur|när|vem|har|finns|kan|visa|öppna|lägg|ta|flytta|where|what|how|when|who|do|is|are|can|show|open|add|put|move|take)\b/i.test((t || '').trim());
 function scopeChip(){
   if (places.length < 2 && realBoxes().length < 2) return '';
   const P = searchScope.places, B = searchScope.boxes;
   const label = B.size ? (B.size === 1 ? (findBox([...B][0]) || {}).code || '' : tr('boxes_n', B.size).toLowerCase()) : P.size === 1 ? placeName([...P][0]) : places.length > 1 ? tr('everywhere') : placeName(places[0].id);
-  return `<button class="chipbtn${P.size || B.size ? ' on' : ''}" id="scopeBtn">📍 ${esc(label)} ▾</button>`;
+  return `<button class="chipbtn${P.size || B.size ? ' on' : ''}" id="scopeBtn">${ICON.mapView} ${esc(label)} ▾</button>`;
 }
 function scopeSheet(){
   openSheet(`<h3>${tr('searchIn')}</h3><div id="scopeBody">${scopeChips().replace(/<span class="lab">.*?<\/span>/, '')}</div><div class="sheet-foot"><button class="btn primary" id="scX">${tr('ok')}</button></div>`);
@@ -15550,12 +15577,17 @@ function scopeSheet(){
 function quickChipsInner(){ return quickChips().replace(/^<div class="chips quick">/, '').replace(/<\/div>$/, ''); }
 function quickChips(){
   const nOut = outItems().length + realBoxes().filter(b => b.out).length, nLoose = boxes.filter(b => b.loose).reduce((s, b) => s + (b.items || []).length, 0);
-  const c = (k, label, n) => `<button class="chipbtn${searchQuick === k ? ' on' : ''}" data-quick="${k}">${label}${n !== undefined ? ` <small>${n}</small>` : ''}</button>`;
+  const c = (k, label, n) => `<button class="chipbtn${searchQuick === k ? ' on' : ''}" data-quick="${k}" aria-label="${esc(tr('quick_' + k))}" title="${esc(tr('quick_' + k))}">${label}${n !== undefined ? ` <small>${n}</small>` : ''}</button>`;
   return `<div class="chips quick">${c('out', ICON.takeout + ' ' + tr('outNow'), nOut)}${c('loose', tr('notInBox'), nLoose)}${c('boxes', tr('allBoxes'), realBoxes().length)}${c('items', tr('allItems'), boxes.reduce((s, b) => s + (b.items || []).length, 0))}</div>`;
 }
 function renderSearch(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
   const q = query.trim(), P = searchScope.places, B = searchScope.boxes;
+  if (!q && !P.size && !B.size && !searchQuick && !searchSuggestionChecked){
+    searchSuggestionChecked = true;
+    if (nB && !nI){ searchQuick = 'boxes'; searchQuickAuto = true; }
+    else if (!nB && nI){ searchQuick = 'items'; searchQuickAuto = true; }
+  }
   const inScope = b => (!P.size || P.has(b.placeId)) && (!B.size || B.has(b.id));
   let body = '';
   if (!q && (P.size || B.size)){
@@ -15591,12 +15623,12 @@ function renderSearch(){
   app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div></div>
     <div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('searchOrAsk'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">${SR ? `<button class="micin" id="micBtn" aria-label="${esc(tr('tapTalk'))}">${ICON.mic}</button>` : ''}</div>
     ${q.length >= 2 ? `<button class="askbtn" id="askGo"><span class="spark">✨</span><span>${esc(tr('askAbout', q))}</span><small>beta</small></button>` : ''}
-    <div class="chips quick">${quickChipsInner()}${scopeChip()}</div>
+    <div class="chips quick">${quickChipsInner()}${scopeChip()}</div><p class="quick-filter-hint">${searchQuickAuto ? tr('quickAutoSuggestion', tr(searchQuick === 'boxes' ? 'allBoxes' : 'allItems')) : tr('quickFilterHint')}</p>
     ${askOpen ? `<div class="askpanel"><div class="askhead"><b>✨ Storrrage</b><small>beta · ${ai.provider === 'off' ? tr('simpleMode') : 'AI'}</small><button class="linkbtn" id="askX" aria-label="${esc(tr('close'))}">✕</button></div><div class="vlog chat" id="vlog"></div><div class="vlive" id="vLive" hidden></div></div>` : ''}
     ${collectionChips(q)}
-    ${(q || P.size || B.size || searchQuick) && !selecting && /(itile|btile|stile)/.test(body) ? `<div class="selrow"><button class="btn quiet small" data-act="selectmode">${tr('select')}</button></div>` : ''}
+    ${(q || P.size || B.size || searchQuick) && /(itile|btile|stile)/.test(body) ? `<div class="selrow"><button class="btn ${selecting ? 'primary' : 'quiet'} small select-toggle" data-act="selectmode" aria-pressed="${!!selecting}">${tr('select')}</button></div>` : ''}
     <div id="results">${body}</div>
-    ${selBar(['tag', 'move', 'del', ...(move.active ? ['addtomove'] : [])])}`;
+    ${selBar(['tag', 'move', 'del', 'out', ...(move.active ? ['addtomove'] : [])])}`;
   document.body.classList.toggle('selecting', !!selecting);
   if ($('#scopeBtn')) $('#scopeBtn').onclick = scopeSheet;
   const s = $('#q');
@@ -15607,13 +15639,19 @@ function renderSearch(){
   if ($('#vlog')){ drawLog(); $('#vlog').addEventListener('click', e => { const b = e.target.closest('[data-vact]'); if (!b) return; const l = voiceLog[+b.dataset.vact]; if (l && l.action){ const run = l.action.run; l.action = null; drawLog(); run(); } }); }
   s.addEventListener('keydown', e => { if (e.key === 'Enter' && looksLikeQuestion(s.value)){ e.preventDefault(); e.stopImmediatePropagation(); ask(s.value); } }, true);
   if (focused){ s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
-  let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = s.value; render(); }, 150); });
+  let tmr; s.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => {
+    query = s.value;
+    if (query.trim()) clearAutoSearchScope();
+    render();
+  }, 150); });
   bindSearchExtras();
 }
 function bindSearchExtras(){
   const P = searchScope.places, B = searchScope.boxes;
-  app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { track('search_quick', {f: c.dataset.quick}); searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; render(); });
-  app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => { query = c.dataset.suggest; rememberQuery(query); render(); });
+  app.querySelectorAll('[data-quick]').forEach(c => c.onclick = () => { track('search_quick', {f: c.dataset.quick}); searchQuick = searchQuick === c.dataset.quick ? null : c.dataset.quick; searchQuickAuto = false; render(); });
+  app.querySelectorAll('[data-suggest]').forEach(c => c.onclick = () => {
+    query = c.dataset.suggest; clearAutoSearchScope(); rememberQuery(query); render();
+  });
   const s = $('#q');
   if (s) s.addEventListener('keydown', e => { if (e.key === 'Enter'){ rememberQuery(s.value); s.blur(); } });
   app.querySelectorAll('[data-scope]').forEach(c => c.onclick = () => {
@@ -16467,7 +16505,7 @@ function renderCollection(tag){
       <button class="btn quiet small" data-act="selectmode">${tr('select')}</button>${viewToggle()}</div>
     ${groups.map(([b, its]) => `<section class="cgroup"><button class="cghead" data-open="${esc(b.id)}"><span class="cgcode${b.loose ? ' loose' : ''}">${b.loose ? '' : `<span class="sico">${ICON.box}</span>` + esc(b.code.replace('B-', ''))}</span><span class="cgtext"><b>${b.loose ? tr('notInBox') : esc(b.name)}</b><small>${esc(boxWhere(b))}</small></span><span class="chev">›</span></button>
       ${viewMode === 'list' && !selecting ? rowsHTML(its.sort(byName).map(it => [it, b])) : `<div class="igrid${viewCls()}">${its.sort(byName).map(it => itemTile(it, b)).join('')}</div>`}</section>`).join('')}
-    ${selBar(['tag', 'move', 'del'])}`;
+    ${selBar(['tag', 'move', 'del', 'out'])}`;
   document.body.classList.toggle('selecting', !!selecting);
 }
 function boxWhere(b){
@@ -16480,12 +16518,55 @@ function boxWhere(b){
 /* ---------- select several things anywhere: add to a collection, move, delete ---------- */
 function selBar(acts){
   if (!selecting) return '';
-  const n = selecting.size;
-  return `<div class="donebar selbar"><span class="selcount">${tr('selected', n)}</span><button class="btn quiet" data-act="selcancel">${tr('cancel')}</button>
+  const n = selecting.size, allOut = selectionAllOut();
+  return `<div class="donebar selbar"><span class="selcount">${tr('selected', n)}</span>
     ${acts.includes('tag') ? `<button class="btn quiet" data-act="seltag" ${n ? '' : 'disabled'}>#&nbsp;${tr('toCollection')}</button>` : ''}
     ${acts.includes('move') ? `<button class="btn quiet" data-act="selmove" ${n ? '' : 'disabled'}>${tr('moveSel')}</button>` : ''}
     ${acts.includes('addtomove') ? `<button class="btn primary" data-act="seladdtomove" ${n ? '' : 'disabled'}>${tr('addSelectedToMove')}</button>` : ''}
+    ${acts.includes('out') ? `<button class="btn quiet small icontext" data-act="selout" ${n ? '' : 'disabled'}>${allOut ? ICON.putback + tr('putBackSel') : ICON.takeout + tr('takeOutSel')}</button>` : ''}
     ${acts.includes('del') ? `<button class="btn danger" data-act="seldel" ${n ? '' : 'disabled'}>${tr('delSel')}</button>` : ''}</div>`;
+}
+function selectedEntities(){
+  return [...(selecting || [])].map(key => {
+    const [kind, boxId, itemId] = key.split(':');
+    const box = findBox(boxId); if (!box) return null;
+    if (kind === 'b') return {kind: 'box', box};
+    const item = (box.items || []).find(candidate => candidate.id === itemId);
+    return item ? {kind: 'item', box, item} : null;
+  }).filter(Boolean);
+}
+function selectionAllOut(){
+  const entries = selectedEntities();
+  return entries.length > 0 && entries.every(entry => entry.kind === 'box' ? !!entry.box.out : isOut(entry.item));
+}
+function setSelectedOut(out){
+  const changes = new Map();
+  selectedEntities().forEach(entry => {
+    const currentOut = entry.kind === 'box' ? !!entry.box.out : isOut(entry.item);
+    if (currentOut === out) return;
+    if (!changes.has(entry.box.id)) changes.set(entry.box.id, {box: false, items: new Set()});
+    const change = changes.get(entry.box.id);
+    if (entry.kind === 'box') change.box = true;
+    else change.items.add(entry.item.id);
+  });
+  if (!changes.size) return toast(out ? tr('allOutAlready') : tr('allBackAlready'));
+  snapshot([...changes.keys()]);
+  let count = 0;
+  for (const [boxId, change] of changes){
+    const box = clone(findBox(boxId));
+    if (change.box){
+      if (out) box.out = {since: (box.out && box.out.since) || today()};
+      else { delete box.out; box.checkedAt = new Date().toISOString(); }
+      count++;
+    }
+    (box.items || []).forEach(item => {
+      if (!change.items.has(item.id)) return;
+      markOut(item, out); count++;
+    });
+    putBox(box, true);
+  }
+  selecting = null; render();
+  toastAction(out ? tr('selectedTakenOut', count) : tr('selectedPutBack', count), tr('undo'), () => { undoApply(); render(); });
 }
 function selectedItems(){ return [...(selecting || [])].filter(k => k.startsWith('i:')).map(k => { const [, bid, iid] = k.split(':'); const b = findBox(bid), it = b && (b.items || []).find(i => i.id === iid); return it ? [it, b] : null; }).filter(Boolean); }
 function selAddToMove(){
@@ -17249,7 +17330,7 @@ app.addEventListener('click', e => {
   if (d.nav){ let v = JSON.parse(d.nav); if (v.name === 'home') v = {name: 'home', place: v.place || 'all'};
     if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
   if (d.goplace) return goHome(d.goplace === 'all' ? null : d.goplace);
-  if (selecting && (d.item || d.open) && !d.openItem){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; if (d.open) return; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
+  if (selecting && (d.item || d.open) && !d.openItem){ const key = d.item ? `i:${d.box}:${d.item}` : `b:${d.open}`; selecting.has(key) ? selecting.delete(key) : selecting.add(key); return render(); }
   if (d.open) return openBox(d.open);
   if (view.name === 'search' && query) rememberQuery(query);
   if (d.item) return navigate({name: 'item', boxId: d.box, itemId: d.item});
@@ -17288,8 +17369,8 @@ app.addEventListener('click', e => {
     case 'favitem': if (flushItem) flushItem(); saveItem(x => { x.fav = !x.fav; }, true); break;
     case 'sharewhere': { if (flushItem) flushItem(); const [it2, b2] = curItem(); if (it2) shareWhere(it2, b2); break; }
     case 'favbox': { const nb = clone(b); nb.fav = !b.fav; putBox(nb); break; }
-    case 'selectmode': selecting = new Set(); render(); break;
-    case 'selcancel': selecting = null; render(); break;
+    case 'selectmode': selecting = selecting ? null : new Set(); render(); break;
+    case 'selout': setSelectedOut(!selectionAllOut()); break;
     case 'selmove': selMove(); break;
     case 'seldel': selDelete(); break;
     case 'seltag': selTag(); break;
@@ -20225,7 +20306,7 @@ STR.da = {
   getGem: 'Få en gratis nøgle: åbn aistudio.google.com, log ind og vælg “Get API key”.', getClaude: 'Få en nøgle: åbn console.anthropic.com, indbetal et lille beløb under Billing og opret en nøgle under API keys.',
   keyLocal: 'Nøglen gemmes kun på denne telefon og er ikke med i backups.', inside: 'Indeni', topLevel: p => `${p}, direkte`, nameOptional: 'Lad stå tom for at navngive efter indholdet',
   boxInBox: 'Kasse i denne kasse', boxesInside: 'Kasser indeni', addHereBox: b => `Tilføj til ${b}`, notes: 'Noter', recent: 'Senest set', favorites: 'Favoritter', fav: 'Favorit', unfav: 'Fjern favorit',
-  viewLarge: 'Store felter', viewSmall: 'Små felter', viewList: 'Liste', select: 'Vælg', selected: n => `${n} valgt`, moveSel: 'Flyt til…', delSel: 'Slet',
+  viewLarge: 'Store felter', viewSmall: 'Små felter', viewList: 'Liste', select: 'Vælg', selected: n => `${n} valgt`, moveSel: 'Flyt', delSel: 'Slet',
   delSelQ: n => n === 1 ? 'Slet 1 ting? Det kan ikke fortrydes.' : `Slet ${n} ting? Det kan ikke fortrydes.`, movedN: (n, w) => `Flyttede ${n} til ${w}.`, deletedN: n => `Slettede ${n}.`,
   didYouMean: 'Mente du', share: 'Del hvor den er', copied: 'Kopieret.', shareCopy: 'Del en kopi af dette sted', icon: 'Billede', numbering: 'Kassenumre',
   numPlace: 'Separat for hvert sted (B-001 på hvert sted)', numAccount: 'Én serie for alle steder', export: 'Eksportér en liste', exportH: 'Eksportér en liste over dine ting',
@@ -20368,7 +20449,7 @@ STR.fi = {
   getGem: 'Hanki ilmainen avain: avaa aistudio.google.com, kirjaudu ja valitse ”Get API key”.', getClaude: 'Hanki avain: avaa console.anthropic.com, lisää pieni summa kohdassa Billing ja luo avain kohdassa API keys.',
   keyLocal: 'Avain tallennetaan vain tähän puhelimeen eikä sitä sisällytetä varmuuskopioihin.', inside: 'Sisällä', topLevel: p => `${p}, suoraan`, nameOptional: 'Jätä tyhjäksi, niin nimi tulee sisällöstä',
   boxInBox: 'Laatikko tämän laatikon sisällä', boxesInside: 'Laatikot sisällä', addHereBox: b => `Lisää kohteeseen ${b}`, notes: 'Muistiinpanot', recent: 'Viimeksi katsotut', favorites: 'Suosikit', fav: 'Suosikki', unfav: 'Poista suosikeista',
-  viewLarge: 'Suuret ruudut', viewSmall: 'Pienet ruudut', viewList: 'Lista', select: 'Valitse', selected: n => `${n} valittu`, moveSel: 'Siirrä…', delSel: 'Poista',
+  viewLarge: 'Suuret ruudut', viewSmall: 'Pienet ruudut', viewList: 'Lista', select: 'Valitse', selected: n => `${n} valittu`, moveSel: 'Siirrä', delSel: 'Poista',
   delSelQ: n => n === 1 ? 'Poistetaanko 1 tavara? Tätä ei voi perua.' : `Poistetaanko ${n} tavaraa? Tätä ei voi perua.`, movedN: (n, w) => `Siirrettiin ${n} kohteeseen ${w}.`, deletedN: n => `Poistettiin ${n}.`,
   didYouMean: 'Tarkoititko', share: 'Jaa sijainti', copied: 'Kopioitu.', shareCopy: 'Jaa kopio tästä paikasta', icon: 'Kuva', numbering: 'Laatikkonumerot',
   numPlace: 'Oma sarja jokaiselle paikalle (B-001 joka paikassa)', numAccount: 'Yksi sarja kaikille paikoille', export: 'Vie lista', exportH: 'Vie lista tavaroistasi',
@@ -20511,7 +20592,7 @@ STR.nb = {
   getGem: 'Få en gratis nøkkel: åpne aistudio.google.com, logg inn og velg «Get API key».', getClaude: 'Få en nøkkel: åpne console.anthropic.com, sett inn et lite beløp under Billing og lag en nøkkel under API keys.',
   keyLocal: 'Nøkkelen lagres bare på denne telefonen og er ikke med i sikkerhetskopier.', inside: 'Inni', topLevel: p => `${p}, direkte`, nameOptional: 'La stå tom for å kalle den opp etter innholdet',
   boxInBox: 'Eske i denne esken', boxesInside: 'Esker inni', addHereBox: b => `Legg til i ${b}`, notes: 'Notater', recent: 'Nylig sett', favorites: 'Favoritter', fav: 'Favoritt', unfav: 'Fjern favoritt',
-  viewLarge: 'Store ruter', viewSmall: 'Små ruter', viewList: 'Liste', select: 'Velg', selected: n => `${n} valgt`, moveSel: 'Flytt til…', delSel: 'Slett',
+  viewLarge: 'Store ruter', viewSmall: 'Små ruter', viewList: 'Liste', select: 'Velg', selected: n => `${n} valgt`, moveSel: 'Flytt', delSel: 'Slett',
   delSelQ: n => n === 1 ? 'Slette 1 ting? Det kan ikke angres.' : `Slette ${n} ting? Det kan ikke angres.`, movedN: (n, w) => `Flyttet ${n} til ${w}.`, deletedN: n => `Slettet ${n}.`,
   didYouMean: 'Mente du', share: 'Del hvor den er', copied: 'Kopiert.', shareCopy: 'Del en kopi av dette stedet', icon: 'Bilde', numbering: 'Eskenumre',
   numPlace: 'Egen serie for hvert sted (B-001 på hvert sted)', numAccount: 'Én serie for alle steder', export: 'Eksporter en liste', exportH: 'Eksporter en liste over tingene dine',
