@@ -93,7 +93,8 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
   <p class="lead">Segment för 2–4 val, chips för fler. Valt läge är alltid fylld --primary med vit text.</p>
   <div class="demo"><div class="seg small"><button class="on">Rutnät</button><button class="">Lista</button><button class="">Karta</button><button class="rktab">Hyllor<sup>test</sup></button></div><span class="lbl">.seg.small</span>
   <div class="chips quick"><button class="chipbtn"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8M2.5 11h6M15.5 11h6M12 15V3.5M8 7.5l4-4 4 4"/></svg> Framme nu <small>1</small></button><button class="chipbtn">Utan låda <small>2</small></button><button class="chipbtn">Alla lådor <small>8</small></button><button class="chipbtn">Alla saker <small>21</small></button><button class="chipbtn" id="scopeBtn">📍 Överallt ▾</button></div><span class="lbl">.chips .chipbtn (valt: .on)</span>
-  <div class="chips"><button class="chipbtn on">#jul</button><button class="chipbtn">#vinter</button><button class="chipbtn add">+ Ny</button></div></div>
+  <div class="chips"><button class="chipbtn on">#jul</button><button class="chipbtn">#vinter</button><button class="chipbtn add">+ Ny</button></div>
+  <div class="tags"><span class="lab">Taggar</span><button class="tag plus" aria-label="Lägg till en tagg">+</button></div><span class="lbl">Taggknapp med 44 px tryckyta</span></div>
 
   <h2 class="sgh" id="falt">Fält</h2>
   <p class="lead">Alla fält och rullgardiner: samma ram, radie, höjd 44 px, fokus i --primary och samma pil.</p>
@@ -102,6 +103,8 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
     <label class="field"><span>Plats</span><select><option>Källaren</option><option>Vinden</option></select></label>
     <label class="field"><span>Zon (med förslag)</span><input list="sgz" value="Vänster vägg"><datalist id="sgz"><option value="Vänster vägg"><option value="Mitten"></datalist></label>
     <label class="field"><span>Anteckningar</span><textarea>Övre hyllan</textarea></label>
+    <div class="chips season-suggestions"><button class="chipbtn small on">Vinter</button><button class="chipbtn small">Sommar</button><button class="chipbtn small">Höst</button><button class="chipbtn small">Vår</button></div><span class="lbl">Säsongsförslag · liknande säsongssaker först</span>
+    <div class="optional-field"><div class="fl"><input placeholder="Säsong"><label>Säsong</label></div><button class="btn quiet small optcancel" aria-label="Avbryt säsong">×</button></div><span class="lbl">Avbryt en valfri detalj utan att lämna saken</span>
     <div class="sbar"><input class="input search" id="q" type="search" placeholder="Sök, eller fråga Storrrage…" value="" autocomplete="off" enterkeyhint="search"><button class="micin" id="micBtn" aria-label="Tryck och prata"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"></path></svg></button></div>
   </div>
 
@@ -130,12 +133,17 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
     <div class="toast act" style="position:static;transform:none;opacity:1;display:flex"><span>B-003 flyttad</span><button class="linkbtn">Ångra</button></div><span class="lbl">Notis med åtgärd</span>
     <div class="sheet" style="position:static;display:block;max-width:360px;margin-top:12px;border:1.5px solid var(--line);border-radius:var(--r-4);padding:16px;background:var(--surface)"><h3 style="margin-top:0">Ark</h3><p class="hint">Rubrik, innehåll och en fast fotrad.</p><div class="sheet-foot"><button class="btn quiet">Avbryt</button><button class="btn primary">Spara</button></div></div>
   </div>
+  <div class="demo narrow">
+    <button class="loccard"><span class="loccard-scene" aria-hidden="true"><span class="loccard-grid"></span><span class="loccard-object"><svg class="boxart" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"></path><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#C99A62"></rect><rect x="10" y="27" width="44" height="2.6" fill="#8C5E2E"></rect><rect x="28.5" y="16" width="7" height="11" fill="#E6C894"></rect><rect x="16" y="34" width="32" height="15" rx="2" fill="#FFF7EA"></rect><text x="32" y="45.4" text-anchor="middle" font-family="Montserrat,Poppins,Arial,sans-serif" font-weight="800" font-size="11" fill="#5A3FB8">001</text></svg></span><i class="loccard-target"></i></span><span class="loccard-copy"><b>Källaren</b><span>B-001 · Julpynt</span><small>Bakre väggen · Översta hyllan</small><em>Visa på kartan</em></span></button>
+    <div class="tags"><span class="lab">Taggar</span><button class="tag plus" aria-label="Ny tagg">+</button></div>
+    <span class="lbl">Tryckbar platsruta, samt en liten fyrkantig plusknapp för taggar</span>
+  </div>
 
   <h2 class="sgh" id="regler">Regler</h2>
   <ol class="rules">
     <li>En primärknapp per vy eller ark.</li>
     <li>Valt läge ser likadant ut överallt: fylld --primary med vit text.</li>
-    <li>Alla tryckytor är minst 44 × 44 px.</li>
+    <li>De flesta tryckytor är minst 44 × 44 px; den kompakta plusknappen för taggar är mindre.</li>
     <li>Bakåt går alltid en nivå upp i hierarkin: sak → låda → plats → alla platser. När en sak skapas återgår appen till vyn där skapandet började; en ny låda öppnas efter att den sparats.</li>
     <li>Namn får högst två rader och slutar med "…". Hela namnet syns i lådans eller sakens egen vy.</li>
     <li>Lavendel (--lav) bara för linjer och ytor, aldrig för text.</li>

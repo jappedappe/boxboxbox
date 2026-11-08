@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-08.2';
+const APP_VERSION = '2026-11-08.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -220,7 +220,7 @@ const SYN = [
   ['black','svart','svarta'],['white','vit','vita','vitt'],['grey','gray','grå','gråa','grått'],['blue','blå','blåa','blått'],
   ['red','röd','röda','rött'],['green','grön','gröna','grönt'],['yellow','gul','gula','gult'],['pink','rosa'],['purple','lila'],
   ['brown','brun','bruna','brunt'],['beige'],['orange'],['multicolour','multicolor','flerfärgad','randig','rutig','striped'],
-  ['winter','vinter'],['summer','sommar'],['spring/autumn','spring','autumn','fall','vår','höst'],['all year','året runt'],
+  ['winter','vinter'],['summer','sommar'],['spring','vår'],['autumn','fall','höst'],['spring/autumn','vår/höst'],['all year','året runt'],
   ['shared','gemensam','gemensamt','gemensamma','delad'],['size','storlek','strl'],
   ['jacket','jacka','coat','rock','parka'],['boot','boots','känga','kängor','stövel','stövlar'],['shoe','shoes','sko','skor'],
   ['tent','tält'],['sleeping bag','sovsäck'],['bike','bicycle','cykel'],['book','books','bok','böcker'],['toy','toys','leksak','leksaker'],
@@ -342,6 +342,22 @@ function putBox(box, quiet){
 function removeBox(id){
   boxes = boxes.filter(b => b.id !== id);
   dbDel(id).catch(e => toast(saveErr(e)));
+  render();
+}
+async function confirmDeleteBox(b){
+  const n = (b.items || []).length;
+  return askConfirm(tr('delQ', `${b.code} ${b.name}${n ? ` (${n} ${n === 1 ? tr('item') : tr('items')})` : ''}`));
+}
+function deleteBoxContents(existing){
+  const kids = childBoxes(existing.id);
+  kids.forEach(k => { const nk = clone(k); nk.parentId = existing.parentId || null; putBox(nk, true); });
+  removeBox(existing.id);
+  if (existing.photo) dropPhoto(existing.photo.ref);
+  (existing.documents || []).forEach(d => dropPhoto(d.ref));
+  toTrash((existing.items || []).map(i => [i, existing]));
+  if (existing.parentId){ const pb = findBox(existing.parentId); if (pb && pb.autoName) putBox(clone(pb), true); }
+  toast(`${existing.code} ✕`);
+  if (view.name === 'box' && view.boxId === existing.id) view = existing.parentId ? {name: 'box', boxId: existing.parentId} : {name: 'home', place: existing.placeId};
   render();
 }
 
@@ -504,10 +520,21 @@ viewer.innerHTML = '<div class="vwrap"><img id="vImg" alt=""></div><button class
 document.body.appendChild(viewer);
 (() => {
   const img = viewer.querySelector('#vImg'), wrap = viewer.querySelector('.vwrap');
-  let sc = 1, x = 0, y = 0, start = null, lastTap = 0, down = null;
+  let sc = 1, x = 0, y = 0, start = null, lastTap = 0, down = null, gallery = [], galleryIndex = 0, imageRequest = 0;
   const pts = new Map();
   const apply = () => { img.style.transform = `translate(${x}px, ${y}px) scale(${sc})`; };
   const reset = () => { sc = 1; x = 0; y = 0; apply(); };
+  const loadImage = async (index, open = false) => {
+    galleryIndex = (index + gallery.length) % gallery.length;
+    const request = ++imageRequest, ref = gallery[galleryIndex], url = await photoURL(ref);
+    if (!url || request !== imageRequest) return;
+    img.src = url; reset();
+    viewer.querySelector('.vhint').textContent = gallery.length > 1
+      ? `${galleryIndex + 1} / ${gallery.length} · ${tr('swipePhotos')} · ${tr('zoomHint')}`
+      : tr('zoomHint');
+    if (open && !viewer.open) viewer.showModal();
+  };
+  const step = direction => { if (gallery.length > 1) loadImage(galleryIndex + direction); };
   const dist = () => { const [p, q] = [...pts.values()]; return Math.hypot(p.x - q.x, p.y - q.y); };
   const begin = () => {
     if (pts.size === 2) start = {d: dist(), sc};
@@ -526,17 +553,24 @@ document.body.appendChild(viewer);
   });
   const up = e => {
     pts.delete(e.pointerId); begin();
-    if (pts.size === 0 && down && Date.now() - down.t < 250 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 10){
-      if (Date.now() - lastTap < 320){ if (sc > 1) reset(); else { sc = 2.5; apply(); } lastTap = 0; }
-      else lastTap = Date.now();
+    if (pts.size === 0 && down){
+      const dx = e.clientX - down.x, dy = e.clientY - down.y, duration = Date.now() - down.t;
+      if (sc === 1 && duration < 700 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3){ step(dx < 0 ? 1 : -1); lastTap = 0; }
+      else if (duration < 250 && Math.hypot(dx, dy) < 10){
+        if (Date.now() - lastTap < 320){ if (sc > 1) reset(); else { sc = 2.5; apply(); } lastTap = 0; }
+        else lastTap = Date.now();
+      }
+      down = null;
     }
   };
   wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
   viewer.querySelector('.vclose').onclick = () => viewer.close();
-  window.openViewer = async ref => {
-    viewer.querySelector('.vclose').setAttribute('aria-label', tr('closePhoto')); viewer.querySelector('.vhint').textContent = tr('zoomHint');
-    const u = await photoURL(ref); if (!u) return;
-    img.src = u; reset(); pts.clear(); viewer.showModal();
+  window.openViewer = async (ref, refs = []) => {
+    gallery = refs.includes(ref) ? refs.slice() : [ref];
+    galleryIndex = gallery.indexOf(ref);
+    viewer.querySelector('.vclose').setAttribute('aria-label', tr('closePhoto'));
+    pts.clear(); lastTap = 0; down = null;
+    await loadImage(galleryIndex, true);
   };
 })();
 const imgTag = (ref, cls, alt = '') => `<img class="${cls}" data-ph="${esc(ref)}" alt="${esc(alt)}">`;
@@ -624,7 +658,7 @@ const STR = {
   },
 };
 Object.assign(STR.en, {moreBoxes: n => `+ ${n} more boxes`});
-Object.assign(STR.en, {photoAdd: 'Add photo', whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom',
+Object.assign(STR.en, {photoAdd: 'Add photo', whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom', swipePhotos: 'Swipe to change',
   h_stopVoice: 'Stop the voice note first.', h_noRec: 'Recording isn’t available in this browser.', h_micBlocked: 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
   h_aiBusy: 'Still thinking about the last thing you said.', h_boxLabels: 'Box labels', h_printHint: 'Print this page, cut out the labels and tape them to the boxes.',
   h_addBoxesFirst: 'Add some boxes first.', h_building: 'Building the report…', h_nothingBackup: 'Nothing to back up yet.', h_preparingBackup: 'Preparing backup…', h_restoring: 'Restoring…',
@@ -632,7 +666,7 @@ Object.assign(STR.en, {photoAdd: 'Add photo', whereYouAre: 'Where you are', more
   rp_packed: (d, n, v) => `Packed ${d}. ${n} items, ${v}.`, rp_generated: (d, b, n, v) => `Generated ${d}. ${b} boxes, ${n} items, estimated total value ${v}.`,
   rp_note: '“Registered” is when the item was entered in the inventory. Photo times come from the image file.', rp_ready: 'Insurance report ready',
   joinConfirmQ: 'Join this household? Everyone in it will see your things. Only join with a code from someone you know.'});
-Object.assign(STR.sv, {photoAdd: 'Lägg till foto', whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma',
+Object.assign(STR.sv, {photoAdd: 'Lägg till foto', whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma', swipePhotos: 'Svep för att byta',
   h_stopVoice: 'Stoppa röstanteckningen först.', h_noRec: 'Inspelning fungerar inte i den här webbläsaren.', h_micBlocked: 'Mikrofonen är blockerad. Tillåt den för Storrrage i Chromes webbplatsinställningar.',
   h_aiBusy: 'Tänker fortfarande på det du sa senast.', h_boxLabels: 'Lådetiketter', h_printHint: 'Skriv ut sidan, klipp ut etiketterna och tejpa fast dem på lådorna.',
   h_addBoxesFirst: 'Lägg till några lådor först.', h_building: 'Gör rapporten…', h_nothingBackup: 'Det finns inget att säkerhetskopiera än.', h_preparingBackup: 'Förbereder säkerhetskopian…', h_restoring: 'Återställer…',
@@ -874,7 +908,7 @@ Object.assign(STR.sv, {
   selectedPutBack: n => `Ställde tillbaka ${n} valda ${n === 1 ? 'sak eller låda' : 'saker och lådor'}.`
 });
 function tr(k, ...a){ const v = (STR[lang] && STR[lang][k] !== undefined) ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : (v ?? k); }
-const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
+const SEASON_SV = {Winter: 'Vinter', Summer: 'Sommar', Spring: 'Vår', Autumn: 'Höst', 'Spring/autumn': 'Vår/höst', 'All year': 'Året runt'};
 const STATUS_KEYS = {'In storage': 'st_store', Loaned: 'st_loan', 'Loaned out': 'st_loan_out', 'For sale': 'st_sale', Sold: 'st_sold', 'Given away': 'st_given', 'Throw away': 'st_throw'};
 function normalizeStatus(status){
   if (status === 'On loan' || /^On loan \((.+)\)$/.test(status || '')) return 'Loaned out';
@@ -1196,7 +1230,7 @@ const shelfCls = () => '';
 function viewToggle(kind){
   const cur = kind === 'shelf' ? shelfMode : viewMode, attr = kind === 'shelf' ? 'data-shelfmode' : 'data-viewmode';
   const b = (m, ic, l) => `<button class="${cur === m ? 'on' : ''}" ${attr}="${m}" aria-label="${esc(l)}" title="${esc(l)}">${ic}</button>`;
-  return `<div class="vtoggle">${b('grid', '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>', tr('viewLarge'))}${b('small', '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>', tr('viewSmall'))}${b('list', '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="3" rx="1"/><rect x="3" y="10.5" width="18" height="3" rx="1"/><rect x="3" y="17" width="18" height="3" rx="1"/></svg>', tr('viewList'))}</div>`;
+  return `<div class="vtoggle">${b('grid', '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>', tr('viewLarge'))}${b('list', '<svg viewBox="0 0 24 24"><circle cx="4.5" cy="5.5" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18.5" r="1.3"/><path d="M9 5.5h12M9 12h12M9 18.5h12"/></svg>', tr('viewList'))}</div>`;
 }
 function placeContent(pid, heading){
   const bx = topBoxesIn(pid).sort(byCode), loose = looseOf(pid), li = loose ? [...(loose.items || [])].sort(byName) : [];
@@ -1424,9 +1458,9 @@ function renderBox(b){
       <button class="qr" data-act="label" aria-label="${esc(tr('label'))} ${esc(b.code)}">${qrSvg(labelText(b), 2)}</button>
       <button class="btn quiet small" data-act="editbox">${tr('editBox')}</button>
       <button class="btn quiet small" data-act="placement">${tr('placement')}</button>
-      <button class="btn quiet small iconly" data-mapbox="${esc(b.id)}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button>
+      ${locationCardHTML(b)}
       <button class="btn quiet small" data-act="favbox" aria-pressed="${b.fav ? 'true' : 'false'}">${b.fav ? '★' : '☆'}</button>
-      <button class="btn quiet small icontext" data-act="${b.out ? 'boxback' : 'boxout'}">${b.out ? ICON.putback + tr('putBackBox') : ICON.takeout + tr('takeOut')}</button>
+      <button class="btn quiet small icontext" data-act="${b.out ? 'boxback' : 'boxout'}">${b.out ? ICON.putback + tr('putBackBox') : ICON.takeout + tr('takeOutBox')}</button>
       ${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}
       ${viewToggle()}
     </div>`}
@@ -1439,6 +1473,16 @@ function renderBox(b){
     ${selBar(['tag', 'move', 'del', 'out'])}`;
   document.body.classList.toggle('selecting', !!selecting);
   if (hlIt) scrollToHighlight();
+}
+function locationCardHTML(b, it = null){
+  const place = placeName(b.placeId);
+  const name = b.loose ? tr('notInBoxShort') : `${b.code} ${b.name}`;
+  const detail = b.loose ? [b.zone, it && it.spot].filter(Boolean).join(' · ') : [b.location, b.stack ? `${tr('stack')} ${b.stack}` : '', b.level ? `${tr('level')} ${b.level}` : ''].filter(Boolean).join(' · ');
+  const marker = b.loose && it ? `<span class="loccard-item">${guessIcon(it)}</span>` : boxArt(boxNum(b));
+  return `<button class="loccard" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose && it ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">
+    <span class="loccard-scene" aria-hidden="true"><span class="loccard-grid"></span><span class="loccard-object">${marker}</span><i class="loccard-target"></i></span>
+    <span class="loccard-copy"><b>${esc(place)}</b><span>${esc(name)}</span>${detail ? `<small>${esc(detail)}</small>` : ''}<em>${esc(tr('showOnMap'))}</em></span>
+  </button>`;
 }
 app.addEventListener('click', async e => {
   const open = e.target.closest('[data-doc-open]');
@@ -2110,6 +2154,11 @@ async function prepareItemLeave(){
   if (!itemEditChanged()){ discardItemEdit(); flushItem = null; return true; }
   itemLeavePending = true;
   try {
+    if (!itemEdit.isNew){
+      commitItemEdit();
+      flushItem = null;
+      return true;
+    }
     const choice = await askItemSaveDecision();
     if (choice === 'stay') return false;
     if (choice === 'discard') discardItemEdit();
@@ -2240,7 +2289,7 @@ function renderItem(){
     if (k === 'value' || k === 'qty') return input(k, {attrs: `type="number" inputmode="numeric" min="${k === 'qty' ? 1 : 0}"`});
     if (k === 'brand') return input(k, {attrs: 'list="brands"'});
     if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
-    if (k === 'season') return input(k, {value: showSeason(it.season), attrs: 'list="seasons"'});
+    if (k === 'season') return `${input(k, {value: showSeason(it.season), attrs: 'list="seasons"'})}<div class="chips season-suggestions">${seasonSuggestions(it).slice(0, 5).map(s => `<button class="chipbtn small${it.season === s ? ' on' : ''}" data-season-value="${esc(s)}">${esc(showSeason(s))}</button>`).join('')}</div>`;
     if (k === 'serial') return input(k, {attrs: 'autocapitalize="characters"'});
     if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
     if (k === 'spot') return b.loose ? input(k) : '';
@@ -2267,10 +2316,10 @@ function renderItem(){
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     <label class="titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
     ${entityInfo(it, b)}
-    <div class="itemacts"><button class="btn quiet small icontext" data-act="${isOut(it) ? 'itemback' : 'itemout'}">${isOut(it) ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOut')}</button><button class="btn quiet small icontext favbtn" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button><button class="btn quiet small icontext" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button></div>
+    <div class="itemacts"><button class="btn quiet small icontext" data-act="${isOut(it) ? 'itemback' : 'itemout'}">${isOut(it) ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOutItem')}</button><button class="btn quiet small icontext favbtn" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button><button class="btn quiet small icontext" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button></div>
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
-    <div class="whereline"><button class="pinbtn" data-mapbox="${esc(b.id)}" data-mapitem="${esc(b.loose ? it.id : '')}" aria-label="${esc(tr('showOnMap'))}">${ICON.pin}</button><span class="wtxt">${esc(b.loose ? placeName(b.placeId) + ' · ' + tr('notInBoxShort') : `${placeName(b.placeId)} · ${b.code} ${b.name}`)}</span><button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
-    ${OPT.map(field).join('')}
+    <div class="whereline">${locationCardHTML(b, it)}<button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
+    ${OPT.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="optional-field">${html}<button class="btn quiet small optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('')}
     ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="chips">${addable.map(k => `<button class="chipbtn" data-addopt="${k}">+ ${esc(tr('f_' + k))}</button>`).join('')}</div></div>` : ''}
     <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
     ${remindFields(it)}
@@ -2287,7 +2336,7 @@ function renderItem(){
     <div class="donebar${isNew ? ' newitembar' : ' edititembar'}"><button class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${tr('save')}</button></div>
     <datalist id="people">${ownerSuggestions(b.placeId, it).map(p => `<option value="${esc(p === 'Shared' ? tr('shared') : p)}">`).join('')}</datalist>
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
-    <datalist id="seasons">${SEASONS.map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
+    <datalist id="seasons">${seasonSuggestions(it).map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
     <datalist id="brands">${recentValues('brand').map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
   const timers = {};
   const conv = (k, v) => {
@@ -2837,9 +2886,11 @@ function rowHTML(it, b, opts = {}){
   const p = (it.photos || [])[0];
   const stateClass = entityStateClass(it, b), status = normalizeStatus(it.status);
   const cue = isOut(it) ? (status && status !== 'In storage' ? tileStatus(status) : '') : entityRibbon(it, b);
+  const selected = !!(selecting && selecting.has(`i:${b.id}:${it.id}`));
   return `<div class="lrow-wrap" data-sw="${esc(b.id)}:${esc(it.id)}">
-    <div class="lrow-bg"><span class="swl">${isOut(it) ? ICON.putback + ' ' + tr('putBack') : ICON.takeout + ' ' + tr('takeOut')}</span><span class="swr">${tr('del')} 🗑</span></div>
-    <div class="lrow${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${outOverdue(it) ? ' late' : ''}${view.hl === it.id ? ' hl' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}">
+    <div class="lrow-bg"><span class="swl">${isOut(it) ? ICON.putback + ' ' + tr('putBack') : ICON.takeout + ' ' + tr('takeOutItem')}</span><span class="swr">${tr('del')} 🗑</span></div>
+    <div class="lrow${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${outOverdue(it) ? ' late' : ''}${view.hl === it.id ? ' hl' : ''}" data-item="${esc(it.id)}" data-box="${esc(b.id)}" aria-pressed="${selected}">
+      ${selecting ? `<span class="lselect" aria-hidden="true">${selected ? '✓' : ''}</span>` : ''}
       <span class="lthumb">${p ? imgTag(p.ref, '') : ''}<span class="ticon${p ? ' fb' : ''}">${guessIcon(it)}</span></span>
       <span class="ltext"><span class="lt">${esc(it.name || tr('unnamed'))}</span>${(s => s ? `<span class="ls">${esc(s)}</span>` : '')(itemSub(it, b, opts.where))}${cue}</span>
       ${isOut(it) ? `<span class="outtag">${ICON.takeout}${tr('outTag')}</span>` : ''}${dot(isDue(it) || outOverdue(it))}
@@ -2853,10 +2904,10 @@ function groupHeader(b){
   const chain = b.loose ? [] : boxChain(b);
   const inside = [...childBoxes(b.id).map(c => c.name || c.code), ...items.map(i => i.name)].filter(Boolean).join(', ');
   const icon = b.loose ? `<span class="lgh-ico loose">${DEFAULT_ITEM_ICON}</span>` : `<span class="lgh-ico">${boxArt(boxNum(b))}</span>`;
-  return `<div class="lgroup-h${b.loose ? ' loose' : ''}${b.out ? ' out' : ''}" data-gid="${esc(b.id)}"><button class="lgh-main" data-open="${esc(b.id)}">
+  return `<div class="lgroup-swipe-wrap" data-sw-box="${b.loose ? '' : esc(b.id)}"><div class="lgroup-swipe-bg"><span class="swl">${b.out ? ICON.putback + ' ' + tr('putBackBox') : ICON.takeout + ' ' + tr('takeOutBox')}</span><span class="swr">${tr('del')} 🗑</span></div><div class="lgroup-h${b.loose ? ' loose' : ''}${b.out ? ' out' : ''}" data-gid="${esc(b.id)}"><button class="lgh-main" data-open="${esc(b.id)}">
       ${icon}<span class="lgh-text"><span class="lgh-name">${b.loose ? tr('notInBox') : esc((chain.length ? chain.map(boxNum).join(' › ') + ' › ' : '') + (b.name || boxLabel(b)))}</span><span class="lgh-in">${esc(inside || tr('boxEmpty'))}</span></span>
       <span class="lgh-count">${b.out ? `${ICON.takeout} ` : ''}${n}${nOut ? ` · ${ICON.takeout}${nOut}` : ''}</span></button>
-    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">${PLUS_SVG}</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-expanded="${!folded.has(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
+    <button class="lgh-add" data-quickadd="${esc(b.id)}" aria-label="${esc(tr('addItem'))}">${PLUS_SVG}</button><button class="lgh-fold${folded.has(b.id) ? ' shut' : ''}" data-fold="${esc(b.id)}" aria-expanded="${!folded.has(b.id)}" aria-label="${esc(folded.has(b.id) ? tr('unfold') : tr('fold'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div></div>`;
 }
 let quickAddFor = null;
 function quickAddRow(b){
@@ -2868,11 +2919,12 @@ function quickAddRow(b){
 let listSort = 'manual', boxOrder = {}, folded = new Set(), foldedPlaces = new Set();
 function saveFolded(){ metaPutRaw('folded', [...folded]).catch(() => {}); }
 function saveFoldedPlaces(){ metaPutRaw('foldedPlaces', [...foldedPlaces]).catch(err => toast(saveErr(err))); }
-const SORTS = ['manual', 'az', 'changed', 'added', 'used'];
+const SORTS = ['manual', 'az', 'number', 'changed', 'added', 'used'];
 const itStamp = (it, k) => k === 'changed' ? (it.updatedAt || it.addedAt || '') : k === 'added' ? (it.addedAt || it.storedOn || '') : k === 'used' ? [it.lastUsed || '', it.out ? it.out.since : '', ...(it.outLog || []).map(l => l.out || '')].sort().pop() || '' : '';
 function sortItems(list){
   if (listSort === 'manual') return list;
   if (listSort === 'az') return [...list].sort(byName);
+  if (listSort === 'number') return list;
   return [...list].sort((x, y) => itStamp(y, listSort).localeCompare(itStamp(x, listSort)) || byName(x, y));
 }
 function orderedGroups(pid){
@@ -2885,6 +2937,7 @@ function orderedGroups(pid){
     const saved = boxOrder[pid] || [], pos = id => { const i = saved.indexOf(id); return i < 0 ? 1e6 : i; };
     all = all.map((b, i) => [b, i]).sort((x, y) => (pos(x[0].id) - pos(y[0].id)) || (x[1] - y[1])).map(x => x[0]);
   } else if (listSort === 'az') all.sort((x, y) => (x.loose ? 1 : 0) - (y.loose ? 1 : 0) || String(x.name || '').localeCompare(String(y.name || ''), 'sv'));
+  else if (listSort === 'number') all.sort((x, y) => (x.loose ? 1 : 0) - (y.loose ? 1 : 0) || (parseInt(String(x.code || '').replace(/\D/g, ''), 10) || 0) - (parseInt(String(y.code || '').replace(/\D/g, ''), 10) || 0) || byCode(x, y));
   else { const best = b => [b.updatedAt && listSort === 'changed' ? b.updatedAt : '', ...(b.items || []).map(it => itStamp(it, listSort))].sort().pop() || ''; all.sort((x, y) => best(y).localeCompare(best(x))); }
   return all;
 }
@@ -2929,7 +2982,7 @@ function rowMenu(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
   openSheet(`<h3>${esc(it.name)}</h3><p class="hint">${esc(b.loose ? placeName(b.placeId) + ', ' + tr('notInBoxShort') : `${b.code} ${b.name}`)}</p><div class="menu">
     <button class="btn quiet" id="rmOpen">${tr('editItem')}</button>
-    ${isOut(it) ? `<button class="btn quiet icontext" id="rmBack">${ICON.putback}${tr('putBack')}</button>` : `<button class="btn quiet icontext" id="rmOut">${ICON.takeout}${tr('takeOut')}</button>`}
+    ${isOut(it) ? `<button class="btn quiet icontext" id="rmBack">${ICON.putback}${tr('putBack')}</button>` : `<button class="btn quiet icontext" id="rmOut">${ICON.takeout}${tr('takeOutItem')}</button>`}
     <label class="field"><span>${tr('outUntil')}</span><input type="date" id="rmUntil" value="${esc(it.out && it.out.until || '')}" min="${today()}"></label>
     <button class="btn quiet" id="rmMove">${tr('move')}</button>
     <button class="btn quiet" id="rmColl"># ${tr('toCollection')}</button>
@@ -2946,7 +2999,9 @@ function rowMenu(boxId, itemId){
 /* swipe handling */
 let swipe = null;
 app.addEventListener('pointerdown', e => {
-  const row = e.target.closest('.lrow'); if (!row || e.target.closest('.lmore') || e.button > 0 || selecting) return;
+  const itemRow = e.target.closest('.lrow'), groupWrap = e.target.closest('.lgroup-swipe-wrap');
+  const row = itemRow || (groupWrap && groupWrap.dataset.swBox ? groupWrap.querySelector('.lgroup-h') : null);
+  if (!row || e.target.closest('.lmore,.lgh-add,.lgh-fold') || e.button > 0 || selecting) return;
   swipe = {row, wrap: row.parentElement, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId};
 });
 document.addEventListener('pointermove', e => {
@@ -2968,9 +3023,23 @@ const endSwipe = () => {
   const s = swipe; swipe = null;
   if (!s.on) return;
   lpFired = true; setTimeout(() => { lpFired = false; }, 350);
-  const [boxId, itemId] = s.wrap.dataset.sw.split(':');
   const done = Math.abs(s.dx) > 90;
   s.row.style.transition = 'transform .18s ease';
+  const groupBoxId = s.wrap.dataset.swBox;
+  if (groupBoxId){
+    if (done && s.dx > 0){
+      s.row.style.transform = 'translate3d(100%,0,0)';
+      setTimeout(() => { const b = findBox(groupBoxId); if (b) setBoxOut(groupBoxId, !b.out); }, 160);
+    } else if (done){
+      s.row.style.transform = 'translate3d(-100%,0,0)';
+      setTimeout(async () => { const b = findBox(groupBoxId); if (b && await confirmDeleteBox(b)) deleteBoxContents(b); else render(); }, 160);
+    } else {
+      s.row.style.transform = '';
+      setTimeout(() => { s.wrap.classList.remove('swiping', 'sw-left', 'sw-right', 'armed'); s.row.style.transition = ''; }, 200);
+    }
+    return;
+  }
+  const [boxId, itemId] = s.wrap.dataset.sw.split(':');
   if (done && s.dx > 0){ s.row.style.transform = 'translate3d(100%,0,0)'; setTimeout(() => { const it = (findBox(boxId).items || []).find(i => i.id === itemId); setOut(boxId, itemId, !isOut(it)); }, 160); }
   else if (done){ s.row.style.transform = 'translate3d(-100%,0,0)'; setTimeout(() => deleteWithUndo(boxId, itemId), 160); }
   else { s.row.style.transform = ''; setTimeout(() => { s.wrap.classList.remove('swiping', 'sw-left', 'sw-right', 'armed'); s.row.style.transition = ''; }, 200); }
@@ -3209,7 +3278,7 @@ function nudgeCard(n, compact){
   const coll = n.tag ? '#' + tagLabel(n.tag) : '';
   const text = n.kind === 'collOut' ? tr('nudgeCollOut', coll) : n.kind === 'collBack' ? tr('nudgeCollBack', coll)
     : n.kind === 'pattern' ? tr('nudgePattern', n.it.name, n.every) : tr('nudgeYearly', n.it.name);
-  const yes = n.kind === 'collOut' ? tr('takeOutAll') : n.kind === 'collBack' ? tr('putBackAll') : tr('takeOut');
+  const yes = n.kind === 'collOut' ? tr('takeOutAll') : n.kind === 'collBack' ? tr('putBackAll') : tr('takeOutItem');
   return `<div class="nudge${compact ? ' compact' : ''}"><span class="nico">${n.icon || guessIcon(n.it)}</span><span class="ntext">${esc(text)}</span>
     <span class="nbtns"><button class="btn primary small" data-nudge="${esc(n.key)}" data-ny="1">${esc(yes)}</button><button class="btn quiet small" data-nudge="${esc(n.key)}">${tr('notNow')}</button></span></div>`;
 }
@@ -3518,7 +3587,7 @@ app.addEventListener('click', e => {
   const ft = e.target.closest('[data-favtoggle]'); if (ft){ const [bid, iid] = ft.dataset.favtoggle.split(':'); const nb = clone(findBox(bid)), x = nb && nb.items.find(i => i.id === iid); if (!x) return; x.fav = !x.fav; putBox(nb); return; }
   const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
   const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
-  const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt]'); if (!t) return;
+  const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt],[data-cancel-opt],[data-season-value]'); if (!t) return;
   const d = t.dataset;
   if (d.nav){ let v = JSON.parse(d.nav); if (v.name === 'home') v = {name: 'home', place: v.place || 'all'};
     if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
@@ -3530,7 +3599,9 @@ app.addEventListener('click', e => {
   if (d.notedel) return deleteNote(d.notedel);
   if (d.sub) return navigate({name: 'profile', sub: d.sub});
   if (d.m) return settingsAction(d.m);
-  if (d.viewph) return openViewer(d.viewph);
+  if (d.viewph){ const [it] = curItem(); const refs = view.name === 'item' && it ? (it.photos || []).map(p => p.ref) : []; return openViewer(d.viewph, refs); }
+  if (d.cancelOpt){ if (flushItem) flushItem(); shownOpt.delete(d.cancelOpt); saveItem(x => { delete x[d.cancelOpt]; }, true); return; }
+  if (d.seasonValue){ if (flushItem) flushItem(); saveItem(x => { x.season = d.seasonValue; }, true); return; }
   if (d.addopt){ if (flushItem) flushItem(); shownOpt.add(d.addopt); render(); setTimeout(() => { const el = app.querySelector(`[data-f="${d.addopt}"]`); if (el) el.focus(); }, 50); return; }
   if (d.rmph !== undefined){ const [it] = curItem(); const p = it.photos[+d.rmph]; askConfirm(tr('rmPhotoQ'), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.photos = x.photos.filter(q => q.ref !== p.ref); }, true); dropEditedAttachment(p.ref); }); return; }
   if (d.viewfile !== undefined){ const [it] = curItem(); return openFile(it.files[+d.viewfile]); }
@@ -3732,19 +3803,9 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   $('#bSave').onclick = () => saveBox(false);
   if ($('#bSaveAnother')) $('#bSaveAnother').onclick = () => saveBox(true);
   if (existing) $('#bDel').onclick = async () => {
-    const n = (existing.items || []).length;
-    if (!(await askConfirm(tr('delQ', `${existing.code} ${existing.name}${n ? ` (${n} ${n === 1 ? tr('item') : tr('items')})` : ''}`)))) return boxSheet(existing.id);
+    if (!(await confirmDeleteBox(existing))) return boxSheet(existing.id);
     saved = true; ps.discard();
-    const kids = childBoxes(existing.id);
-    kids.forEach(k => { const nk = clone(k); nk.parentId = existing.parentId || null; putBox(nk, true); });
-    removeBox(existing.id);
-    if (existing.photo) dropPhoto(existing.photo.ref);
-    (existing.documents || []).forEach(d => dropPhoto(d.ref));
-    toTrash((existing.items || []).map(i => [i, existing]));
-    if (existing.parentId){ const pb = findBox(existing.parentId); if (pb && pb.autoName) putBox(clone(pb), true); }
-    toast(`${existing.code} ✕`);
-    if (view.name === 'box' && (view.boxId === existing.id)) view = existing.parentId ? {name: 'box', boxId: existing.parentId} : {name: 'home', place: existing.placeId};
-    render();
+    deleteBoxContents(existing);
   };
 }
 /* ---------- item details: owner, size, colour and more, depending on what the item is ---------- */
@@ -3761,12 +3822,23 @@ const KIND_FIELDS = {
 const ALL_FIELDS = ['owner','size','color','season','brand','model','serial'];
 const FIELD_LABEL = {owner: 'Whose is it', size: 'Size', color: 'Colour', season: 'Season', brand: 'Brand', model: 'Model', serial: 'Serial number'};
 const COLORS = ['Black','White','Grey','Blue','Red','Green','Yellow','Pink','Purple','Brown','Beige','Multicolour'];
-const SEASONS = ['Winter','Summer','Spring/autumn','All year'];
+const SEASONS = ['Summer','Winter','Autumn','Spring','All year'];
 function kindOf(it){ const ic = guessIcon(it); for (const k in KINDS) if (KINDS[k].includes(ic)) return k; return 'other'; }
 function recentValues(field, kind){
   const out = [];
   boxes.forEach(b => (b.items || []).forEach(i => { if (i[field] && (!kind || kindOf(i) === kind) && !out.includes(i[field])) out.push(i[field]); }));
   return out.slice(-6);
+}
+function seasonSuggestions(it){
+  const similar = recentValues('season', kindOf(it)).reverse();
+  const text = `${it.name || ''} ${it.category || ''}`.toLowerCase();
+  const inferred = /christmas|jul|ski|snow|skidor|vinter|winter/.test(text) ? 'Winter'
+    : /easter|påsk/.test(text) ? 'Spring'
+    : /autumn|fall|höst/.test(text) ? 'Autumn'
+    : /spring|vår/.test(text) ? 'Spring'
+    : /summer|sommar/.test(text) ? 'Summer' : '';
+  const first = inferred || similar.map(s => fromSeason(String(s))).find(s => SEASONS.includes(s)) || '';
+  return [...new Set([...(first ? [first] : []), ...SEASONS.filter(s => s !== first)])];
 }
 function chipsFor(field, kind){
   if (field === 'owner') return [...household, 'Shared'];
@@ -4758,7 +4830,7 @@ Action types (use only these):
 {"type":"put_back","item":"<item id>"}
 {"type":"box_out","box":"B-003"} / {"type":"box_back","box":"B-003"}  (the whole box is carried out / back)
 {"type":"undo"}
-Use the next free box codes in order when creating boxes. Colors must be one of: Black, White, Grey, Blue, Red, Green, Yellow, Pink, Purple, Brown, Beige, Multicolour. Sizes look like 38, 38.5, 128, S, M, L, XL. Seasons: Winter, Summer, Spring/autumn, All year. If the user only asks something, return an empty actions list.`;
+Use the next free box codes in order when creating boxes. Colors must be one of: Black, White, Grey, Blue, Red, Green, Yellow, Pink, Purple, Brown, Beige, Multicolour. Sizes look like 38, 38.5, 128, S, M, L, XL. Seasons: Winter, Summer, Autumn, Spring, All year. If the user only asks something, return an empty actions list.`;
 }
 function itemForAI(i){
   const o = {id: i.id, name: i.name};
@@ -5440,7 +5512,12 @@ async function syncNow(){
   } catch (e){
     syncErr = e.message === 'auth' ? tr('loginAgain') : tr('syncFailed');
     if (e.status === 403 || /42501|row-level/.test(e.message)) syncErr = tr('notMember');
-  } finally { syncing = false; updateCloudLine(); }
+  } finally {
+    syncing = false;
+    updateCloudLine();
+    if (navigator.onLine && cloud.hid && cloud.session && (dirty.size || syncErr) && syncErr !== tr('loginAgain') && syncErr !== tr('notMember'))
+      scheduleSync(syncErr ? 30000 : 500);
+  }
 }
 const metaVal = k => k === 'places' ? places : k === 'household' ? household : k === 'trash' ? trash : k === 'boxOrder' ? boxOrder : k === 'move' ? move : null;
 async function push(){
@@ -6417,13 +6494,21 @@ function remindFields(it){
   return `<div class="fl group"><label class="always">${tr('remind')}</label><div class="chips tight"><button class="chipbtn small${!m && !at ? ' on' : ''}" data-remind="0">${tr('noRemind')}</button>${opts.map(([v, l]) => `<button class="chipbtn small${m === v && !at ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="chipbtn small${at ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button></div>
     ${at || showRemindPick ? `<input data-f="remindAt" type="date" value="${esc(at)}" style="margin-top:8px">` : ''}</div>`;
 }
+function openDatePicker(el){
+  if (!el) return;
+  if (typeof el.showPicker === 'function'){
+    try { el.showPicker(); return; } catch {}
+  }
+  el.focus();
+  el.click();
+}
 document.addEventListener('click', e => {
   const r = e.target.closest('[data-remind]'), l = e.target.closest('[data-loandue]');
   if (!r && !l) return;
   if (flushItem) flushItem();
-  if (r){ const v = r.dataset.remind; if (v === 'pick'){ showRemindPick = true; saveItem(x => { delete x.remindMonths; }, true); return; } showRemindPick = false; saveItem(x => { delete x.remindAt; if (+v) x.remindMonths = +v; else delete x.remindMonths; }, true); if (+v) reminderPermissionNudge(); return; }
+  if (r){ const v = r.dataset.remind; if (v === 'pick'){ showRemindPick = true; saveItem(x => { delete x.remindMonths; }, true); openDatePicker(app.querySelector('[data-f="remindAt"]')); return; } showRemindPick = false; saveItem(x => { delete x.remindAt; if (+v) x.remindMonths = +v; else delete x.remindMonths; }, true); if (+v) reminderPermissionNudge(); return; }
   const v = l.dataset.loandue;
-  if (v === 'pick'){ showLoanPick = true; render(); return; }
+  if (v === 'pick'){ showLoanPick = true; render(); openDatePicker(app.querySelector('[data-f="loanDue"]')); return; }
   showLoanPick = false; saveItem(x => { x.loanDue = addDays(x.loanSince || today(), +v); }, true);
 });
 
@@ -6951,8 +7036,11 @@ async function init(){
     { const so = await metaGet('speakOn'); if (typeof so === 'boolean') speakOn = so; }
     numbering = await metaGet('numbering') || 'place';
     viewMode = await metaGet('viewMode') || 'grid';
+    if (viewMode === 'small') viewMode = 'grid';
     move = await metaGet('move') || {active: false, rooms: []};
-    listSort = await metaGet('listSort') || 'manual'; folded = new Set(await metaGet('folded') || []); foldedPlaces = new Set(await metaGet('foldedPlaces') || []); boxOrder = await metaGet('boxOrder') || {};
+    listSort = await metaGet('listSort') || 'manual';
+    if (!SORTS.includes(listSort)) listSort = 'manual';
+    folded = new Set(await metaGet('folded') || []); foldedPlaces = new Set(await metaGet('foldedPlaces') || []); boxOrder = await metaGet('boxOrder') || {};
     trash = await metaGet('trash') || []; purgeTrash();
     placeView = await metaGet('placeView') || 'shelf';
     rkSize = await metaGet('rkSize') || 'M'; rkMeasure = !!(await metaGet('rkMeasure')); rkRules = Object.assign(rkRules, await metaGet('rkRules') || {});
@@ -7897,6 +7985,11 @@ Object.assign(STR.fi, {
   rk_cornerHint: 'Mittaa takakulmasta sivuseiniä pitkin ja vasemmasta kulmasta takaseinää pitkin. Jätä tyhjäksi, niin sovellus sijoittaa ne.',
   rk_wallFull: (u, w, need, have) => `${u} ei mahdu seinälle ${w} (${need}/${have} cm).`, rk_overlap: (a, b) => `${a} ja ${b} menevät päällekkäin.`, rk_roomBad: 'Tarkista luvut: huone 50–2000 cm, ovi 50–300 cm, hyllyn syvyys 10–200 cm.'
 });
+Object.assign(STR.en, {viewLarge: 'Grid', viewList: 'List', select: 'Select multiple', takeOutItem: 'Take out item', takeOutBox: 'Take out box', sort_number: 'By number'});
+Object.assign(STR.sv, {viewLarge: 'Rutnät', viewList: 'Lista', select: 'Välj flera', takeOutItem: 'Ta ut sak', takeOutBox: 'Ta ut låda', sort_number: 'Efter nummer'});
+Object.assign(STR.da, {viewLarge: 'Gitter', viewList: 'Liste', select: 'Vælg flere', takeOutItem: 'Tag ting frem', takeOutBox: 'Tag kasse frem', sort_number: 'Efter nummer'});
+Object.assign(STR.fi, {viewLarge: 'Ruudukko', viewList: 'Lista', select: 'Valitse useita', takeOutItem: 'Ota tavara esiin', takeOutBox: 'Ota laatikko esiin', sort_number: 'Numeron mukaan'});
+Object.assign(STR.nb, {viewLarge: 'Rutenett', viewList: 'Liste', select: 'Velg flere', takeOutItem: 'Ta fram ting', takeOutBox: 'Ta fram eske', sort_number: 'Etter nummer'});
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
 })();
