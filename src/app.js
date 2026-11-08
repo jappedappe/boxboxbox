@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-08.4';
+const APP_VERSION = '2026-11-08.10';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -269,7 +269,7 @@ function stems(tok){
 function itemHay(it, b){
   const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u);
   const hay = [it.name, it.category, it.notes, (it.tags || []).join(' '), itemOwner(it), it.spot, placeName(b.placeId), it.size ? 'size storlek ' + it.size : '',
-    it.loanTo, it.givenTo, it.status ? showStatus(it.status) : '', it.out ? tr('outTag') : '', unit ? unit.name : '', b.moveRoom,
+    it.loanTo, it.givenTo, it.status ? showStatus(it.status) : '', it.out ? tr('outTag') : '', unit ? unit.name : '', b.moveRoom, (b.tags || []).join(' '),
     it.color, it.season, it.brand, it.model, it.serial, b.loose || b.autoName ? '' : b.name, b.loose ? '' : b.code, b.location].filter(Boolean).join(' ').toLowerCase();
   return {hay, toks: new Set(hay.split(/[^a-zåäöéü0-9.-]+/).filter(Boolean))};
 }
@@ -363,11 +363,19 @@ function deleteBoxContents(existing){
 
 /* ---------- photos ---------- */
 async function shrink(file, max){
-  const bmp = await createImageBitmap(file);
+  let bmp;
+  if (typeof createImageBitmap === 'function') try { bmp = await createImageBitmap(file); } catch {}
+  if (!bmp){
+    const url = URL.createObjectURL(file);
+    try { bmp = new Image(); bmp.src = url; await bmp.decode(); }
+    finally { URL.revokeObjectURL(url); }
+  }
   const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const cv = document.createElement('canvas');
   cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
-  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  const ctx = cv.getContext('2d');
+  if (!ctx) throw new Error(tr('uploadImageOnly'));
+  ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
   if (bmp.close) bmp.close();
   return cv;
 }
@@ -803,8 +811,8 @@ Object.assign(STR.sv, {
 });
 Object.assign(STR.en, {
   inside: 'Inside', topLevel: p => `${p}, directly`, nameOptional: 'Leave empty to name it after what’s inside', boxInBox: 'Box inside this box', boxesInside: 'Boxes inside',
-  addHereBox: b => `Add to ${b}`, notes: 'Notes', recent: 'Recently viewed', favorites: 'Favorites', fav: 'Favorite', unfav: 'Remove favorite',
-  viewLarge: 'Large tiles', viewSmall: 'Small tiles', viewList: 'List', select: 'Select', selected: n => `${n} selected`, moveSel: 'Move', delSel: 'Delete',
+  addHereBox: b => `Add to ${b}`, notes: 'Notes', recent: 'Previously viewed', favorites: 'Favorites', fav: 'Favorite', unfav: 'Remove favorite',
+  viewLarge: 'Large tiles', viewSmall: 'Small tiles', viewList: 'List', select: 'Select multiple', selected: n => `${new Intl.NumberFormat(lang).format(n)} selected`, moveSel: 'Move', delSel: 'Delete',
   delSelQ: n => n === 1 ? 'Delete 1 item? This can’t be undone.' : `Delete ${n} items? This can’t be undone.`, movedN: (n, w) => `Moved ${n} to ${w}.`, deletedN: n => `Deleted ${n}.`,
   didYouMean: 'Did you mean', share: 'Share where it is', copied: 'Copied. Paste it in a message.', shareCopy: 'Share a copy of this place', shareCopyHint: 'The other person opens Storrrage and chooses Restore from backup. They get their own copy; it doesn’t stay in sync until login and sharing arrive.',
   icon: 'Picture', numbering: 'Box numbers', numPlace: 'Separate for each place (B-001 in every place)', numAccount: 'One series for all places',
@@ -815,8 +823,8 @@ Object.assign(STR.en, {
 });
 Object.assign(STR.sv, {
   inside: 'Inuti', topLevel: p => `${p}, direkt`, nameOptional: 'Lämna tomt så får den namn efter innehållet', boxInBox: 'Låda i den här lådan', boxesInside: 'Lådor inuti',
-  addHereBox: b => `Lägg till i ${b}`, notes: 'Anteckningar', recent: 'Nyligen visade', favorites: 'Favoriter', fav: 'Favorit', unfav: 'Ta bort favorit',
-  viewLarge: 'Stora rutor', viewSmall: 'Små rutor', viewList: 'Lista', select: 'Välj', selected: n => `${n} valda`, moveSel: 'Flytta', delSel: 'Ta bort',
+  addHereBox: b => `Lägg till i ${b}`, notes: 'Anteckningar', recent: 'Tidigare visade', favorites: 'Favoriter', fav: 'Favorit', unfav: 'Ta bort favorit',
+  viewLarge: 'Stora rutor', viewSmall: 'Små rutor', viewList: 'Lista', select: 'Välj flera', selected: n => `${new Intl.NumberFormat(lang).format(n)} valda`, moveSel: 'Flytta', delSel: 'Ta bort',
   delSelQ: n => n === 1 ? 'Ta bort 1 sak? Det går inte att ångra.' : `Ta bort ${n} saker? Det går inte att ångra.`, movedN: (n, w) => `Flyttade ${n} till ${w}.`, deletedN: n => `Tog bort ${n}.`,
   didYouMean: 'Menade du', share: 'Dela var den finns', copied: 'Kopierat. Klistra in i ett meddelande.', shareCopy: 'Dela en kopia av platsen', shareCopyHint: 'Mottagaren öppnar Storrrage och väljer Återställ från säkerhetskopia. Hen får en egen kopia; den synkas inte förrän inloggning och delning finns.',
   icon: 'Bild', numbering: 'Lådnummer', numPlace: 'Egen serie per plats (B-001 på varje plats)', numAccount: 'En serie för alla platser',
@@ -838,10 +846,10 @@ Object.assign(STR.sv, {dragHint: 'Håll in en låda eller rund markör och dra d
   placementHint: 'Var lådan står: zonen (en del av platsen, som en hylla eller vid dörren) och stapeln.', zone: 'Zon', zoneHint: 'En zon markerar en del av platsen, t.ex. en hylla eller vid dörren',
   stack: 'Stapel', newStack: 'En ny stapel', level: 'Nivå', onTop: 'Överst', atBottom: 'Längst ner', stackOf: (n, codes) => codes ? `Stapel ${n}: ovanpå ${codes}` : `Stapel ${n}`, closerDoor: 'Flytta upp', furtherIn: 'Flytta ner'});
 Object.assign(STR.en, {collections: 'Tags', collection: 'Tag', inBoxes: n => n === 1 ? 'in 1 place' : `in ${n} places`, showOnMap: 'Show on map', insideBox: 'inside',
-  toCollection: 'Tag', collHint: 'Things with the same tag are shown together, even when they’re in different boxes.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
+  toCollection: 'Tag', collHint: 'Items and boxes with the same tag are shown together, even when they’re in different places.', collPh: 'For example Christmas or Winter', addedToColl: (n, t) => `Added ${n} to #${t}.`,
   isHere: 'is here', openItem: 'Open item', foundIn: 'Found in'});
 Object.assign(STR.sv, {collections: 'Taggar', collection: 'Tagg', inBoxes: n => n === 1 ? 'på 1 ställe' : `på ${n} ställen`, showOnMap: 'Visa på kartan', insideBox: 'inuti',
-  toCollection: 'Tagg', collHint: 'Saker med samma tagg visas tillsammans, även om de ligger i olika lådor.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
+  toCollection: 'Tagg', collHint: 'Saker och lådor med samma tagg visas tillsammans, även om de finns på olika platser.', collPh: 'Till exempel Jul eller Vinter', addedToColl: (n, t) => `La till ${n} i #${t}.`,
   isHere: 'ligger här', openItem: 'Öppna saken', foundIn: 'Hittad i'});
 Object.assign(STR.en, {list: 'List', takeOut: 'Take out', putBack: 'Put back', outTag: 'Out', outSince: d => `out since ${d}`, backBy: d => `back by ${d}`, outSection: 'Out of storage right now',
   outUntil: 'Out until (optional)', tookOut: (n, w) => `${n} taken out of ${w}. Its place is kept.`, putBackDone: (n, w) => `${n} is back in ${w}.`, deletedX: n => `${n} deleted.`, undo: 'Undo', more: 'More',
@@ -1334,8 +1342,10 @@ function shelfHTML(pid, folded = false){
 }
 function placeHead(pid){
   const nB = boxesIn(pid).length, nI = boxes.filter(b => b.placeId === pid).reduce((s, b) => s + (b.items || []).length, 0);
-  return `<div class="phead"><div><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(b => b.placeId === pid).toUpperCase())}</p></div>
-    <div class="seg small"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="${placeView === 'map' ? 'on' : ''}" data-pview="map">${tr('map')}</button><button class="rktab${placeView === 'racks' ? ' on' : ''}" data-pview="racks">${tr('rk_view')}<sup>test</sup></button></div></div>`;
+  const views = `<div class="seg small" role="group"><button class="${placeView === 'shelf' ? 'on' : ''}" data-pview="shelf">${tr('shelf')}</button><button class="${placeView === 'list' ? 'on' : ''}" data-pview="list">${tr('list')}</button><button class="rktab${placeView === 'racks' ? ' on' : ''}" data-pview="racks">${tr('rk_view')}<sup>test</sup></button></div>`;
+  const rackOptions = placeView === 'racks' && rkMode === 'shelves' ? `<div class="seg small" role="group" aria-label="${esc(tr('rk_sizeL'))}">${[['S', 'rk_small'], ['M', 'rk_medium'], ['L', 'rk_large']].map(([v, k]) => `<button class="${rkSize === v ? 'on' : ''}" data-rk-size="${v}" title="${esc(tr(k))}" aria-label="${esc(tr(k))}" aria-pressed="${rkSize === v}">${v}</button>`).join('')}</div>
+    <div class="seg small" role="group" aria-label="${esc(tr('rk_layout'))}">${[['shelves', 'rk_shelvesOnly'], ['floor', 'rk_stacksOnly'], ['both', 'rk_both']].map(([v, k]) => `<button class="${rkLayout === v ? 'on' : ''}" data-rk-layout="${v}" aria-pressed="${rkLayout === v}">${tr(k)}</button>`).join('')}</div>` : '';
+  return `<div class="phead place-head"><p class="tagline">${counts(tr('boxes_n', nB), tr('items_n', nI))}${esc(valueLine(b => b.placeId === pid).toUpperCase())}</p><div class="place-view-controls">${views}${rackOptions}</div></div>`;
 }
 function renderSpace(){
   const nB = realBoxes().length, nI = boxes.reduce((s, b) => s + (b.items || []).length, 0);
@@ -1423,9 +1433,9 @@ function renderPlace(pid, focus){
   const what = focus ? [...(view.hlBoxes || []).map(findBox).filter(Boolean).map(b => (view.hlBoxes.length === 1 ? `${b.code} ${b.name}` : b.code)), ...looseItems(pid).filter(i => (view.hlItems || []).includes(i.id)).map(i => i.name)] : [];
   app.innerHTML = `${focus ? `<div class="findhint"><span>${ICON.pin} <b>${esc(what.join(', '))}</b></span></div>` : placeHead(pid)}
     ${focus ? '' : installBanner() + moveBanner()}
-    ${focus || placeView === 'map' || placeView === 'racks' ? '' : topStrips(pid)}
+    ${focus || placeView === 'racks' ? '' : topStrips(pid)}
     ${focus ? '' : nudgeBar(pid)}
-    ${focus || placeView === 'map' ? mapHTML(pid) : placeView === 'racks' ? racksHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
+    ${focus || placeView === 'racks' ? racksHTML(pid) : placeView === 'list' ? listHTML(pid) : shelfHTML(pid)}
     ${focus ? '' : (([c, n]) => n ? `<p class="freshsum">${freshDot({checkedAt: c === n ? today() : null, updatedAt: null})} ${esc(tr('checkedYear', c, n))}</p>` : '')(checkedThisYear(pid))}
     ${notesHTML(notes.filter(n => !n.boxId || !findBox(n.boxId)), tr('voiceNotes'))}
     ${backupBanner()}`;
@@ -1453,6 +1463,7 @@ function renderBox(b){
       ${b.loose ? '' : `<p class="bfresh">${freshDot(b)} ${esc(freshText(b))}</p>`}
     </div>
     ${entityInfo(b)}
+      ${b.loose ? '' : `<div class="tags"><span class="lab">${tr('tags')}</span>${(b.tags || []).map((t, i) => `<span class="tag"><button class="tagopen" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button class="tagx" data-rmbtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button class="tag plus" data-act="addboxtag" aria-label="${esc(tr('newTag'))}">+</button></div>`}
     ${needCheck ? `<div class="checkbar"><span>${tr('checkQ')}</span><span class="fhbtns"><button class="btn primary small" data-act="checkyes">${tr('checkYes')}</button><button class="btn quiet small" data-act="checkno">${tr('checkNo')}</button></span></div>` : ''}
     ${b.loose ? `<div class="boxbar">${items.length ? `<button class="btn quiet small" data-act="selectmode">${tr('select')}</button>` : ''}${viewToggle()}</div>` : `<div class="boxbar">
       <button class="qr" data-act="label" aria-label="${esc(tr('label'))} ${esc(b.code)}">${qrSvg(labelText(b), 2)}</button>
@@ -1790,6 +1801,9 @@ function rowsOrTiles(entries){
   const bx = entries.filter(e => e[0] === 'box').map(e => e[1]), its = entries.filter(e => e[0] === 'item').map(e => [e[1], e[2]]);
   return `${bx.length ? `<div class="shelf${shelfCls()}">${bx.map(shelfTile).join('')}</div>` : ''}${its.length ? (viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}`;
 }
+function miniRecent(entries){
+  return `<div class="strip mini">${entries.map(([kind, entity, b]) => kind === 'box' ? shelfTile(entity) : itemTile(entity, b)).join('')}</div>`;
+}
 let searchQuick = null, searchQuickAuto = false, searchSuggestionChecked = false;
 let searchOpen = false, askOpen = false;
 const looksLikeQuestion = t => /\?\s*$/.test(t) || /^(var|vart|vad|hur|när|vem|har|finns|kan|visa|öppna|lägg|ta|flytta|where|what|how|when|who|do|is|are|can|show|open|add|put|move|take)\b/i.test((t || '').trim());
@@ -1829,19 +1843,19 @@ function renderSearch(){
   let body = '';
   if (!q && (P.size || B.size)){
     const all = boxes.filter(inScope).flatMap(b => (b.items || []).map(it => [it, b])).sort((x, y) => byName(x[0], y[0]));
-    body = all.length ? `<div class="igrid">${all.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : `<p class="hint center">${tr('nothingHere')}</p>`;
+    body = all.length ? (viewMode === 'list' ? rowsHTML(all, {where: true}) : `<div class="igrid">${all.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : `<p class="hint center">${tr('nothingHere')}</p>`;
   }
   if (q && !searchQuick){
     const {exact, related} = searchItems(q, {placeIds: P, boxIds: B});
-    const boxHits = searchQuick ? [] : realBoxes().filter(b => { if (!inScope(b)) return false; const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u); const h = [b.code, b.code.replace('B-', ''), b.name, b.location, b.notes, placeName(b.placeId), b.moveRoom, b.out ? tr('outTag') : '', unit ? unit.name : '', ...(b.documents || []).map(d => d.name)].join(' ').toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => h.includes(w)); }).sort(byCode);
-    body = `${exact.length ? (viewMode === 'list' && !selecting ? rowsHTML(exact, {where: true}) : `<div class="igrid${viewCls()}">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}
+    const boxHits = searchQuick ? [] : realBoxes().filter(b => { if (!inScope(b)) return false; const unit = b.shelf && ((findPlace(b.placeId) || {}).units || []).find(u => u.id === b.shelf.u); const h = [b.code, b.code.replace('B-', ''), b.name, b.location, b.notes, (b.tags || []).join(' '), placeName(b.placeId), b.moveRoom, b.out ? tr('outTag') : '', unit ? unit.name : '', ...(b.documents || []).map(d => d.name)].join(' ').toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => h.includes(w)); }).sort(byCode);
+    body = `${exact.length ? (viewMode === 'list' ? rowsHTML(exact, {where: true}) : `<div class="igrid${viewCls()}">${exact.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`) : ''}
       ${boxHits.length ? `<h2 class="section">${tr('boxesH')}</h2><div class="shelf${shelfCls()}">${boxHits.map(shelfTile).join('')}</div>` : ''}
-      ${related.length ? `<h2 class="section">${tr('similar')}</h2><div class="igrid${viewCls()}">${related.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>` : ''}
+      ${related.length ? `<h2 class="section">${tr('similar')}</h2>${viewMode === 'list' ? rowsHTML(related, {where: true}) : `<div class="igrid${viewCls()}">${related.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`}` : ''}
       ${!exact.length && !related.length && !boxHits.length ? `<p class="hint center">${esc(tr('noMatch', q))}</p>${(sg => sg.length ? `<div class="didyou"><span class="lab">${tr('didYouMean')}</span><div class="chips">${sg.map(s => `<button class="chipbtn" data-suggest="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>` : '')(searchSuggestions(q))}` : ''}`;
   }
   if (searchQuick){
     const qq = q.toLowerCase(), hitIt = ([it, b]) => !q || itemHay(it, b).hay.includes(qq) || (it.name || '').toLowerCase().includes(qq);
-    const hitBox = b => !q || [b.code, b.name, b.location, b.notes].some(v => (v || '').toLowerCase().includes(qq));
+    const hitBox = b => !q || [b.code, b.name, b.location, b.notes, ...(b.tags || [])].some(v => (v || '').toLowerCase().includes(qq));
     let its = [], bx = [];
     if (searchQuick === 'out'){ its = outItems(inScope); bx = realBoxes().filter(b => b.out && inScope(b)); }
     if (searchQuick === 'loose') its = boxes.filter(b => b.loose && inScope(b)).flatMap(b => (b.items || []).map(it => [it, b]));
@@ -1849,21 +1863,21 @@ function renderSearch(){
     if (searchQuick === 'items') its = boxes.filter(inScope).flatMap(b => (b.items || []).map(it => [it, b]));
     its = its.filter(hitIt).sort((x, y) => byName(x[0], y[0])); bx = bx.filter(hitBox);
     body = `${bx.length ? `${its.length ? `<h2 class="section">${tr('boxesH')}</h2>` : ''}<div class="shelf">${bx.map(shelfTile).join('')}</div>` : ''}
-      ${its.length ? `${bx.length ? `<h2 class="section">${tr('itemsH')}</h2>` : ''}${viewMode === 'list' && !selecting ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`}` : ''}
+      ${its.length ? `${bx.length ? `<h2 class="section">${tr('itemsH')}</h2>` : ''}${viewMode === 'list' ? rowsHTML(its, {where: true}) : `<div class="igrid${viewCls()}">${its.map(([it, b]) => itemTile(it, b, whereCaption(b))).join('')}</div>`}` : ''}
       ${!its.length && !bx.length ? `<p class="hint center">${searchQuick === 'out' ? tr('nothingOut') : tr('nothingHere')}</p>` : ''}`;
   }
   if (!q && !P.size && !B.size && !searchQuick){
     body = `${recentQ.length ? `<div class="recentq"><div class="rqhead"><span class="lab">${tr('recentSearches')}</span><button class="linkbtn" data-act="clearrq">${tr('clear')}</button></div><div class="chips">${recentQ.map(s => `<button class="chipbtn" data-suggest="${esc(s)}">🔎 ${esc(s)}</button>`).join('')}</div></div>` : ''}
-      ${(r => r.length ? `<h2 class="section">${tr('recent')}</h2>` + rowsOrTiles(r) : '')(recentEntries())}`;
+      ${(r => r.length ? `<h2 class="section">${tr('recent')}</h2>` + miniRecent(r) : '')(recentEntries())}`;
   }
   const had = $('#q'), focused = had && document.activeElement === had, pos = had ? had.selectionStart : 0;
   app.innerHTML = `<div class="headrow"><div class="headtext">${crumbs([{label: tr('findStuff')}], counts(tr('boxes_n', nB), tr('items_n', nI)))}</div></div>
-    <div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('searchOrAsk'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">${SR ? `<button class="micin" id="micBtn" aria-label="${esc(tr('tapTalk'))}">${ICON.mic}</button>` : ''}</div>
+    <div class="sbar"><input class="input search" id="q" type="search" placeholder="${esc(tr('searchOrAsk'))}" value="${esc(query)}" autocomplete="off" enterkeyhint="search">    ${SR ? `<button class="micin" id="micBtn" aria-label="${esc(tr('tapTalk') + ' · ' + tr('testTag'))}">${ICON.mic}<small>${tr('testTag')}</small></button>` : ''}</div>
     ${q.length >= 2 ? `<button class="askbtn" id="askGo"><span class="spark">✨</span><span>${esc(tr('askAbout', q))}</span><small>beta</small></button>` : ''}
     <div class="chips quick">${quickChipsInner()}${scopeChip()}</div><p class="quick-filter-hint">${searchQuickAuto ? tr('quickAutoSuggestion', tr(searchQuick === 'boxes' ? 'allBoxes' : 'allItems')) : tr('quickFilterHint')}</p>
     ${askOpen ? `<div class="askpanel"><div class="askhead"><b>✨ Storrrage</b><small>beta · ${ai.provider === 'off' ? tr('simpleMode') : 'AI'}</small><button class="linkbtn" id="askX" aria-label="${esc(tr('close'))}">✕</button></div><div class="vlog chat" id="vlog"></div><div class="vlive" id="vLive" hidden></div></div>` : ''}
     ${collectionChips(q)}
-    ${(q || P.size || B.size || searchQuick) && /(itile|btile|stile)/.test(body) ? `<div class="selrow"><button class="btn ${selecting ? 'primary' : 'quiet'} small select-toggle" data-act="selectmode" aria-pressed="${!!selecting}">${tr('select')}</button></div>` : ''}
+    ${(q || P.size || B.size || searchQuick) && /(itile|btile|stile|lrow)/.test(body) ? `<div class="selrow"><button class="btn ${selecting ? 'primary' : 'quiet'} small select-toggle" data-act="selectmode" aria-pressed="${!!selecting}">${tr('select')}</button></div>` : ''}
     <div id="results">${body}</div>
     ${selBar(['tag', 'move', 'del', 'out', ...(move.active ? ['addtomove'] : [])])}`;
   document.body.classList.toggle('selecting', !!selecting);
@@ -2311,7 +2325,7 @@ function renderItem(){
     ${presenceNote(b.id, it.id)}
     <div class="hero">
       ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
-      <label class="cam" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" id="fPhoto" multiple hidden></label>
+      <label class="cam" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     <label class="titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
@@ -2326,7 +2340,7 @@ function renderItem(){
     ${n ? `<p class="notifyrow"><span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span><button class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="fl att"><label class="always">${tr('attachments')}</label>
       ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
-      <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" id="fFile" hidden></label></div></div>
+      <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/*,application/pdf" id="fFile" hidden></label></div></div>
     ${linkedDocs.length ? `<div class="fl att"><label class="always">${tr('linkedDocuments')}</label>${linkedDocs.map(({doc, owner}) => `<div class="attrow"><span>${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</div>` : ''}
     <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<span class="tag"><button class="tagopen" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button class="tagx" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
     <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
@@ -2539,14 +2553,14 @@ function renderBatch(){
     <p class="hint">${esc(tr('batchWhere', where))}</p>
     <p class="hint">${aiReady() ? tr('batchAI') + (ai.provider === 'gemini' ? ' ' + tr('batchPrivacy') : '') : tr('batchNoAI')}</p>
     ${!rows.length ? `<div class="choice col">
-      <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small></span><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="each"></label>
-      <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small></span><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="multi"></label></div>`
+      <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small></span><input type="file" accept="image/*" multiple hidden data-batchmode="each"></label>
+      <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small></span><input type="file" accept="image/*" multiple hidden data-batchmode="multi"></label></div>`
     : `<div class="brows">${rows.map((r, i) => `<div class="brow${r.include ? '' : ' off'}">
         <button class="bthumb" data-viewph="${esc(r.photos[0].ref)}">${imgTag(r.photos[0].ref, '')}</button>
         <div class="bmain">${r.status === 'thinking' ? `<p class="hint">${tr('thinking')}</p>` : `<input class="input" data-bname="${i}" value="${esc(r.name)}" placeholder="${esc(tr('namePh'))}" autocapitalize="sentences">
           ${detail(r.fields) ? `<p class="bdet">${detail(r.fields)}</p>` : ''}${r.status === 'failed' ? `<p class="hint">${esc(tr('aiFailed', r.err || ''))}</p>` : ''}`}</div>
         <label class="binc"><input type="checkbox" data-binc="${i}" ${r.include ? 'checked' : ''}><span>${tr('include')}</span></label></div>`).join('')}</div>
-      <label class="btn quiet block morebtn">${tr('morePhotos')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden data-batchmode="${batch.mode || 'each'}"></label>`}
+      <label class="btn quiet block morebtn">${tr('morePhotos')}<input type="file" accept="image/*" multiple hidden data-batchmode="${batch.mode || 'each'}"></label>`}
     <div class="donebar"><button class="btn quiet" data-act="batchcancel">${tr('cancel')}</button><button class="btn primary" data-act="batchadd" ${n && !batch.busy && !missing ? '' : 'disabled'}>${tr('addN', n)}</button></div>${missing && n ? `<p class="hint needname">${tr('nameNeeded')}</p>` : ''}`;
   app.querySelectorAll('[data-batchmode]').forEach(inp => inp.addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) addBatchFiles(f, inp.dataset.batchmode); }));
   app.querySelectorAll('[data-bname]').forEach(inp => { inp.classList.toggle('need', !inp.value.trim()); inp.addEventListener('input', () => {
@@ -2718,6 +2732,7 @@ function showOnMap(boxIds, itemIds, back){
   // a box inside another box is shown by highlighting the outermost box on the map
   const top = id => { let b = findBox(id), g = 0; while (b && b.parentId && findBox(b.parentId) && g++ < 10) b = findBox(b.parentId); return b ? b.id : id; };
   setPlace(pid);
+  placeView = 'racks'; rkMode = 'shelves'; metaPut('placeView', placeView).catch(() => {});
   navigate({name: 'mapfocus', place: pid, hlBoxes: [...new Set((boxIds || []).map(top))], hlItems: itemIds || [], back: back || clone(view)});
 }
 function scrollToHighlight(){ setTimeout(() => { const el = app.querySelector('.hl'); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'}); }, 60); }
@@ -2725,7 +2740,16 @@ function scrollToHighlight(){ setTimeout(() => { const el = app.querySelector('.
 /* ---------- collections: one tag on several things, across boxes ---------- */
 function collectionsAll(){
   const m = new Map();
-  boxes.forEach(b => (b.items || []).forEach(it => (it.tags || []).forEach(t => { const k = String(t).toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k).push([it, b]); })));
+  const add = (tag, entry) => {
+    const key = String(tag).trim().toLowerCase();
+    if (!key) return;
+    if (!m.has(key)) m.set(key, []);
+    m.get(key).push(entry);
+  };
+  boxes.forEach(b => {
+    (b.tags || []).forEach(tag => add(tag, [b, b, 'box']));
+    (b.items || []).forEach(it => (it.tags || []).forEach(tag => add(tag, [it, b, 'item'])));
+  });
   return [...m.entries()].map(([tag, list]) => ({tag, list, boxes: new Set(list.map(([, b]) => b.id)).size})).sort((x, y) => y.list.length - x.list.length || x.tag.localeCompare(y.tag, 'sv'));
 }
 const tagLabel = t => cap(String(t));
@@ -2737,16 +2761,24 @@ function collectionChips(filter){
 function renderCollection(tag){
   const c = collectionsAll().find(x => x.tag === tag);
   if (!c){ app.innerHTML = `<p class="hint center">${tr('nothingHere')}</p>`; return; }
-  const byBox = new Map(); c.list.forEach(([it, b]) => { if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it); });
-  const groups = [...byBox.entries()].map(([id, its]) => [findBox(id), its]).sort((x, y) => placeName(x[0].placeId).localeCompare(placeName(y[0].placeId), 'sv') || (x[0].loose ? 1 : 0) - (y[0].loose ? 1 : 0) || byCode(x[0], y[0]));
+  const byBox = new Map();
+  c.list.forEach(([entity, b, kind]) => {
+    if (!byBox.has(b.id)) byBox.set(b.id, {box: b, items: [], taggedBox: false});
+    const group = byBox.get(b.id);
+    if (kind === 'box') group.taggedBox = true; else group.items.push(entity);
+  });
+  const groups = [...byBox.values()].map(g => [g.box, g.items, g.taggedBox]).sort((x, y) => placeName(x[0].placeId).localeCompare(placeName(y[0].placeId), 'sv') || (x[0].loose ? 1 : 0) - (y[0].loose ? 1 : 0) || byCode(x[0], y[0]));
   const placesIn = [...new Set(groups.map(([b]) => b.placeId))];
+  const itemCount = c.list.filter(([, , kind]) => kind !== 'box').length, boxCount = c.list.length - itemCount;
+  const countText = [itemCount && tr('items_n', itemCount).toLowerCase(), boxCount && tr('boxes_n', boxCount).toLowerCase()].filter(Boolean).join(' · ');
   app.innerHTML = `<div class="bhead"><p class="tagline">${tr('collection').toUpperCase()}</p><h1 class="btitle"><span class="bname">#${esc(tagLabel(tag))}</span></h1>
-      <p class="bpath">${tr('items_n', c.list.length).toLowerCase()} · ${tr('inBoxes', groups.length)}</p></div>
+      <p class="bpath">${countText} · ${tr('inBoxes', groups.length)}</p></div>
     <div class="boxbar">${placesIn.map(pid => `<button class="btn primary small" data-mapcoll="${esc(pid)}">${ICON.pin} ${tr('showOnMap')}${placesIn.length > 1 ? ' · ' + esc(placeName(pid)) : ''}</button>`).join('')}
       <button class="btn quiet small icontext" data-act="collout">${ICON.takeout}${tr('takeOutAll')}</button><button class="btn quiet small icontext" data-act="collback">${ICON.putback}${tr('putBackAll')}</button>
       <button class="btn quiet small" data-act="selectmode">${tr('select')}</button>${viewToggle()}</div>
-    ${groups.map(([b, its]) => `<section class="cgroup"><button class="cghead" data-open="${esc(b.id)}"><span class="cgcode${b.loose ? ' loose' : ''}">${b.loose ? '' : `<span class="sico">${ICON.box}</span>` + esc(b.code.replace('B-', ''))}</span><span class="cgtext"><b>${b.loose ? tr('notInBox') : esc(b.name)}</b><small>${esc(boxWhere(b))}</small></span><span class="chev">›</span></button>
-      ${viewMode === 'list' && !selecting ? rowsHTML(its.sort(byName).map(it => [it, b])) : `<div class="igrid${viewCls()}">${its.sort(byName).map(it => itemTile(it, b)).join('')}</div>`}</section>`).join('')}
+    ${groups.map(([b, its, taggedBox]) => `<section class="cgroup"><button class="cghead" data-open="${esc(b.id)}"><span class="cgcode${b.loose ? ' loose' : ''}">${b.loose ? '' : `<span class="sico">${ICON.box}</span>` + esc(b.code.replace('B-', ''))}</span><span class="cgtext"><b>${b.loose ? tr('notInBox') : esc(b.name)}</b><small>${esc(boxWhere(b))}</small></span><span class="chev">›</span></button>
+      ${taggedBox ? `<div class="shelf${shelfCls()}">${shelfTile(b)}</div>` : ''}
+      ${its.length ? (viewMode === 'list' ? rowsHTML(its.sort(byName).map(it => [it, b])) : `<div class="igrid${viewCls()}">${its.sort(byName).map(it => itemTile(it, b)).join('')}</div>`) : ''}</section>`).join('')}
     ${selBar(['tag', 'move', 'del', 'out'])}`;
   document.body.classList.toggle('selecting', !!selecting);
 }
@@ -2760,13 +2792,13 @@ function boxWhere(b){
 /* ---------- select several things anywhere: add to a collection, move, delete ---------- */
 function selBar(acts){
   if (!selecting) return '';
-  const n = selecting.size, allOut = selectionAllOut();
+  const n = selecting.size, allOut = selectionAllOut(), hasBoxes = selectedEntities().some(entry => entry.kind === 'box');
   return `<div class="donebar selbar"><span class="selcount">${tr('selected', n)}</span>
     ${acts.includes('tag') ? `<button class="btn quiet" data-act="seltag" ${n ? '' : 'disabled'}>#&nbsp;${tr('toCollection')}</button>` : ''}
-    ${acts.includes('move') ? `<button class="btn quiet" data-act="selmove" ${n ? '' : 'disabled'}>${tr('moveSel')}</button>` : ''}
+    ${acts.includes('move') && !hasBoxes ? `<button class="btn quiet" data-act="selmove" ${n ? '' : 'disabled'}>${tr('moveSel')}</button>` : ''}
     ${acts.includes('addtomove') ? `<button class="btn primary" data-act="seladdtomove" ${n ? '' : 'disabled'}>${tr('addSelectedToMove')}</button>` : ''}
     ${acts.includes('out') ? `<button class="btn quiet small icontext" data-act="selout" ${n ? '' : 'disabled'}>${allOut ? ICON.putback + tr('putBackSel') : ICON.takeout + tr('takeOutSel')}</button>` : ''}
-    ${acts.includes('del') ? `<button class="btn danger" data-act="seldel" ${n ? '' : 'disabled'}>${tr('delSel')}</button>` : ''}</div>`;
+    ${acts.includes('del') && !hasBoxes ? `<button class="btn danger" data-act="seldel" ${n ? '' : 'disabled'}>${tr('delSel')}</button>` : ''}</div>`;
 }
 function selectedEntities(){
   return [...(selecting || [])].map(key => {
@@ -2821,7 +2853,7 @@ function selAddToMove(){
   if (count) toast(tr('moveAdded', count));
 }
 async function selTag(){
-  const sel = selectedItems(); if (!sel.length) return;
+  const sel = selectedEntities(); if (!sel.length) return;
   const existing = collectionsAll().map(c => c.tag);
   openSheet(`<h3>#&nbsp;${tr('toCollection')} (${sel.length})</h3><p class="hint">${tr('collHint')}</p>
     <input class="input" id="ctIn" list="ctList" placeholder="${esc(tr('collPh'))}" autocapitalize="sentences"><datalist id="ctList">${existing.map(t => `<option value="${esc(tagLabel(t))}">`).join('')}</datalist>
@@ -2831,9 +2863,19 @@ async function selTag(){
   $('#ctX').onclick = closeSheet;
   const go = () => {
     const tag = $('#ctIn').value.trim().toLowerCase().replace(/^#/, ''); if (!tag) return $('#ctIn').focus();
-    const byBox = new Map(); sel.forEach(([it, b]) => { if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it.id); });
+    const byBox = new Map();
+    sel.forEach(entry => {
+      if (!byBox.has(entry.box.id)) byBox.set(entry.box.id, {box: false, items: new Set()});
+      const change = byBox.get(entry.box.id);
+      if (entry.kind === 'box') change.box = true; else change.items.add(entry.item.id);
+    });
     snapshot([...byBox.keys()]);
-    for (const [bid, ids] of byBox){ const nb = clone(findBox(bid)); nb.items.forEach(i => { if (ids.includes(i.id)) i.tags = [...new Set([...(i.tags || []), tag])]; }); putBox(nb, true); }
+    for (const [bid, change] of byBox){
+      const nb = clone(findBox(bid));
+      if (change.box) nb.tags = [...new Set([...(nb.tags || []), tag])];
+      nb.items.forEach(i => { if (change.items.has(i.id)) i.tags = [...new Set([...(i.tags || []), tag])]; });
+      putBox(nb, true);
+    }
     selecting = null; closeSheet(); toast(tr('addedToColl', sel.length, tagLabel(tag)));
     navigate({name: 'collection', tag});
   };
@@ -3200,10 +3242,28 @@ function setOut(boxId, itemId, out, until){
   toastAction(out ? tr('tookOut', x.name, b.loose ? placeName(b.placeId) : b.code) : tr('putBackDone', x.name, b.loose ? placeName(b.placeId) : b.code), tr('undo'), () => { undoApply(); render(); });
 }
 function setOutMany(list, out, until, label){
-  const byBox = new Map(); list.forEach(([it, b]) => { if (isOut(it) === out) return; if (!byBox.has(b.id)) byBox.set(b.id, []); byBox.get(b.id).push(it.id); });
+  const byBox = new Map();
+  list.forEach(([entity, b, kind]) => {
+    if (!byBox.has(b.id)) byBox.set(b.id, {box: false, items: new Set()});
+    const change = byBox.get(b.id);
+    if (kind === 'box'){
+      if (b.loose || !!b.out === out) return;
+      change.box = true;
+    } else if (isOut(entity) !== out) change.items.add(entity.id);
+  });
+  for (const [id, change] of byBox) if (!change.box && !change.items.size) byBox.delete(id);
   if (!byBox.size) return toast(out ? tr('allOutAlready') : tr('allBackAlready'));
   snapshot([...byBox.keys()]); let n = 0;
-  for (const [bid, ids] of byBox){ const nb = clone(findBox(bid)); nb.items.forEach(i => { if (ids.includes(i.id)){ markOut(i, out, until); n++; } }); putBox(nb, true); }
+  for (const [bid, change] of byBox){
+    const nb = clone(findBox(bid));
+    if (change.box){
+      if (out){ nb.out = {since: (nb.out && nb.out.since) || today()}; if (until) nb.out.until = until; }
+      else { delete nb.out; nb.checkedAt = new Date().toISOString(); }
+      n++;
+    }
+    nb.items.forEach(i => { if (change.items.has(i.id)){ markOut(i, out, until); n++; } });
+    putBox(nb, true);
+  }
   render();
   toastAction(out ? tr('tookOutN', n, label) : tr('putBackN', n, label), tr('undo'), () => { undoApply(); render(); });
 }
@@ -3502,7 +3562,7 @@ function boxDocumentsHTML(b){
       <select data-doc-link="${esc(doc.id)}" aria-label="${esc(tr('linkToItem'))}">${options(doc)}</select>
       <button class="x" data-doc-remove="${esc(doc.id)}" data-doc-box="${esc(b.id)}" aria-label="${esc(tr('remove'))}">×</button>
     </div>`).join('') : `<p class="hint">${tr('noDocuments')}</p>`}
-    <label class="btn quiet small docadd">${tr('addDocument')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" data-doc-file data-doc-box="${esc(b.id)}" hidden multiple></label>
+    <label class="btn quiet small docadd">${tr('addDocument')}<input type="file" accept="image/*,application/pdf" data-doc-file data-doc-box="${esc(b.id)}" hidden multiple></label>
   </section>`;
 }
 const noteUrls = new Map();
@@ -3568,14 +3628,20 @@ app.addEventListener('click', e => {
   if (suppressFavoriteClick && e.target.closest('[data-fav-order]')){ e.preventDefault(); e.stopImmediatePropagation(); suppressFavoriteClick = false; return; }
   if (lpFired){ lpFired = false; e.preventDefault(); return; }
   const pe = e.target.closest('[data-place-edit]'); if (pe){ e.preventDefault(); e.stopPropagation(); return lpMenu('place:' + pe.dataset.placeEdit); }
-  const pv = e.target.closest('[data-pview]'); if (pv){ placeView = pv.dataset.pview; track('place_view', {v: placeView}); metaPut('placeView', placeView).catch(() => {}); return render(); }
+  const pv = e.target.closest('[data-pview]'); if (pv){ const next = pv.dataset.pview; if (!['shelf', 'list', 'racks'].includes(next)) return; placeView = next; track('place_view', {v: placeView}); metaPut('placeView', placeView).catch(() => {}); return render(); }
   const zm = e.target.closest('[data-zmove]'); if (zm) return moveZone(currentPlace, zm.dataset.zmove, +zm.dataset.dir);
   const zr = e.target.closest('[data-zrename]'); if (zr) return renameZone(currentPlace, zr.dataset.zrename);
   const zd = e.target.closest('[data-zdel]'); if (zd) return deleteZone(currentPlace, zd.dataset.zdel);
   const sm = e.target.closest('[data-shelfmode]'); if (sm){ shelfMode = sm.dataset.shelfmode; metaPut('shelfMode', shelfMode).catch(() => {}); return render(); }
   const vm = e.target.closest('[data-viewmode]'); if (vm){ viewMode = vm.dataset.viewmode; metaPut('viewMode', viewMode).catch(() => {}); return render(); }
   const mb = e.target.closest('[data-mapbox]'); if (mb){ const bx = findBox(mb.dataset.mapbox); if (bx && bx.loose) return showOnMap([], [mb.dataset.mapitem].filter(Boolean)); return showOnMap([mb.dataset.mapbox]); }
-  const mc = e.target.closest('[data-mapcoll]'); if (mc){ const c = collectionsAll().find(x => x.tag === view.tag); if (!c) return; const inP = c.list.filter(([, b]) => b.placeId === mc.dataset.mapcoll); return showOnMap(inP.filter(([, b]) => !b.loose).map(([, b]) => b.id), inP.filter(([, b]) => b.loose).map(([it]) => it.id)); }
+  const mc = e.target.closest('[data-mapcoll]');
+  if (mc){
+    const c = collectionsAll().find(x => x.tag === view.tag); if (!c) return;
+    const inP = c.list.filter(([, b]) => b.placeId === mc.dataset.mapcoll);
+    const boxIds = [...new Set(inP.filter(([, b]) => !b.loose).map(([, b]) => b.id))];
+    return showOnMap(boxIds, inP.filter(([, b, kind]) => b.loose && kind !== 'box').map(([it]) => it.id));
+  }
   const co = e.target.closest('[data-coll]'); if (co){ if (flushItem) flushItem(); return navigate({name: 'collection', tag: co.dataset.coll}); }
   const ao = e.target.closest('[data-askout]'); if (ao){ const k = ao.dataset.askout, itId = view.hl, bid = view.boxId; view.asked = true; if (k === 'temp') return setOut(bid, itId, true); if (k === 'gone') return deleteWithUndo(bid, itId); return render(); }
   const nu = e.target.closest('[data-nudge]'); if (nu) return doNudge(nu.dataset.nudge, !!nu.dataset.ny);
@@ -3587,7 +3653,7 @@ app.addEventListener('click', e => {
   const ft = e.target.closest('[data-favtoggle]'); if (ft){ const [bid, iid] = ft.dataset.favtoggle.split(':'); const nb = clone(findBox(bid)), x = nb && nb.items.find(i => i.id === iid); if (!x) return; x.fav = !x.fav; putBox(nb); return; }
   const mo = e.target.closest('[data-more]'); if (mo){ const [bid, iid] = mo.dataset.more.split(':'); return rowMenu(bid, iid); }
   const qa = e.target.closest('[data-quickadd]'); if (qa){ let id = qa.dataset.quickadd; if (id.startsWith('new:')) id = ensureLoose(id.slice(4)).id; quickAddFor = quickAddFor === id ? null : id; render(); setTimeout(() => { const i = $('#qaIn'); if (i) i.focus(); }, 40); return; }
-  const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-used],[data-sell],[data-addopt],[data-cancel-opt],[data-season-value]'); if (!t) return;
+  const t = e.target.closest('[data-nav],[data-goplace],[data-open],[data-item],[data-act],[data-notedel],[data-sub],[data-m],[data-viewph],[data-rmph],[data-viewfile],[data-rmfile],[data-rmtag],[data-rmbtag],[data-used],[data-sell],[data-addopt],[data-cancel-opt],[data-season-value]'); if (!t) return;
   const d = t.dataset;
   if (d.nav){ let v = JSON.parse(d.nav); if (v.name === 'home') v = {name: 'home', place: v.place || 'all'};
     if (v.name === 'home') return goHome(v.place === 'all' ? null : v.place); return navigate(v); }
@@ -3607,6 +3673,7 @@ app.addEventListener('click', e => {
   if (d.viewfile !== undefined){ const [it] = curItem(); return openFile(it.files[+d.viewfile]); }
   if (d.rmfile !== undefined){ const [it] = curItem(); const f = it.files[+d.rmfile]; askConfirm(tr('rmQ', f.name), tr('remove')).then(y => { if (!y) return; saveItem(x => { x.files = x.files.filter(q => q.ref !== f.ref); }, true); dropEditedAttachment(f.ref); }); return; }
   if (d.rmtag !== undefined){ const [it] = curItem(); const tg = it.tags[+d.rmtag]; askConfirm(tr('rmTagQ', tg), tr('remove')).then(y => { if (y) saveItem(x => { x.tags = x.tags.filter(q => q !== tg); }, true); }); return; }
+  if (d.rmbtag !== undefined){ const box = findBox(view.boxId), tag = box && (box.tags || [])[+d.rmbtag]; if (!tag) return; askConfirm(tr('rmTagQ', tag), tr('remove')).then(y => { if (!y) return; const nb = clone(findBox(box.id)); nb.tags = (nb.tags || []).filter(t => t !== tag); putBox(nb); }); return; }
   if (d.used || d.sell){
     const [bid, iid] = (d.used || d.sell).split(':'); const b = findBox(bid); if (!b) return;
     const nb = clone(b), x = nb.items.find(i => i.id === iid); if (!x) return;
@@ -3666,7 +3733,8 @@ app.addEventListener('click', e => {
     case 'addzone': boxSheet(null, currentPlace !== 'all' ? currentPlace : places[0].id, null, d.zone); break;
     case 'saveagain': finishItem(true); break;
     case 'cancelitem': cancelItem(); break;
-    case 'addtag': if (flushItem) flushItem(); askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { if (tg) saveItem(x => { x.tags = [...new Set([...(x.tags || []), tg.toLowerCase()])]; }, true); }); break;
+    case 'addtag': if (flushItem) flushItem(); askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { const tag = (tg || '').trim().toLowerCase(); if (tag) saveItem(x => { x.tags = [...new Set([...(x.tags || []), tag])]; }, true); }); break;
+    case 'addboxtag': askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { const tag = (tg || '').trim().toLowerCase(); if (!tag) return; const nb = clone(findBox(view.boxId)); nb.tags = [...new Set([...(nb.tags || []), tag])]; putBox(nb); }); break;
   }
 });
 document.querySelector('.tabbar').addEventListener('click', e => {
@@ -3704,7 +3772,7 @@ function photoState(initial, multiple){
   const draw = () => {
     const w = $('#phwrap');
     w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="${tr('rmPhoto')}">×</button></div>`).join('')}
-      ${multiple || !st.photos.length ? `<label class="addph">${tr('addPhoto')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
+      ${multiple || !st.photos.length ? `<label class="addph">${tr('addPhoto')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
     hydrate(w);
   };
   st.mount = () => {
@@ -5382,7 +5450,7 @@ async function verifyCode(email, code){
 }
 /* the login e-mail is written in the language chosen in the app */
 function saveLangToAccount(){ if (cloud.session) sb('/auth/v1/user', {method: 'PUT', body: {data: {lang}}}).catch(() => {}); }
-const KEEP_META = ['folded', 'langPref', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs', 'rkSize', 'rkMeasure', 'rkRules'];
+const KEEP_META = ['folded', 'langPref', 'lang', 'theme', 'statsOn', 'statsNoticed', 'voiceLang', 'speakOn', 'viewMode', 'placeView', 'adsPreview', 'silenceMs', 'rkSize', 'rkMeasure', 'rkLayout', 'rkRules'];
 async function wipeLocal(){
   for (const st of ['boxes', 'photos', 'notes']) await tx(st, 'readwrite', s => s.clear()).catch(() => {});
   const keys = await tx('meta', 'readonly', s => s.getAllKeys()).catch(() => []) || [];
@@ -6583,8 +6651,8 @@ STR.da = {
   pasteKey: 'Indsæt nøglen først.', checking: 'Tjekker…', works: 'Virker.', pasteToTurnOn: 'Indsæt API-nøglen for at slå AI til.', aiIsOff: 'AI er slået fra.', cantSave: 'Kunne ikke gemme indstillingen.',
   getGem: 'Få en gratis nøgle: åbn aistudio.google.com, log ind og vælg “Get API key”.', getClaude: 'Få en nøgle: åbn console.anthropic.com, indbetal et lille beløb under Billing og opret en nøgle under API keys.',
   keyLocal: 'Nøglen gemmes kun på denne telefon og er ikke med i backups.', inside: 'Indeni', topLevel: p => `${p}, direkte`, nameOptional: 'Lad stå tom for at navngive efter indholdet',
-  boxInBox: 'Kasse i denne kasse', boxesInside: 'Kasser indeni', addHereBox: b => `Tilføj til ${b}`, notes: 'Noter', recent: 'Senest set', favorites: 'Favoritter', fav: 'Favorit', unfav: 'Fjern favorit',
-  viewLarge: 'Store felter', viewSmall: 'Små felter', viewList: 'Liste', select: 'Vælg', selected: n => `${n} valgt`, moveSel: 'Flyt', delSel: 'Slet',
+  boxInBox: 'Kasse i denne kasse', boxesInside: 'Kasser indeni', addHereBox: b => `Tilføj til ${b}`, notes: 'Noter', recent: 'Tidligere set', favorites: 'Favoritter', fav: 'Favorit', unfav: 'Fjern favorit',
+  viewLarge: 'Store felter', viewSmall: 'Små felter', viewList: 'Liste', select: 'Vælg flere', selected: n => `${new Intl.NumberFormat(lang).format(n)} valgt`, moveSel: 'Flyt', delSel: 'Slet',
   delSelQ: n => n === 1 ? 'Slet 1 ting? Det kan ikke fortrydes.' : `Slet ${n} ting? Det kan ikke fortrydes.`, movedN: (n, w) => `Flyttede ${n} til ${w}.`, deletedN: n => `Slettede ${n}.`,
   didYouMean: 'Mente du', share: 'Del hvor den er', copied: 'Kopieret.', shareCopy: 'Del en kopi af dette sted', icon: 'Billede', numbering: 'Kassenumre',
   numPlace: 'Separat for hvert sted (B-001 på hvert sted)', numAccount: 'Én serie for alle steder', export: 'Eksportér en liste', exportH: 'Eksportér en liste over dine ting',
@@ -6599,7 +6667,7 @@ STR.da = {
   noZone: 'Ingen zone', placement: 'Placering', placementHint: 'Hvor kassen står: zonen (fx “Ved døren”, “Hylde 2”) og hvilken stabel.', zone: 'Zone', zoneHint: 'Fx Ved døren, Hylde 2, Bagest',
   stack: 'Stabel', newStack: 'En ny stabel', level: 'Niveau', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
   closerDoor: 'Flyt op', furtherIn: 'Flyt ned', collections: 'Tags', collection: 'Tag', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kort',
-  insideBox: 'indeni', toCollection: 'Tag', collHint: 'Ting med samme tag vises samlet, også når de ligger i forskellige kasser.', collPh: 'Fx Jul eller Vinter',
+  insideBox: 'indeni', toCollection: 'Tag', collHint: 'Ting og kasser med samme tag vises samlet, også når de er forskellige steder.', collPh: 'Fx Jul eller Vinter',
   addedToColl: (n, t) => `Føjede ${n} til #${t}.`, isHere: 'er her', openItem: 'Åbn ting', foundIn: 'Fundet i', list: 'Liste', takeOut: 'Tag frem', putBack: 'Læg tilbage', outTag: 'Fremme',
   outSince: d => `fremme siden ${d}`, backBy: d => `tilbage senest ${d}`, outSection: 'Fremme lige nu', outUntil: 'Fremme til (valgfrit)',
   tookOut: (n, w) => `${n} taget frem fra ${w}. Pladsen beholdes.`, putBackDone: (n, w) => `${n} er tilbage i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Fortryd', more: 'Mere',
@@ -6726,8 +6794,8 @@ STR.fi = {
   pasteKey: 'Liitä ensin avain.', checking: 'Tarkistetaan…', works: 'Toimii.', pasteToTurnOn: 'Liitä API-avain ottaaksesi tekoälyn käyttöön.', aiIsOff: 'Tekoäly on pois päältä.', cantSave: 'Asetusta ei voitu tallentaa.',
   getGem: 'Hanki ilmainen avain: avaa aistudio.google.com, kirjaudu ja valitse ”Get API key”.', getClaude: 'Hanki avain: avaa console.anthropic.com, lisää pieni summa kohdassa Billing ja luo avain kohdassa API keys.',
   keyLocal: 'Avain tallennetaan vain tähän puhelimeen eikä sitä sisällytetä varmuuskopioihin.', inside: 'Sisällä', topLevel: p => `${p}, suoraan`, nameOptional: 'Jätä tyhjäksi, niin nimi tulee sisällöstä',
-  boxInBox: 'Laatikko tämän laatikon sisällä', boxesInside: 'Laatikot sisällä', addHereBox: b => `Lisää kohteeseen ${b}`, notes: 'Muistiinpanot', recent: 'Viimeksi katsotut', favorites: 'Suosikit', fav: 'Suosikki', unfav: 'Poista suosikeista',
-  viewLarge: 'Suuret ruudut', viewSmall: 'Pienet ruudut', viewList: 'Lista', select: 'Valitse', selected: n => `${n} valittu`, moveSel: 'Siirrä', delSel: 'Poista',
+  boxInBox: 'Laatikko tämän laatikon sisällä', boxesInside: 'Laatikot sisällä', addHereBox: b => `Lisää kohteeseen ${b}`, notes: 'Muistiinpanot', recent: 'Aiemmin katsotut', favorites: 'Suosikit', fav: 'Suosikki', unfav: 'Poista suosikeista',
+  viewLarge: 'Suuret ruudut', viewSmall: 'Pienet ruudut', viewList: 'Lista', select: 'Valitse useita', selected: n => `${new Intl.NumberFormat(lang).format(n)} valittu`, moveSel: 'Siirrä', delSel: 'Poista',
   delSelQ: n => n === 1 ? 'Poistetaanko 1 tavara? Tätä ei voi perua.' : `Poistetaanko ${n} tavaraa? Tätä ei voi perua.`, movedN: (n, w) => `Siirrettiin ${n} kohteeseen ${w}.`, deletedN: n => `Poistettiin ${n}.`,
   didYouMean: 'Tarkoititko', share: 'Jaa sijainti', copied: 'Kopioitu.', shareCopy: 'Jaa kopio tästä paikasta', icon: 'Kuva', numbering: 'Laatikkonumerot',
   numPlace: 'Oma sarja jokaiselle paikalle (B-001 joka paikassa)', numAccount: 'Yksi sarja kaikille paikoille', export: 'Vie lista', exportH: 'Vie lista tavaroistasi',
@@ -6742,7 +6810,7 @@ STR.fi = {
   noZone: 'Ei vyöhykettä', placement: 'Sijoitus', placementHint: 'Missä laatikko on: vyöhyke (esim. ”Oven vieressä”, ”Hylly 2”) ja mikä pino.', zone: 'Vyöhyke', zoneHint: 'Esim. Oven vieressä, Hylly 2, Perällä',
   stack: 'Pino', newStack: 'Uusi pino', level: 'Taso', onTop: 'Päällimmäisenä', atBottom: 'Alimmaisena', stackOf: (n, codes) => codes ? `Pino ${n}: päällä ${codes}` : `Pino ${n}`,
   closerDoor: 'Siirrä ylös', furtherIn: 'Siirrä alas', collections: 'Tunnisteet', collection: 'Tunniste', inBoxes: n => n === 1 ? '1 paikassa' : `${n} paikassa`, showOnMap: 'Näytä kartalla',
-  insideBox: 'sisällä', toCollection: 'Tunniste', collHint: 'Saman tunnisteen tavarat näytetään yhdessä, vaikka ne olisivat eri laatikoissa.', collPh: 'Esim. Joulu tai Talvi',
+  insideBox: 'sisällä', toCollection: 'Tunniste', collHint: 'Saman tunnisteen tavarat ja laatikot näytetään yhdessä, vaikka ne olisivat eri paikoissa.', collPh: 'Esim. Joulu tai Talvi',
   addedToColl: (n, t) => `Lisättiin ${n} tunnisteeseen #${t}.`, isHere: 'on täällä', openItem: 'Avaa tavara', foundIn: 'Löytyy', list: 'Lista', takeOut: 'Ota esiin', putBack: 'Palauta', outTag: 'Esillä',
   outSince: d => `esillä ${d} alkaen`, backBy: d => `takaisin viimeistään ${d}`, outSection: 'Esillä juuri nyt', outUntil: 'Esillä asti (valinnainen)',
   tookOut: (n, w) => `${n} otettu esiin kohteesta ${w}. Paikka säilyy.`, putBackDone: (n, w) => `${n} on taas kohteessa ${w}.`, deletedX: n => `${n} poistettu.`, undo: 'Kumoa', more: 'Lisää',
@@ -6869,8 +6937,8 @@ STR.nb = {
   pasteKey: 'Lim inn nøkkelen først.', checking: 'Sjekker…', works: 'Fungerer.', pasteToTurnOn: 'Lim inn API-nøkkelen for å slå på AI.', aiIsOff: 'AI er av.', cantSave: 'Kunne ikke lagre innstillingen.',
   getGem: 'Få en gratis nøkkel: åpne aistudio.google.com, logg inn og velg «Get API key».', getClaude: 'Få en nøkkel: åpne console.anthropic.com, sett inn et lite beløp under Billing og lag en nøkkel under API keys.',
   keyLocal: 'Nøkkelen lagres bare på denne telefonen og er ikke med i sikkerhetskopier.', inside: 'Inni', topLevel: p => `${p}, direkte`, nameOptional: 'La stå tom for å kalle den opp etter innholdet',
-  boxInBox: 'Eske i denne esken', boxesInside: 'Esker inni', addHereBox: b => `Legg til i ${b}`, notes: 'Notater', recent: 'Nylig sett', favorites: 'Favoritter', fav: 'Favoritt', unfav: 'Fjern favoritt',
-  viewLarge: 'Store ruter', viewSmall: 'Små ruter', viewList: 'Liste', select: 'Velg', selected: n => `${n} valgt`, moveSel: 'Flytt', delSel: 'Slett',
+  boxInBox: 'Eske i denne esken', boxesInside: 'Esker inni', addHereBox: b => `Legg til i ${b}`, notes: 'Notater', recent: 'Tidligere sett', favorites: 'Favoritter', fav: 'Favoritt', unfav: 'Fjern favoritt',
+  viewLarge: 'Store ruter', viewSmall: 'Små ruter', viewList: 'Liste', select: 'Velg flere', selected: n => `${new Intl.NumberFormat(lang).format(n)} valgt`, moveSel: 'Flytt', delSel: 'Slett',
   delSelQ: n => n === 1 ? 'Slette 1 ting? Det kan ikke angres.' : `Slette ${n} ting? Det kan ikke angres.`, movedN: (n, w) => `Flyttet ${n} til ${w}.`, deletedN: n => `Slettet ${n}.`,
   didYouMean: 'Mente du', share: 'Del hvor den er', copied: 'Kopiert.', shareCopy: 'Del en kopi av dette stedet', icon: 'Bilde', numbering: 'Eskenumre',
   numPlace: 'Egen serie for hvert sted (B-001 på hvert sted)', numAccount: 'Én serie for alle steder', export: 'Eksporter en liste', exportH: 'Eksporter en liste over tingene dine',
@@ -6885,7 +6953,7 @@ STR.nb = {
   noZone: 'Ingen sone', placement: 'Plassering', placementHint: 'Hvor esken står: sonen (f.eks. «Ved døren», «Hylle 2») og hvilken stabel.', zone: 'Sone', zoneHint: 'F.eks. Ved døren, Hylle 2, Innerst',
   stack: 'Stabel', newStack: 'En ny stabel', level: 'Nivå', onTop: 'Øverst', atBottom: 'Nederst', stackOf: (n, codes) => codes ? `Stabel ${n}: på ${codes}` : `Stabel ${n}`,
   closerDoor: 'Flytt opp', furtherIn: 'Flytt ned', collections: 'Stikkord', collection: 'Stikkord', inBoxes: n => n === 1 ? 'på 1 sted' : `på ${n} steder`, showOnMap: 'Vis på kart',
-  insideBox: 'inni', toCollection: 'Stikkord', collHint: 'Ting med samme stikkord vises samlet, også når de ligger i ulike esker.', collPh: 'F.eks. Jul eller Vinter',
+  insideBox: 'inni', toCollection: 'Stikkord', collHint: 'Ting og esker med samme stikkord vises samlet, selv om de er på ulike steder.', collPh: 'F.eks. Jul eller Vinter',
   addedToColl: (n, t) => `La ${n} til #${t}.`, isHere: 'er her', openItem: 'Åpne ting', foundIn: 'Funnet i', list: 'Liste', takeOut: 'Ta fram', putBack: 'Legg tilbake', outTag: 'Framme',
   outSince: d => `framme siden ${d}`, backBy: d => `tilbake innen ${d}`, outSection: 'Framme akkurat nå', outUntil: 'Framme til (valgfritt)',
   tookOut: (n, w) => `${n} tatt fram fra ${w}. Plassen beholdes.`, putBackDone: (n, w) => `${n} er tilbake i ${w}.`, deletedX: n => `${n} slettet.`, undo: 'Angre', more: 'Mer',
@@ -7042,8 +7110,8 @@ async function init(){
     if (!SORTS.includes(listSort)) listSort = 'manual';
     folded = new Set(await metaGet('folded') || []); foldedPlaces = new Set(await metaGet('foldedPlaces') || []); boxOrder = await metaGet('boxOrder') || {};
     trash = await metaGet('trash') || []; purgeTrash();
-    placeView = await metaGet('placeView') || 'shelf';
-    rkSize = await metaGet('rkSize') || 'M'; rkMeasure = !!(await metaGet('rkMeasure')); rkRules = Object.assign(rkRules, await metaGet('rkRules') || {});
+    { const saved = await metaGet('placeView'); placeView = ['shelf', 'list', 'racks'].includes(saved) ? saved : 'shelf'; if (saved !== placeView) metaPut('placeView', placeView).catch(() => {}); }
+    rkSize = await metaGet('rkSize') || 'M'; rkMeasure = !!(await metaGet('rkMeasure')); rkLayout = await metaGet('rkLayout') || 'both'; rkRules = Object.assign(rkRules, await metaGet('rkRules') || {});
     shelfMode = await metaGet('shelfMode') || 'grid';
     recentQ = await metaGet('recentQ') || [];
     nudgeSnooze = await metaGet('nudgeSnooze') || {};
@@ -7081,8 +7149,8 @@ async function init(){
    u = unit id, s = shelf from the bottom (0), x = column from the left, l = level in that column (0 = on the shelf). */
 const RK_TYPES = {moving: {w: 60, h: 40, d: 40}, banana: {w: 50, h: 25, d: 40}, small: {w: 40, h: 30, d: 30}};
 const RK_ITEM = {w: 30, h: 30, d: 30};
-const RK_WALLS = ['left', 'back', 'right'];
-let rkSize = 'M', rkMeasure = false, rkMode = 'shelves', rkTidyDetail = false, rkTidyShow = 'after', rkLastTidy = null;
+const RK_WALLS = ['left', 'back', 'right', 'front'];
+let rkSize = 'M', rkMeasure = false, rkLayout = 'both', rkMode = 'shelves', rkTidyDetail = false, rkTidyShow = 'after', rkLastTidy = null;
 let rkRules = {heavy: true, reach: true, top: true, season: true, fragile: true};
 let rkPendingItem = null;
 Object.assign(STR.en, {
@@ -7093,12 +7161,13 @@ Object.assign(STR.en, {
   rk_gap: 'Height between shelves (cm)', rk_delUnit: 'Remove shelf unit',
   rk_delUnitQ: n => n ? `Remove this shelf unit? The ${n} boxes and things on it stay in this place, just not on a shelf.` : 'Remove this shelf unit?',
   rk_badSize: 'Check the numbers: width 30–400 cm, 1–8 shelves and 15–150 cm between shelves.',
+  rk_badShelfSize: 'Check the numbers: width 30–400 cm, depth 10–200 cm, 1–8 shelves and 15–150 cm between shelves.',
   rk_empty: 'No shelf units here yet. Add the shelves you have, then drag your boxes and things onto them.',
   rk_quick: 'One shelf unit per wall', rk_unplaced: 'Not on a shelf yet', rk_unplacedEmpty: 'Drag here to take something off its shelf.',
   rk_autoPlace: 'Place them for me', rk_dragHint: 'Tap to open. Hold and drag to move – onto a shelf, between boxes or on top of a box.',
   rk_shelfN: n => `Shelf ${n}`, rk_free: n => `${n} cm free`, rk_fits: t => `Fits a ${t}`,
   rk_used: (u, w, h) => `${u} of ${w} cm used, ${h} cm high`, rk_tooWide: n => `${n} cm too wide`, rk_tooTall: 'Too tall for the shelf',
-  rk_unitMeta: (w, s, n) => `${w} cm, ${s} shelves, ${n} on it`, rk_offShelf: x => `${x} is no longer on a shelf`,
+  rk_unitMeta: (w, s, n, d = 40) => `${w}×${d} cm, ${s} shelves, ${n} on it`, rk_offShelf: x => `${x} is no longer on a shelf`,
   rk_boxType: 'Box size', rk_bt_moving: 'Moving box 60×40×40 cm', rk_bt_banana: 'Banana box 50×40×25 cm', rk_bt_small: 'Small box 40×30×30 cm', rk_bt_custom: 'Own measurements',
   rk_bn_moving: 'moving box', rk_bn_banana: 'banana box', rk_bn_small: 'small box',
   rk_w: 'Width', rk_h: 'Height', rk_d: 'Depth', rk_addOn: (u, s) => `Add to ${u}, ${s}`,
@@ -7146,12 +7215,13 @@ Object.assign(STR.sv, {
   rk_gap: 'Höjd mellan hyllplanen (cm)', rk_delUnit: 'Ta bort hyllan',
   rk_delUnitQ: n => n ? `Ta bort hyllan? De ${n} lådor och saker som står på den blir kvar här, bara inte på en hylla.` : 'Ta bort hyllan?',
   rk_badSize: 'Kolla siffrorna: bredd 30–400 cm, 1–8 hyllplan och 15–150 cm mellan hyllplanen.',
+  rk_badShelfSize: 'Kolla siffrorna: bredd 30–400 cm, djup 10–200 cm, 1–8 hyllplan och 15–150 cm mellan hyllplanen.',
   rk_empty: 'Inga hyllor här än. Lägg till hyllorna du har och dra sedan dina lådor och saker till dem.',
   rk_quick: 'En hylla per vägg', rk_unplaced: 'Inte på en hylla än', rk_unplacedEmpty: 'Dra hit för att ta ner något från hyllan.',
   rk_autoPlace: 'Placera åt mig', rk_dragHint: 'Tryck för att öppna. Håll inne och dra för att flytta – till en hylla, mellan lådor eller ovanpå en låda.',
   rk_shelfN: n => `Hyllplan ${n}`, rk_free: n => `${n} cm ledigt`, rk_fits: t => `Plats för en ${t}`,
   rk_used: (u, w, h) => `${u} av ${w} cm använt, ${h} cm högt`, rk_tooWide: n => `${n} cm för brett`, rk_tooTall: 'För hög för hyllplanet',
-  rk_unitMeta: (w, s, n) => `${w} cm, ${s} hyllplan, ${n} på den`, rk_offShelf: x => `${x} står inte längre på en hylla`,
+  rk_unitMeta: (w, s, n, d = 40) => `${w}×${d} cm, ${s} hyllplan, ${n} på den`, rk_offShelf: x => `${x} står inte längre på en hylla`,
   rk_boxType: 'Lådans storlek', rk_bt_moving: 'Flyttkartong 60×40×40 cm', rk_bt_banana: 'Bananlåda 50×40×25 cm', rk_bt_small: 'Liten låda 40×30×30 cm', rk_bt_custom: 'Egna mått',
   rk_bn_moving: 'flyttkartong', rk_bn_banana: 'bananlåda', rk_bn_small: 'liten låda',
   rk_w: 'Bredd', rk_h: 'Höjd', rk_d: 'Djup', rk_addOn: (u, s) => `Lägg till på ${u}, ${s}`,
@@ -7191,10 +7261,34 @@ Object.assign(STR.sv, {
   rk_wallFull: (u, w, need, have) => `${u} får inte plats längs ${w} (${need} av ${have} cm).`, rk_overlap: (a, b) => `${a} och ${b} går in i varandra.`,
   rk_roomBad: 'Kolla siffrorna: rummet 50–2000 cm, dörren 50–300 cm, hyllans djup 10–200 cm.'
 });
+const rkExtraText = {
+  en: {rk_floorStack: 'Floor stack', rk_unitKind: 'Storage type', rk_shelfUnit: 'Shelf unit', rk_stackArea: 'Floor stacks', rk_unitsInRoom: 'Storage sections', rk_stackName: n => `Floor stack ${n}`, rk_addUnit: 'Add storage', rk_editUnit: 'Edit storage', rk_delFloor: 'Remove floor stack', rk_delFloorQ: n => n ? `Remove this floor stack? Its ${n} boxes and things will remain in this place, but become unplaced.` : 'Remove this floor stack?', rk_stored: 'stored', rk_depth: 'Depth (cm)', rk_stackIntro: 'A floor area for boxes stacked directly on top of each other.', rk_rowInfo: (row, n, used, width) => `${row} · ${n} stored · ${used}/${width} cm used`, rk_planHint: 'Tap a name to jump to it. Hold and drag shelf units to a wall or floor stacks anywhere in the room.', rk_planNoRoom: 'No room there – it would overlap another storage area', rk_dragHint: 'Tap to open. Hold and drag to move items to a shelf, between boxes or on top of a box. Hold and drag floor stacks anywhere in the room.', rk_unplaced: 'Not placed yet', rk_unplacedEmpty: 'Drag here to take something out of a shelf or floor stack.', rk_empty: 'No storage areas here yet. Add shelf units or floor stacks, then place boxes and things on them.', rk_planMoved: (u, w) => `${u} moved to ${w}`, rk_floorLocation: 'a new spot', rk_roomBad: 'Check the numbers: room 50–2000 cm, door 50–300 cm, shelf width 30–400 cm, depth 10–200 cm.'},
+  sv: {rk_floorStack: 'Golvstapel', rk_unitKind: 'Förvaringstyp', rk_shelfUnit: 'Hyllsektion', rk_stackArea: 'Golvstaplar', rk_unitsInRoom: 'Förvaringsytor', rk_stackName: n => `Golvstapel ${n}`, rk_addUnit: 'Lägg till förvaring', rk_editUnit: 'Ändra förvaring', rk_delFloor: 'Ta bort golvstapel', rk_delFloorQ: n => n ? `Ta bort golvstapeln? De ${n} lådorna och sakerna blir kvar på platsen, men placeras inte längre på en hylla.` : 'Ta bort golvstapeln?', rk_stored: 'placerade', rk_depth: 'Djup (cm)', rk_stackIntro: 'En golvyta där lådor staplas direkt ovanpå varandra.', rk_rowInfo: (row, n, used, width) => `${row} · ${n} placerade · ${used}/${width} cm använda`, rk_planHint: 'Tryck på ett namn för att hoppa dit. Håll och dra hyllor till en vägg eller golvstaplar fritt i rummet.', rk_planNoRoom: 'Ingen plats där – den skulle gå in i en annan förvaringsyta', rk_dragHint: 'Tryck för att öppna. Håll och dra för att flytta till en hylla, mellan lådor eller ovanpå en låda. Håll och dra golvstaplar fritt i rummet.', rk_unplaced: 'Inte placerade än', rk_unplacedEmpty: 'Dra hit för att ta bort något från en hylla eller golvstapel.', rk_empty: 'Inga förvaringsytor här än. Lägg till hyllor eller golvstaplar och placera lådor och saker på dem.', rk_planMoved: (u, w) => `${u} flyttad till ${w}`, rk_floorLocation: 'en ny plats', rk_roomBad: 'Kolla siffrorna: rum 50–2000 cm, dörr 50–300 cm, hyllbredd 30–400 cm, djup 10–200 cm.'},
+  da: {rk_floorStack: 'Stak på gulvet', rk_unitKind: 'Opbevaringstype', rk_shelfUnit: 'Reol', rk_stackArea: 'Gulvstakke', rk_unitsInRoom: 'Opbevaringsområder', rk_stackName: n => `Gulvstak ${n}`, rk_addUnit: 'Tilføj opbevaring', rk_editUnit: 'Rediger opbevaring', rk_delFloor: 'Fjern gulvstak', rk_delFloorQ: n => n ? `Fjern gulvstakken? De ${n} kasser og ting bliver på stedet, men bliver ikke længere placeret på en hylde.` : 'Fjern gulvstakken?', rk_stored: 'placeret', rk_depth: 'Dybde (cm)', rk_stackIntro: 'Et gulvareal, hvor kasser stables direkte oven på hinanden.', rk_rowInfo: (row, n, used, width) => `${row} · ${n} placeret · ${used}/${width} cm brugt`, rk_planHint: 'Tryk på et navn for at gå til det. Hold og træk reoler til en væg eller gulvstakke frit i rummet.', rk_planNoRoom: 'Ingen plads der – det ville overlappe et andet opbevaringsområde', rk_dragHint: 'Tryk for at åbne. Hold og træk for at flytte til en reol, mellem kasser eller oven på en kasse. Træk gulvstakke frit rundt i rummet.', rk_unplaced: 'Ikke placeret endnu', rk_unplacedEmpty: 'Træk hertil for at tage noget af en reol eller gulvstak.', rk_empty: 'Ingen opbevaringsområder her endnu. Tilføj reoler eller gulvstakke, og placer kasser og ting på dem.', rk_planMoved: (u, w) => `${u} flyttet til ${w}`, rk_floorLocation: 'et nyt sted', rk_roomBad: 'Tjek tallene: rum 50–2000 cm, dør 50–300 cm, reolbredde 30–400 cm, dybde 10–200 cm.'},
+  nb: {rk_floorStack: 'Stabel på gulvet', rk_unitKind: 'Oppbevaringstype', rk_shelfUnit: 'Hylle', rk_stackArea: 'Gulvstabler', rk_unitsInRoom: 'Oppbevaringsområder', rk_stackName: n => `Gulvstabel ${n}`, rk_addUnit: 'Legg til oppbevaring', rk_editUnit: 'Endre oppbevaring', rk_delFloor: 'Fjern gulvstabel', rk_delFloorQ: n => n ? `Fjerne gulvstabelen? De ${n} eskene og tingene blir på stedet, men blir ikke lenger plassert på en hylle.` : 'Fjerne gulvstabelen?', rk_stored: 'plassert', rk_depth: 'Dybde (cm)', rk_stackIntro: 'Et gulvareal der esker stables rett oppå hverandre.', rk_rowInfo: (row, n, used, width) => `${row} · ${n} plassert · ${used}/${width} cm brukt`, rk_planHint: 'Trykk på et navn for å hoppe dit. Hold og dra hyller til en vegg eller gulvstabler fritt i rommet.', rk_planNoRoom: 'Ingen plass der – den ville overlappe et annet oppbevaringsområde', rk_dragHint: 'Trykk for å åpne. Hold og dra for å flytte til en hylle, mellom esker eller oppå en eske. Dra gulvstabler fritt rundt i rommet.', rk_unplaced: 'Ikke plassert ennå', rk_unplacedEmpty: 'Dra hit for å ta noe ned fra en hylle eller gulvstabel.', rk_empty: 'Ingen oppbevaringsområder her ennå. Legg til hyller eller gulvstabler, og plasser esker og ting på dem.', rk_planMoved: (u, w) => `${u} flyttet til ${w}`, rk_floorLocation: 'et nytt sted', rk_roomBad: 'Sjekk tallene: rom 50–2000 cm, dør 50–300 cm, hyllebredde 30–400 cm, dybde 10–200 cm.'},
+  fi: {rk_floorStack: 'Lattiapino', rk_unitKind: 'Säilytystapa', rk_shelfUnit: 'Hylly', rk_stackArea: 'Lattiapinot', rk_unitsInRoom: 'Säilytystilat', rk_stackName: n => `Lattiapino ${n}`, rk_addUnit: 'Lisää säilytystila', rk_editUnit: 'Muokkaa säilytystilaa', rk_delFloor: 'Poista lattiapino', rk_delFloorQ: n => n ? `Poistetaanko lattiapino? Sen ${n} laatikkoa ja tavaraa jäävät tähän paikkaan, mutta niitä ei enää merkitä hyllylle.` : 'Poistetaanko lattiapino?', rk_stored: 'sijoitettu', rk_depth: 'Syvyys (cm)', rk_stackIntro: 'Lattia-alue, jolle laatikot pinotaan suoraan päällekkäin.', rk_rowInfo: (row, n, used, width) => `${row} · ${n} sijoitettu · ${used}/${width} cm käytössä`, rk_planHint: 'Siirry napauttamalla nimeä. Pidä painettuna ja vedä hylly seinälle tai lattiapino vapaasti huoneeseen.', rk_planNoRoom: 'Ei tilaa – se menisi toisen säilytysalueen päälle', rk_dragHint: 'Avaa napauttamalla. Pidä painettuna ja vedä hyllylle, laatikoiden väliin tai laatikon päälle. Vedä lattiapino vapaasti huoneeseen.', rk_unplaced: 'Ei vielä sijoitettu', rk_unplacedEmpty: 'Vedä tähän, kun poistat tavaran hyllyltä tai lattiapinosta.', rk_empty: 'Ei vielä säilytystiloja. Lisää hyllyjä tai lattiapinoja ja sijoita laatikot ja tavarat niihin.', rk_planMoved: (u, w) => `${u} siirretty: ${w}`, rk_floorLocation: 'uuteen paikkaan', rk_roomBad: 'Tarkista mitat: huone 50–2000 cm, ovi 50–300 cm, hyllyn leveys 30–400 cm, syvyys 10–200 cm.'}
+};
+Object.entries(rkExtraText).forEach(([lang, entries]) => Object.assign(STR[lang], entries));
+const rkLayoutText = {
+  en: {rk_layout: 'Show', rk_shelvesOnly: 'Shelves', rk_stacksOnly: 'Floor stacks', rk_both: 'Both', rk_layoutEmpty: 'No storage units in this view.', rk_wall_front: 'Front wall', rk_freePlacement: 'Free placement', rk_freePlacementHint: 'When off, floor stacks snap to a wall on a 5 cm grid, with a small gap between them.', rk_doorBlocked: 'overlaps the doorway', rk_planHint: 'Tap a name to jump there. Drag shelf units to any wall; floor stacks snap to walls unless free placement is enabled.', rk_dragHint: 'Tap to open. Hold and drag to move items between shelves or boxes. Floor stacks snap to a wall unless free placement is enabled.'},
+  sv: {rk_layout: 'Visa', rk_shelvesOnly: 'Hyllor', rk_stacksOnly: 'Golvstaplar', rk_both: 'Båda', rk_layoutEmpty: 'Inga förvaringsytor i den här vyn.', rk_wall_front: 'Framvägg', rk_freePlacement: 'Fri placering', rk_freePlacementHint: 'Av: golvstaplar fäster vid en vägg på ett rutnät med 5 cm mellanrum, med lite luft mellan dem.', rk_doorBlocked: 'överlappas med dörröppningen', rk_planHint: 'Tryck på ett namn för att hoppa dit. Dra hyllor till valfri vägg. Golvstaplar fäster vid väggar om fri placering inte är på.', rk_dragHint: 'Tryck för att öppna. Håll inne och dra för att flytta mellan hyllor och lådor. Golvstaplar fäster vid en vägg om fri placering inte är på.'},
+  da: {rk_layout: 'Vis', rk_shelvesOnly: 'Reoler', rk_stacksOnly: 'Gulvstakke', rk_both: 'Begge', rk_layoutEmpty: 'Ingen opbevaringsområder i denne visning.', rk_wall_front: 'Forvæg', rk_freePlacement: 'Fri placering', rk_freePlacementHint: 'Fra: gulvstakke fastgøres til en væg på et 5 cm-gitter med lidt afstand imellem.', rk_doorBlocked: 'overlapper døråbningen', rk_planHint: 'Tryk på et navn for at gå til det. Træk reoler til enhver væg; gulvstakke fastgøres til vægge, medmindre fri placering er slået til.', rk_dragHint: 'Tryk for at åbne. Hold og træk for at flytte mellem reoler og kasser. Gulvstakke fastgøres til en væg, medmindre fri placering er slået til.'},
+  nb: {rk_layout: 'Vis', rk_shelvesOnly: 'Hyller', rk_stacksOnly: 'Gulvstabler', rk_both: 'Begge', rk_layoutEmpty: 'Ingen oppbevaringsområder i denne visningen.', rk_wall_front: 'Frontvegg', rk_freePlacement: 'Fri plassering', rk_freePlacementHint: 'Av: gulvstabler festes til en vegg på et rutenett med 5 cm avstand, med litt mellomrom.', rk_doorBlocked: 'overlapper døråpningen', rk_planHint: 'Trykk på et navn for å hoppe dit. Dra hyller til en vegg; gulvstabler festes til vegger med mindre fri plassering er slått på.', rk_dragHint: 'Trykk for å åpne. Hold og dra for å flytte mellom hyller og esker. Gulvstabler festes til en vegg med mindre fri plassering er slått på.'},
+  fi: {rk_layout: 'Näytä', rk_shelvesOnly: 'Hyllyt', rk_stacksOnly: 'Lattiapinot', rk_both: 'Molemmat', rk_layoutEmpty: 'Ei säilytystiloja tässä näkymässä.', rk_wall_front: 'Etuseinä', rk_freePlacement: 'Vapaa sijoittelu', rk_freePlacementHint: 'Pois päältä: lattiapinot kiinnittyvät seinään 5 cm:n ruudukossa, ja niiden väliin jää hieman tilaa.', rk_doorBlocked: 'on oviaukon päällä', rk_planHint: 'Siirry napauttamalla nimeä. Vedä hylly seinälle; lattiapinot kiinnittyvät seinään, ellei vapaa sijoittelu ole käytössä.', rk_dragHint: 'Avaa napauttamalla. Pidä painettuna ja vedä hyllyjen ja laatikoiden välillä. Lattiapinot kiinnittyvät seinään, ellei vapaa sijoittelu ole käytössä.'}
+};
+Object.entries(rkLayoutText).forEach(([language, entries]) => Object.assign(STR[language], entries));
+const rkPlacementText = {
+  en: {rk_offShelf: x => `${x} is no longer placed in Shelves`, rk_notPlaced: 'not placed in Shelves', rk_updated: 'Storage layout updated', rk_noRoom: n => `${n} couldn’t fit – add a shelf unit or floor stack area.`, rk_roomMeasuredHint: 'Then the app warns when storage areas do not fit, instead of making the room bigger.'},
+  sv: {rk_offShelf: x => `${x} är inte längre placerad i Hyllor`, rk_notPlaced: 'inte placerad i Hyllor', rk_updated: 'Förvaringen är uppdaterad', rk_noRoom: n => `${n} fick inte plats – lägg till en hylla eller golvstapel.`, rk_roomMeasuredHint: 'Då varnar appen när förvaringsytor inte får plats, i stället för att göra rummet större.'},
+  da: {rk_offShelf: x => `${x} er ikke længere placeret i Hylder`, rk_notPlaced: 'ikke placeret i Hylder', rk_updated: 'Opbevaringen er opdateret', rk_noRoom: n => `${n} kunne ikke være der – tilføj en reol eller gulvstak.`, rk_roomMeasuredHint: 'Så advarer appen, når opbevaringsområder ikke passer, i stedet for at gøre rummet større.'},
+  nb: {rk_offShelf: x => `${x} er ikke lenger plassert i Hyller`, rk_notPlaced: 'ikke plassert i Hyller', rk_updated: 'Oppbevaringen er oppdatert', rk_noRoom: n => `${n} fikk ikke plass – legg til en hylle eller gulvstabel.`, rk_roomMeasuredHint: 'Da varsler appen når oppbevaringsområder ikke får plass, i stedet for å gjøre rommet større.'},
+  fi: {rk_offShelf: x => `${x} ei ole enää sijoitettu Hyllyt-näkymään`, rk_notPlaced: 'ei sijoitettu Hyllyt-näkymään', rk_updated: 'Säilytys on päivitetty', rk_noRoom: n => `${n} ei mahtunut – lisää hylly tai lattiapinon alue.`, rk_roomMeasuredHint: 'Sovellus varoittaa, jos säilytystilat eivät mahdu huoneeseen, eikä suurenna huonetta.'}
+};
+Object.entries(rkPlacementText).forEach(([lang, entries]) => Object.assign(STR[lang], entries));
 const rkUnits = pid => ((findPlace(pid) || {}).units || []);
 const rkGapOf = (u, s) => (u.gaps && u.gaps[s]) || u.gap;
 const rkWallLabel = w => tr('rk_wall_' + w);
-const rkShelfWord = (s, n) => n === 1 ? tr('rk_only') : s === 0 ? tr('rk_bottom') : s === n - 1 ? tr('rk_top') : tr('rk_nth', s + 1);
+const rkShelfWord = (s, n, u) => u && u.kind === 'floor' ? tr('rk_floorStack') : n === 1 ? tr('rk_only') : s === 0 ? tr('rk_bottom') : s === n - 1 ? tr('rk_top') : tr('rk_nth', s + 1);
 function rkDims(e){
   if (e.kind === 'item') return RK_ITEM;
   const b = e.b; if (b.boxType === 'custom' && b.boxDims && b.boxDims.w) return b.boxDims;
@@ -7225,9 +7319,9 @@ function rkWhere(units, grid, k){
   for (const u of units) for (let s = 0; s < (grid[u.id] || []).length; s++) if (grid[u.id][s].some(c => c.includes(k))) return {u, s};
   return null;
 }
-const rkWhereText = (units, grid, k) => { const w = rkWhere(units, grid, k); return w ? `${w.u.name}, ${rkShelfWord(w.s, w.u.shelves)}` : tr('rk_notPlaced'); };
+const rkWhereText = (units, grid, k) => { const w = rkWhere(units, grid, k); return w ? `${w.u.name}, ${rkShelfWord(w.s, w.u.shelves, w.u)}` : tr('rk_notPlaced'); };
 /* write a whole new arrangement: only boxes that really changed are saved, and it can be undone */
-function rkCommit(pid, grid, msg){
+function rkCommit(pid, grid, msg, restoreUnits){
   const {ents} = rkGrid(pid), next = new Map();
   Object.entries(grid).forEach(([u, shelves]) => shelves.forEach((cols, s) => cols.forEach((col, x) => col.forEach((k, l) => next.set(k, {u, s, x, l})))));
   const same = (a, b) => (!a && !b) || (a && b && a.u === b.u && a.s === b.s && a.x === b.x && a.l === b.l);
@@ -7239,7 +7333,24 @@ function rkCommit(pid, grid, msg){
   changed.filter(e => e.kind === 'box').forEach(e => { const nb = clone(e.b), p = next.get(e.k); if (p) nb.shelf = p; else delete nb.shelf; putBox(nb, true); });
   if (itemsChanged && l){ const nl = clone(l); nl.items.forEach(it => { const p = next.get('i:' + it.id); if (p) it.shelf = p; else delete it.shelf; }); putBox(nl, true); }
   render();
-  if (msg) toastAction(msg, tr('undo'), () => { undoApply(); render(); });
+  if (msg) toastAction(msg, tr('undo'), () => {
+    undoApply();
+    if (restoreUnits){ findPlace(pid).units = restoreUnits; metaPut('places', places).catch(() => {}); }
+    render();
+  });
+}
+function rkFitUnmeasured(units, grid, ents){
+  return units.map(u => {
+    if (u.kind === 'floor' || u.measured) return u;
+    const shelves = grid[u.id] || [], width = Math.max(u.width, ...shelves.map(sh => rkUsedW(ents, sh)));
+    const gaps = Array.from({length: u.shelves}, (_, s) => Math.max(rkGapOf(u, s), ...(shelves[s] || []).map(col => rkColH(ents, col))));
+    const gap = Math.max(u.gap, ...gaps);
+    if (width === u.width && gaps.every((value, s) => value === rkGapOf(u, s))) return u;
+    const next = Object.assign({}, u, {width, gap});
+    if (gaps.some(value => value !== gap)) next.gaps = gaps;
+    else delete next.gaps;
+    return next;
+  });
 }
 let rkLastDrop = null;
 function rkDrop(ek, pid, t){
@@ -7254,25 +7365,31 @@ function rkDrop(ek, pid, t){
   if (t.type === 'stack'){ const col = sh2.find(c => c === stackCol) || sh2.find(c => stackCol.filter(k => k !== ek).every(k => c.includes(k))); if (!col) return; col.push(ek); }
   else if (t.type === 'insert'){ let i = ref ? sh2.findIndex(c => c === ref || (ref.filter(k => k !== ek).length && ref.filter(k => k !== ek).every(k => c.includes(k)))) : -1; if (i < 0) i = Math.min(t.idx, sh2.length); sh2.splice(i, 0, [ek]); }
   const w = t.type === 'out' ? null : rkWhere(units, grid, ek);
-  rkCommit(pid, grid, w ? `${rkName(e)} → ${w.u.name}, ${rkShelfWord(w.s, w.u.shelves)}` : tr('rk_offShelf', rkName(e)));
+  const restoreUnits = rkSize !== 'S' ? clone(findPlace(pid).units || []) : null;
+  if (restoreUnits) findPlace(pid).units = rkFitUnmeasured(units, grid, ents);
+  rkCommit(pid, grid, w ? `${rkName(e)} → ${w.u.name}, ${rkShelfWord(w.s, w.u.shelves, w.u)}` : tr('rk_offShelf', rkName(e)), restoreUnits);
 }
 
 /* --- drawing --- */
+function rkHighlighted(e){
+  return view.name === 'mapfocus' && (e.kind === 'box' ? (view.hlBoxes || []).includes(e.b.id) : (view.hlItems || []).includes(e.it.id));
+}
 function rkBoxEl(e, w, h, o){
   const b = e.b, n = (b.items || []).length + childBoxes(b.id).length, big = w >= 54 && h >= 40;
   const stateClass = entityStateClass(b);
+  const highlight = rkHighlighted(e) ? ' hl' : '';
   const label = w >= 22 && h >= 16 ? `<span class="rklabel">${esc(boxNum(b))}</span>` : '';
   const name = o.large && w >= 70 && h >= 52 ? `<span class="rkname">${esc(b.name || boxLabel(b))}</span>` : '';
   const dims = o.measure && o.large && w >= 70 && h >= 66 ? `<span class="rkdim">${rkDims(e).w}×${rkDims(e).h}</span>` : '';
-  return `<button class="rkbox${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${o.tall ? ' tall' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-open="${esc(b.id)}" data-rk-ek="b:${esc(b.id)}" aria-label="${esc(b.code + ' ' + (b.name || ''))}">${label}${name}${dims}${big && n ? `<span class="rkcount">${n}</span>` : ''}</button>`;
+  return `<button class="rkbox${b.out ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${o.tall ? ' tall' : ''}${highlight}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-open="${esc(b.id)}" data-rk-ek="b:${esc(b.id)}" aria-label="${esc(b.code + ' ' + (b.name || ''))}">${label}${name}${dims}${big && n ? `<span class="rkcount">${n}</span>` : ''}</button>`;
 }
 function rkItemEl(e, w, h, o){
   const it = e.it, p = (it.photos || [])[0], d = Math.max(10, Math.min(w, h));
   const stateClass = entityStateClass(it, e.l);
-  return `<button class="rkitem${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-item="${esc(it.id)}" data-box="${esc(e.l.id)}" data-rk-ek="i:${esc(it.id)}" aria-label="${esc(it.name || '')}"><span class="lcirc" style="width:${d.toFixed(1)}px;height:${d.toFixed(1)}px">${p ? imgTag(p.ref, '') : ''}${d >= 26 ? `<span class="ticon${p ? ' fb' : ''}" style="font-size:${Math.min(40, d * .45).toFixed(0)}px">${guessIcon(it)}</span>` : ''}</span></button>`;
+  return `<button class="rkitem${isOut(it) ? ' out' : ''}${stateClass ? ' ' + stateClass : ''}${rkHighlighted(e) ? ' hl' : ''}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px" data-item="${esc(it.id)}" data-box="${esc(e.l.id)}" data-rk-ek="i:${esc(it.id)}" aria-label="${esc(it.name || '')}"><span class="lcirc" style="width:${d.toFixed(1)}px;height:${d.toFixed(1)}px">${p ? imgTag(p.ref, '') : ''}${d >= 26 ? `<span class="ticon${p ? ' fb' : ''}" style="font-size:${Math.min(40, d * .45).toFixed(0)}px">${guessIcon(it)}</span>` : ''}</span></button>`;
 }
 function rkDraw(u, data, width, o){
-  const {ents, grid} = data, inner = Math.max(40, width - 12), sc = inner / u.width, compact = width < 170, minPx = compact ? 6 : 16;
+  const {ents, grid} = data, inner = Math.max(40, width - 12), sc = inner / u.width, compact = width < 170, minPx = compact ? 6 : 16, floor = u.kind === 'floor';
   let rows = '';
   for (let s = u.shelves - 1; s >= 0; s--){
     const shelf = grid[u.id][s] || [], used = rkUsedW(ents, shelf), free = u.width - used;
@@ -7283,12 +7400,14 @@ function rkDraw(u, data, width, o){
     }).join('');
     let add = '';
     if (free >= 12){ const fpx = free * sc, fit = ['moving', 'banana', 'small'].find(t => RK_TYPES[t].w <= free && RK_TYPES[t].h <= rkGapOf(u, s));
-      add = compact || fpx < 76 ? (fpx >= 20 ? `<button class="rkfree sm" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}">+</button>` : '')
-        : `<button class="rkfree" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}"><b>+</b><span>${esc(o.measure || !fit ? tr('rk_free', free) : tr('rk_fits', tr('rk_bn_' + fit)))}</span></button>`; }
-    rows += (o.measure && !compact ? `<div class="rkfill"><span>${esc(tr('rk_shelfN', s + 1))}: ${esc(tr('rk_used', used, u.width, rkGapOf(u, s)))}</span><i style="width:${Math.min(100, Math.max(0, used / u.width * 100))}%"></i></div>` : '')
+      add = compact || fpx < 76 ? (fpx >= 20 ? `<button class="rkfree sm" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves, u)))}">+</button>` : '')
+        : `<button class="rkfree" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves, u)))}"><b>+</b><span>${esc(o.measure || !fit ? tr('rk_free', free) : tr('rk_fits', tr('rk_bn_' + fit)))}</span></button>`; }
+    const row = floor ? tr('rk_floorStack') : tr('rk_shelfN', s + 1);
+    rows += `<div class="rkrowinfo">${esc(tr('rk_rowInfo', row, shelf.flat().length, used, u.width))}</div>`
+      + (o.measure && !compact ? `<div class="rkfill"><span>${esc(tr('rk_used', used, u.width, rkGapOf(u, s)))}</span><i style="width:${Math.min(100, Math.max(0, used / u.width * 100))}%"></i></div>` : '')
       + `<div class="rkshelf${free < 0 ? ' wide' : ''}" data-rk-shelf data-rk-u="${esc(u.id)}" data-rk-s="${s}" style="min-height:${Math.round(rkGapOf(u, s) * sc)}px">${cols}${add}${free < 0 ? `<span class="rkwarn">${compact ? '!' : esc(tr('rk_tooWide', -free))}</span>` : ''}</div><div class="rkplank"></div>${rkQuestion(u, s, data, compact)}`;
   }
-  return `${o.measure && !compact ? `<div class="rkruler"><span>${u.width} cm</span></div>` : ''}<div class="rkframe${compact ? ' thin' : ''}">${rows}</div><div class="rklegs" aria-hidden="true"><i></i><i></i></div>`;
+  return `${o.measure && !compact ? `<div class="rkruler"><span>${u.width} cm</span></div>` : ''}<div class="rkframe${compact ? ' thin' : ''}${floor ? ' rkfloorframe' : ''}">${rows}</div>${floor ? '' : '<div class="rklegs" aria-hidden="true"><i></i><i></i></div>'}`;
 }
 /* something sticks out or is too tall: ask about it right below that shelf.
    Measured shelf + measured boxes = a real warning that is hard to click away; otherwise one tap and the shelf follows the boxes. */
@@ -7306,6 +7425,7 @@ function rkProblem(u, s, data){
 }
 function rkQuestion(u, s, data, compact){
   const pr = rkProblem(u, s, data); if (!pr || pr.accepted) return '';
+  if (!pr.strict && rkSize !== 'S') return '';
   const name = rkName(data.ents.get(pr.culprit)), at = `data-rk-u="${esc(u.id)}" data-rk-s="${s}"`;
   if (pr.strict) return `<div class="rkq strict" role="alert"><b>⚠ ${tr('rk_hard')}</b>
     ${pr.wide > 0 ? `<span>${esc(tr('rk_hardW', pr.used, u.width))}</span>` : ''}${pr.high ? `<span>${esc(tr('rk_hardH', pr.high, pr.gap))}</span>` : ''}
@@ -7335,79 +7455,156 @@ function rkAnswer(pid, q, uid, s, k){
 }
 /* --- the room from above: walls, door and shelf units to scale; tap to jump, ✎ to edit --- */
 const RK_DOOR_X = {left: .2, mid: .5, right: .8};
-function rkRoomOf(p){ return Object.assign({w: 200, d: 250, door: 'mid', doorW: 80, measured: false}, p.room || {}); }
+function rkRoomOf(p){ return Object.assign({w: 200, d: 250, door: 'mid', doorW: 80, measured: false, free: false}, p.room || {}); }
 function rkPlan(p){
-  const room = rkRoomOf(p), units = p.units || [], spots = [], need = {back: 0, left: 0, right: 0};
-  const backDepth = Math.max(0, ...units.filter(u => u.wall === 'back').map(u => u.depth || 40));
+  const room = rkRoomOf(p), units = p.units || [], spots = [], need = {back: 0, left: 0, right: 0, front: 0};
+  const wallUnits = units.filter(u => u.kind !== 'floor');
+  const floorUnits = units.filter(u => u.kind === 'floor');
+  const backDepth = Math.max(0, ...wallUnits.filter(u => u.wall === 'back').map(u => u.depth || 40));
   RK_WALLS.forEach(w => {
-    let run = w === 'back' ? 0 : (backDepth ? backDepth + 5 : 0);
-    units.filter(u => u.wall === w).forEach(u => {
+    let run = w === 'left' || w === 'right' ? (backDepth ? backDepth + 5 : 0) : 0;
+    wallUnits.filter(u => u.wall === w).forEach(u => {
       const at = u.at !== undefined && u.at !== null && u.at !== '' ? +u.at : run, dp = u.depth || 40;
       run = at + u.width + 5; need[w] = Math.max(need[w], at + u.width);
-      spots.push({u, wall: w, at, len: u.width, dp});
+      spots.push({u, wall: w, at, len: u.width, dp, autoAt: u.at === undefined || u.at === null || u.at === ''});
     });
   });
   const sideDepth = Math.max(0, ...spots.filter(x => x.wall !== 'back').map(x => x.dp));
-  const W = room.measured ? room.w : Math.max(room.w, need.back, sideDepth * 2 + room.doorW);
-  const D = room.measured ? room.d : Math.max(room.d, need.left, need.right, backDepth + 60);
+  const frontUnits = wallUnits.filter(u => u.wall === 'front');
+  const frontRoomNeed = room.doorW + frontUnits.reduce((sum, u) => sum + u.width, 0) + (frontUnits.length + 1) * 5;
+  const W = room.measured ? room.w : Math.max(room.w, need.back, need.front, frontRoomNeed, sideDepth * 2 + room.doorW, ...floorUnits.map(u => (u.x || 0) + u.width));
+  const D = room.measured ? room.d : Math.max(room.d, need.left, need.right, backDepth + 60, ...floorUnits.map(u => (u.y || 0) + (u.depth || 40)));
+  const dw = Math.min(room.doorW, W), dx = Math.min(W - dw / 2, Math.max(dw / 2, W * RK_DOOR_X[room.door]));
+  const door = {x: dx, w: dw};
   spots.forEach(sp => {
     if (sp.wall === 'back') Object.assign(sp, {x: sp.at, y: 0, w: sp.len, h: sp.dp});
     else if (sp.wall === 'left') Object.assign(sp, {x: 0, y: sp.at, w: sp.dp, h: sp.len});
-    else Object.assign(sp, {x: W - sp.dp, y: sp.at, w: sp.dp, h: sp.len});
-    const wallLen = sp.wall === 'back' ? W : D;
+    else if (sp.wall === 'right') Object.assign(sp, {x: W - sp.dp, y: sp.at, w: sp.dp, h: sp.len});
+    else Object.assign(sp, {x: sp.at, y: D - sp.dp, w: sp.len, h: sp.dp});
+    const wallLen = sp.wall === 'back' || sp.wall === 'front' ? W : D;
     sp.over = sp.at + sp.len > wallLen;
   });
+  const fixedSpots = spots.filter(sp => sp.wall !== 'front' || !sp.autoAt), placedFront = [];
+  spots.filter(sp => sp.wall === 'front' && sp.autoAt).forEach(sp => {
+    const max = W - sp.len, edge = 5, gapLeft = door.x - door.w / 2 - edge, gapRight = door.x + door.w / 2 + edge;
+    const candidates = Array.from({length: Math.floor(max / 5) + 1}, (_, i) => i * 5);
+    candidates.sort((a, b) => Math.abs(a - sp.at) - Math.abs(b - sp.at));
+    const at = candidates.find(x => (x + sp.len <= gapLeft || x >= gapRight) && !fixedSpots.concat(placedFront).some(other => rkHits(rkPlanRect('front', x, sp, W, D), other)));
+    if (at !== undefined){ sp.at = at; sp.x = at; sp.y = D - sp.dp; placedFront.push(sp); }
+    else sp.over = true;
+  });
+  floorUnits.forEach(u => {
+    const x = Number(u.x) || 0, y = Number(u.y) || 0, w = u.width, h = u.depth || 40;
+    spots.push({u, wall: 'floor', at: 0, len: w, dp: h, x, y, w, h, over: x < 0 || y < 0 || x + w > W || y + h > D});
+  });
   const issues = [];
-  spots.filter(sp => sp.over).forEach(sp => issues.push(tr('rk_wallFull', sp.u.name, rkWallLabel(sp.wall).toLowerCase(), sp.at + sp.len, sp.wall === 'back' ? W : D)));
+  spots.filter(sp => sp.over).forEach(sp => issues.push(sp.wall === 'floor' ? `${sp.u.name} ${tr('rk_planNoRoom')}` : tr('rk_wallFull', sp.u.name, rkWallLabel(sp.wall).toLowerCase(), sp.at + sp.len, sp.wall === 'back' ? W : D)));
+  spots.filter(sp => sp.wall === 'front' && sp.x < door.x + door.w / 2 + 5 && sp.x + sp.w > door.x - door.w / 2 - 5).forEach(sp => issues.push(`${sp.u.name} ${tr('rk_doorBlocked')}`));
   spots.forEach((a, i) => spots.slice(i + 1).forEach(b => { if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h){ a.clash = b.clash = true; issues.push(tr('rk_overlap', a.u.name, b.u.name)); } }));
-  const dw = Math.min(room.doorW, W), dx = Math.min(W - dw / 2, Math.max(dw / 2, W * RK_DOOR_X[room.door]));
-  return {room, W, D, spots, issues, door: {x: dx, w: dw}};
+  return {room, W, D, spots, issues, door};
+}
+function rkPlanSymbol(sp, grid){
+  const rows = grid[sp.u.id] || [];
+  if (sp.wall === 'floor'){
+    const cols = rows[0] || [], shown = cols.slice(0, 3);
+    const boxes = shown.map((col, i) => Array.from({length: Math.min(3, col.length)}, (_, level) => {
+      const x = 4 + i * 10, y = 19 - level * 5;
+      return `<g class="rkplanbox" transform="translate(${x} ${y})"><path d="M0 2 5 0 10 2 5 4zM0 2v5l5 2 5-2V2M5 4v5"/></g>`;
+    }).join('')).join('');
+    return `<svg class="rkplansymbol floor" viewBox="0 0 36 28" aria-hidden="true"><rect class="frame" x="1.5" y="1.5" width="33" height="25" rx="3"/>${boxes}${cols.length > 3 ? `<text class="more" x="32" y="9">+${cols.length - 3}</text>` : ''}</svg>`;
+  }
+  const count = Math.max(1, +sp.u.shelves || 1), slots = Array.from({length: count}, (_, i) => {
+    const y = 3 + (i + 1) * 22 / (count + 1), populated = (rows[i] || []).some(col => col.length);
+    return `<path class="shelf" d="M3 ${y.toFixed(2)}h30"/>${populated ? `<rect class="rkplanbox" x="14" y="${(y - 2).toFixed(2)}" width="8" height="2.5" rx=".6"/>` : ''}`;
+  }).join('');
+  return `<svg class="rkplansymbol shelf" viewBox="0 0 36 28" aria-hidden="true"><path class="frame" d="M3 2v24M33 2v24"/>${slots}</svg>`;
 }
 function rkPlanHTML(pid){
   const p = findPlace(pid), pl = rkPlan(p), {W, D} = pl, fs = Math.max(W, D) / 16, pad = fs * 1.6;
   const wall = (w, x1, y1, x2, y2) => `<g class="rkpw${rkWallFocus === w ? ' on' : ''}" data-rk-wall="${w}" role="button" tabindex="0" aria-label="${esc(rkWallLabel(w))}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="hit"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="ln"/></g>`;
   const dl = pl.door.x - pl.door.w / 2, dr = pl.door.x + pl.door.w / 2;
-  const fit = (t, len) => { const max = Math.max(2, Math.floor(len / (fs * .8 * .6))); return t.length > max ? t.slice(0, max - 1) + '…' : t; };
-  const units = pl.spots.map(sp => { const vert = sp.h > sp.w, cx = sp.x + sp.w / 2, cy = sp.y + sp.h / 2;
-    return `<g class="rkpu${sp.over || sp.clash ? ' bad' : ''}" data-rk-jump="${esc(sp.u.id)}" role="button" tabindex="0" aria-label="${esc(sp.u.name)}"><rect x="${sp.x}" y="${sp.y}" width="${sp.w}" height="${sp.h}" rx="${fs * .25}"/>
-      <text x="${cx}" y="${cy}" font-size="${fs * .8}" ${vert ? `transform="rotate(-90 ${cx} ${cy})"` : ''}>${esc(fit(sp.u.name, vert ? sp.h : sp.w))}</text></g>`; }).join('') + `<text class="rkpd rkpinfo" x="${W / 2}" y="${D - fs * 1.2}" font-size="${fs * .58}"></text>`;
+  const rackData = rkGrid(pid);
+  const units = pl.spots.map((sp, i) => { const cx = sp.x + sp.w / 2, cy = sp.y + sp.h / 2, floor = sp.wall === 'floor', vertical = sp.wall === 'left' || sp.wall === 'right';
+    return `<g class="rkpu${floor ? ' floor' : ''}${sp.over || sp.clash ? ' bad' : ''}" data-rk-jump="${esc(sp.u.id)}" role="button" tabindex="0" aria-label="${esc(sp.u.name)}"><rect x="${sp.x}" y="${sp.y}" width="${sp.w}" height="${sp.h}" rx="${fs * .25}"/>
+      <text x="${cx}" y="${cy}"${vertical ? ` transform="rotate(-90 ${cx} ${cy})"` : ''} font-size="${Math.max(12, fs * .8)}" vector-effect="non-scaling-size">${i + 1}</text></g>`; }).join('') + `<text class="rkpd rkpinfo" x="${W / 2}" y="${D - fs * 1.2}" font-size="${fs * .58}"></text>`;
+  const legend = pl.spots.length ? `<div class="rkplanlist">${pl.spots.map((sp, i) => {
+    const stored = ((rackData.grid[sp.u.id] || []).flat(2) || []).length;
+    const meta = sp.wall === 'floor' ? `${tr('rk_floorStack')} · ${sp.u.width}×${sp.u.depth} cm · ${stored} ${tr('rk_stored')}` : `${rkWallLabel(sp.wall)} · ${tr('rk_unitMeta', sp.u.width, sp.u.shelves, stored, sp.u.depth || 40)}`;
+    return `<button class="rkplanitem" data-rk-jump="${esc(sp.u.id)}"><span class="rkplanbadge">${rkPlanSymbol(sp, rackData.grid)}<b>${i + 1}</b></span><b>${esc(sp.u.name)}</b><small>${esc(meta)}</small></button>`;
+  }).join('')}</div>` : '';
   const dims = pl.room.measured || rkMeasure ? `<text class="rkpd" x="${W / 2}" y="${-pad * .45}" font-size="${fs * .7}">${W} cm</text><text class="rkpd" x="${-pad * .45}" y="${D / 2}" font-size="${fs * .7}" transform="rotate(-90 ${-pad * .45} ${D / 2})">${D} cm</text>` : '';
-  return `<section class="rkplan"><div class="rkplanhead"><b>${tr('rk_room')}</b><span class="zcount">${esc(tr('rk_planHint'))}</span><button class="space-edit-btn rkpen" data-rk-act="room" aria-label="${esc(tr('rk_roomEdit'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
+  const edge = 3.5;
+  return `<section class="rkplan"><div class="rkplanhead"><button class="space-edit-btn rkpen" data-rk-act="room" aria-label="${esc(tr('rk_roomEdit'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
     <svg class="rkpsvg" viewBox="${-pad} ${-pad} ${W + pad * 2} ${D + pad * 2}" style="aspect-ratio:${(W + pad * 2) / (D + pad * 2)}">
-      <rect x="0" y="0" width="${W}" height="${D}" class="fl"/>${units}
-      ${wall('back', 0, 0, W, 0)}${wall('left', 0, 0, 0, D)}${wall('right', W, 0, W, D)}
-      <line x1="0" y1="${D}" x2="${dl}" y2="${D}" class="front"/><line x1="${dr}" y1="${D}" x2="${W}" y2="${D}" class="front"/>
-      <line x1="${dl}" y1="${D}" x2="${dr}" y2="${D}" class="door"/><text class="rkpdoor" x="${pl.door.x}" y="${D + pad * .75}" font-size="${fs * .75}">${tr('rk_door')}</text>${dims}
-    </svg>${pl.issues.length ? `<p class="rkplanwarn">⚠ ${pl.issues.map(esc).join(' ')}</p>` : ''}</section>`;
+      <defs><pattern id="rkgrid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="var(--line)" stroke-width=".6" opacity=".75"/><path d="M5 0V25M10 0V25M15 0V25M20 0V25M0 5H25M0 10H25M0 15H25M0 20H25" fill="none" stroke="var(--line)" stroke-width=".2" opacity=".25"/></pattern></defs>
+      <rect x="0" y="0" width="${W}" height="${D}" class="fl"/>${!pl.room.free ? `<rect x="0" y="0" width="${W}" height="${D}" class="rkgrid"/>` : ''}
+      ${wall('back', -edge, -edge, W + edge, -edge)}${wall('left', -edge, -edge, -edge, D + edge)}${wall('right', W + edge, -edge, W + edge, D + edge)}
+      ${wall('front', -edge, D + edge, dl, D + edge)}${wall('front', dr, D + edge, W + edge, D + edge)}
+      <line x1="${dl}" y1="${D + edge}" x2="${dr}" y2="${D + edge}" class="door"/><text class="rkpdoor" x="${pl.door.x}" y="${D + pad * .75}" font-size="${fs * .75}">${tr('rk_door')}</text>${units}${dims}
+    </svg>${legend}${pl.issues.length ? `<p class="rkplanwarn">⚠ ${pl.issues.map(esc).join(' ')}</p>` : ''}</section>`;
 }
 let rkWallFocus = null;
 /* drag a shelf unit in the plan, like a home planner: it snaps to the closest wall and never overlaps another unit */
 let rkPP = null, rkPD = null, rkPlanSuppress = false;
 function rkPlanPoint(svg, x, y){ const pt = svg.createSVGPoint(); pt.x = x; pt.y = y; const m = svg.getScreenCTM(); return m ? pt.matrixTransform(m.inverse()) : {x: 0, y: 0}; }
-function rkPlanRect(wall, at, sp, W){ return wall === 'back' ? {x: at, y: 0, w: sp.len, h: sp.dp} : wall === 'left' ? {x: 0, y: at, w: sp.dp, h: sp.len} : {x: W - sp.dp, y: at, w: sp.dp, h: sp.len}; }
+function rkPlanRect(wall, at, sp, W, D){
+  if (wall === 'floor') return {x: sp.x, y: sp.y, w: sp.w, h: sp.h};
+  if (wall === 'back') return {x: at, y: 0, w: sp.len, h: sp.dp};
+  if (wall === 'front') return {x: at, y: D - sp.dp, w: sp.len, h: sp.dp};
+  if (wall === 'left') return {x: 0, y: at, w: sp.dp, h: sp.len};
+  return {x: W - sp.dp, y: at, w: sp.dp, h: sp.len};
+}
 const rkHits = (a, b) => a.x < b.x + b.w - .5 && b.x < a.x + a.w - .5 && a.y < b.y + b.h - .5 && b.y < a.y + a.h - .5;
 function rkPlanFit(d, wall, want){
-  const {sp, others, W, D} = d, max = (wall === 'back' ? W : D) - sp.len;
+  const {sp, others, W, D} = d, max = (wall === 'back' || wall === 'front' ? W : D) - sp.len;
   if (max < 0) return null;
-  const ok = at => at >= 0 && at <= max && !others.some(o => rkHits(rkPlanRect(wall, at, sp, W), o));
+  const ok = at => {
+    if (at < 0 || at > max) return false;
+    const rect = rkPlanRect(wall, at, sp, W, D);
+    if (wall === 'front' && rect.x < d.door.x + d.door.w / 2 + 5 && rect.x + rect.w > d.door.x - d.door.w / 2 - 5) return false;
+    return !others.some(o => rkHits(rect, o));
+  };
   const cands = [Math.round(want / 5) * 5, want, 0, max];
-  others.forEach(o => { const [a, b] = wall === 'back' ? [o.x, o.x + o.w] : [o.y, o.y + o.h]; cands.push(a - sp.len, b, Math.floor((a - sp.len) / 5) * 5, Math.ceil(b / 5) * 5); });
+  others.forEach(o => { const [a, b] = wall === 'back' || wall === 'front' ? [o.x, o.x + o.w] : [o.y, o.y + o.h]; cands.push(a - sp.len, b, Math.floor((a - sp.len) / 5) * 5, Math.ceil(b / 5) * 5); });
+  if (wall === 'front') cands.push(d.door.x - d.door.w / 2 - 5 - sp.len, d.door.x + d.door.w / 2 + 5);
   const good = cands.map(c => Math.max(0, Math.min(max, c))).filter(ok).sort((a, b) => Math.abs(a - want) - Math.abs(b - want));
   return good.length ? Math.round(good[0]) : null;
 }
 function rkPlanStart(g, e){
   const svg = g.ownerSVGElement, p = findPlace(currentPlace), pl = rkPlan(p), sp = pl.spots.find(x => x.u.id === g.dataset.rkJump); if (!sp) return;
-  rkPD = {g, svg, pid: currentPlace, sp, W: pl.W, D: pl.D, others: pl.spots.filter(x => x !== sp).map(x => ({x: x.x, y: x.y, w: x.w, h: x.h})), all: pl.spots, wall: sp.wall, at: sp.at, ok: true, moved: false, sx: e.clientX, sy: e.clientY};
+  rkPD = {g, svg, pid: currentPlace, sp, W: pl.W, D: pl.D, room: pl.room, door: pl.door, others: pl.spots.filter(x => x !== sp).map(x => ({x: x.x, y: x.y, w: x.w, h: x.h})), all: pl.spots, wall: sp.wall, at: sp.at, x: sp.x, y: sp.y, ok: true, moved: false, sx: e.clientX, sy: e.clientY};
   g.classList.add('drag'); g.parentNode.appendChild(g); document.body.classList.add('dragging-on');
   if (navigator.vibrate) navigator.vibrate(12);
 }
 function rkPlanMove(x, y){
   const d = rkPD, q = rkPlanPoint(d.svg, x, y), {W, D, sp} = d;
-  const dist = {left: Math.abs(q.x), right: Math.abs(W - q.x), back: Math.abs(q.y)};
+  if (sp.wall === 'floor'){
+    let r = null, snapWall = null;
+    if (d.room.free){
+      r = {x: Math.round((q.x - sp.w / 2) / 5) * 5, y: Math.round((q.y - sp.h / 2) / 5) * 5, w: sp.w, h: sp.h};
+      if (!rkFloorFits(r, W, D, d.others, d.door)) r = null;
+    } else {
+      const distances = {left: Math.abs(q.x), right: Math.abs(W - q.x), back: Math.abs(q.y), front: Math.abs(D - q.y)};
+      for (const wall of Object.keys(distances).sort((a, b) => distances[a] - distances[b])){
+        const want = (wall === 'back' || wall === 'front' ? q.x - sp.w / 2 : q.y - sp.h / 2);
+        r = rkFloorFit(W, D, sp.w, sp.h, d.others, d.door, wall, want);
+        if (r){ snapWall = wall; break; }
+      }
+    }
+    const free = !!r;
+    const shown = r || {x: Math.max(0, Math.min(W - sp.w, Math.round((q.x - sp.w / 2) / 5) * 5)), y: Math.max(0, Math.min(D - sp.h, Math.round((q.y - sp.h / 2) / 5) * 5)), w: sp.w, h: sp.h};
+    const rect = d.g.querySelector('rect'), txt = d.g.querySelector('text');
+    rect.setAttribute('x', shown.x); rect.setAttribute('y', shown.y); txt.setAttribute('x', shown.x + shown.w / 2); txt.setAttribute('y', shown.y + shown.h / 2);
+    d.g.classList.toggle('bad', !free);
+    const info = d.svg.querySelector('.rkpinfo'); if (info) info.textContent = free ? d.room.free ? `${Math.round(r.x)}, ${Math.round(r.y)} cm` : tr('rk_planAt', rkWallLabel(snapWall), snapWall === 'back' || snapWall === 'front' ? r.x : r.y) : tr('rk_planNoRoom');
+    Object.assign(d, {x: shown.x, y: shown.y, ok: free});
+    return;
+  }
+  const dist = {left: Math.abs(q.x), right: Math.abs(W - q.x), back: Math.abs(q.y), front: Math.abs(D - q.y)};
   const wall = Object.keys(dist).sort((a, b) => dist[a] - dist[b])[0];
-  const want = Math.round(((wall === 'back' ? q.x : q.y) - sp.len / 2) / 5) * 5;
+  const want = Math.round(((wall === 'back' || wall === 'front' ? q.x : q.y) - sp.len / 2) / 5) * 5;
   const at = rkPlanFit(d, wall, want), free = at !== null;
-  const r = rkPlanRect(wall, free ? at : Math.max(0, Math.min((wall === 'back' ? W : D) - sp.len, want)), sp, W);
+  const r = rkPlanRect(wall, free ? at : Math.max(0, Math.min((wall === 'back' || wall === 'front' ? W : D) - sp.len, want)), sp, W, D);
   const rect = d.g.querySelector('rect'), txt = d.g.querySelector('text'), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
   rect.setAttribute('x', r.x); rect.setAttribute('y', r.y); rect.setAttribute('width', r.w); rect.setAttribute('height', r.h);
   txt.setAttribute('x', cx); txt.setAttribute('y', cy); if (r.h > r.w) txt.setAttribute('transform', `rotate(-90 ${cx} ${cy})`); else txt.removeAttribute('transform');
@@ -7419,10 +7616,14 @@ function rkPlanMove(x, y){
 function rkPlanEnd(drop){
   const d = rkPD; rkPD = null; document.body.classList.remove('dragging-on'); if (!d) return;
   if (!drop || !d.moved || !d.ok){ if (d.moved && !d.ok) toast(tr('rk_planNoRoom')); return render(); }
-  const p = findPlace(d.pid), prev = clone(p.units || []);
-  p.units = (p.units || []).map(u => { const sp = d.all.find(x => x.u.id === u.id), nu = Object.assign({}, u, {at: sp ? Math.round(sp.at) : u.at}); if (u.id === d.sp.u.id){ nu.wall = d.wall; nu.at = d.at; } return nu; });
+  const p = findPlace(d.pid);
+  p.units = (p.units || []).map(u => {
+    const sp = d.all.find(x => x.u.id === u.id), nu = Object.assign({}, u);
+    if (u.kind === 'floor'){ if (u.id === d.sp.u.id){ nu.x = d.x; nu.y = d.y; } }
+    else { if (sp && sp.wall !== 'floor') nu.at = Math.round(sp.at); if (u.id === d.sp.u.id){ nu.wall = d.wall; nu.at = d.at; } }
+    return nu;
+  });
   metaPut('places', places).catch(() => {}); render();
-  toastAction(tr('rk_planMoved', d.sp.u.name, rkWallLabel(d.wall).toLowerCase()), tr('undo'), () => { p.units = prev; metaPut('places', places).catch(() => {}); render(); });
 }
 app.addEventListener('pointerdown', e => {
   if (e.button > 0 || placeView !== 'racks') return;
@@ -7445,16 +7646,17 @@ function rkJump(sel){ setTimeout(() => { const el = app.querySelector(sel); if (
 function rkRoomSheet(pid){
   const p = findPlace(pid), r = rkRoomOf(p), units = p.units || [];
   openSheet(`<h3>${tr('rk_roomEdit')}</h3>
-    <div class="row2"><label class="field"><span>${tr('rk_roomW')}</span><input id="rmW" type="number" inputmode="numeric" value="${r.w}"></label>
-    <label class="field"><span>${tr('rk_roomD')}</span><input id="rmD" type="number" inputmode="numeric" value="${r.d}"></label></div>
+    <div class="row2"><label class="field"><span>${tr('rk_roomW')}</span><input id="rmW" type="number" min="50" max="2000" step="5" inputmode="numeric" value="${r.w}"></label>
+    <label class="field"><span>${tr('rk_roomD')}</span><input id="rmD" type="number" min="50" max="2000" step="5" inputmode="numeric" value="${r.d}"></label></div>
     <div class="field"><span>${tr('rk_door')}</span><div class="seg small" id="rmDoor">${['left', 'mid', 'right'].map(k => `<button class="${r.door === k ? 'on' : ''}" data-v="${k}">${tr('rk_door_' + k)}</button>`).join('')}</div></div>
-    <label class="field"><span>${tr('rk_doorW')}</span><input id="rmDW" type="number" inputmode="numeric" value="${r.doorW}"></label>
+    <label class="field"><span>${tr('rk_doorW')}</span><input id="rmDW" type="number" min="50" max="300" step="5" inputmode="numeric" value="${r.doorW}"></label>
     <label class="rkrule"><input type="checkbox" id="rmM" ${r.measured ? 'checked' : ''}><span><b>${tr('rk_roomMeasured')}</b><small>${tr('rk_roomMeasuredHint')}</small></span></label>
-    ${units.length ? `<h3 style="margin-top:16px">${tr('rk_unitsInRoom')}</h3><p class="hint">${tr('rk_cornerHint')}</p>
-    ${units.map(u => `<div class="rkroomu"><b>${esc(u.name)} <small>${u.width} cm</small></b><div class="rkdims">
+    <label class="rkrule"><input type="checkbox" id="rmFree" ${r.free ? 'checked' : ''}><span><b>${tr('rk_freePlacement')}</b><small>${tr('rk_freePlacementHint')}</small></span></label>
+    ${units.length ? `<h3 style="margin-top:16px">${tr('rk_unitsInRoom')}</h3>${units.some(u => u.kind !== 'floor') ? `<p class="hint">${tr('rk_cornerHint')}</p>` : ''}
+    ${units.map(u => u.kind === 'floor' ? `<div class="rkroomu"><b>${esc(u.name)} <small>${tr('rk_floorStack')} · ${u.width}×${u.depth} cm</small></b><small>${Math.round(u.x || 0)}, ${Math.round(u.y || 0)} cm</small></div>` : `<div class="rkroomu"><b>${esc(u.name)} <small>${u.width}×${u.depth || 40} cm</small></b><div class="rkdims rk-room-dims">
       <label class="field"><span>${tr('rk_wall')}</span><select data-ru="${esc(u.id)}" data-k="wall">${RK_WALLS.map(w => `<option value="${w}" ${u.wall === w ? 'selected' : ''}>${rkWallLabel(w)}</option>`).join('')}</select></label>
-      <label class="field"><span>${tr('rk_fromCorner')}</span><input data-ru="${esc(u.id)}" data-k="at" type="number" inputmode="numeric" placeholder="${tr('rk_auto')}" value="${u.at !== undefined && u.at !== null ? esc(u.at) : ''}"></label>
-      <label class="field"><span>${tr('rk_depth')}</span><input data-ru="${esc(u.id)}" data-k="depth" type="number" inputmode="numeric" value="${u.depth || 40}"></label></div></div>`).join('')}` : ''}
+      <label class="field"><span>${tr('rk_fromCorner')}</span><input data-ru="${esc(u.id)}" data-k="at" type="number" min="0" max="2000" step="5" inputmode="numeric" placeholder="${tr('rk_auto')}" value="${u.at !== undefined && u.at !== null ? esc(u.at) : ''}"></label>
+      <label class="field"><span>${tr('rk_depth')}</span><input data-ru="${esc(u.id)}" data-k="depth" type="number" min="10" max="200" step="5" inputmode="numeric" value="${u.depth || 40}"></label></div></div>`).join('')}` : ''}
     <div class="sheet-foot"><button class="btn quiet" id="rmX">${tr('cancel')}</button><button class="btn primary" id="rmOk">${tr('save')}</button></div>`);
   let door = r.door;
   $('#rmDoor').onclick = e => { const t = e.target.closest('[data-v]'); if (!t) return; door = t.dataset.v; sheet.querySelectorAll('#rmDoor [data-v]').forEach(x => x.classList.toggle('on', x === t)); };
@@ -7469,22 +7671,23 @@ function rkRoomSheet(pid){
       else if (k === 'at'){ if (v === '') delete u.at; else { const n = parseInt(v, 10); if (!(n >= 0 && n <= 2000)) return toast(tr('rk_roomBad')); u.at = n; } }
       else { const n = parseInt(v, 10); if (!(n >= 10 && n <= 200)) return toast(tr('rk_roomBad')); u.depth = n; }
     }
-    p.room = {w, d, door, doorW: dw, measured: $('#rmM').checked}; p.units = next;
+    p.room = {w, d, door, doorW: dw, measured: $('#rmM').checked, free: $('#rmFree').checked}; p.units = next;
     metaPut('places', places).catch(() => {}); closeSheet(); render();
   };
 }
 function rkTileFor(e){
-  if (e.kind === 'box') return `<div class="rkt" data-rk-ek="b:${esc(e.b.id)}">${shelfTile(e.b).replace(/ data-lp="[^"]*"/, '')}</div>`;
-  return `<div class="rkt" data-rk-ek="i:${esc(e.it.id)}">${tokenHTML(e.it, e.l, {lp: false})}</div>`;
+  const highlight = rkHighlighted(e) ? ' hl' : '';
+  if (e.kind === 'box') return `<div class="rkt${highlight}" data-rk-ek="b:${esc(e.b.id)}">${shelfTile(e.b).replace(/ data-lp="[^"]*"/, '')}</div>`;
+  return `<div class="rkt${highlight}" data-rk-ek="i:${esc(e.it.id)}">${tokenHTML(e.it, e.l, {lp: false})}</div>`;
 }
 function rkTiles(u, data){
   const {ents, grid} = data;
   let rows = '';
   for (let s = u.shelves - 1; s >= 0; s--){
-    const shelf = grid[u.id][s] || [];
-    rows += `<div class="rkrow" data-rk-shelf data-rk-u="${esc(u.id)}" data-rk-s="${s}"><span class="rkn" aria-label="${esc(tr('rk_shelfN', s + 1))}">${s + 1}</span>
+    const shelf = grid[u.id][s] || [], row = u.kind === 'floor' ? tr('rk_floorStack') : tr('rk_shelfN', s + 1);
+    rows += `<div class="rkrowinfo">${esc(tr('rk_rowInfo', row, shelf.flat().length, rkUsedW(ents, shelf), u.width))}</div><div class="rkrow" data-rk-shelf data-rk-u="${esc(u.id)}" data-rk-s="${s}"><span class="rkn" aria-label="${esc(row)}">${s + 1}</span>
       ${shelf.map((col, c) => `<div class="rkcol tiles" data-rk-col data-rk-c="${c}">${[...col].reverse().map(k => rkTileFor(ents.get(k))).join('')}</div>`).join('')}
-      <button class="itile add rkadd" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}"><span class="timg">${PLUS_SVG}</span></button></div>${rkQuestion(u, s, data, false)}`;
+      <button class="itile add rkadd" data-rk-add data-rk-u="${esc(u.id)}" data-rk-s="${s}" aria-label="${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves, u)))}"><span class="timg">${PLUS_SVG}</span></button></div>${rkQuestion(u, s, data, false)}`;
   }
   return rows;
 }
@@ -7493,58 +7696,130 @@ function racksHTML(pid){
   if (rkMode === 'tidy') return rkTidyHTML(pid);
   const data = rkGrid(pid), {units, ents, unplaced} = data;
   const n = rkSize === 'M' ? 2 : 1, cardW = (rkAvail() - (n - 1) * 10) / n;
-  const sizeSeg = `<div class="seg small" role="group" aria-label="${esc(tr('rk_sizeL'))}">${[['S', 'rk_small'], ['M', 'rk_medium'], ['L', 'rk_large']].map(([v, k]) => `<button class="${rkSize === v ? 'on' : ''}" data-rk-size="${v}">${tr(k)}</button>`).join('')}</div>`;
-  const bar = `<div class="rkbar">${sizeSeg}${rkSize !== 'S' ? `<button class="btn quiet small${rkMeasure ? ' on' : ''}" data-rk-act="measure" aria-pressed="${rkMeasure}">📏 ${tr('rk_measure')}</button>` : ''}${units.length ? `<button class="btn quiet small" data-rk-act="tidy">${tr('rk_tidy')} ›</button>` : ''}</div>
+  const bar = `<div class="rkbar">${rkSize !== 'S' ? `<button class="btn quiet small${rkMeasure ? ' on' : ''}" data-rk-act="measure" aria-pressed="${rkMeasure}">📏 ${tr('rk_measure')}</button>` : ''}${units.length ? `<button class="btn quiet small" data-rk-act="tidy">${tr('rk_tidy')} ›</button>` : ''}</div>
     ${rkMeasure && rkSize !== 'S' ? `<p class="maphint">${tr('rk_measureHint')}</p>` : ''}`;
   const un = units.length ? `<section class="rkun${unplaced.length ? '' : ' empty'}" data-rk-unplaced="1"><div class="lhead"><b>${tr('rk_unplaced')}</b><span class="zcount">${unplaced.length || ''}</span>${unplaced.length ? `<button class="linkbtn" data-rk-act="auto">${tr('rk_autoPlace')} ›</button>` : ''}</div>
     ${unplaced.length ? `<div class="lstrip rkstrip">${unplaced.map(k => rkTileFor(ents.get(k))).join('')}</div>` : `<p class="maphint">${tr('rk_unplacedEmpty')}</p>`}</section>` : '';
-  if (!units.length) return bar + rkPlanHTML(pid) + `<div class="rkempty"><p class="hint">${tr('rk_empty')}</p><div class="sheet-foot" style="justify-content:flex-start"><button class="btn primary" data-rk-act="quick">${tr('rk_quick')}</button><button class="btn quiet" data-rk-act="addunit">+ ${tr('rk_addUnit')}</button></div></div>`;
-  const walls = RK_WALLS.map(w => {
-    const list = units.filter(u => u.wall === w); if (!list.length) return '';
-    return `<h2 class="section rkwallh" id="rkw-${w}">${rkWallLabel(w)}</h2><div class="rkgrid" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${list.map(u => {
+  if (!units.length) return bar + rkPlanHTML(pid) + un + `<div class="rkempty"><p class="hint">${tr('rk_empty')}</p><div class="sheet-foot" style="justify-content:flex-start"><button class="btn primary" data-rk-act="quick">${tr('rk_quick')}</button><button class="btn quiet" data-rk-act="addunit">+ ${tr('rk_addUnit')}</button></div></div>`;
+  const visible = units.filter(u => rkLayout === 'both' || (rkLayout === 'floor' ? u.kind === 'floor' : u.kind !== 'floor'));
+  const walls = [...RK_WALLS.map(w => [w, rkWallLabel(w), visible.filter(u => u.kind !== 'floor' && u.wall === w)]), ['floor', tr('rk_stackArea'), visible.filter(u => u.kind === 'floor')]].map(([w, label, list]) => {
+    if (!list.length) return '';
+    return `<h2 class="section rkwallh" id="rkw-${w}">${label}</h2><div class="rkgrid" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${list.map(u => {
       const cnt = (data.grid[u.id] || []).reduce((a, sh) => a + sh.reduce((x, c) => x + c.length, 0), 0);
-      return `<div class="rkcard${rkSize === 'S' ? ' tiles' : ''}" id="rku-${esc(u.id)}"><div class="rkhead"><span><b>${esc(u.name)}</b><small>${esc(tr('rk_unitMeta', u.width, u.shelves, cnt))}</small></span><button class="space-edit-btn" data-rk-edit="${esc(u.id)}" aria-label="${esc(tr('rk_editUnit'))} ${esc(u.name)}">⋯</button></div>
+      const meta = u.kind === 'floor' ? `${u.width}×${u.depth} cm · ${cnt} ${tr('rk_stored')}` : tr('rk_unitMeta', u.width, u.shelves, cnt, u.depth || 40);
+      return `<div class="rkcard${u.kind === 'floor' ? ' rkfloorcard' : ''}${rkSize === 'S' ? ' tiles' : ''}" id="rku-${esc(u.id)}"><div class="rkhead"><span><b>${esc(u.name)}</b><small>${esc(meta)}</small></span><button class="space-edit-btn" data-rk-edit="${esc(u.id)}" aria-label="${esc(tr('rk_editUnit'))} ${esc(u.name)}">⋯</button></div>
         ${rkSize === 'S' ? rkTiles(u, data) : rkDraw(u, data, cardW - 16, {measure: rkMeasure})}</div>`;
     }).join('')}</div>`;
   }).join('');
-  return bar + rkPlanHTML(pid) + `<p class="maphint">${tr('rk_dragHint')}</p>` + un + `<div class="racks">${walls}</div><button class="btn quiet block" data-rk-act="addunit">+ ${tr('rk_addUnit')}</button>`;
+  return bar + rkPlanHTML(pid) + `<p class="maphint">${tr('rk_dragHint')}</p>` + un + (visible.length ? `<div class="racks">${walls}</div>` : `<p class="hint">${tr('rk_layoutEmpty')}</p>`) + `<button class="btn quiet block" data-rk-act="addunit">+ ${tr('rk_addUnit')}</button>`;
 }
 
 /* --- shelf units --- */
 function rkUnitSheet(pid, uid, presetWall){
   const p = findPlace(pid), u = uid ? rkUnits(pid).find(x => x.id === uid) : null;
   const letter = String.fromCharCode(65 + rkUnits(pid).length % 26);
-  const v = u || {name: tr('rk_unitName', letter), wall: presetWall || 'left', width: 90, shelves: 4, gap: 45};
+  const v = u || {name: tr('rk_unitName', letter), wall: presetWall || 'left', width: 90, shelves: 4, gap: 45, depth: 40};
+  const kind = u && u.kind === 'floor' ? 'floor' : 'shelf';
   openSheet(`<h3>${u ? tr('rk_editUnit') : tr('rk_addUnit')}</h3>
     <label class="field"><span>${tr('name')}</span><input id="rkN" value="${esc(v.name)}"></label>
-    <label class="field"><span>${tr('rk_wall')}</span><select id="rkW">${RK_WALLS.map(w => `<option value="${w}" ${v.wall === w ? 'selected' : ''}>${rkWallLabel(w)}</option>`).join('')}</select></label>
-    <div class="rkdims"><label class="field"><span>${tr('rk_width')}</span><input id="rkWi" type="number" inputmode="numeric" value="${v.width}"></label>
-    <label class="field"><span>${tr('rk_shelves')}</span><input id="rkS" type="number" inputmode="numeric" value="${v.shelves}"></label>
-    <label class="field"><span>${tr('rk_gap')}</span><input id="rkG" type="number" inputmode="numeric" value="${v.gap}"></label></div>
+    ${u ? `<p class="hint">${tr(kind === 'floor' ? 'rk_floorStack' : 'rk_shelfUnit')}</p>` : `<label class="field"><span>${tr('rk_unitKind')}</span><select id="rkKind"><option value="shelf">${tr('rk_shelfUnit')}</option><option value="floor">${tr('rk_floorStack')}</option></select></label>`}
+    <div class="rkdims rk-unit-dims" id="rkDims"><label class="field"><span>${tr('rk_width')}</span><input id="rkWi" type="number" min="30" max="400" step="5" inputmode="numeric" value="${v.width}"></label>
+    <label class="field rk-shelffield"><span>${tr('rk_shelves')}</span><input id="rkS" type="number" min="1" max="8" step="1" inputmode="numeric" value="${v.shelves}"></label>
+    <label class="field rk-shelffield"><span>${tr('rk_gap')}</span><input id="rkG" type="number" min="15" max="150" step="5" inputmode="numeric" value="${v.gap}"></label>
+    <label class="field"><span>${tr('rk_depth')}</span><input id="rkD" type="number" min="10" max="200" step="5" inputmode="numeric" value="${v.depth || 40}"></label></div>
+    <p class="hint rk-floorfield" style="display:none">${tr('rk_stackIntro')}</p>
+    <label class="field rk-wallfield"><span>${tr('rk_wall')}</span><select id="rkW">${RK_WALLS.map(w => `<option value="${w}" ${v.wall === w ? 'selected' : ''}>${rkWallLabel(w)}</option>`).join('')}</select></label>
     ${u && u.gaps ? `<p class="hint">${esc(tr('rk_gapsNote', u.gaps.map((g, i) => g !== u.gap ? `${tr('rk_shelfN', i + 1)}: ${g} cm` : '').filter(Boolean).join(', ')))}</p>` : ''}
-    <label class="rkrule"><input type="checkbox" id="rkM" ${v.measured ? 'checked' : ''}><span><b>${tr('rk_measured')}</b><small>${tr('rk_measuredHint')}</small></span></label>
-    <div class="sheet-foot">${u ? `<button class="btn danger" id="rkDel">${tr('rk_delUnit')}</button><span class="spacer"></span>` : ''}<button class="btn quiet" id="rkX">${tr('cancel')}</button><button class="btn primary" id="rkOk">${u ? tr('save') : tr('add')}</button></div>`);
+    <label class="rkrule rk-shelffield"><input type="checkbox" id="rkM" ${v.measured ? 'checked' : ''}><span><b>${tr('rk_measured')}</b><small>${tr('rk_measuredHint')}</small></span></label>
+    <div class="sheet-foot">${u ? `<button class="btn danger" id="rkDel">${tr(kind === 'floor' ? 'rk_delFloor' : 'rk_delUnit')}</button><span class="spacer"></span>` : ''}<button class="btn quiet" id="rkX">${tr('cancel')}</button><button class="btn primary" id="rkOk">${u ? tr('save') : tr('add')}</button></div>`);
+  const setKindFields = value => {
+    sheet.querySelectorAll('.rk-shelffield').forEach(el => { el.style.display = value === 'floor' ? 'none' : ''; });
+    sheet.querySelectorAll('.rk-floorfield').forEach(el => { el.style.display = value === 'floor' ? '' : 'none'; });
+    sheet.querySelector('.rk-wallfield').style.display = value === 'floor' ? 'none' : '';
+    $('#rkDims').classList.toggle('rk-dims-floor', value === 'floor');
+  };
+  if (!u) $('#rkKind').onchange = e => {
+    setKindFields(e.target.value);
+    if ($('#rkN').value === tr('rk_unitName', letter) || $('#rkN').value === tr('rk_stackName', letter)) $('#rkN').value = tr(e.target.value === 'floor' ? 'rk_stackName' : 'rk_unitName', letter);
+  };
+  setKindFields(kind);
   $('#rkX').onclick = closeSheet;
   $('#rkOk').onclick = () => {
-    const measured = $('#rkM').checked;
-    const name = $('#rkN').value.trim() || v.name, wall = $('#rkW').value, width = parseInt($('#rkWi').value, 10), shelves = parseInt($('#rkS').value, 10), gap = parseInt($('#rkG').value, 10);
-    if (!(width >= 30 && width <= 400 && shelves >= 1 && shelves <= 8 && gap >= 15 && gap <= 150)) return toast(tr('rk_badSize'));
+    const nextKind = u ? kind : $('#rkKind').value, measured = nextKind === 'shelf' && $('#rkM').checked;
+    const name = $('#rkN').value.trim() || v.name, wall = nextKind === 'floor' ? (u && u.wall || 'left') : $('#rkW').value;
+    const width = parseInt($('#rkWi').value, 10), shelves = nextKind === 'floor' ? 1 : parseInt($('#rkS').value, 10);
+    const gap = nextKind === 'floor' ? 150 : parseInt($('#rkG').value, 10), depth = parseInt($('#rkD').value, 10);
+    if (!(width >= 30 && width <= 400 && depth >= 10 && depth <= 200 && shelves >= 1 && shelves <= 8 && gap >= 15 && gap <= 150)) return toast(tr(nextKind === 'floor' ? 'rk_roomBad' : 'rk_badShelfSize'));
     const units = (p.units || []).slice();
-    if (u){ const i = units.findIndex(x => x.id === u.id), nu = Object.assign({}, u, {name, wall, width, shelves, gap, measured});
+    let x, y;
+    if (nextKind === 'floor'){
+      const plan = rkPlan(p), others = plan.spots.filter(sp => sp.u.id !== (u && u.id)), W = plan.room.measured ? plan.W : Math.max(plan.W, width), D = plan.room.measured ? plan.D : Math.max(plan.D, depth);
+      const current = u && {x: Number(u.x) || 0, y: Number(u.y) || 0, w: width, h: depth};
+      let pos = current && rkFloorFits(current, W, D, others, plan.door) ? current : rkFindFloorSpot(W, D, width, depth, others, plan.room, plan.door);
+      if (!pos && !plan.room.measured){
+        const largerD = D + depth + 5;
+        pos = rkFindFloorSpot(W, largerD, width, depth, others, plan.room, plan.door);
+      }
+      if (!pos) return toast(tr('rk_planNoRoom'));
+      x = pos.x; y = pos.y;
+    }
+    if (u){ const i = units.findIndex(x => x.id === u.id), nu = Object.assign({}, u, {name, wall, width, shelves, gap, measured, depth});
+      if (nextKind === 'floor') Object.assign(nu, {kind: 'floor', x, y});
+      else { delete nu.kind; delete nu.x; delete nu.y; }
       if (gap !== u.gap || shelves !== u.shelves) delete nu.gaps;
       if (width !== u.width || gap !== u.gap || shelves !== u.shelves || measured !== !!u.measured) delete nu.ok;
       units[i] = nu; }
-    else units.push({id: newId(), name, wall, width, shelves, gap, measured});
+    else units.push({id: newId(), name, wall, width, shelves, gap, measured, depth, ...(nextKind === 'floor' ? {kind: 'floor', x, y} : {})});
     p.units = units; metaPut('places', places).catch(() => {});
     closeSheet(); render();
   };
   if (u) $('#rkDel').onclick = async () => {
     const data = rkGrid(pid), cnt = (data.grid[u.id] || []).reduce((a, sh) => a + sh.reduce((x, c) => x + c.length, 0), 0);
-    if (!(await askConfirm(tr('rk_delUnitQ', cnt), tr('rk_delUnit')))) return rkUnitSheet(pid, uid);
+    if (!(await askConfirm(tr(kind === 'floor' ? 'rk_delFloorQ' : 'rk_delUnitQ', cnt), tr(kind === 'floor' ? 'rk_delFloor' : 'rk_delUnit')))) return rkUnitSheet(pid, uid);
     const grid = data.grid; delete grid[u.id];
     p.units = (p.units || []).filter(x => x.id !== u.id); metaPut('places', places).catch(() => {});
     closeSheet(); rkCommit(pid, grid);
   };
+}
+function rkFindFloorSpot(W, D, w, h, others, room, door){
+  if (room.free){
+    const candidates = [];
+    for (let y = 0; y <= D - h; y += 5) for (let x = 0; x <= W - w; x += 5) candidates.push({x, y, w, h});
+    candidates.sort((a, b) => (Math.abs(a.x + a.w / 2 - W / 2) + Math.abs(a.y + a.h / 2 - D / 2)) - (Math.abs(b.x + b.w / 2 - W / 2) + Math.abs(b.y + b.h / 2 - D / 2)));
+    return candidates.find(pos => rkFloorFits(pos, W, D, others, door)) || null;
+  }
+  for (const wall of ['back', 'left', 'right', 'front']){
+    const max = wall === 'back' || wall === 'front' ? W - w : D - h;
+    for (let at = 0; at <= max; at += 5){
+      const pos = rkFloorRect(wall, at, w, h, W, D);
+      if (rkFloorFits(pos, W, D, others, door)) return pos;
+    }
+  }
+  return null;
+}
+function rkFloorRect(wall, at, w, h, W, D){
+  if (wall === 'back') return {x: at, y: 0, w, h};
+  if (wall === 'front') return {x: at, y: D - h, w, h};
+  if (wall === 'left') return {x: 0, y: at, w, h};
+  return {x: W - w, y: at, w, h};
+}
+function rkFloorFits(rect, W, D, others, door){
+  if (rect.x < 0 || rect.y < 0 || rect.x + rect.w > W || rect.y + rect.h > D) return false;
+  if (rect.y + rect.h >= D - .5 && rect.x < door.x + door.w / 2 + 5 && rect.x + rect.w > door.x - door.w / 2 - 5) return false;
+  const padded = {x: rect.x - 2.5, y: rect.y - 2.5, w: rect.w + 5, h: rect.h + 5};
+  return !others.some(other => rkHits(padded, other));
+}
+function rkFloorFit(W, D, w, h, others, door, wall, want){
+  const max = wall === 'back' || wall === 'front' ? W - w : D - h;
+  if (max < 0) return null;
+  const candidates = Array.from({length: Math.floor(max / 5) + 1}, (_, i) => i * 5);
+  if (max % 5) candidates.push(max);
+  candidates.sort((a, b) => Math.abs(a - want) - Math.abs(b - want));
+  for (const at of candidates){
+    const rect = rkFloorRect(wall, at, w, h, W, D);
+    if (rkFloorFits(rect, W, D, others, door)) return rect;
+  }
+  return null;
 }
 function rkQuick(pid){
   const p = findPlace(pid);
@@ -7553,12 +7828,21 @@ function rkQuick(pid){
 }
 function rkAddSheet(pid, uid, s){
   const u = rkUnits(pid).find(x => x.id === uid); if (!u) return;
-  openSheet(`<h3>${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves)))}</h3>
+  openSheet(`<h3>${esc(tr('rk_addOn', u.name, rkShelfWord(s, u.shelves, u)))}</h3>
     <div class="choice"><button class="btn primary big" id="rkAB">${ICON.box}<span>${tr('boxStorage')}</span></button><button class="btn primary big" id="rkAI">${ICON.star}<span>${tr('itemNoBox')}</span></button></div>
     <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="rkAX">${tr('cancel')}</button></div>`);
-  const at = () => { const {grid} = rkGrid(pid); return {u: uid, s, x: (grid[uid][s] || []).length, l: 0}; };
-  $('#rkAB').onclick = () => { closeSheet(); boxSheet(null, pid, null, null, at()); };
-  $('#rkAI').onclick = () => { closeSheet(); newItem(ensureLoose(pid).id); if (itemEdit && itemEdit.isNew) rkPendingItem = {id: itemEdit.itemId, pid, pos: at()}; };
+  const at = kind => {
+    const data = rkGrid(pid), columns = data.grid[uid][s] || [], dims = kind === 'box' ? RK_TYPES.moving : RK_ITEM;
+    if (u.kind === 'floor' && columns.length){
+      if (rkUsedW(data.ents, columns) + dims.w <= u.width) return {u: uid, s, x: columns.length, l: 0};
+      const stack = columns.findIndex(col => rkColW(data.ents, col) >= dims.w && rkColH(data.ents, col) + dims.h <= rkGapOf(u, s));
+      const x = stack >= 0 ? stack : columns.length - 1;
+      return {u: uid, s, x, l: columns[x].length};
+    }
+    return {u: uid, s, x: columns.length, l: 0};
+  };
+  $('#rkAB').onclick = () => { closeSheet(); boxSheet(null, pid, null, null, at('box')); };
+  $('#rkAI').onclick = () => { closeSheet(); newItem(ensureLoose(pid).id); if (itemEdit && itemEdit.isNew) rkPendingItem = {id: itemEdit.itemId, pid, pos: at('item')}; }
   $('#rkAX').onclick = closeSheet;
 }
 /* a thing added from a shelf gets its spot once it has been saved */
@@ -7580,7 +7864,7 @@ function rkHit(x, y){
   const colEl = el.closest('[data-rk-col]'), drag = rkDrag;
   if (colEl && sh.contains(colEl)){
     const r = colEl.getBoundingClientRect(), mine = [...colEl.querySelectorAll('[data-rk-ek]')].every(n => n.dataset.rkEk === drag.ek);
-    if (!mine && Math.min(x - r.left, r.right - x) > r.width * .22){
+    if (!mine && Math.min(x - r.left, r.right - x) > Math.max(3, r.width * .05)){
       const top = [...colEl.querySelectorAll('[data-rk-ek]')].reduce((m, n) => Math.min(m, n.getBoundingClientRect().top), r.bottom);
       return {type: 'stack', u, s, c: +colEl.dataset.rkC, line: {x: r.left - 2, y: top - 4, w: r.width + 4, h: 3}};
     }
@@ -7747,7 +8031,7 @@ function rkMini(u, data, grid, width, mark){
     rows += `<div class="rkmrow" style="min-height:${Math.round(rkGapOf(u, s) * sc)}px">${(grid[u.id][s] || []).map(col => `<div class="rkmcol">${col.map(k => { const d = rkDims(ents.get(k)), m = mark[k];
       return `<span class="rkm ${m ? 'move' : 'keep'}${ents.get(k).kind === 'item' ? ' round' : ''}" style="width:${Math.max(5, d.w * sc - 1).toFixed(1)}px;height:${Math.max(5, d.h * sc - 1).toFixed(1)}px;font-size:${Math.max(9, Math.min(18, d.h * sc * .32)).toFixed(0)}px">${m && d.w * sc >= 12 ? m : ''}</span>`; }).join('')}</div>`).join('')}</div><div class="rkplank thin"></div>`;
   }
-  return `<div class="rkframe thin">${rows}</div>`;
+  return `<div class="rkframe thin${u.kind === 'floor' ? ' rkfloorframe' : ''}">${rows}</div>`;
 }
 function rkTidyHTML(pid){
   const P = rkPropose(pid), {data, props} = P, {units} = data; rkLastTidy = {pid, grid: P.grid};
@@ -7758,7 +8042,7 @@ function rkTidyHTML(pid){
   let table = '';
   if (det){ const a = rkIssues(units, data.grid, props), b = rkIssues(units, P.grid, props);
     table = `<table class="rktable"><thead><tr><th>${tr('rk_ruleCol')}</th><th>${tr('rk_nowCol')}</th><th>${tr('rk_afterCol')}</th></tr></thead><tbody>${Object.keys(a).filter(k => rkRules[k]).map(k => `<tr><td>${tr('rk_r_' + k)}</td><td>${a[k]}</td><td class="${b[k] < a[k] ? 'good' : ''}">${b[k]}</td></tr>`).join('')}</tbody></table>`; }
-  const cards = units.map(u => `<div class="rkcard"><div class="rkhead"><span><b>${esc(u.name)}</b><small>${rkWallLabel(u.wall)}</small></span></div>${rkMini(u, data, grid, cardW - 16, mark)}</div>`).join('');
+  const cards = units.map(u => `<div class="rkcard${u.kind === 'floor' ? ' rkfloorcard' : ''}"><div class="rkhead"><span><b>${esc(u.name)}</b><small>${u.kind === 'floor' ? tr('rk_floorStack') : rkWallLabel(u.wall)}</small></span></div>${rkMini(u, data, grid, cardW - 16, mark)}</div>`).join('');
   const moves = P.steps.length ? `<ol class="rkmoves">${P.steps.map((s, i) => { const e = data.ents.get(s.k), p = props.get(s.k), d = rkDims(e);
       return `<li><span class="rkstep">${i + 1}</span><span><b>${esc(e.kind === 'box' ? `${e.b.code} ${e.b.name || ''}` : e.it.name || '')}</b><small>${tr('rk_to')}: ${esc(s.to)}</small>${det ? `<small>${tr('rk_from')}: ${esc(s.from)}</small><small>${d.w}×${d.h} cm · ${tr(p.w === 'heavy' ? 'rk_heavy' : p.w === 'medium' ? 'rk_mediumW' : 'rk_light')}${p.fragile ? ' · ' + tr('rk_fragileL').toLowerCase() : ''}</small>` : ''}<em>${esc(s.why)}</em></span></li>`; }).join('')}</ol>` : `<p class="hint">${tr('rk_nothing')}</p>`;
   const sel = (k, key, v, opts) => `<select data-rk-guess="${esc(k)}" data-rk-key="${key}" class="${props.get(k).guessed(key) ? 'g' : ''}">${opts.map(([ov, t]) => `<option value="${ov}" ${String(v) === String(ov) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
@@ -7782,6 +8066,7 @@ function rkTidyHTML(pid){
 app.addEventListener('click', e => {
   if (placeView !== 'racks') return;
   const pid = currentPlace;
+  const layout = e.target.closest('[data-rk-layout]'); if (layout){ rkLayout = layout.dataset.rkLayout; metaPut('rkLayout', rkLayout).catch(() => {}); return render(); }
   const sz = e.target.closest('[data-rk-size]'); if (sz){ rkSize = sz.dataset.rkSize; metaPut('rkSize', rkSize).catch(() => {}); return render(); }
   const ed = e.target.closest('[data-rk-edit]'); if (ed) return rkUnitSheet(pid, ed.dataset.rkEdit);
   const wj = e.target.closest('[data-rk-wall]'); if (wj){ const w = wj.dataset.rkWall; rkWallFocus = w; render(); if (rkUnits(pid).some(u => u.wall === w)) rkJump('#rkw-' + w); else rkUnitSheet(pid, null, w); return; }
@@ -7842,11 +8127,13 @@ Object.assign(STR.da, {
   rk_tidy: 'Ryd op', rk_wall_left: 'Venstre væg', rk_wall_back: 'Bageste væg', rk_wall_right: 'Højre væg', rk_wall: 'Væg', rk_unitName: n => `Reol ${n}`, rk_addUnit: 'Tilføj reol', rk_editUnit: 'Ret reol',
   rk_width: 'Bredde (cm)', rk_shelves: 'Hylder', rk_gap: 'Højde mellem hylderne (cm)', rk_delUnit: 'Fjern reolen',
   rk_delUnitQ: n => n ? `Fjern reolen? De ${n} kasser og ting på den bliver her, bare ikke på en reol.` : 'Fjern reolen?',
-  rk_badSize: 'Tjek tallene: bredde 30–400 cm, 1–8 hylder og 15–150 cm mellem hylderne.', rk_empty: 'Ingen reoler her endnu. Tilføj dine reoler, og træk så kasser og ting op på dem.',
+  rk_badSize: 'Tjek tallene: bredde 30–400 cm, 1–8 hylder og 15–150 cm mellem hylderne.',
+  rk_badShelfSize: 'Tjek tallene: bredde 30–400 cm, dybde 10–200 cm, 1–8 hylder og 15–150 cm mellem hylderne.',
+  rk_empty: 'Ingen reoler her endnu. Tilføj dine reoler, og træk så kasser og ting op på dem.',
   rk_quick: 'Én reol pr. væg', rk_unplaced: 'Ikke på en reol endnu', rk_unplacedEmpty: 'Træk herhen for at tage noget ned fra reolen.', rk_autoPlace: 'Placér dem for mig',
   rk_dragHint: 'Tryk for at åbne. Hold og træk for at flytte – op på en hylde, mellem kasser eller oven på en kasse.',
   rk_shelfN: n => `Hylde ${n}`, rk_free: n => `${n} cm ledigt`, rk_fits: t => `Plads til en ${t}`, rk_used: (u, w, h) => `${u} af ${w} cm brugt, ${h} cm højt`, rk_tooWide: n => `${n} cm for bredt`, rk_tooTall: 'For høj til hylden',
-  rk_unitMeta: (w, s, n) => `${w} cm, ${s} hylder, ${n} på den`, rk_offShelf: x => `${x} står ikke længere på en reol`,
+  rk_unitMeta: (w, s, n, d = 40) => `${w}×${d} cm, ${s} hylder, ${n} på den`, rk_offShelf: x => `${x} står ikke længere på en reol`,
   rk_boxType: 'Kassens størrelse', rk_bt_moving: 'Flyttekasse 60×40×40 cm', rk_bt_banana: 'Bananaskasse 50×40×25 cm', rk_bt_small: 'Lille kasse 40×30×30 cm', rk_bt_custom: 'Egne mål',
   rk_bn_moving: 'flyttekasse', rk_bn_banana: 'bananaskasse', rk_bn_small: 'lille kasse', rk_w: 'Bredde', rk_h: 'Højde', rk_d: 'Dybde', rk_addOn: (u, s) => `Tilføj til ${u}, ${s}`,
   rk_bottom: 'nederste hylde', rk_top: 'øverste hylde', rk_nth: n => `hylde ${n} nedefra`, rk_only: 'hylden',
@@ -7899,11 +8186,13 @@ Object.assign(STR.nb, {
   rk_tidy: 'Rydd', rk_wall_left: 'Venstre vegg', rk_wall_back: 'Bakre vegg', rk_wall_right: 'Høyre vegg', rk_wall: 'Vegg', rk_unitName: n => `Reol ${n}`, rk_addUnit: 'Legg til reol', rk_editUnit: 'Endre reol',
   rk_width: 'Bredde (cm)', rk_shelves: 'Hyller', rk_gap: 'Høyde mellom hyllene (cm)', rk_delUnit: 'Fjern reolen',
   rk_delUnitQ: n => n ? `Fjerne reolen? De ${n} eskene og tingene på den blir her, bare ikke på en reol.` : 'Fjerne reolen?',
-  rk_badSize: 'Sjekk tallene: bredde 30–400 cm, 1–8 hyller og 15–150 cm mellom hyllene.', rk_empty: 'Ingen reoler her ennå. Legg til reolene du har, og dra så esker og ting opp på dem.',
+  rk_badSize: 'Sjekk tallene: bredde 30–400 cm, 1–8 hyller og 15–150 cm mellom hyllene.',
+  rk_badShelfSize: 'Sjekk tallene: bredde 30–400 cm, dybde 10–200 cm, 1–8 hyller og 15–150 cm mellom hyllene.',
+  rk_empty: 'Ingen reoler her ennå. Legg til reolene du har, og dra så esker og ting opp på dem.',
   rk_quick: 'Én reol per vegg', rk_unplaced: 'Ikke på en reol ennå', rk_unplacedEmpty: 'Dra hit for å ta noe ned fra reolen.', rk_autoPlace: 'Plasser dem for meg',
   rk_dragHint: 'Trykk for å åpne. Hold inne og dra for å flytte – til en hylle, mellom esker eller oppå en eske.',
   rk_shelfN: n => `Hylle ${n}`, rk_free: n => `${n} cm ledig`, rk_fits: t => `Plass til en ${t}`, rk_used: (u, w, h) => `${u} av ${w} cm brukt, ${h} cm høyt`, rk_tooWide: n => `${n} cm for bredt`, rk_tooTall: 'For høy for hyllen',
-  rk_unitMeta: (w, s, n) => `${w} cm, ${s} hyller, ${n} på den`, rk_offShelf: x => `${x} står ikke lenger på en reol`,
+  rk_unitMeta: (w, s, n, d = 40) => `${w}×${d} cm, ${s} hyller, ${n} på den`, rk_offShelf: x => `${x} står ikke lenger på en reol`,
   rk_boxType: 'Eskens størrelse', rk_bt_moving: 'Flytteeske 60×40×40 cm', rk_bt_banana: 'Bananeske 50×40×25 cm', rk_bt_small: 'Liten eske 40×30×30 cm', rk_bt_custom: 'Egne mål',
   rk_bn_moving: 'flytteeske', rk_bn_banana: 'bananeske', rk_bn_small: 'liten eske', rk_w: 'Bredde', rk_h: 'Høyde', rk_d: 'Dybde', rk_addOn: (u, s) => `Legg til på ${u}, ${s}`,
   rk_bottom: 'nederste hylle', rk_top: 'øverste hylle', rk_nth: n => `hylle ${n} nedenfra`, rk_only: 'hyllen',
@@ -7956,11 +8245,13 @@ Object.assign(STR.fi, {
   rk_tidy: 'Järjestä', rk_wall_left: 'Vasen seinä', rk_wall_back: 'Takaseinä', rk_wall_right: 'Oikea seinä', rk_wall: 'Seinä', rk_unitName: n => `Hylly ${n}`, rk_addUnit: 'Lisää hylly', rk_editUnit: 'Muokkaa hyllyä',
   rk_width: 'Leveys (cm)', rk_shelves: 'Tasot', rk_gap: 'Tasojen väli (cm)', rk_delUnit: 'Poista hylly',
   rk_delUnitQ: n => n ? `Poistetaanko hylly? Sen ${n} laatikkoa ja tavaraa jäävät tähän paikkaan, eivät vain hyllylle.` : 'Poistetaanko hylly?',
-  rk_badSize: 'Tarkista luvut: leveys 30–400 cm, 1–8 tasoa ja tasojen väli 15–150 cm.', rk_empty: 'Ei vielä hyllyjä. Lisää hyllysi ja vedä laatikot ja tavarat niille.',
+  rk_badSize: 'Tarkista luvut: leveys 30–400 cm, 1–8 tasoa ja tasojen väli 15–150 cm.',
+  rk_badShelfSize: 'Tarkista luvut: leveys 30–400 cm, syvyys 10–200 cm, 1–8 tasoa ja tasojen väli 15–150 cm.',
+  rk_empty: 'Ei vielä hyllyjä. Lisää hyllysi ja vedä laatikot ja tavarat niille.',
   rk_quick: 'Yksi hylly seinää kohden', rk_unplaced: 'Ei vielä hyllyllä', rk_unplacedEmpty: 'Vedä tähän ottaaksesi jotain pois hyllyltä.', rk_autoPlace: 'Sijoita puolestani',
   rk_dragHint: 'Napauta avataksesi. Pidä ja vedä siirtääksesi – tasolle, laatikoiden väliin tai laatikon päälle.',
   rk_shelfN: n => `Taso ${n}`, rk_free: n => `${n} cm vapaana`, rk_fits: t => `Mahtuu: ${t}`, rk_used: (u, w, h) => `${u}/${w} cm käytössä, korkeus ${h} cm`, rk_tooWide: n => `${n} cm liian leveä`, rk_tooTall: 'Liian korkea tasolle',
-  rk_unitMeta: (w, s, n) => `${w} cm, ${s} tasoa, ${n} hyllyllä`, rk_offShelf: x => `${x} ei ole enää hyllyllä`,
+  rk_unitMeta: (w, s, n, d = 40) => `${w}×${d} cm, ${s} tasoa, ${n} hyllyllä`, rk_offShelf: x => `${x} ei ole enää hyllyllä`,
   rk_boxType: 'Laatikon koko', rk_bt_moving: 'Muuttolaatikko 60×40×40 cm', rk_bt_banana: 'Banaanilaatikko 50×40×25 cm', rk_bt_small: 'Pieni laatikko 40×30×30 cm', rk_bt_custom: 'Omat mitat',
   rk_bn_moving: 'muuttolaatikko', rk_bn_banana: 'banaanilaatikko', rk_bn_small: 'pieni laatikko', rk_w: 'Leveys', rk_h: 'Korkeus', rk_d: 'Syvyys', rk_addOn: (u, s) => `Lisää: ${u}, ${s}`,
   rk_bottom: 'alin taso', rk_top: 'ylin taso', rk_nth: n => `taso ${n} alhaalta`, rk_only: 'taso',

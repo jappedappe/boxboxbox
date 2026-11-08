@@ -43,7 +43,7 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
   <div class="sgbar">
     <h1>Designsystem</h1><span class="hint">Storrrage {{VERSION}}</span>
     <div class="seg small" id="themeSeg"><button class="on" data-t="">Auto</button><button data-t="light">Ljust</button><button data-t="dark">Mörkt</button></div>
-    <nav><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
+    <nav><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#hyllor">Hyllor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
   </div>
   <p class="lead">Den här sidan använder exakt samma CSS som appen och byggs om med <code>python3 build.py</code>. Ändrar du en token eller en komponent i <code>src/style.css</code> syns det här direkt. Byt tema uppe till höger.</p>
 
@@ -137,6 +137,36 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
     <button class="loccard"><span class="loccard-scene" aria-hidden="true"><span class="loccard-grid"></span><span class="loccard-object"><svg class="boxart" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"></path><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#C99A62"></rect><rect x="10" y="27" width="44" height="2.6" fill="#8C5E2E"></rect><rect x="28.5" y="16" width="7" height="11" fill="#E6C894"></rect><rect x="16" y="34" width="32" height="15" rx="2" fill="#FFF7EA"></rect><text x="32" y="45.4" text-anchor="middle" font-family="Montserrat,Poppins,Arial,sans-serif" font-weight="800" font-size="11" fill="#5A3FB8">001</text></svg></span><i class="loccard-target"></i></span><span class="loccard-copy"><b>Källaren</b><span>B-001 · Julpynt</span><small>Bakre väggen · Översta hyllan</small><em>Visa på kartan</em></span></button>
     <div class="tags"><span class="lab">Taggar</span><button class="tag plus" aria-label="Ny tagg">+</button></div>
     <span class="lbl">Tryckbar platsruta, samt en liten fyrkantig plusknapp för taggar</span>
+  </div>
+
+  <h2 class="sgh" id="hyllor">Hyllor och golvstaplar</h2>
+  <p class="lead">Rumsöversikten skiljer hyllor från golvstaplar och visar boxar per fylld hyllrad eller stapel. Väggarna möter förvaringen utan att gå in i den. Som standard fäster golvstaplar vid närmaste vägg; fri placering kan slås på i rumsinställningarna.</p>
+  <div class="demo narrow">
+    <div class="phead place-head"><p class="tagline">6 lådor · 2 saker</p><div class="place-view-controls">
+      <div class="seg small"><button>Rutnät</button><button>Lista</button><button class="rktab on">Hyllor<sup>test</sup></button></div>
+      <div class="seg small"><button>S</button><button class="on">M</button><button>L</button></div>
+      <div class="seg small"><button>Hyllor</button><button>Golv</button><button class="on">Båda</button></div>
+    </div></div>
+    <label class="rkrule"><input type="checkbox"><span><b>Fri placering</b><small>Av: golvstaplar fäster vid en vägg på ett rutnät med 5 cm mellanrum.</small></span></label>
+    <section class="rkplan"><div class="rkplanhead"><button class="space-edit-btn rkpen" aria-label="Ändra rummet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
+      <svg class="rkpsvg" viewBox="-12 -12 424 344" style="aspect-ratio:1.23">
+        <defs><pattern id="sg-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="var(--line)" stroke-width=".6" opacity=".75"/><path d="M5 0V25M10 0V25M15 0V25M20 0V25M0 5H25M0 10H25M0 15H25M0 20H25" fill="none" stroke="var(--line)" stroke-width=".2" opacity=".25"/></pattern></defs>
+        <rect x="0" y="0" width="400" height="320" class="fl"/><rect x="0" y="0" width="400" height="320" fill="url(#sg-grid)"/>
+        <g class="rkpu" role="img" aria-label="Hyllsektion A"><rect x="0" y="0" width="100" height="36" rx="8"/><text x="50" y="18" font-size="12" vector-effect="non-scaling-size">1</text></g>
+        <g class="rkpu floor" role="img" aria-label="Golvstapel B"><rect x="145" y="125" width="90" height="45" rx="8"/><text x="190" y="147" font-size="12" vector-effect="non-scaling-size">2</text></g>
+        <line x1="-3.5" y1="-3.5" x2="403.5" y2="-3.5" class="front"/><line x1="-3.5" y1="-3.5" x2="-3.5" y2="323.5" class="front"/>
+        <line x1="403.5" y1="-3.5" x2="403.5" y2="323.5" class="front"/><line x1="-3.5" y1="323.5" x2="403.5" y2="323.5" class="front"/>
+      </svg>
+      <div class="rkplanlist">
+        <button class="rkplanitem"><span class="rkplanbadge"><svg class="rkplansymbol shelf" viewBox="0 0 36 28" aria-hidden="true"><path class="frame" d="M3 2v24M33 2v24"/><path class="shelf" d="M3 8h30M3 14h30M3 20h30"/><rect class="rkplanbox" x="14" y="5" width="8" height="2.5" rx=".6"/><rect class="rkplanbox" x="14" y="17" width="8" height="2.5" rx=".6"/></svg><b>1</b></span><b>Vänsterhyllan med julsaker</b><small>Vänster vägg · 90×40 cm · 4 hyllplan · 6 placerade</small></button>
+        <button class="rkplanitem"><span class="rkplanbadge"><svg class="rkplansymbol floor" viewBox="0 0 36 28" aria-hidden="true"><rect class="frame" x="1.5" y="1.5" width="33" height="25" rx="3"/><g class="rkplanbox" transform="translate(7 15)"><path d="M0 2 5 0 10 2 5 4zM0 2v5l5 2 5-2V2M5 4v5"/></g><g class="rkplanbox" transform="translate(19 15)"><path d="M0 2 5 0 10 2 5 4zM0 2v5l5 2 5-2V2M5 4v5"/></g></svg><b>2</b></span><b>Golvstapel vid dörren</b><small>Golvstapel · 90×50 cm · 3 placerade</small></button>
+      </div>
+    </section>
+    <div class="rkgrid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+      <div class="rkcard rkfloorcard"><div class="rkhead"><span><b>Golvstapel vid dörren</b><small>90×50 cm · 3 placerade</small></span></div><div class="rkrowinfo">Golvstapel · 3 placerade · 80/90 cm använda</div>
+        <div class="rkframe rkfloorframe"><div class="rkshelf" style="min-height:84px;gap:4px"><button class="rkbox" style="width:60px;height:40px"><span class="rklabel">B-001</span></button><button class="rkbox" style="width:60px;height:40px"><span class="rklabel">B-002</span></button></div></div>
+      </div>
+    </div><span class="lbl">Rumsmarkörer + namngiven lista + stabil detaljvy för en golvstapel</span>
   </div>
 
   <h2 class="sgh" id="regler">Regler</h2>
