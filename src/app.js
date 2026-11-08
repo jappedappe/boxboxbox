@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-10-30.14';
+const APP_VERSION = '2026-11-08.1';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2146,7 +2146,7 @@ async function newItem(boxId, replace){
   const nb = clone(b); nb.items = (nb.items || []).concat(it); putBox(nb, true);
   view = {name: 'item', boxId, itemId: it.id};
   render(); window.scrollTo(0, 0); arm();
-  setTimeout(() => { const n = $('#fName'); if (n) n.focus(); }, 80);
+  const nameInput = $('#fName'); if (nameInput) nameInput.focus();
 }
 function itemSheet(boxId, itemId){ if (itemId) navigate({name: 'item', boxId, itemId}); else newItem(boxId); }
 const OPT = ['size', 'brand', 'value', 'warranty', 'model', 'qty', 'owner', 'color', 'season', 'serial', 'category', 'spot', 'notes'];
