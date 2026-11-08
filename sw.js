@@ -1,7 +1,9 @@
 /* Storrrage offline cache. Only the app's own files are cached;
    calls to Supabase (login, sync, statistics) always go straight to the network. */
-const CACHE = 'storrrage-2026-11-08.1';
-const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'storrrage-2026-11-08.2';
+const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
+  './fonts/Montserrat-Bold.ttf', './fonts/Poppins-Bold.ttf', './fonts/Poppins-Italic.ttf',
+  './fonts/Poppins-Medium.ttf', './fonts/Poppins-Regular.ttf', './fonts/Poppins-SemiBold.ttf'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });

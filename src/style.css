@@ -1,3 +1,9 @@
+@font-face{font-family:Poppins;src:url("./fonts/Poppins-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:Poppins;src:url("./fonts/Poppins-Medium.ttf") format("truetype");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:Poppins;src:url("./fonts/Poppins-SemiBold.ttf") format("truetype");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:Poppins;src:url("./fonts/Poppins-Bold.ttf") format("truetype");font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:Poppins;src:url("./fonts/Poppins-Italic.ttf") format("truetype");font-style:italic;font-weight:400;font-display:swap}
+@font-face{font-family:Montserrat;src:url("./fonts/Montserrat-Bold.ttf") format("truetype");font-style:normal;font-weight:700;font-display:swap}
 :root{
   --primary:#6A51C4; --primary-2:#8B77D8; --accent:#6200FF; --lav:#A49CD6; --lav-2:#E7E3F7; --lav-3:#F6F4FC;
   --dot:#F97F26; --black:#202020; --bg:#FFFFFF; --surface:#FFFFFF; --ink:#43307F; --text:#202020; --muted:#7A7390; --line:#CFCBE3; --danger:#C0392B;
