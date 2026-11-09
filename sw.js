@@ -1,6 +1,6 @@
 /* Storrrage offline cache. Only the app's own files are cached;
    calls to Supabase (login, sync, statistics) always go straight to the network. */
-const CACHE = 'storrrage-2026-11-08.10';
+const CACHE = 'storrrage-2026-11-09.3';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
   './fonts/Montserrat-Bold.ttf', './fonts/Poppins-Bold.ttf', './fonts/Poppins-Italic.ttf',
   './fonts/Poppins-Medium.ttf', './fonts/Poppins-Regular.ttf', './fonts/Poppins-SemiBold.ttf'];
@@ -37,7 +37,8 @@ async function backgroundCheck(){
   const lang = (await get(db, 'meta', 'lang')) || 'sv', T = SWT[lang] || SWT.en;
   const notified = (await get(db, 'meta', 'notified')) || {};
   const boxes = (await get(db, 'boxes')) || [];
-  const today = new Date().toISOString().slice(0, 10), days = d => Math.round((new Date(d + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5);
+  const date = new Date(), today = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const days = d => Math.round((new Date(d + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5);
   const fresh = it => it.updatedAt && Date.now() - Date.parse(it.updatedAt) < 24 * 3600e3;   // nothing changed in the last 24 h
   const add = (key, body, box, item) => { if (notified[key]) return null; notified[key] = today; return {key, body, box, item}; };
   const out = [];

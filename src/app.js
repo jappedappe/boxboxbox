@@ -2,14 +2,17 @@
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-const today = () => new Date().toISOString().slice(0, 10);
+const dateKey = d => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const today = () => dateKey(new Date());
 const nf = new Intl.NumberFormat('sv-SE');
 const kr = n => (n ? nf.format(Math.round(n)) + ' kr' : '');
 const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-09.2';
+const APP_VERSION = '2026-11-09.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -588,6 +591,7 @@ const imgTag = (ref, cls, alt = '') => `<img class="${cls}" data-ph="${esc(ref)}
 
 /* ---------- language: Swedish or English for the whole app (item names never change) ---------- */
 let lang = (navigator.language || '').toLowerCase().startsWith('sv') ? 'sv' : 'en';
+document.documentElement.lang = lang;
 const STR = {
   en: {
     space: 'PLACES', places_n: n => n === 1 ? '1 PLACE' : `${n} PLACES`, boxes_n: n => n === 1 ? '1 BOX' : `${n} BOXES`, items_n: n => n === 1 ? '1 ITEM' : `${n} ITEMS`,
@@ -1022,14 +1026,14 @@ const boxNum = b => b.code.replace(/^B-/, '');
 /* a reminder as a calendar event the phone's calendar can import */
 function calendarFile(it, b){
   const d = notifyAt(it); if (!d) return;
-  const ymd = d.replace(/-/g, ''), nxt = new Date(d); nxt.setDate(nxt.getDate() + 1);
+  const ymd = d.replace(/-/g, ''), nxt = new Date(d + 'T12:00:00'); nxt.setDate(nxt.getDate() + 1);
   const icsEsc = v => String(v || '').replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, ' ');
   const txt = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Storrrage//EN', 'BEGIN:VEVENT', 'UID:' + it.id + '-' + ymd + '@storrrage', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z',
-    'DTSTART;VALUE=DATE:' + ymd, 'DTEND;VALUE=DATE:' + nxt.toISOString().slice(0, 10).replace(/-/g, ''), 'SUMMARY:' + icsEsc('Storrrage: ' + it.name), 'DESCRIPTION:' + icsEsc(whereText(it, b)),
+    'DTSTART;VALUE=DATE:' + ymd, 'DTEND;VALUE=DATE:' + dateKey(nxt).replace(/-/g, ''), 'SUMMARY:' + icsEsc('Storrrage: ' + it.name), 'DESCRIPTION:' + icsEsc(whereText(it, b)),
     'BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEsc(it.name), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   deliver(`${(it.name || 'reminder').replace(/[^\wåäöÅÄÖ-]+/g, '_')}.ics`, new Blob([txt], {type: 'text/calendar'}), it.name);
 }
-function addMonths(dateStr, m){ const d = new Date(dateStr); d.setMonth(d.getMonth() + m); return d.toISOString().slice(0, 10); }
+function addMonths(dateStr, m){ const d = new Date(dateStr + 'T12:00:00'); d.setMonth(d.getMonth() + m); return dateKey(d); }
 function notifyAt(it){ if (it.remindAt) return it.remindAt; const m = +it.remindMonths || 0; if (!m) return ''; return addMonths(it.lastUsed || it.storedOn || today(), m); }
 const isDue = it => { const n = notifyAt(it); return !!n && n <= today(); };
 const dueItems = (filter = () => true) => boxes.filter(filter).flatMap(b => (b.items || []).filter(isDue).map(it => [it, b]));
@@ -1949,6 +1953,7 @@ function renderWelcome(){
       metaPut('places', places).catch(() => {});
       if (kit) applyKit(p.id);
       metaPut('onboarded', true).catch(() => {});
+      metaPut('onboardStep', null).catch(() => {});
       currentPlace = p.id; metaPut('currentPlace', p.id).catch(() => {});
       navigate({name: 'home', place: p.id}, true);
       if (kit) setTimeout(() => toast(tr('kitDone')), 300);
@@ -1978,9 +1983,9 @@ function renderWelcome(){
   };
   $('#wNew').onclick = () => showWelcomeForm('new');
   $('#wLog').onclick = () => showWelcomeForm('login');
-  const go = () => {
+  const go = async () => {
     const n = $('#wName').value.trim(); if (!n){ $('#wName').focus(); return toast(tr('writeName')); }
-    me = addPerson(n); metaPut('me', me).catch(() => {});
+    me = addPerson(n); await metaPut('me', me); await metaPut('onboardStep', 'start');
     view = {name: 'welcome', step: 2}; render();
   };
   $('#wGo').onclick = go; $('#wName').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
@@ -2005,6 +2010,7 @@ document.addEventListener('change', e => { const s = e.target.closest && e.targe
 function setLang(l){
   langPref = LANGS.some(x => x[0] === l) ? l : 'auto';
   lang = langPref === 'auto' ? phoneLang() : langPref;
+  document.documentElement.lang = lang;
   metaPut('langPref', langPref).catch(() => {}); metaPut('lang', lang).catch(() => {});
   if (typeof saveLangToAccount === 'function') saveLangToAccount();
   voiceLang = VOICE[lang] || 'en-US'; metaPut('voiceLang', voiceLang).catch(() => {});
@@ -2304,7 +2310,8 @@ function renderItem(){
   const legacy = /^On loan \((.+)\)$/.exec(it.status || ''); if (legacy) loanTo = loanTo || legacy[1];
   const field = k => {
     if (!show(k)) return '';
-    if (k === 'value' || k === 'qty') return input(k, {attrs: `type="number" inputmode="numeric" min="${k === 'qty' ? 1 : 0}"`});
+    if (k === 'value') return input(k, {attrs: 'type="text" inputmode="decimal"'});
+    if (k === 'qty') return input(k, {attrs: 'type="number" inputmode="numeric" min="1"'});
     if (k === 'brand') return input(k, {attrs: 'list="brands"'});
     if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
     if (k === 'season') return `${input(k, {value: showSeason(it.season), attrs: 'list="seasons"'})}<div class="chips season-suggestions">${seasonSuggestions(it).slice(0, 5).map(s => `<button class="chipbtn small${it.season === s ? ' on' : ''}" data-season-value="${esc(s)}">${esc(showSeason(s))}</button>`).join('')}</div>`;
@@ -2369,7 +2376,12 @@ function renderItem(){
   };
   const commit = (k, v) => saveItem(x => {
     if (k === 'name'){ v = (v || '').trim(); if (v) x.name = cap(v); return; }
-    if (k === 'value' || k === 'qty'){ if (v === '' || isNaN(+v)) delete x[k]; else x[k] = Math.max(0, +v); return; }
+    if (k === 'value'){
+      const raw = String(v).replace(/\s/g, '').replace(',', '.');
+      if (!raw || !Number.isFinite(Number(raw))) delete x.value; else x.value = Math.max(0, Number(raw));
+      return;
+    }
+    if (k === 'qty'){ if (v === '' || isNaN(+v)) delete x.qty; else x.qty = Math.max(1, +v); return; }
     if (k === 'remindMonths'){ if (+v) x.remindMonths = +v; else delete x.remindMonths; return; }
     v = conv(k, v);
     if (k === 'owners'){
@@ -2994,8 +3006,7 @@ function sortBar(){
 function listHTML(pid){
   const all = orderedGroups(pid);
   const outs = outItems(b => b.placeId === pid);
-  return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => folded.has(b.id) ? `<section class="lgroup folded" data-gid="${esc(b.id)}">${groupHeader(b)}</section>` : `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}
-      ${!(b.items || []).filter(it => !isOut(it)).length && quickAddFor !== b.id ? `<p class="lempty">${tr('boxEmpty')}</p>` : ''}</section>`).join('')}</div>
+  return `${sortBar()}<div class="lgroups" data-lpid="${esc(pid)}">${all.map(b => folded.has(b.id) ? `<section class="lgroup folded" data-gid="${esc(b.id)}">${groupHeader(b)}</section>` : `<section class="lgroup" data-gid="${esc(b.id)}">${groupHeader(b)}${rowsHTML(sortItems([...(b.items || [])].filter(it => !isOut(it))).map(it => [it, b]))}${quickAddRow(b)}</section>`).join('')}</div>
     ${all.length > 1 || all.some(b => (b.items || []).length > 1) ? `<p class="swipehint">${tr('listDragHint')}</p>` : ''}
     ${!all.length ? `<p class="hint center">${tr('emptyPlace')}</p>` : ''}
     <div class="lgroup-actions"><button class="btn quiet small" data-act="addhere" data-pid="${esc(pid)}">${PLUS_SVG} ${tr('addBoxOrItem')}</button></div>
@@ -3313,7 +3324,7 @@ const SEASON_RULES = [
 ];
 let nudgeSnooze = {};
 const snoozed = key => nudgeSnooze[key] && nudgeSnooze[key] >= today();
-function snooze(key, days){ const d = new Date(); d.setDate(d.getDate() + (days || 21)); nudgeSnooze[key] = d.toISOString().slice(0, 10); metaPut('nudgeSnooze', nudgeSnooze).catch(() => {}); }
+function snooze(key, days){ const d = new Date(); d.setDate(d.getDate() + (days || 21)); nudgeSnooze[key] = dateKey(d); metaPut('nudgeSnooze', nudgeSnooze).catch(() => {}); }
 function nudges(pid){
   const month = new Date().getMonth() + 1, out = [];
   for (const c of collectionsAll()){
@@ -4027,7 +4038,7 @@ const VT = {
     relatedOnly: 'Nothing called that exactly, but similar things: {list}.',
     notFound: 'I couldn’t find {q}.', contents: '{box} has {things}: {list}.', contentsMore: '{box} has {things}, including {list}.',
     which: 'Which one: {list}?', one: '1 thing', many: '{n} things',
-    empty: '{box} is empty.', removed: 'Removed {name} from {box}.', notInBox: 'I can’t find {q} in {box}.',
+    empty: '{box} is empty.', removed: 'Removed {name} from {box}.', notInThisBox: 'I can’t find {q} in {box}.',
     moved: 'Moved {name} to {box}.', undone: 'Undone.', nothingUndo: 'There’s nothing to undo.',
     unknown: 'I didn’t get that. Try “add …”, “where is …” or “what’s in here”.',
     itemOutV: '{name} is out. Its place in {box} is kept.', itemBackV: '{name} is back in {box}.', alreadyOut: '{name} is already out.', alreadyBack: '{name} is already in place.',
@@ -4057,7 +4068,7 @@ const VT = {
     relatedOnly: 'Inget som heter exakt så, men liknande saker: {list}.',
     notFound: 'Jag hittade inte {q}.', contents: '{box} innehåller {things}: {list}.', contentsMore: '{box} innehåller {things}, bland annat {list}.',
     which: 'Vilken av dem: {list}?', one: '1 sak', many: '{n} saker',
-    empty: '{box} är tom.', removed: 'Tog bort {name} från {box}.', notInBox: 'Jag hittar inte {q} i {box}.',
+    empty: '{box} är tom.', removed: 'Tog bort {name} från {box}.', notInThisBox: 'Jag hittar inte {q} i {box}.',
     moved: 'Flyttade {name} till {box}.', undone: 'Ångrat.', nothingUndo: 'Det finns inget att ångra.',
     unknown: 'Det förstod jag inte. Prova “lägg till …”, “var är …” eller “vad finns i lådan”.',
     itemOutV: '{name} är framme. Platsen i {box} sparas.', itemBackV: '{name} är tillbaka i {box}.', alreadyOut: '{name} är redan framme.', alreadyBack: '{name} ligger redan på sin plats.',
@@ -4500,13 +4511,19 @@ function doNewBox(rest, forcedPid){
 }
 function doFind(q){
   q = q.replace(/\?+$/, '');
+  const boxMatch = /\s+(?:in|i)\s+((?:box(?:en)?|låda(?:n)?|kartong(?:en)?)\s*(?:nummer|number|nr\.?)?\s*-?\s*\S+|B-\d+)\s*$/i.exec(q);
+  const boxRefMatch = boxMatch && boxRef(boxMatch[1]);
+  if (boxMatch) q = q.slice(0, boxMatch.index);
+  if (boxMatch && (!boxRefMatch || !boxRefMatch.box)) return say(t('noBox', {n: boxRefMatch ? boxRefMatch.n : boxMatch[1]}));
   const pm = placeIn(q);
   if (pm) q = stripPlace(q, pm);
   q = cleanQ(q);
   const here = places.length > 1 ? ((curBox() && curBox().placeId) || (currentPlace !== 'all' ? currentPlace : null)) : null;
   const pid = pm ? pm.place.id : here;
-  let res = searchItems(q, {placeId: pid}), elsewhere = false;
-  if (!pm && pid && !res.exact.length && !res.related.length){ res = searchItems(q); elsewhere = res.exact.length + res.related.length > 0; }
+  const selectedBox = boxRefMatch && boxRefMatch.box;
+  const boxIds = selectedBox && new Set([selectedBox.id, ...descendants(selectedBox.id).map(b => b.id)]);
+  let res = searchItems(q, selectedBox ? {boxIds} : {placeId: pid}), elsewhere = false;
+  if (!selectedBox && !pm && pid && !res.exact.length && !res.related.length){ res = searchItems(q); elsewhere = res.exact.length + res.related.length > 0; }
   if (pm) setPlace(pid); else if (elsewhere) setPlace('all');
   showSearch(q);
   const {exact, related} = res;
@@ -4517,7 +4534,7 @@ function doFind(q){
   if (exact.length > 1 && exact.length <= 4) return say(pre + t('foundN', {n: exact.length, list: joinList(exact.map(describe))}));
   if (exact.length > 4) return say(pre + t('foundMany', {n: exact.length, list: joinList(exact.slice(0, 3).map(describe))}));
   if (related.length) return say(pre + t('relatedOnly', {list: joinList(related.slice(0, 4).map(describe))}));
-  say(t('notFound', {q}) + (pid && !pm ? '' : ''));
+  say(selectedBox ? t('notInThisBox', {q, box: boxSpoken(selectedBox)}) : t('notFound', {q}));
 }
 function findIn(q, opts){
   const {exact, related} = searchItems(cleanQ(q), opts || {});
@@ -4554,7 +4571,7 @@ function doRemove(q){
   const opts = b ? {boxId: b.id} : pid ? {placeId: pid} : {};
   const lastR = PRONOUN_RE.test(cleanQ(q)) ? resolveLast() : [];
   const hit = lastR.length === 1 ? lastR[0] : lastR.length > 1 ? {many: lastR} : findIn(q, opts);
-  if (!hit) return say(b ? t('notInBox', {q: cleanQ(q), box: boxSpoken(b)}) : t('notFound', {q: cleanQ(q)}));
+  if (!hit) return say(b ? t('notInThisBox', {q: cleanQ(q), box: boxSpoken(b)}) : t('notFound', {q: cleanQ(q)}));
   if (hit.many) return askWhich(hit);
   const [it, from] = hit;
   snapshot([from.id]); toTrash([[it, from]]);
@@ -5230,15 +5247,16 @@ async function insuranceReport(){
 }
 const blobToDataURL = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 async function backup(){
-  if (!boxes.length && !notes.length) return toast(tr('h_nothingBackup'));
+  if (!boxes.length && !notes.length && !trash.length) return toast(tr('h_nothingBackup'));
   toast(tr('h_preparingBackup'));
   const photos = {};
-  const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])]).filter(Boolean);
+  const refs = boxes.flatMap(b => [b.photo && b.photo.ref, ...(b.documents || []).map(d => d.ref), ...(b.items || []).flatMap(i => [...(i.photos || []).map(p => p.ref), ...(i.files || []).map(f => f.ref)])])
+    .concat(trash.flatMap(t => [...(t.item.photos || []).map(p => p.ref), ...(t.item.files || []).map(f => f.ref)])).filter(Boolean);
   for (const ref of refs){ const b = await phGet(ref).catch(() => null); if (b) photos[ref] = await blobToDataURL(b); }
   const notesOut = [];
   for (const n of notes) notesOut.push({...n, blob: undefined, audio: n.blob ? await blobToDataURL(n.blob) : ''});
-  const json = JSON.stringify({app: 'boxes', version: 3, exportedAt: new Date().toISOString(), boxes, photos, household, places, notes: notesOut});
-  deliver(`storrrage-backup-${today()}.json`, new Blob([json], {type: 'application/json'}), 'Backup ready', async () => {
+  const json = JSON.stringify({app: 'boxes', version: 3, exportedAt: new Date().toISOString(), boxes, photos, household, places, trash, notes: notesOut});
+  deliver(`storrrage-backup-${today()}.json`, new Blob([json], {type: 'application/json'}), tr('backupReady'), async () => {
     lastBackup = new Date().toISOString(); await metaPut('lastBackup', lastBackup).catch(() => {}); render();
   });
 }
@@ -5250,7 +5268,8 @@ $('#importFile').addEventListener('change', async e => {
     if (!Array.isArray(list)) throw 0;
     if (data.household !== undefined && (!Array.isArray(data.household) || !data.household.every(n => typeof n === 'string'))
       || data.places !== undefined && (!Array.isArray(data.places) || !data.places.every(p => p && typeof p.id === 'string' && typeof p.name === 'string'))
-      || data.notes !== undefined && !Array.isArray(data.notes)) throw new Error(tr('backupInvalid'));
+      || data.notes !== undefined && !Array.isArray(data.notes)
+      || data.trash !== undefined && !Array.isArray(data.trash)) throw new Error(tr('backupInvalid'));
     const photoData = data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos) ? data.photos : {};
     const safePhotos = new Map(), refMap = new Map(), prepared = [];
     const importRef = async (oldRef, allowPdf = false) => {
@@ -5270,10 +5289,22 @@ $('#importFile').addEventListener('change', async e => {
       refMap.set(oldRef, result); safePhotos.set(result.ref, blob);
       return result;
     };
+    const restoredPlaces = places.map(clone), placeRemap = new Map(), placesByName = new Map(restoredPlaces.map(p => [p.name.trim().toLowerCase(), p.id]));
+    const placesById = new Map(restoredPlaces.map(p => [p.id, p]));
+    for (const source of data.places || []){
+      const existing = placesById.get(source.id), sameName = placesByName.get(source.name.trim().toLowerCase());
+      if (existing){ placeRemap.set(source.id, existing.id); continue; }
+      if (sameName){ placeRemap.set(source.id, sameName); continue; }
+      const p = clone(source); restoredPlaces.push(p); placesByName.set(p.name.trim().toLowerCase(), p.id); placesById.set(p.id, p); placeRemap.set(p.id, p.id);
+    }
+    const incomingIds = new Set();
     for (const source of list){
-      if (!source || typeof source.id !== 'string' || typeof source.code !== 'string' || findBox(source.id)) continue;
+      if (!source || typeof source.id !== 'string' || typeof source.code !== 'string' || findBox(source.id) || incomingIds.has(source.id)) continue;
       if (source.items !== undefined && !Array.isArray(source.items) || source.documents !== undefined && !Array.isArray(source.documents)) throw new Error(tr('backupInvalid'));
       const b = clone(source);
+      incomingIds.add(b.id);
+      if (placeRemap.has(b.placeId)) b.placeId = placeRemap.get(b.placeId);
+      if (!placesById.has(b.placeId)) b.placeId = restoredPlaces[0].id;
       if (b.photo && b.photo.ref){
         const p = await importRef(b.photo.ref);
         if (p) b.photo.ref = p.ref; else delete b.photo;
@@ -5302,6 +5333,28 @@ $('#importFile').addEventListener('change', async e => {
       }
       prepared.push(b);
     }
+    const preparedTrash = [];
+    for (const source of data.trash || []){
+      if (!source || typeof source.id !== 'string' || !source.item || typeof source.item !== 'object'
+        || source.item.photos !== undefined && !Array.isArray(source.item.photos) || source.item.files !== undefined && !Array.isArray(source.item.files)
+        || typeof source.deletedAt !== 'string' || !Number.isFinite(Date.parse(source.deletedAt))) throw new Error(tr('backupInvalid'));
+      if (trash.some(t => t.id === source.id)) continue;
+      const entry = clone(source);
+      entry.item.photos = await Promise.all((entry.item.photos || []).map(async p => {
+        if (!p || !p.ref) return null;
+        const safe = await importRef(p.ref);
+        return safe ? {...p, ref: safe.ref} : null;
+      }));
+      entry.item.photos = entry.item.photos.filter(Boolean);
+      entry.item.files = await Promise.all((entry.item.files || []).map(async file => {
+        if (!file || !file.ref) return null;
+        const safe = await importRef(file.ref, true);
+        return safe ? {...file, ref: safe.ref, type: safe.type} : null;
+      }));
+      entry.item.files = entry.item.files.filter(Boolean);
+      if (placeRemap.has(entry.placeId)) entry.placeId = placeRemap.get(entry.placeId);
+      preparedTrash.push(entry);
+    }
     const preparedNotes = [];
     for (const x of (data.notes || [])){
       if (!x || typeof x.id !== 'string' || notes.some(y => y.id === x.id) || typeof x.audio !== 'string' || !x.audio) continue;
@@ -5309,17 +5362,40 @@ $('#importFile').addEventListener('change', async e => {
       await validateAudioUpload(audio);
       preparedNotes.push({id: x.id, boxId: x.boxId || null, createdAt: x.createdAt || new Date().toISOString(), duration: Math.max(0, +x.duration || 0), by: String(x.by || '').slice(0, 80), blob: audio});
     }
+    places = restoredPlaces;
     toast(tr('h_restoring'));
-    let n = 0;
+    let restoredBoxes = 0, restoredItems = 0;
     for (const [ref, blob] of safePhotos) await phPut(ref, blob);
-    for (const b of prepared){ putBox(b); n++; }
+    const incomingBoxIds = new Set(prepared.map(b => b.id));
+    for (const b of prepared){
+      if (b.parentId && !findBox(b.parentId) && !incomingBoxIds.has(b.parentId)) b.parentId = null;
+      if (b.loose){
+        const existing = looseOf(b.placeId);
+        if (existing){
+          const merged = clone(existing), itemIds = new Set((merged.items || []).map(it => it.id));
+          const additions = [];
+          for (const it of b.items || []) if (!itemIds.has(it.id)){ additions.push(it); itemIds.add(it.id); }
+          merged.items = (merged.items || []).concat(additions);
+          restoredItems += additions.length;
+          if (additions.length) putBox(merged);
+          continue;
+        }
+      } else if (realBoxes().some(x => (numbering === 'account' || x.placeId === b.placeId) && x.code === b.code)){
+        b.code = nextCode(b.placeId);
+      }
+      restoredItems += (b.items || []).length;
+      if (!b.loose) restoredBoxes++;
+      putBox(b);
+    }
     if (Array.isArray(data.household)) data.household.forEach(addPerson);
-    if (Array.isArray(data.places)) data.places.forEach(p => { if (p && p.id && !findPlace(p.id)){ places.push(p); } }); metaPut('places', places).catch(() => {});
+    metaPut('places', places).catch(() => {});
     boxes.forEach(b => { if (!b.placeId || !findPlace(b.placeId)){ b.placeId = places[0].id; dbPut(clone(b)).catch(() => {}); } });
+    for (const t of preparedTrash) trash.push(t);
+    if (preparedTrash.length) metaPut('trash', trash).catch(() => {});
     for (const nn of preparedNotes){ await notePut(nn); notes.push(nn); }
-    const k = preparedNotes.length;
     updateStatus(); render();
-    toast(n || k ? `Restored ${n} ${n === 1 ? 'box' : 'boxes'}${k ? ` and ${k} voice ${k === 1 ? 'note' : 'notes'}` : ''}.` : 'Everything in that backup is already here.');
+    toast(restoredBoxes || restoredItems || preparedNotes.length || preparedTrash.length ? tr('restoredSummary', restoredBoxes, restoredItems, preparedNotes.length, preparedTrash.length)
+      : tr('backupNothingNew'));
   } catch (err){ toast(err instanceof Error && err.message ? err.message : tr('backupInvalid')); }
 });
 function menuSheet(){
@@ -5482,7 +5558,7 @@ async function deleteAccount(){
     }
     await sb('/functions/v1/delete-account', {method: 'POST', body: {}});
     statsOn = false; evq = [];
-    cloud = {}; dirty.clear();
+    cloud = {}; dirty.clear(); dirtyGen.clear();
     await wipeLocal();
     location.replace(APP_URL);
   } catch (e){
@@ -5505,7 +5581,7 @@ async function connectAccount(){
     // put the phone's own things aside, bring in the account, then let the user decide
     for (const b of boxes) await dbDelRaw(b.id).catch(() => {});
     boxes = []; places = []; dirty = new Set(); await saveDirty();
-    cloud.hid = mine[0].household_id; cloud.plain = true; cloud.cursor = null; cloud.lockedHid = null; await saveCloud();
+    cloud.hid = mine[0].household_id; cloud.plain = true; cloud.cursor = null; cloud.seen = []; cloud.lockedHid = null; await saveCloud();
     if (cloud.key) await loadKey();
     await pull(true);
     if (!me && memberNames[myId()]){ me = memberNames[myId()]; await metaPutRaw('me', me).catch(() => {}); await metaPutRaw('onboarded', true).catch(() => {}); }
@@ -5521,7 +5597,7 @@ async function connectAccount(){
 }
 async function createHousehold(){
   cloud.hid = await rpc('create_household');
-  cloud.plain = true; cloud.cursor = null; await saveCloud();
+  cloud.plain = true; cloud.cursor = null; cloud.seen = []; await saveCloud();
   markEverything(); markMe();
   track('household_create');
   await syncNow();
@@ -5541,7 +5617,7 @@ async function joinFromLink(text){
   const keep = (boxes.some(b => (b.items || []).length) || realBoxes().length) ? await askChoice(tr('mergeQ'), tr('mergeYes'), tr('mergeNo')) : false;
   try {
     const hid = await rpc('join_household', {c: m[1]});
-    cloud.hid = hid; cloud.lockedHid = null; cloud.key = m[2] ? fromUrl64(m[2]) : cloud.key; cloud.cursor = null; await loadKey(); await saveCloud();
+    cloud.hid = hid; cloud.lockedHid = null; cloud.key = m[2] ? fromUrl64(m[2]) : cloud.key; cloud.cursor = null; cloud.seen = []; await loadKey(); await saveCloud();
     const mine = {places: clone(places), boxes: clone(boxes), household: clone(household), trash: clone(trash)};
     if (!keep){ for (const b of boxes) await dbDelRaw(b.id).catch(() => {}); boxes = []; }
     dirty = new Set(); await saveDirty();
@@ -5579,8 +5655,10 @@ async function mergeLocal(mine, markNew){
 }
 
 /* ---------- sync ---------- */
+const dirtyGen = new Map();
 function markDirty(k){
   if (!cloud || !cloud.hid) return;
+  dirtyGen.set(k, (dirtyGen.get(k) || 0) + 1);
   dirty.add(k); saveDirty(); scheduleSync(2500);
 }
 let dirtyT; function saveDirty(){ clearTimeout(dirtyT); return new Promise(r => { dirtyT = setTimeout(() => { metaPutRaw('syncDirty', [...dirty]).catch(() => {}).then(r); }, 200); }); }
@@ -5615,6 +5693,7 @@ async function syncNow(){
 const metaVal = k => k === 'places' ? places : k === 'household' ? household : k === 'trash' ? trash : k === 'boxOrder' ? boxOrder : k === 'move' ? move : null;
 async function push(){
   const keys = [...dirty]; if (!keys.length) return;
+  const generations = new Map(keys.map(k => [k, dirtyGen.get(k) || 0]));
   const rows = [], done = [];
   for (const k of keys){
     const [t, id] = [k.slice(0, 1), k.slice(2)];
@@ -5633,19 +5712,43 @@ async function push(){
     done.push(k);
   }
   for (let i = 0; i < rows.length; i += 200) await sb('/rest/v1/records', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: rows.slice(i, i + 200)});
-  done.forEach(k => { if (keys.includes(k)) dirty.delete(k); });
+  done.forEach(k => { if (generations.get(k) === (dirtyGen.get(k) || 0)) dirty.delete(k); });
   await saveDirty();
 }
 async function pull(force){
   let changed = false;
-  for (let page = 0; page < 50; page++){
-    const q = `/rest/v1/records?select=id,kind,payload,deleted,updated_at,updated_by&household_id=eq.${cloud.hid}&order=updated_at.asc,id.asc&limit=500` + (cloud.cursor ? '&updated_at=gt.' + encodeURIComponent(cloud.cursor) : '');
+  const storedCursor = cloud.cursor;
+  const highWater = typeof storedCursor === 'string' ? {updated_at: storedCursor, id: ''} : storedCursor;
+  const seen = new Set(Array.isArray(cloud.seen) ? cloud.seen : []);
+  const overlapStart = highWater && highWater.updated_at
+    ? new Date(Date.parse(highWater.updated_at) - 10000).toISOString() : null;
+  let after = overlapStart ? {updated_at: overlapStart, id: ''} : null;
+  const afterHighWater = r => !highWater || r.updated_at > highWater.updated_at || (r.updated_at === highWater.updated_at && r.id > highWater.id);
+  while (true){
+    const keyset = after && after.id
+      ? `&or=${encodeURIComponent(`(updated_at.gt.${after.updated_at},and(updated_at.eq.${after.updated_at},id.gt.${after.id}))`)}`
+      : after ? `&updated_at=gte.${encodeURIComponent(after.updated_at)}` : '';
+    const q = `/rest/v1/records?select=id,kind,payload,deleted,updated_at,updated_by&household_id=eq.${cloud.hid}&order=updated_at.asc,id.asc&limit=500` + keyset;
     const rows = await sb(q); if (!rows || !rows.length) break;
     for (const r of rows){
-      if (!force && dirty.has(r.id)) continue;   // a newer local change is waiting to go up
-      try { await applyRecord(r); changed = true; if (!force && r.id.startsWith('b:')) noteHouseholdChange(r.updated_by, findBox(r.id.slice(2))); } catch {}
+      const seenKey = `${r.updated_at}\n${r.id}`;
+      try {
+        if (!seen.has(seenKey)){
+          if (force || !dirty.has(r.id)){
+            await applyRecord(r); changed = true;
+            if (!force && afterHighWater(r) && r.id.startsWith('b:')) noteHouseholdChange(r.updated_by, findBox(r.id.slice(2)));
+          }
+          seen.add(seenKey);
+        }
+      } catch (e){ cloud.seen = [...seen]; await saveCloud(); throw e; }
+      if (!cloud.cursor || afterHighWater(r)) cloud.cursor = {updated_at: r.updated_at, id: r.id};
+      after = {updated_at: r.updated_at, id: r.id};
     }
-    cloud.cursor = rows[rows.length - 1].updated_at; await saveCloud();
+    if (cloud.cursor && cloud.cursor.updated_at){
+      const cutoff = Date.parse(cloud.cursor.updated_at) - 10000;
+      cloud.seen = [...seen].filter(key => Date.parse(key.split('\n', 1)[0]) >= cutoff);
+    } else cloud.seen = [...seen];
+    await saveCloud();
     if (rows.length < 500) break;
   }
   if (changed && ready) render();
@@ -5654,17 +5757,17 @@ async function pull(force){
 async function applyRecord(r){
   const t = r.id.slice(0, 1), id = r.id.slice(2);
   if (t === 'b'){
-    if (r.deleted){ boxes = boxes.filter(b => b.id !== id); await dbDelRaw(id).catch(() => {}); return; }
-    const b = await fromPayload(r.payload); if (!b) return; const i = boxes.findIndex(x => x.id === b.id);
+    if (r.deleted){ boxes = boxes.filter(b => b.id !== id); await dbDelRaw(id); return; }
+    const b = await fromPayload(r.payload); if (!b) throw new Error('Invalid synced box record'); const i = boxes.findIndex(x => x.id === b.id);
     if (i < 0) boxes.push(b); else boxes[i] = b;
     await dbPutRaw(b);
   } else if (t === 'u'){
-    const v = await fromPayload(r.payload); memberNames[id] = (v && v.name) || ''; await metaPutRaw('memberNames', memberNames);
+    const v = await fromPayload(r.payload); if (!v) throw new Error('Invalid synced member record'); memberNames[id] = v.name || ''; await metaPutRaw('memberNames', memberNames);
   } else if (t === 'm'){
-    const v = await fromPayload(r.payload); if (v == null) return;
-    if (id === 'places') places = v; else if (id === 'household') household = v; else if (id === 'trash') trash = v; else if (id === 'boxOrder') boxOrder = v; else if (id === 'move') move = v; else return;
+    const v = await fromPayload(r.payload); if (v == null) throw new Error('Invalid synced metadata record');
+    if (id === 'places') places = v; else if (id === 'household') household = v; else if (id === 'trash') trash = v; else if (id === 'boxOrder') boxOrder = v; else if (id === 'move') move = v; else throw new Error('Unknown synced metadata record');
     await metaPutRaw(id, v);
-  }
+  } else throw new Error('Unknown synced record kind');
 }
 async function cloudPhoto(ref){
   if (!cloud.hid || !cloud.session || !navigator.onLine) return null;
@@ -6578,7 +6681,7 @@ async function flushHouseholdChanges(){
 navigator.serviceWorker?.addEventListener?.('message', e => { const d = e.data || {}; if (d.open && d.box) navigate(d.item ? {name: 'item', boxId: d.box, itemId: d.item} : {name: 'box', boxId: d.box}); });
 
 /* ---- loans: since when, and when to ask for it back ---- */
-const addDays = (d, n) => { const x = new Date((d || today()) + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const addDays = (d, n) => { const x = new Date((d || today()) + 'T12:00:00'); x.setDate(x.getDate() + n); return dateKey(x); };
 const loanIsDue = it => it.loanDue ? it.loanDue <= today() : loanDays(it) > 30;
 function loanFields(it){
   const since = it.loanSince || today(), due = it.loanDue || '';
@@ -7130,7 +7233,7 @@ async function init(){
     recentOwners = await metaGet('recentOwners') || [];
     me = await metaGet('me') || '';
     voiceLang = await metaGet('voiceLang') || voiceLang;
-    { const lp = await metaGet('langPref'), old = await metaGet('lang'); langPref = lp || (old === 'sv' || old === 'en' ? old : 'auto'); lang = langPref === 'auto' ? phoneLang() : langPref; if (langPref === 'auto') voiceLang = VOICE[lang] || 'en-US'; }
+    { const lp = await metaGet('langPref'), old = await metaGet('lang'); langPref = lp || (old === 'sv' || old === 'en' ? old : 'auto'); lang = langPref === 'auto' ? phoneLang() : langPref; document.documentElement.lang = lang; if (langPref === 'auto') voiceLang = VOICE[lang] || 'en-US'; }
     { const s = await metaGet('silenceMs'); if (typeof s === 'number') silenceMs = s; }
     ai = await metaGet('ai') || ai;
     theme = await metaGet('theme') || 'system'; applyTheme();
@@ -7164,7 +7267,9 @@ async function init(){
   ready = true; updateStatus();
   await cloudInit();
   const hasStuff = boxes.some(b => !b.loose || (b.items || []).length);
-  if (!me && !hasStuff && !cloud.session && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
+  const onboardingStep = await metaGet('onboardStep').catch(() => null);
+  if (!cloud.session && !(await metaGet('onboarded').catch(() => false)) && onboardingStep === 'start') view = {name: 'welcome', step: 2};
+  else if (!me && !hasStuff && !cloud.session && !(await metaGet('onboarded').catch(() => false))) view = {name: 'welcome'};
   else view = {name: 'home', place: currentPlace};
   try { history.replaceState({root: 1}, ''); } catch {}
   render(); arm();
@@ -8314,6 +8419,94 @@ Object.assign(STR.sv, {viewLarge: 'Rutnät', viewList: 'Lista', select: 'Välj f
 Object.assign(STR.da, {viewLarge: 'Gitter', viewList: 'Liste', select: 'Vælg flere', takeOutItem: 'Tag ting frem', takeOutBox: 'Tag kasse frem', sort_number: 'Efter nummer'});
 Object.assign(STR.fi, {viewLarge: 'Ruudukko', viewList: 'Lista', select: 'Valitse useita', takeOutItem: 'Ota tavara esiin', takeOutBox: 'Ota laatikko esiin', sort_number: 'Numeron mukaan'});
 Object.assign(STR.nb, {viewLarge: 'Rutenett', viewList: 'Liste', select: 'Velg flere', takeOutItem: 'Ta fram ting', takeOutBox: 'Ta fram eske', sort_number: 'Etter nummer'});
+Object.assign(STR.en, {
+  backupReady: 'Backup ready',
+  backupNothingNew: 'Nothing new was restored. Existing boxes were skipped, not merged.',
+  restoredSummary: (b, i, n, d) => `Restored ${[b && `${b} ${b === 1 ? 'box' : 'boxes'}`, i && `${i} ${i === 1 ? 'item' : 'items'}`, n && `${n} voice ${n === 1 ? 'note' : 'notes'}`, d && `${d} deleted ${d === 1 ? 'item' : 'items'}`].filter(Boolean).join(', ')}.`,
+});
+Object.assign(STR.sv, {
+  backupReady: 'Säkerhetskopian är klar',
+  backupNothingNew: 'Inget nytt återställdes. Befintliga lådor hoppades över, de slogs inte ihop.',
+  restoredSummary: (b, i, n, d) => `Återställde ${[b && `${b} ${b === 1 ? 'låda' : 'lådor'}`, i && `${i} ${i === 1 ? 'sak' : 'saker'}`, n && `${n} röstanteckning${n === 1 ? '' : 'ar'}`, d && (d === 1 ? '1 borttagen sak' : `${d} borttagna saker`)].filter(Boolean).join(', ')}.`,
+});
+Object.assign(STR.da, {
+  backupReady: 'Sikkerhedskopien er klar',
+  backupNothingNew: 'Intet nyt blev gendannet. Eksisterende kasser blev sprunget over, ikke flettet sammen.',
+  restoredSummary: (b, i, n, d) => `Gendannede ${[b && `${b} ${b === 1 ? 'kasse' : 'kasser'}`, i && `${i} ${i === 1 ? 'ting' : 'ting'}`, n && `${n} stemmenote${n === 1 ? '' : 'r'}`, d && `${d} slettet ${d === 1 ? 'ting' : 'ting'}`].filter(Boolean).join(', ')}.`,
+});
+Object.assign(STR.nb, {
+  backupReady: 'Sikkerhetskopien er klar',
+  backupNothingNew: 'Ingenting nytt ble gjenopprettet. Eksisterende esker ble hoppet over, ikke slått sammen.',
+  restoredSummary: (b, i, n, d) => `Gjenopprettet ${[b && `${b} ${b === 1 ? 'eske' : 'esker'}`, i && `${i} ting`, n && `${n} stemmenotat${n === 1 ? '' : 'er'}`, d && `${d} slettede ting`].filter(Boolean).join(', ')}.`,
+});
+Object.assign(STR.fi, {
+  backupReady: 'Varmuuskopio on valmis',
+  backupNothingNew: 'Mitään uutta ei palautettu. Olemassa olevat laatikot ohitettiin, niitä ei yhdistetty.',
+  restoredSummary: (b, i, n, d) => `Palautettiin ${[b && `${b} ${b === 1 ? 'laatikko' : 'laatikkoa'}`, i && `${i} ${i === 1 ? 'tavara' : 'tavaraa'}`, n && `${n} äänimuistiinpanoa`, d && `${d} poistettua tavaraa`].filter(Boolean).join(', ')}.`,
+});
+Object.assign(STR.da, {
+  swipePhotos: 'Stryg for at skifte',
+  quickFilterHint: 'Filtre begrænser resultaterne. Søgning leder alle steder.',
+  quickAutoSuggestion: type => `Viser ${type}, fordi det er det eneste, der findes i dit lager indtil videre. Søg for at lede alle steder.`,
+  quick_out: 'Vis kasser og ting, der er taget ud lige nu.', quick_loose: 'Vis ting, der ikke ligger i en kasse.', quick_boxes: 'Vis kun kasser.', quick_items: 'Vis kun enkelte ting.',
+  takeOutSel: 'Tag frem', putBackSel: 'Læg tilbage',
+  selectedTakenOut: n => `Tog ${n} valgte ${n === 1 ? 'ting eller kasse' : 'ting og kasser'} frem.`,
+  selectedPutBack: n => `Lagde ${n} valgte ${n === 1 ? 'ting eller kasse' : 'ting og kasser'} tilbage.`,
+  adminTitle: 'Statistik og feedback', adminFail: 'Kunne ikke hente data. Er du logget ind som administrator?', active7: 'aktive telefoner, 7 dage', active30: 'aktive telefoner, 30 dage',
+  accounts: 'konti', households: 'husstande', sharedHh: 'delte husstande', perWeek: 'Aktive telefoner pr. uge', used30: 'Brugt de seneste 30 dage',
+  versions: 'Appversioner (14 dage)', noData: 'Ingen data endnu.', adminNote: 'Telefoner tælles med et anonymt id, der skifter hver måned. Personer, der har slået statistik fra, tælles ikke.',
+  evOpen: 'App åbnet', evView: 'Skærmskift', evItemAdd: 'Hurtig tilføjelse', evItemSave: 'Ting gemt', evSearch: 'Søgninger', evSearchQuick: 'Søgefiltre', evPlaceView: 'Hylde / liste / kort', evSort: 'Sortering', evDrag: 'Træk og slip', evRestore: 'Gendannet fra Slettet', evLogin: 'Logins', evLoginLink: 'Loginlinks sendt', evHhCreate: 'Husstande oprettet', evHhJoin: 'Tilsluttet en husstand', evInvite: 'Invitationer',
+  deleteAccount: 'Slet konto', deleteAccountHint: 'Slet dit login og dine kontodata permanent. Den delte husstand bevares for andre medlemmer; telefonens lokale data slettes. Hvis du er det sidste medlem, gemmes husstandens data, men de bliver utilgængelige.',
+  deleteAccountQ: 'Vil du slette din konto permanent? Dit login og dine personlige kontodata fjernes. Den delte husstand bevares for andre medlemmer, og telefonens lokale data slettes. Hvis du er det sidste medlem, gemmes husstandens data, men de bliver utilgængelige. Dette kan ikke fortrydes.',
+  deleteAccountOnline: 'Opret forbindelse til internettet for at slette din konto.', deleteAccountUnsynced: 'Nogle ændringer i husstanden kunne ikke synkroniseres. Prøv igen, før du sletter kontoen.',
+  deleteAccountFailed: 'Kontoen blev ikke slettet. Prøv igen, eller kontakt support.',
+  enterCode: 'E-mailkode', codeLength: 'Indtast en kode på 6 eller 8 cifre.',
+  moveSortTitle: 'Sortér og gruppér', moveSortLabel: 'Sortér', moveSort_status: 'Efter status', moveSort_asIs: 'Behold nuværende rækkefølge', moveSort_number: 'Efter kassenummer', moveSort_room: 'Gruppér efter rum',
+});
+Object.assign(STR.nb, {
+  swipePhotos: 'Sveip for å bytte',
+  quickFilterHint: 'Filtre avgrenser resultatene. Søk leter overalt.',
+  quickAutoSuggestion: type => `Viser ${type} fordi det er det eneste som finnes på lageret ditt foreløpig. Søk for å lete overalt.`,
+  quick_out: 'Vis esker og ting som er tatt ut akkurat nå.', quick_loose: 'Vis ting som ikke ligger i en eske.', quick_boxes: 'Vis bare esker.', quick_items: 'Vis bare enkeltting.',
+  takeOutSel: 'Ta fram', putBackSel: 'Sett tilbake',
+  selectedTakenOut: n => `Tok fram ${n} valgte ${n === 1 ? 'ting eller eske' : 'ting og esker'}.`,
+  selectedPutBack: n => `Satte tilbake ${n} valgte ${n === 1 ? 'ting eller eske' : 'ting og esker'}.`,
+  adminTitle: 'Statistikk og tilbakemeldinger', adminFail: 'Kunne ikke laste inn. Er du logget inn som administrator?', active7: 'aktive telefoner, 7 dager', active30: 'aktive telefoner, 30 dager',
+  accounts: 'kontoer', households: 'husstander', sharedHh: 'delte husstander', perWeek: 'Aktive telefoner per uke', used30: 'Brukt de siste 30 dagene',
+  versions: 'Appversjoner (14 dager)', noData: 'Ingen data ennå.', adminNote: 'Telefoner telles med en anonym ID som endres hver måned. Personer som har slått av statistikk, telles ikke.',
+  evOpen: 'App åpnet', evView: 'Skjermbytter', evItemAdd: 'Hurtigtillegg', evItemSave: 'Ting lagret', evSearch: 'Søk', evSearchQuick: 'Søkefiltre', evPlaceView: 'Hylle / liste / kart', evSort: 'Sortering', evDrag: 'Dra og slipp', evRestore: 'Gjenopprettet fra Slettet', evLogin: 'Innlogginger', evLoginLink: 'Innloggingslenker sendt', evHhCreate: 'Husstander opprettet', evHhJoin: 'Ble med i en husstand', evInvite: 'Invitasjoner',
+  deleteAccount: 'Slett konto', deleteAccountHint: 'Slett innloggingen og kontodataene dine permanent. Den delte husstanden beholdes for andre medlemmer; lokale data på denne telefonen slettes. Hvis du er det siste medlemmet, blir husstandens data lagret, men utilgjengelige.',
+  deleteAccountQ: 'Vil du slette kontoen permanent? Innloggingen og de personlige kontodataene dine fjernes. Den delte husstanden beholdes for andre medlemmer, og lokale data på telefonen slettes. Hvis du er det siste medlemmet, blir husstandens data lagret, men utilgjengelige. Dette kan ikke angres.',
+  deleteAccountOnline: 'Koble til internett for å slette kontoen.', deleteAccountUnsynced: 'Noen husstandsendringer kunne ikke synkroniseres. Prøv igjen før du sletter kontoen.',
+  deleteAccountFailed: 'Kontoen ble ikke slettet. Prøv igjen eller kontakt brukerstøtte.',
+  enterCode: 'E-postkode', codeLength: 'Skriv inn en kode på 6 eller 8 sifre.',
+  moveSortTitle: 'Sorter og grupper', moveSortLabel: 'Sorter', moveSort_status: 'Etter status', moveSort_asIs: 'Behold gjeldende rekkefølge', moveSort_number: 'Etter eskens nummer', moveSort_room: 'Grupper etter rom',
+});
+Object.assign(STR.fi, {
+  swipePhotos: 'Vaihda pyyhkäisemällä',
+  quickFilterHint: 'Suodattimet rajaavat tuloksia. Haku etsii kaikkialta.',
+  quickAutoSuggestion: type => `Näytetään ${type}, koska niitä on toistaiseksi ainoastaan varastossasi. Hae kaikkialta.`,
+  quick_out: 'Näytä esillä olevat laatikot ja tavarat.', quick_loose: 'Näytä tavarat, jotka eivät ole laatikossa.', quick_boxes: 'Näytä vain laatikot.', quick_items: 'Näytä vain yksittäiset tavarat.',
+  takeOutSel: 'Ota esille', putBackSel: 'Palauta paikoilleen',
+  selectedTakenOut: n => `Otettiin esille ${n} valittua ${n === 1 ? 'tavara tai laatikko' : 'tavaraa tai laatikkoa'}.`,
+  selectedPutBack: n => `Palautettiin paikoilleen ${n} valittua ${n === 1 ? 'tavara tai laatikko' : 'tavaraa tai laatikkoa'}.`,
+  adminTitle: 'Tilastot ja palaute', adminFail: 'Tietojen lataus epäonnistui. Oletko kirjautunut ylläpitäjänä?', active7: 'aktiivista puhelinta, 7 päivää', active30: 'aktiivista puhelinta, 30 päivää',
+  accounts: 'tiliä', households: 'kotitaloutta', sharedHh: 'jaettua kotitaloutta', perWeek: 'Aktiiviset puhelimet viikoittain', used30: 'Käytössä viimeisten 30 päivän aikana',
+  versions: 'Sovellusversiot (14 päivää)', noData: 'Ei vielä tietoja.', adminNote: 'Puhelimet lasketaan anonyymillä tunnisteella, joka vaihtuu kuukausittain. Tilastot käytöstä poistaneita ei lasketa mukaan.',
+  evOpen: 'Sovellus avattu', evView: 'Näkymän vaihdot', evItemAdd: 'Pikalisäys', evItemSave: 'Tavara tallennettu', evSearch: 'Haut', evSearchQuick: 'Hakusuodattimet', evPlaceView: 'Hylly / lista / kartta', evSort: 'Lajittelu', evDrag: 'Vedä ja pudota', evRestore: 'Palautettu Poistetut-kansiosta', evLogin: 'Kirjautumiset', evLoginLink: 'Kirjautumislinkit lähetetty', evHhCreate: 'Kotitaloudet luotu', evHhJoin: 'Liitytty kotitalouteen', evInvite: 'Kutsut',
+  deleteAccount: 'Poista tili', deleteAccountHint: 'Poista kirjautumistunnuksesi ja tilitietosi pysyvästi. Jaettu kotitalous säilyy muille jäsenille; tämän puhelimen paikalliset tiedot poistetaan. Jos olet viimeinen jäsen, kotitalouden tiedot säilytetään mutta ne eivät ole käytettävissä.',
+  deleteAccountQ: 'Haluatko poistaa tilisi pysyvästi? Kirjautumistunnuksesi ja henkilökohtaiset tilitietosi poistetaan. Jaettu kotitalous säilyy muille jäsenille ja tämän puhelimen paikalliset tiedot poistetaan. Jos olet viimeinen jäsen, kotitalouden tiedot säilytetään mutta ne eivät ole käytettävissä. Tätä ei voi kumota.',
+  deleteAccountOnline: 'Yhdistä internetiin tilin poistamista varten.', deleteAccountUnsynced: 'Kaikkia kotitalouden muutoksia ei voitu synkronoida. Yritä uudelleen ennen tilin poistamista.',
+  deleteAccountFailed: 'Tiliä ei poistettu. Yritä uudelleen tai ota yhteyttä tukeen.',
+  enterCode: 'Sähköpostikoodi', codeLength: 'Anna 6- tai 8-numeroinen koodi.',
+  moveSortTitle: 'Lajittele ja ryhmittele', moveSortLabel: 'Lajittele', moveSort_status: 'Tilan mukaan', moveSort_asIs: 'Säilytä nykyinen järjestys', moveSort_number: 'Laatikon numeron mukaan', moveSort_room: 'Ryhmittele huoneen mukaan',
+});
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
+  for (const locale of ['sv', 'da', 'nb', 'fi']){
+    const missing = Object.keys(STR.en).filter(k => !(k in STR[locale]));
+    if (missing.length) console.error(`[Storrrage] Missing ${locale} translations: ${missing.join(', ')}`);
+  }
+}
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
 })();
