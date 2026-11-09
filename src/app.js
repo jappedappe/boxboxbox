@@ -9,7 +9,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-08.10';
+const APP_VERSION = '2026-11-09.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -368,6 +368,7 @@ async function shrink(file, max){
   if (!bmp){
     const url = URL.createObjectURL(file);
     try { bmp = new Image(); bmp.src = url; await bmp.decode(); }
+    catch { throw new Error(tr('uploadImageOnly')); }
     finally { URL.revokeObjectURL(url); }
   }
   const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
@@ -386,10 +387,12 @@ const PHOTO_MAX = 1600, PHOTO_QUALITY = .78;
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const imageSignature = async blob => {
   const h = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  const brand = String.fromCharCode(...h.slice(8, 12));
   return h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff
     || h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47
     || String.fromCharCode(...h.slice(0, 4)) === 'RIFF' && String.fromCharCode(...h.slice(8, 12)) === 'WEBP'
-    || String.fromCharCode(...h.slice(0, 3)) === 'GIF';
+    || String.fromCharCode(...h.slice(0, 3)) === 'GIF'
+    || String.fromCharCode(...h.slice(4, 8)) === 'ftyp' && ['avif', 'avis', 'heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1'].includes(brand);
 };
 async function validateImageUpload(file){
   if (!file || !file.size || file.size > MAX_UPLOAD_BYTES) throw new Error(tr(file && file.size > MAX_UPLOAD_BYTES ? 'uploadTooLarge' : 'uploadImageOnly'));
@@ -2028,8 +2031,9 @@ function renderProfile(){
         <button class="row" data-sub="notifications">${ICON.bell}<span>${tr('notifications')}</span>${nN ? `<b class="count">${nN}</b>` : ''}</button>
         ${PREMIUM_FEATURES_ENABLED ? `<button class="row" data-sub="premium">${ICON.star}<span>${tr('premium')}</span></button>` : ''}
       </div>
-      ${cloud.session ? `<div class="list"><button class="btn block" id="pfOut">${tr('logout')}</button><button class="btn danger block" id="pfOutAll">${tr('logoutAll')}</button></div><p class="proof">${tr('logoutAllHint')}</p>` : ''}`;
+      ${cloud.session ? `<div class="list"><button class="btn block" id="pfOut">${tr('logout')}</button><button class="btn danger block" id="pfOutAll">${tr('logoutAll')}</button></div><p class="proof">${tr('logoutAllHint')}</p><div class="list"><button class="btn danger block" id="pfDelete">${tr('deleteAccount')}</button></div><p class="proof">${tr('deleteAccountHint')}</p>` : ''}`;
     if ($('#pfOut')){ $('#pfOut').onclick = () => askConfirm(tr('logoutQ'), tr('logout')).then(y => { if (y) logout(false); }); $('#pfOutAll').onclick = () => askConfirm(tr('logoutAllQ'), tr('logoutAll')).then(y => { if (y) logout(true); }); }
+    if ($('#pfDelete')) $('#pfDelete').onclick = deleteAccount;
     wireLogin();
     $('#pfName').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) return; me = addPerson(n); metaPut('me', me).catch(() => {}); });
     if ($('#pfMail')){
@@ -5466,6 +5470,27 @@ async function logout(everywhere){
   try { sessionStorage.setItem('loggedOut', '1'); } catch {}
   location.replace(APP_URL);
 }
+async function deleteAccount(){
+  if (!cloud.session) return;
+  if (!navigator.onLine) return toast(tr('deleteAccountOnline'));
+  if (!(await askConfirm(tr('deleteAccountQ'), tr('deleteAccount')))) return;
+  const button = $('#pfDelete'); if (button) button.disabled = true;
+  try {
+    if (cloud.hid){
+      await syncNow();
+      if (dirty.size) throw new Error('pending household changes');
+    }
+    await sb('/functions/v1/delete-account', {method: 'POST', body: {}});
+    statsOn = false; evq = [];
+    cloud = {}; dirty.clear();
+    await wipeLocal();
+    location.replace(APP_URL);
+  } catch (e){
+    console.error('Account deletion failed', e);
+    if (button) button.disabled = false;
+    toast(e.message === 'pending household changes' ? tr('deleteAccountUnsynced') : tr('deleteAccountFailed'));
+  }
+}
 
 /* ---------- household: create, invite, join ---------- */
 /* after login: your account's storage comes to this device; what was only on this device is added to it */
@@ -6022,12 +6047,20 @@ Object.assign(STR.en, {cloudIntro: 'Log in with your e-mail to keep your storage
   e2eNote: 'Stored in your account on servers in the EU. Only you and the people you invite can see it.', inviteSafe: 'The code works once, for 24 hours.', connectNow: 'Save in my account',
   joinOther: 'Join another household (QR)', mergedIntoAccount: 'What was on this phone was added to your account.', logoutQ: 'Log out? Your storage is removed from this device but stays in your account – log in again to get it back.',
   unsyncedQ: n => `${n} changes haven’t been saved to your account yet (no signal?). Log out anyway? They will be lost.`, logoutAll: 'Log out on all devices', logoutAllQ: 'Log out on all your devices? Use this if a phone is lost. Each device removes your storage the next time it’s online.',
-  logoutAllHint: 'Lost a phone? Log out on all devices, then log in again on the devices you still use.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.'});
+  logoutAllHint: 'Lost a phone? Log out on all devices, then log in again on the devices you still use.', loggedOut: 'Logged out. Your storage is safe in your account.', wipedRemote: 'You were logged out from another device, so the storage was removed from this one.',
+  deleteAccount: 'Delete account', deleteAccountHint: 'Permanently remove your login and account data. Shared household storage stays for other members; this phone’s local data is erased. If you’re the last member, the household data remains stored but inaccessible.',
+  deleteAccountQ: 'Permanently delete your account? Your login and personal account data will be removed. Shared household storage will be kept for other members, and this phone’s local data will be erased. If you’re the last member, the household data remains stored but inaccessible. This cannot be undone.',
+  deleteAccountOnline: 'Connect to the internet to delete your account.', deleteAccountUnsynced: 'Some household changes could not be synced. Try again before deleting the account.',
+  deleteAccountFailed: 'Account deletion did not complete. Please try again or contact support.'});
 Object.assign(STR.sv, {cloudIntro: 'Logga in med din e-post så sparas förrådet i ditt konto. Då kommer du åt det på webben och andra telefoner, kan dela med hushållet och logga ut om telefonen kommer bort.',
   e2eNote: 'Sparas i ditt konto på servrar i EU. Bara du och de du bjuder in kan se det.', inviteSafe: 'Koden fungerar en gång i 24 timmar.', connectNow: 'Spara i mitt konto',
   joinOther: 'Gå med i ett annat hushåll (QR)', mergedIntoAccount: 'Det som fanns på telefonen lades till i ditt konto.', logoutQ: 'Logga ut? Förrådet tas bort från den här enheten men finns kvar i ditt konto – logga in igen så kommer det tillbaka.',
   unsyncedQ: n => `${n} ändringar har inte sparats i kontot än (ingen täckning?). Logga ut ändå? De försvinner då.`, logoutAll: 'Logga ut på alla enheter', logoutAllQ: 'Logga ut på alla dina enheter? Använd det om en telefon kommit bort. Varje enhet tar bort förrådet nästa gång den är online.',
-  logoutAllHint: 'Tappat telefonen? Logga ut från alla enheter och logga sedan in igen på de enheter du fortfarande använder.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.'});
+  logoutAllHint: 'Tappat telefonen? Logga ut från alla enheter och logga sedan in igen på de enheter du fortfarande använder.', loggedOut: 'Utloggad. Förrådet är tryggt i ditt konto.', wipedRemote: 'Du loggades ut från en annan enhet, så förrådet togs bort härifrån.',
+  deleteAccount: 'Ta bort konto', deleteAccountHint: 'Ta bort din inloggning och dina kontouppgifter permanent. Det delade hushållet finns kvar för andra medlemmar; telefonens lokala data raderas. Om du är sista medlemmen sparas hushållets data men blir otillgänglig.',
+  deleteAccountQ: 'Ta bort kontot permanent? Din inloggning och dina personliga kontouppgifter tas bort. Det delade hushållet sparas för andra medlemmar och telefonens lokala data raderas. Om du är sista medlemmen sparas hushållets data men blir otillgänglig. Det går inte att ångra.',
+  deleteAccountOnline: 'Anslut till internet för att ta bort kontot.', deleteAccountUnsynced: 'Några hushållsändringar kunde inte synkas. Försök igen innan du tar bort kontot.',
+  deleteAccountFailed: 'Kontot kunde inte tas bort. Försök igen eller kontakta supporten.'});
 
 Object.assign(STR.en, {codeSent: e => `We sent an e-mail to ${e}. Enter the code from it here:`, enterCode: 'Email code', codeLength: 'Enter a 6- or 8-digit code.', wrongEmail: 'Wrong email?', orTapLink: 'Or tap the button in the e-mail to continue in Storrrage.', sendAgain: 'Send again', sentAgain: 'Sent again.', codeWrong: 'The code is wrong or too old. Try again or send a new one.'});
 Object.assign(STR.sv, {codeSent: e => `Vi har skickat ett mejl till ${e}. Skriv in koden från mejlet här:`, enterCode: 'E-postkod', codeLength: 'Skriv in en kod med 6 eller 8 siffror.', wrongEmail: 'Fel e-post?', orTapLink: 'Eller tryck på knappen i mejlet för att fortsätta i Storrrage.', sendAgain: 'Skicka igen', sentAgain: 'Skickat igen.', codeWrong: 'Koden stämmer inte eller är för gammal. Försök igen eller skicka en ny.'});
