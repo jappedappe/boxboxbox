@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-10.2';
+const APP_VERSION = '2026-11-10.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -5687,17 +5687,11 @@ function markEverything(){
   refs.forEach(r => dirty.add('p:' + r));
   saveDirty();
 }
-/* A sync that lands while the user types in the item page must not rebuild it: that drops the keyboard. */
-let renderWaiting = false;
-function typingNow(){ const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && app.contains(a); }
+/* A sync only brings back what was just saved. Rebuilding the item page would replace the name field under the user's finger and drop the keyboard, so the item page keeps its current render until it is left. */
 function renderUnlessTyping(){
-  if (view.name === 'item' && typingNow()){ renderWaiting = true; return; }
-  renderWaiting = false; render();
+  if (view.name === 'item') return;
+  render();
 }
-document.addEventListener('focusout', () => {
-  if (!renderWaiting) return;
-  setTimeout(() => { if (renderWaiting && !typingNow()){ renderWaiting = false; render(); } }, 150);
-});
 function scheduleSync(ms){ clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms || 0); }
 async function syncNow(){
   if (syncing || !cloud.hid || !cloud.session || !navigator.onLine) return;
