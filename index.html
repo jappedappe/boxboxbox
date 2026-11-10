@@ -149,6 +149,7 @@ h2.section{font-family:var(--caps);font-weight:700;font-size:var(--fs-1);letter-
 .heroimg .ticon{font-size:4rem;opacity:.6;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
 .cam{position:absolute;right:-16px;bottom:-14px;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:var(--sh-1)}
 .cam svg{width:20px;height:20px}
+button.cam{border:0;padding:0}
 .thumbs{display:flex;gap:8px;overflow-x:auto;margin:18px 0 6px;padding:6px 2px}
 .th{position:relative;flex:none}
 .th > button:first-child{width:58px;height:58px;padding:0;border:none;border-radius:var(--r-1);overflow:hidden;display:block}
@@ -13884,7 +13885,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-09.3';
+const APP_VERSION = '2026-11-10.1';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -14545,7 +14546,7 @@ const STR = {
   },
 };
 Object.assign(STR.en, {moreBoxes: n => `+ ${n} more boxes`});
-Object.assign(STR.en, {photoAdd: 'Add photo', whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom', swipePhotos: 'Swipe to change',
+Object.assign(STR.en, {photoAdd: 'Add photo', photoTake: 'Take photo', photoLibrary: 'Choose from library', whereYouAre: 'Where you are', moreDetails: 'More details', openBoxNow: 'Open box', closePhoto: 'Close photo', zoomHint: 'Pinch or double-tap to zoom', swipePhotos: 'Swipe to change',
   h_stopVoice: 'Stop the voice note first.', h_noRec: 'Recording isn’t available in this browser.', h_micBlocked: 'Microphone access is blocked. Allow it for Storrrage in Chrome’s site settings.',
   h_aiBusy: 'Still thinking about the last thing you said.', h_boxLabels: 'Box labels', h_printHint: 'Print this page, cut out the labels and tape them to the boxes.',
   h_addBoxesFirst: 'Add some boxes first.', h_building: 'Building the report…', h_nothingBackup: 'Nothing to back up yet.', h_preparingBackup: 'Preparing backup…', h_restoring: 'Restoring…',
@@ -14553,7 +14554,7 @@ Object.assign(STR.en, {photoAdd: 'Add photo', whereYouAre: 'Where you are', more
   rp_packed: (d, n, v) => `Packed ${d}. ${n} items, ${v}.`, rp_generated: (d, b, n, v) => `Generated ${d}. ${b} boxes, ${n} items, estimated total value ${v}.`,
   rp_note: '“Registered” is when the item was entered in the inventory. Photo times come from the image file.', rp_ready: 'Insurance report ready',
   joinConfirmQ: 'Join this household? Everyone in it will see your things. Only join with a code from someone you know.'});
-Object.assign(STR.sv, {photoAdd: 'Lägg till foto', whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma', swipePhotos: 'Svep för att byta',
+Object.assign(STR.sv, {photoAdd: 'Lägg till foto', photoTake: 'Ta foto', photoLibrary: 'Välj från galleriet', whereYouAre: 'Var du är', moreDetails: 'Fler detaljer', openBoxNow: 'Öppen låda', closePhoto: 'Stäng bilden', zoomHint: 'Nyp eller dubbeltryck för att zooma', swipePhotos: 'Svep för att byta',
   h_stopVoice: 'Stoppa röstanteckningen först.', h_noRec: 'Inspelning fungerar inte i den här webbläsaren.', h_micBlocked: 'Mikrofonen är blockerad. Tillåt den för Storrrage i Chromes webbplatsinställningar.',
   h_aiBusy: 'Tänker fortfarande på det du sa senast.', h_boxLabels: 'Lådetiketter', h_printHint: 'Skriv ut sidan, klipp ut etiketterna och tejpa fast dem på lådorna.',
   h_addBoxesFirst: 'Lägg till några lådor först.', h_building: 'Gör rapporten…', h_nothingBackup: 'Det finns inget att säkerhetskopiera än.', h_preparingBackup: 'Förbereder säkerhetskopian…', h_restoring: 'Återställer…',
@@ -16208,7 +16209,7 @@ function renderItem(){
     ${presenceNote(b.id, it.id)}
     <div class="hero">
       ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
-      <label class="cam" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}<input type="file" accept="image/*" id="fPhoto" multiple hidden></label>
+      <button type="button" class="cam" id="fPhoto" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}</button>
     </div>
     ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     <label class="titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
@@ -16301,8 +16302,8 @@ function renderItem(){
   nm.addEventListener('input', () => { if (/\n/.test(nm.value)) nm.value = nm.value.replace(/\s*\n\s*/g, ' '); fitName(); clearTimeout(timers.name); timers.name = setTimeout(() => commit('name', nm.value), 600); });
   nm.addEventListener('change', () => { clearTimeout(timers.name); commit('name', nm.value); });
   if (app.querySelector('[data-where]')) app.querySelector('[data-where]').addEventListener('change', e => { if (flushItem) flushItem(); moveItemTo(view.boxId, view.itemId, e.target.value); render(); });
-  const addPhotos = async e => {
-    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; toast(tr('savingPhoto'));
+  const addPhotos = async files => {
+    if (!files.length) return; toast(tr('savingPhoto'));
     const target = {boxId: view.boxId, itemId: view.itemId};
     if (flushItem) flushItem();
     const added = [];
@@ -16314,7 +16315,7 @@ function renderItem(){
     item.photos = (item.photos || []).concat(added); item.updatedAt = new Date().toISOString(); putBox(nb, true);
     if (view.name === 'item' && view.boxId === b.id && view.itemId === target.itemId) render();
   };
-  $('#fPhoto').addEventListener('change', addPhotos);
+  $('#fPhoto').onclick = () => pickPhotos(addPhotos);
   $('#fFile').addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
@@ -16441,16 +16442,17 @@ function renderBatch(){
     <p class="hint">${esc(tr('batchWhere', where))}</p>
     <p class="hint">${aiReady() ? tr('batchAI') + (ai.provider === 'gemini' ? ' ' + tr('batchPrivacy') : '') : tr('batchNoAI')}</p>
     ${!rows.length ? `<div class="choice col">
-      <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small></span><input type="file" accept="image/*" multiple hidden data-batchmode="each"></label>
+      <button type="button" class="btn big addopt wide" data-batchpick="each"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('modeEach')}</span><small>${tr('modeEachHint')}</small></span></button>
       <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('modeMulti')}</span><small>${tr('modeMultiHint')}</small></span><input type="file" accept="image/*" multiple hidden data-batchmode="multi"></label></div>`
     : `<div class="brows">${rows.map((r, i) => `<div class="brow${r.include ? '' : ' off'}">
         <button class="bthumb" data-viewph="${esc(r.photos[0].ref)}">${imgTag(r.photos[0].ref, '')}</button>
         <div class="bmain">${r.status === 'thinking' ? `<p class="hint">${tr('thinking')}</p>` : `<input class="input" data-bname="${i}" value="${esc(r.name)}" placeholder="${esc(tr('namePh'))}" autocapitalize="sentences">
           ${detail(r.fields) ? `<p class="bdet">${detail(r.fields)}</p>` : ''}${r.status === 'failed' ? `<p class="hint">${esc(tr('aiFailed', r.err || ''))}</p>` : ''}`}</div>
         <label class="binc"><input type="checkbox" data-binc="${i}" ${r.include ? 'checked' : ''}><span>${tr('include')}</span></label></div>`).join('')}</div>
-      <label class="btn quiet block morebtn">${tr('morePhotos')}<input type="file" accept="image/*" multiple hidden data-batchmode="${batch.mode || 'each'}"></label>`}
+      <button type="button" class="btn quiet block morebtn" data-batchpick="${batch.mode || 'each'}">${tr('morePhotos')}</button>`}
     <div class="donebar"><button class="btn quiet" data-act="batchcancel">${tr('cancel')}</button><button class="btn primary" data-act="batchadd" ${n && !batch.busy && !missing ? '' : 'disabled'}>${tr('addN', n)}</button></div>${missing && n ? `<p class="hint needname">${tr('nameNeeded')}</p>` : ''}`;
   app.querySelectorAll('[data-batchmode]').forEach(inp => inp.addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) addBatchFiles(f, inp.dataset.batchmode); }));
+  app.querySelectorAll('[data-batchpick]').forEach(btn => btn.addEventListener('click', () => pickPhotos(f => addBatchFiles(f, btn.dataset.batchpick))));
   app.querySelectorAll('[data-bname]').forEach(inp => { inp.classList.toggle('need', !inp.value.trim()); inp.addEventListener('input', () => {
     const r = batch.rows[+inp.dataset.bname]; if (r) r.name = inp.value; inp.classList.toggle('need', !inp.value.trim());
     const miss = batch.rows.some(x => x.include && x.status !== 'thinking' && !(x.name || '').trim()), btn = app.querySelector('[data-act=batchadd]');
@@ -17650,6 +17652,21 @@ function openSheet(html, onClose){
   const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && sheet.contains(ae)) ae.blur();
 }
 function closeSheet(){ if (sheet.open) sheet.close(); }
+
+/* Camera or library: Android's photo picker has no camera option, so the app asks first. */
+function pickPhotos(onFiles, {multiple = true} = {}){
+  openSheet(`<h3>${tr('photoAdd')}</h3>
+    <div class="choice col">
+      <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('photoTake')}</span></span><input type="file" accept="image/*" capture="environment" hidden data-pick></label>
+      <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('photoLibrary')}</span></span><input type="file" accept="image/*" ${multiple ? 'multiple' : ''} hidden data-pick></label>
+    </div>
+    <div class="sheet-foot"><button class="btn quiet" id="pkX">${tr('cancel')}</button></div>`);
+  $('#pkX').onclick = closeSheet;
+  sheet.querySelectorAll('[data-pick]').forEach(inp => inp.addEventListener('change', e => {
+    const files = [...e.target.files]; e.target.value = ''; closeSheet();
+    if (files.length) onFiles(files);
+  }));
+}
 sheet.addEventListener('close', () => { if (sheet.open) return; const f = onSheetClose; onSheetClose = null; if (f) f(); });
 sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
 
@@ -17659,7 +17676,7 @@ function photoState(initial, multiple){
   const draw = () => {
     const w = $('#phwrap');
     w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="${tr('rmPhoto')}">×</button></div>`).join('')}
-      ${multiple || !st.photos.length ? `<label class="addph">${tr('addPhoto')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
+      ${multiple || !st.photos.length ? `<label class="addph">${tr('photoTake')}<input type="file" accept="image/*" capture="environment"></label><label class="addph">${tr('photoLibrary')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
     hydrate(w);
   };
   st.mount = () => {
@@ -22110,7 +22127,7 @@ window.addEventListener('resize', () => { if (placeView !== 'racks') return; cle
 
 /* ---------- Danish, Norwegian and Finnish for newer texts (admin screens stay English) ---------- */
 Object.assign(STR.da, {
-  photoAdd: 'Tilføj foto', editPlace: n => `Ret ${n}`, foldSpace: n => `Fold ${n} sammen`, unfoldSpace: n => `Fold ${n} ud`, changePlaceIcon: n => `Vælg ikon til ${n}`,
+  photoAdd: 'Tilføj foto', photoTake: 'Tag foto', photoLibrary: 'Vælg fra galleri', editPlace: n => `Ret ${n}`, foldSpace: n => `Fold ${n} sammen`, unfoldSpace: n => `Fold ${n} ud`, changePlaceIcon: n => `Vælg ikon til ${n}`,
   documents: 'Dokumenter og kvitteringer', addDocument: '+ Tilføj dokument eller kvittering', noDocuments: 'Ingen dokumenter endnu.', linkToItem: 'Knyt til ting', notLinked: 'Ikke knyttet til en ting', linkedDocuments: 'Tilknyttede dokumenter', document: 'Dokument',
   st_throw: 'Smides ud', st_custom: 'Andet…', customStatus: 'Skriv en status', addBoxOrItem: 'Tilføj kasse eller ting',
   customIcon: 'Vælg et ikon', customIconHint: 'Skriv eller indsæt ét symbol eller en emoji med enhedens tastatur. Almindelige Unicode-ikoner vises på Android og iPhone.', iconOneOnly: 'Indtast ét symbol eller én emoji.',
@@ -22169,7 +22186,7 @@ Object.assign(STR.da, {
   rk_wallFull: (u, w, need, have) => `${u} kan ikke være langs ${w} (${need} af ${have} cm).`, rk_overlap: (a, b) => `${a} og ${b} går ind i hinanden.`, rk_roomBad: 'Tjek tallene: rummet 50–2000 cm, døren 50–300 cm, reolens dybde 10–200 cm.'
 });
 Object.assign(STR.nb, {
-  photoAdd: 'Legg til bilde', editPlace: n => `Endre ${n}`, foldSpace: n => `Fold sammen ${n}`, unfoldSpace: n => `Fold ut ${n}`, changePlaceIcon: n => `Velg ikon for ${n}`,
+  photoAdd: 'Legg til bilde', photoTake: 'Ta bilde', photoLibrary: 'Velg fra galleri', editPlace: n => `Endre ${n}`, foldSpace: n => `Fold sammen ${n}`, unfoldSpace: n => `Fold ut ${n}`, changePlaceIcon: n => `Velg ikon for ${n}`,
   documents: 'Dokumenter og kvitteringer', addDocument: '+ Legg til dokument eller kvittering', noDocuments: 'Ingen dokumenter ennå.', linkToItem: 'Knytt til ting', notLinked: 'Ikke knyttet til en ting', linkedDocuments: 'Tilknyttede dokumenter', document: 'Dokument',
   st_throw: 'Kastes', st_custom: 'Annet…', customStatus: 'Skriv en status', addBoxOrItem: 'Legg til eske eller ting',
   customIcon: 'Velg et ikon', customIconHint: 'Skriv eller lim inn ett symbol eller én emoji med tastaturet på enheten. Vanlige Unicode-ikoner vises på Android og iPhone.', iconOneOnly: 'Skriv inn ett symbol eller én emoji.',
@@ -22228,7 +22245,7 @@ Object.assign(STR.nb, {
   rk_wallFull: (u, w, need, have) => `${u} får ikke plass langs ${w} (${need} av ${have} cm).`, rk_overlap: (a, b) => `${a} og ${b} går inn i hverandre.`, rk_roomBad: 'Sjekk tallene: rommet 50–2000 cm, døren 50–300 cm, reolens dybde 10–200 cm.'
 });
 Object.assign(STR.fi, {
-  photoAdd: 'Lisää kuva', editPlace: n => `Muokkaa: ${n}`, foldSpace: n => `Pienennä ${n}`, unfoldSpace: n => `Laajenna ${n}`, changePlaceIcon: n => `Valitse kuvake: ${n}`,
+  photoAdd: 'Lisää kuva', photoTake: 'Ota kuva', photoLibrary: 'Valitse galleriasta', editPlace: n => `Muokkaa: ${n}`, foldSpace: n => `Pienennä ${n}`, unfoldSpace: n => `Laajenna ${n}`, changePlaceIcon: n => `Valitse kuvake: ${n}`,
   documents: 'Asiakirjat ja kuitit', addDocument: '+ Lisää asiakirja tai kuitti', noDocuments: 'Ei asiakirjoja vielä.', linkToItem: 'Liitä tavaraan', notLinked: 'Ei liitetty tavaraan', linkedDocuments: 'Liitetyt asiakirjat', document: 'Asiakirja',
   st_throw: 'Heitetään pois', st_custom: 'Muu…', customStatus: 'Kirjoita tila', addBoxOrItem: 'Lisää laatikko tai tavara',
   customIcon: 'Valitse kuvake', customIconHint: 'Kirjoita tai liitä yksi symboli tai emoji laitteen näppäimistöllä. Yleiset Unicode-kuvakkeet näkyvät Androidilla ja iPhonella.', iconOneOnly: 'Anna yksi symboli tai emoji.',

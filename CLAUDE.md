@@ -70,4 +70,4 @@ Login and a shared database for the household (with the privacy rules above), se
 - A box is the cardboard box everywhere (grid, list, map `.crate`, Hyllor `.rkbox`).
 - Actions are buttons with icon + text (`.btn.quiet.small.icontext`), e.g. take out `ICON.takeout`, put back `ICON.putback`, add several `ICON.stack` – the same icon wherever the action appears. No ↗/↩ glyphs in buttons.
 - Choice cards (what/how to add) are `.btn.big.addopt` light cards with the icon in a square, never filled purple side by side.
-- One photo button (camera) without `capture`, so the phone offers camera or gallery. One expand/collapse button: `.lgh-fold`.
+- One photo button: it opens `pickPhotos()`, which offers Take photo (`capture="environment"`) or Choose from library. Android's photo picker has no camera option, so a plain `<input multiple>` never offers the camera. One expand/collapse button: `.lgh-fold`.

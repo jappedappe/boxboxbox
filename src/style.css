@@ -139,6 +139,7 @@ h2.section{font-family:var(--caps);font-weight:700;font-size:var(--fs-1);letter-
 .heroimg .ticon{font-size:4rem;opacity:.6;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
 .cam{position:absolute;right:-16px;bottom:-14px;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:var(--sh-1)}
 .cam svg{width:20px;height:20px}
+button.cam{border:0;padding:0}
 .thumbs{display:flex;gap:8px;overflow-x:auto;margin:18px 0 6px;padding:6px 2px}
 .th{position:relative;flex:none}
 .th > button:first-child{width:58px;height:58px;padding:0;border:none;border-radius:var(--r-1);overflow:hidden;display:block}

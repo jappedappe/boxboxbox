@@ -1,6 +1,6 @@
 /* Storrrage offline cache. Only the app's own files are cached;
    calls to Supabase (login, sync, statistics) always go straight to the network. */
-const CACHE = 'storrrage-2026-11-09.3';
+const CACHE = 'storrrage-2026-11-10.1';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
   './fonts/Montserrat-Bold.ttf', './fonts/Poppins-Bold.ttf', './fonts/Poppins-Italic.ttf',
   './fonts/Poppins-Medium.ttf', './fonts/Poppins-Regular.ttf', './fonts/Poppins-SemiBold.ttf'];
