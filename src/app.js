@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-10.3';
+const APP_VERSION = '2026-11-10.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -5429,7 +5429,7 @@ function menuSheet(){
     ${row('trash', ICON.trash, tr('trash'), trash.length ? `<b class="count muted">${trash.length}</b>` : '')}
     ${cloud.admin ? row('admin', ICON.chart, tr('adminTitle')) : ''}
     ${cloud.session ? row('logout', ICON.logout, tr('logout'), cloud.email ? `<small class="mmail">${esc(cloud.email)}</small>` : '') : row('cloud', ICON.login, tr('logIn'))}
-    <p class="proof center" style="margin:10px 0 0">${tr('version', APP_VERSION)}</p></div>`);
+    <p class="proof center" id="verTxt" style="margin:10px 0 0">${tr('version', APP_VERSION)}</p></div>`);
   sheet.querySelector('.mlist').onclick = e => {
     const m = e.target.closest('[data-m]'); if (!m) return; const k = m.dataset.m;
     if (k === 'settings'){ closeSheet(); return navigate({name: 'settings'}); }
@@ -8530,4 +8530,24 @@ if (location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 init();
+
+/* Diagnostics: tap the version in the menu five times to see what takes focus away from the name field. */
+(function diag(){
+  const lines = []; let panel = null, taps = 0;
+  const t0 = performance.now();
+  const log = s => { lines.push(`${((performance.now() - t0) / 1000).toFixed(2)}s ${s}`); if (lines.length > 80) lines.shift(); if (panel) panel.textContent = lines.join('\n'); };
+  const who = el => el ? (el.tagName + (el.id ? '#' + el.id : '') + (el.dataset && el.dataset.act ? '[' + el.dataset.act + ']' : '')) : 'none';
+  document.addEventListener('focusin', e => log('focusin ' + who(e.target)), true);
+  document.addEventListener('focusout', e => log('focusout ' + who(e.target) + ' -> ' + who(e.relatedTarget) + ' (active: ' + who(document.activeElement) + ')'), true);
+  document.addEventListener('visibilitychange', () => log('visibility ' + document.visibilityState), true);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => log('viewport ' + Math.round(visualViewport.height) + 'px'));
+  const d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  Object.defineProperty(app, 'innerHTML', {configurable: true, get(){ return d.get.call(this); }, set(v){ log('APP rebuilt (view ' + view.name + ', focus ' + who(document.activeElement) + ')'); return d.set.call(this, v); }});
+  document.addEventListener('click', e => {
+    if (!e.target.closest || !e.target.closest('#verTxt')) return;
+    if (++taps < 5) return; taps = 0;
+    if (!panel){ panel = document.createElement('pre'); panel.id = 'dbgPanel'; panel.style.cssText = 'position:fixed;left:0;right:0;top:0;max-height:45vh;overflow:auto;margin:0;padding:8px;z-index:99;background:#000;color:#0f0;font:11px/1.35 monospace;white-space:pre-wrap'; document.body.appendChild(panel); }
+    log('--- panel opened ---'); panel.textContent = lines.join('\n');
+  }, true);
+})();
 })();
