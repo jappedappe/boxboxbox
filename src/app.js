@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-10.4';
+const APP_VERSION = '2026-11-10.5';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -8255,7 +8255,7 @@ app.addEventListener('change', e => {
 });
 app.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-rk-wall],[data-rk-jump]')){ e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', {bubbles: true})); } });
 let rkResizeT = null;
-window.addEventListener('resize', () => { if (placeView !== 'racks') return; clearTimeout(rkResizeT); rkResizeT = setTimeout(() => { if (!rkDrag && !(sheet && sheet.open)) render(); }, 200); });
+window.addEventListener('resize', () => { if (placeView !== 'racks' || view.name === 'item') return; clearTimeout(rkResizeT); rkResizeT = setTimeout(() => { if (!rkDrag && !(sheet && sheet.open)) render(); }, 200); });
 
 /* ---------- Danish, Norwegian and Finnish for newer texts (admin screens stay English) ---------- */
 Object.assign(STR.da, {
