@@ -13885,7 +13885,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-10.5';
+const APP_VERSION = '2026-11-10.6';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -22417,7 +22417,7 @@ init();
   const d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
   Object.defineProperty(app, 'innerHTML', {configurable: true, get(){ return d.get.call(this); }, set(v){ log('APP rebuilt (view ' + view.name + ', focus ' + who(document.activeElement) + ')'); return d.set.call(this, v); }});
   document.addEventListener('click', e => {
-    if (!e.target.closest || !e.target.closest('#verTxt')) return;
+    if (!cloud.admin || !e.target.closest || !e.target.closest('#verTxt')) return;
     if (++taps < 5) return; taps = 0;
     if (!panel){ panel = document.createElement('pre'); panel.id = 'dbgPanel'; panel.style.cssText = 'position:fixed;left:0;right:0;top:0;max-height:45vh;overflow:auto;margin:0;padding:8px;z-index:99;background:#000;color:#0f0;font:11px/1.35 monospace;white-space:pre-wrap'; document.body.appendChild(panel); }
     log('--- panel opened ---'); panel.textContent = lines.join('\n');
