@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-18.2';
+const APP_VERSION = '2026-11-18.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -3847,33 +3847,43 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   const banned = existing ? new Set([existing.id, ...descendants(existing.id).map(x => x.id)]) : new Set();
   const parentOpts = pid => `<option value="">${esc(tr('topLevel', placeName(pid)))}</option>` + boxesIn(pid).filter(x => !banned.has(x.id)).sort(byCode).map(x => `<option value="${esc(x.id)}" ${x.id === b.parentId ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)}</option>`).join('');
   let saved = false;
-  openSheet(`<h3>${existing ? tr('editBoxH') : tr('newBox')} <span class="chip" id="bCode">${esc(b.code)}</span></h3>
-    <label class="field compact"><span>${tr('name')}</span><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}"></label>
-    <div class="boxgrp"><div class="boxgrp-lab">${tr('boxGrpWhere')}</div>
-    <div class="row2">
-      <label class="field"><span>${tr('storagePlace')}</span><select id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-      <label class="field"><span>${tr('inside')}</span><select id="bParent">${parentOpts(b.placeId)}</select></label>
+  openSheet(`<div class="bx-sheet">
+    <h3 class="bx-title">${existing ? tr('editBoxH') : tr('newBox')} <span class="chip" id="bCode">${esc(b.code)}</span></h3>
+    <section class="bx-card bx-hero">
+      <span class="bx-art"><svg width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"/><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#D9A56A"/></svg></span>
+      <label class="bx-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}" aria-label="${esc(tr('name'))}"></label>
+    </section>
+    <div class="bx-section">${tr('boxGrpWhere')}</div>
+    <section class="bx-card bx-rows">
+      <label class="bx-row">${ic('place')}<span class="bx-lab">${tr('storagePlace')}</span><select class="bx-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+      <label class="bx-row">${ic('inside')}<span class="bx-lab">${tr('inside')}</span><select class="bx-in" id="bParent">${parentOpts(b.placeId)}</select></label>
+      <label class="bx-row">${ic('zone')}<span class="bx-lab">${tr('zone')}</span><input class="bx-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
+    </section>
+    <div class="bx-section">${tr('boxGrpWhat')}</div>
+    <section class="bx-card bx-rows">
+      <label class="bx-row">${ic('status')}<span class="bx-lab">${tr('status')}</span><select class="bx-in" id="bStatus">${statusOptions(b.status || '')}</select></label>
+      <label class="bx-row" id="bCustomRow" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}><span class="bx-lab">${tr('status')}</span><input class="bx-in" id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}"></label>
+      <label class="bx-row">${ic('type')}<span class="bx-lab">${tr('rk_boxType')}</span><select class="bx-in" id="bType">${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select></label>
+      <div class="bx-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="bx-row"><span class="bx-lab">${tr('rk_' + k)} (cm)</span><input class="bx-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
+    </section>
+    <div class="bx-section">${tr('notes')}</div>
+    <section class="bx-card bx-notes"><textarea id="bNotes" aria-label="${esc(tr('notes'))}">${esc(b.notes)}</textarea></section>
+    <div class="bx-section">${tr('boxPhoto')}</div>
+    <div class="bx-card" id="phwrap"></div>
+    <div class="bx-foot">
+      <button class="btn primary bx-save" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
+      <div class="bx-foot-row">
+        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
+        <button class="btn" id="bCancel">${tr('cancel')}</button>
+      </div>
     </div>
-    <label class="field"><span>${tr('zone')}</span><input id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
-    </div>
-    <div class="boxgrp"><div class="boxgrp-lab">${tr('boxGrpWhat')}</div>
-    <label class="field"><span>${tr('status')}</span><select id="bStatus">${statusOptions(b.status || '')}</select><input id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}></label>
-    <label class="field"><span>${tr('rk_boxType')}</span><select id="bType">${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select></label>
-    <div class="rkdims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="field"><span>${tr('rk_' + k)} (cm)</span><input id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
-    </div>
-    <label class="field"><span>${tr('notes')}</span><textarea id="bNotes">${esc(b.notes)}</textarea></label>
-    <div class="field"><span>${tr('boxPhoto')}</span><div id="phwrap"></div></div>
-    <div class="sheet-foot">
-      ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button><span class="spacer"></span>` : ''}
-      <button class="btn quiet" id="bCancel">${tr('cancel')}</button>
-      ${existing ? '' : `<button class="btn quiet" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
-      <button class="btn primary" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
-    </div>`, () => { if (!saved) ps.discard(); });
+  </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
   $('#bPlace').onchange = e => { const pid = e.target.value; $('#bParent').innerHTML = parentOpts(pid); if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; } };
   $('#bStatus').onchange = e => {
     const custom = $('#bCustomStatus');
     custom.hidden = e.target.value !== '__custom__' && (!e.target.value || !!STATUS_KEYS[e.target.value]);
+    $('#bCustomRow').hidden = custom.hidden;
     if (e.target.value === '__custom__'){ custom.hidden = false; custom.focus(); }
   };
   $('#bCancel').onclick = closeSheet;
