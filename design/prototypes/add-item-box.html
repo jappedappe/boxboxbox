@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>boxboxbox – Add (item or box)</title>
+<style>
+  :root{--brand:#6747c4;--brand-soft:#ece8fa;--bg:#f6f5fa;--line:#e6e2f1;--text:#1f1b2e;--muted:#7b7591;--amber:#e0871a;--amber-soft:#fdf0de}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Poppins,system-ui,-apple-system,sans-serif;background:#d9d5e6;color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px 12px}
+  .seg{display:flex;gap:4px;background:#fff;padding:4px;border-radius:999px}
+  .seg button{border:none;background:none;padding:6px 12px;border-radius:999px;font:600 12px Poppins,system-ui,sans-serif;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--brand);color:#fff}
+  .phone{position:relative;width:390px;max-width:100%;height:min(844px,calc(100vh - 110px));background:var(--bg);border-radius:36px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(40,20,90,.25)}
+  header{display:flex;align-items:center;gap:8px;padding:14px 16px 10px;background:#fff;border-bottom:1px solid var(--line)}
+  header .title{flex:1;min-width:0;font-weight:600;font-size:16px}
+  header .crumb{font-size:12px;color:var(--muted);font-weight:400}
+  .icon-btn{width:36px;height:36px;border-radius:12px;border:none;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--text)}
+  main{flex:1;overflow-y:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:8px}
+  .card{background:#fff;border-radius:20px;padding:12px;border:1px solid var(--line)}
+  .section-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 4px}
+  .hero{display:grid;grid-template-columns:64px 1fr;column-gap:12px;row-gap:8px;align-items:center}
+  .photo{width:64px;height:64px;border-radius:16px;position:relative;overflow:hidden;cursor:pointer;padding:0;font:600 11px Poppins,system-ui,sans-serif;color:var(--brand);background:#fff;border:1.5px dashed #b9b0d6;display:flex;align-items:center;justify-content:center}
+  .photo .empty{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
+  .photo .icon,.photo .img{display:none;position:absolute;inset:0}
+  .photo.state-icon,.photo.state-photo{border:none}
+  .photo.state-empty .empty{display:flex}
+  .photo.state-empty .icon,.photo.state-empty .img{display:none}
+  .photo.state-icon .empty,.photo.state-photo .empty{display:none}
+  .photo.state-icon .icon{display:flex;background:var(--brand-soft);align-items:center;justify-content:center}
+  .photo.state-photo .img{display:flex;background:linear-gradient(160deg,#9cc4b1,#4f8270);align-items:center;justify-content:center}
+  .name{display:flex;align-items:center;border-bottom:2px solid var(--brand);padding-bottom:4px;min-width:0}
+  .name input{flex:1;min-width:0;border:none;outline:none;font:600 16px Poppins,system-ui,sans-serif;color:var(--text);background:transparent;text-align:center}
+  .name input::placeholder{color:#b3aec4;font-weight:500}
+  .act{height:26px;padding:0 6px;border-radius:999px;border:none;background:var(--brand-soft);color:var(--brand);font:600 10px Poppins,system-ui,sans-serif;white-space:nowrap;cursor:pointer;justify-self:start}
+  .status{display:flex;gap:8px;min-width:0}
+  .pill{flex:1 1 0;min-width:0;height:34px;display:flex;align-items:center;justify-content:flex-start;gap:6px;padding:0 10px;border-radius:999px;border:1.5px solid var(--line);background:#fff;color:var(--muted);font:600 12px Poppins,system-ui,sans-serif;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+  .pill span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pill svg{flex:none}
+  .pill[aria-pressed="true"]{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
+  .where-line{display:flex;align-items:center;gap:8px;background:none;border:none;padding:0 4px;font:500 13px Poppins,system-ui,sans-serif;color:var(--muted);cursor:pointer;text-align:left;width:max-content;max-width:100%}
+  .where-line span{min-width:0;white-space:nowrap}
+  .where-line .change{flex:none;color:var(--brand);font-weight:600;background:var(--brand-soft);border-radius:999px;padding:4px 10px}
+  .rows{background:#fff;border-radius:20px;border:1px solid var(--line)}
+  .row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:none;border-top:1px solid var(--line);background:none;font:400 15px Poppins,system-ui,sans-serif;color:var(--text);text-align:left;cursor:pointer}
+  .rows > .row:first-child{border-top:none}
+  .row .ic{width:30px;height:30px;border-radius:10px;background:var(--bg);display:grid;place-items:center;color:var(--muted);flex:none}
+  .row .label{flex:1;min-width:0}
+  .row .val{color:var(--muted);font-size:14px}
+  .row .val.set{color:var(--text);font-weight:500}
+  .row input{border:none;border-bottom:1.5px solid var(--brand);outline:none;background:transparent;font:500 14px Poppins,system-ui,sans-serif;color:var(--text);text-align:right;width:140px}
+  .chev{color:#b3aec4;flex:none;transition:transform .25s ease}
+  .row.active .chev,.row.open .chev{transform:rotate(90deg);color:var(--brand)}
+  .row.toggle .label{color:var(--brand);font-weight:600}
+  .row.fewer .label{color:var(--brand);font-weight:600}
+  .row.fewer .chev{transform:rotate(-90deg);color:var(--brand)}
+  .row.is-hidden{display:none}
+  .fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+  .fold.open{grid-template-rows:1fr}
+  .fold > div{overflow:hidden;min-height:0}
+  .switch{width:46px;height:28px;border-radius:999px;background:#d6d1e4;position:relative;flex:none;transition:background .2s}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch[aria-checked="true"]{background:var(--brand)}
+  .switch[aria-checked="true"]::after{transform:translateX(18px)}
+  .periods{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px 14px;border-top:1px solid var(--line)}
+  .periods button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font:500 13px Poppins,system-ui,sans-serif;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .periods button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+  .tags{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 2px}
+  .tag{font-size:13px;background:#f0edf7;border-radius:999px;padding:5px 10px 5px 12px;color:var(--text);display:inline-flex;align-items:center;gap:4px}
+  .tag .x{border:none;background:none;font-size:15px;color:var(--muted);cursor:pointer;line-height:1;padding:0 2px}
+  .tag.add{background:none;border:1.5px dashed #c9c3da;color:var(--muted);cursor:pointer;font:500 13px Poppins,system-ui,sans-serif}
+  .tag.sugg{border:none;cursor:pointer;font:500 13px Poppins,system-ui,sans-serif}
+  .share-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font:600 14px Poppins,system-ui,sans-serif;color:var(--brand);cursor:pointer}
+  footer{background:#fff;border-top:1px solid var(--line);padding:10px 16px 20px;display:flex;flex-direction:column;gap:8px}
+  .foot-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn-ghost{padding:11px 8px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font:600 13px Poppins,system-ui,sans-serif;color:var(--text);cursor:pointer}
+  .save{width:100%;padding:15px;border-radius:16px;border:none;background:var(--brand);color:#fff;font:600 16px Poppins,system-ui,sans-serif;cursor:pointer}
+  .link{align-self:center;background:none;border:none;color:var(--muted);font:500 13px Poppins,system-ui,sans-serif;cursor:pointer;padding:4px}
+  .scrim{position:absolute;inset:0;background:rgba(20,10,40,.35);display:flex;align-items:flex-end;z-index:5}
+  .scrim[hidden]{display:none}
+  .sheet{width:100%;max-height:82%;overflow-y:auto;background:#fff;border-radius:22px 22px 0 0;padding:10px 18px 22px;display:flex;flex-direction:column;gap:10px}
+  .grab{width:40px;height:4px;border-radius:2px;background:#d6d1e4;align-self:center}
+  .sheet-title{font-weight:600;font-size:16px;text-align:center}
+  .sheet-opt{padding:13px;border-radius:14px;border:1.5px solid var(--line);background:#fff;font:600 15px Poppins,system-ui,sans-serif;color:var(--text);cursor:pointer}
+  .opt{padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:#fff;font:500 14px Poppins,system-ui,sans-serif;text-align:left;cursor:pointer;color:var(--text);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .opt[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft)}
+  .opt .count{font-size:12px;color:var(--muted)}
+  .pick-list{display:flex;flex-direction:column;gap:6px}
+  .sugg-label{font-size:12px;color:var(--muted);font-weight:600}
+  .tag-input{width:100%;padding:13px;border-radius:14px;border:1.5px solid var(--line);font:500 15px Poppins,system-ui,sans-serif;outline:none}
+  .att-item{padding:9px 12px;background:var(--bg);border-radius:12px;font-size:14px;margin-bottom:6px}
+  .att-empty{font-size:13px;color:var(--muted);text-align:center;padding:6px}
+  .lang-row{display:flex;gap:8px;align-items:center}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tile{aspect-ratio:1/1;border-radius:20px;background:#fff;border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;cursor:pointer;font:600 15px Poppins,system-ui,sans-serif;color:var(--text);text-align:center}
+  .tile .ring{width:52px;height:52px;border-radius:18px;background:var(--brand-soft);display:grid;place-items:center;color:var(--brand)}
+  .tile .sub{font-size:11px;color:var(--muted);font-weight:400;line-height:1.3}
+  .multi{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:18px;background:#fff;border:1.5px solid var(--line);cursor:pointer;text-align:left;font:600 14px Poppins,system-ui,sans-serif;color:var(--text)}
+  .multi .ring{width:34px;height:34px;border-radius:12px;background:var(--brand-soft);display:grid;place-items:center;color:var(--brand);flex:none}
+  .multi .sub{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+  .beta{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;padding:1px 6px;margin-left:4px;border-radius:999px;background:var(--brand);color:#fff;vertical-align:middle}
+  .dev{font-size:12px;color:var(--muted)}
+  .note{font-size:12px;color:var(--muted);padding:0 2px}
+
+  .type-seg{display:flex}
+  .type-seg button{flex:1;padding:6px 10px;font-size:12px}
+  .phone.mode-new .in-edit{display:none}
+  .phone.mode-edit .in-new{display:none}
+  .phone.mode-edit .pill.in-edit{display:flex}
+  .phone.mode-new .type-seg.in-new{display:flex}
+  .phone.type-item .only-box,.phone.type-item .only-box-sheet,.phone.type-item .only-box-foot{display:none}
+  .phone.type-box .only-item,.phone.type-box .only-item-foot{display:none}
+  .phone.type-item .only-item-foot{display:flex;flex-direction:column;gap:8px}
+  .phone.type-box .only-box-foot{display:flex;flex-direction:column;gap:8px}
+  .phone:not(.type-box) .only-box-foot{display:none}
+  .phone:not(.type-item) .only-item-foot{display:none}
+  .phone.type-box .share-btn,.phone.type-box #remCard,.phone.type-box .section-label.rm{display:none}
+  .phone .only-item.section-label{display:block}
+  .phone.type-box section.only-item{display:none}
+  .phone.type-item section.only-item{display:block}
+  .phone .row.only-box,.phone .row.only-item{}
+  #sizeVal .dev{font-size:12px}
+  .mode-switch{display:flex;gap:4px;background:#fff;padding:4px;border-radius:999px}
+  .hdr-ic{width:34px;height:34px;border-radius:12px;background:var(--brand-soft);display:grid;place-items:center;flex:none}
+  .badge{font:700 11px Poppins,system-ui,sans-serif;color:var(--brand);letter-spacing:.02em}
+  header .title{flex:1;min-width:0;font-weight:600;font-size:16px;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cancel-grey{align-self:center;background:none;border:none;color:var(--muted);font:500 14px Poppins,system-ui,sans-serif;cursor:pointer;padding:4px}
+  .btn-ghost{width:100%}
+  #primaryBtn{margin-top:0}
+</style>
+</head>
+<body>
+<div class="seg" id="langSeg" role="group" aria-label="Language">
+  <button data-lang="en">EN</button><button data-lang="sv">SV</button><button data-lang="da">DA</button><button data-lang="nb">NB</button><button data-lang="fi">FI</button>
+</div>
+<div class="seg" id="previewSeg" role="group" aria-label="Preview">
+  <button data-mode="new" class="on">New (last used)</button><button data-mode="edit-item">Edit item</button><button data-mode="edit-box">Edit box</button>
+</div>
+<div class="phone mode-new type-item" id="phone">
+
+  <header>
+    <div class="hdr-ic" id="hdrIc"></div>
+    <div class="title"><span id="ttl"></span></div>
+    <button class="icon-btn" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </header>
+  <main>
+    <section class="card">
+      <div class="hero">
+        <button class="photo state-empty" id="photo" aria-label="Photo" data-open-sheet="sheetPhoto">
+          <span class="empty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span data-i18n="photo"></span></span>
+          <span class="icon" id="iconArt"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6747c4" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span>
+          <span class="img"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span>
+        </button>
+        <label class="name"><input data-i18n-ph="whatIsIt" id="nameInp" placeholder="What is it?" value="Vinterdäck 205/55 R16" aria-label="Name"></label>
+        <div style="grid-column:1"><button class="act" id="pickIcon" data-i18n="pickIcon"></button></div>
+        <div class="status" style="grid-column:2" id="heroRight">
+          <div class="seg type-seg in-new" id="typeSeg2" role="group" aria-label="Type">
+            <button data-type="item"><span data-i18n="typeItem"></span></button><button data-type="box"><span data-i18n="typeBox"></span></button>
+          </div>
+          <button class="pill in-edit" id="takeout" aria-pressed="false" data-toggle><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v5a2 2 0 002 2h12a2 2 0 002-2v-5"/></svg><span id="takeoutLabel" data-i18n="takeOut"></span></button>
+          <button class="pill in-edit" id="fav" aria-pressed="false" data-toggle><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="favLabel" data-i18n="favorite"></span></button>
+        </div>
+      </div>
+    </section>
+
+    <button class="where-line" data-open-sheet="sheetPlace"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span id="whereText"></span><span class="change" data-i18n="change"></span></button>
+
+    <div class="section-label" data-i18n="details"></div>
+    <section class="rows">
+      <button class="row only-box" data-open-sheet="sheetSize" id="sizeRow"><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></div><div class="label" data-i18n="size"></div><div class="val set" id="sizeVal"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg></div><div class="label" data-i18n="brand"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 6v2M12 16v2"/></svg></div><div class="label" data-i18n="value"></div><div class="val set">1 200 kr</div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="row only-box" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg></div><div class="label" data-i18n="status"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="row" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v16H5zM9 9h6M9 13h6"/></svg></div><div class="label" data-i18n="notes"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <button class="row toggle" id="moreBtn"><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><span class="label" id="moreLabel"></span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="fold" id="moreFold"><div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></div><div class="label" data-i18n="size"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 7h16M4 17h10"/></svg></div><div class="label" data-i18n="quantity"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></div><div class="label" data-i18n="warranty"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/></svg></div><div class="label" data-i18n="model"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg></div><div class="label" data-i18n="whose"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div><div class="label" data-i18n="season"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-item" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V6z"/></svg></div><div class="label" data-i18n="serial"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-box" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V6z"/></svg></div><div class="label" data-i18n="material"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row only-box" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 7h16M4 17h10"/></svg></div><div class="label" data-i18n="weight"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <button class="row fewer" id="fewerBtn"><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></div><span class="label" data-i18n="fewer"></span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div></div>
+    </section>
+
+    <section class="only-item">
+      <div class="section-label" data-i18n="remind"></div>
+      <section class="rows" id="remCard">
+        <div class="row" data-field><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><div class="label" data-i18n="lastUsed"></div><div class="val add" data-i18n="add"></div><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="row" id="remRow" role="button"><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 004 0"/></svg></div><div class="label" data-i18n="remind"></div><span class="switch" id="sw" aria-checked="false"></span></div>
+        <div class="fold" id="remFold"><div>
+          <div class="periods">
+            <button aria-pressed="false" data-i18n="m3"></button><button aria-pressed="true" data-i18n="m6"></button><button aria-pressed="false" data-i18n="y1"></button><button aria-pressed="false" data-i18n="y2"></button><button aria-pressed="false" data-i18n="pickDate"></button>
+          </div>
+        </div></div>
+      </section>
+      <div class="section-label" data-i18n="attachments"></div>
+      <section class="rows">
+        <button class="row" id="attRow" data-open-sheet="sheetAtt"><div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11l-8.5 8.5a5 5 0 01-7-7L14 4a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 7"/></svg></div><div class="label" data-i18n="receipt"></div><span class="val" id="attCount">0</span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </section>
+    </section>
+
+    <div class="section-label" data-i18n="tags"></div>
+    <div class="tags" id="tags">
+      <span class="tag">Winter <button class="x" aria-label="Remove tag">×</button></span>
+      <button class="tag add" data-open-sheet="sheetTag" data-i18n="addTag"></button>
+    </div>
+
+  </main>
+  <footer>
+    <div class="foot-row"><button class="btn-ghost" id="smallA"></button><button class="btn-ghost" id="smallB"></button></div>
+    <button class="save" id="primaryBtn"></button>
+    <button class="cancel-grey" data-i18n="cancel"></button>
+  </footer>
+
+<div class="scrim" id="sheetPhoto" hidden><div class="sheet"><div class="grab"></div><div class="sheet-title" data-i18n="photo"></div><button class="sheet-opt" data-i18n="takePhoto"></button><button class="sheet-opt" data-i18n="chooseFile"></button></div></div><div class="scrim" id="sheetPlace" hidden><div class="sheet"><div class="grab"></div><div class="sheet-title" data-i18n="place"></div><div class="pick-list" id="placeOpts"></div><div class="only-box-sheet"><div class="sugg-label" data-i18n="inside"></div><div class="pick-list" id="boxList"><button class="opt" aria-pressed="true" data-box="alone" data-i18n="alone"></button><button class="opt" aria-pressed="false" data-box="B-003 · Julpynt">B-003 · Julpynt</button><button class="opt" aria-pressed="false" data-box="B-008 · Kök">B-008 · Kök</button></div></div><button class="sheet-opt" data-close-sheet data-i18n="done"></button></div></div><div class="scrim" id="sheetSize" hidden><div class="sheet"><div class="grab"></div><div class="sheet-title" data-i18n="size"></div><div class="pick-list" id="sizeList"><button class="opt" data-size="S" aria-pressed="false">S</button><button class="opt" data-size="M" aria-pressed="true">M <span class="count" data-i18n="sizeDefault"></span></button><button class="opt" data-size="L" aria-pressed="false">L</button></div><button class="sheet-opt" id="sizeDone" data-i18n="done"></button></div></div><div class="scrim" id="sheetAtt" hidden><div class="sheet"><div class="grab"></div><div class="sheet-title" data-i18n="receipt"></div><div id="attList"><div class="att-empty" data-i18n="nothing"></div></div><button class="sheet-opt" id="takePhotoOpt" data-i18n="takePhoto"></button><button class="sheet-opt" id="chooseFileOpt" data-i18n="chooseFile"></button><button class="sheet-opt" data-close-sheet data-i18n="done"></button></div></div><div class="scrim" id="sheetTag" hidden><div class="sheet"><div class="grab"></div><div class="sheet-title" data-i18n="addTag"></div><input class="tag-input" placeholder="+ Tag"><div class="sugg-label" data-i18n="tags"></div><div class="tags"><button class="tag sugg">Winter</button><button class="tag sugg">Garage</button><button class="tag sugg">Kids</button><button class="tag sugg">Sport</button></div><button class="sheet-opt" data-close-sheet data-i18n="done"></button></div></div>
+</div>
+<script>
+const dict = {
+    en: {model:"Model",whose:"Whose & status",season:"Season",lastUsed:"Last time used",share:"Share where it is",newItem:"New item",inVinden:"in Vinden",photo:"Photo",pickIcon:"Pick an icon",scanBarcode:"Scan barcode",takeOut:"Take out",takenOut:"Taken out",favorite:"Favorite",favorited:"Favorited",where:"Vinden · not in a box",change:"Change",details:"Details",brand:"Brand",value:"Value",notes:"Notes",size:"Size",quantity:"Quantity",warranty:"Warranty until",serial:"Serial number",add:"Add",more:"More details",fewer:"Fewer details",remind:"Remind if unused",pickDate:"Pick date",attachments:"Attachments",receipt:"Receipt, warranty or manual",nothing:"Nothing attached yet",takePhoto:"Take photo",chooseFile:"Choose file",done:"Done",tags:"Tags",addTag:"+ Tag",save:"Save",saveAdd:"Save and add another",whatIsIt:"What is it?"},
+    sv: {model:"Modell",whose:"Ägare & status",season:"Säsong",lastUsed:"Senast använd",share:"Dela var den finns",newItem:"Ny sak",inVinden:"i Vinden",photo:"Foto",pickIcon:"Välj ikon",scanBarcode:"Skanna streckkod",takeOut:"Ta ut",takenOut:"Utplockad",favorite:"Favorit",favorited:"Favoriserad",where:"Vinden · inte i en låda",change:"Ändra",details:"Detaljer",brand:"Märke",value:"Värde",notes:"Anteckningar",size:"Storlek",quantity:"Antal",warranty:"Garanti till",serial:"Serienummer",add:"Lägg till",more:"Fler detaljer",fewer:"Färre detaljer",remind:"Påminn om oanvänd",pickDate:"Välj datum",attachments:"Bilagor",receipt:"Kvitto, garanti eller manual",nothing:"Inget bifogat ännu",takePhoto:"Ta foto",chooseFile:"Välj fil",done:"Klar",tags:"Taggar",addTag:"+ Tagg",save:"Spara",saveAdd:"Spara och lägg till ny",whatIsIt:"Vad är det?"},
+    da: {newItem:"Ny ting",inVinden:"i Vinden",photo:"Foto",pickIcon:"Vælg ikon",takeOut:"Tag ud",takenOut:"Udtaget",favorite:"Favorit",favorited:"Favoriseret",where:"Vinden · ikke i en kasse",change:"Ændr",details:"Detaljer",brand:"Mærke",value:"Værdi",notes:"Noter",size:"Størrelse",quantity:"Antal",warranty:"Garanti til",serial:"Serienummer",add:"Tilføj",more:"Flere detaljer",fewer:"Færre detaljer",remind:"Påmind hvis ubrugt",pickDate:"Vælg dato",attachments:"Bilag",receipt:"Kvittering, garanti eller manual",nothing:"Intet vedhæftet endnu",takePhoto:"Tag billede",chooseFile:"Vælg fil",done:"Færdig",tags:"Tags",addTag:"+ Tag",save:"Gem",saveAdd:"Gem og tilføj ny",whatIsIt:"Hvad er det?",model:"Model",whose:"Ejer & status",season:"Sæson",lastUsed:"Sidst brugt",share:"Del hvor den er",scanBarcode:"Scan stregkode"},
+    nb: {newItem:"Ny ting",inVinden:"i Vinden",photo:"Foto",pickIcon:"Velg ikon",takeOut:"Ta ut",takenOut:"Tatt ut",favorite:"Favoritt",favorited:"Favorisert",where:"Vinden · ikke i en eske",change:"Endre",details:"Detaljer",brand:"Merke",value:"Verdi",notes:"Notater",size:"Størrelse",quantity:"Antall",warranty:"Garanti til",serial:"Serienummer",add:"Legg til",more:"Flere detaljer",fewer:"Færre detaljer",remind:"Påminn hvis ubrukt",pickDate:"Velg dato",attachments:"Vedlegg",receipt:"Kvittering, garanti eller bruksanvisning",nothing:"Ingenting vedlagt ennå",takePhoto:"Ta bilde",chooseFile:"Velg fil",done:"Ferdig",tags:"Tagger",addTag:"+ Tagg",save:"Lagre",saveAdd:"Lagre og legg til ny",whatIsIt:"Hva er det?",model:"Modell",whose:"Eier & status",season:"Sesong",lastUsed:"Sist brukt",share:"Del hvor den er",scanBarcode:"Skann strekkode"},
+    fi: {newItem:"Uusi tavara",inVinden:"paikassa Vinden",photo:"Kuva",pickIcon:"Valitse kuvake",takeOut:"Ota ulos",takenOut:"Otettu ulos",favorite:"Suosikki",favorited:"Lisätty suosikkeihin",where:"Vinden · ei laatikossa",change:"Muokkaa",details:"Tiedot",brand:"Merkki",value:"Arvo",notes:"Muistiinpanot",size:"Koko",quantity:"Määrä",warranty:"Takuu asti",serial:"Sarjanumero",add:"Lisää",more:"Lisätiedot",fewer:"Vähemmän tietoja",remind:"Muistuta, jos ei käytetä",pickDate:"Valitse päivä",attachments:"Liitteet",receipt:"Kuitti, takuu tai ohje",nothing:"Ei vielä liitteitä",takePhoto:"Ota kuva",chooseFile:"Valitse tiedosto",done:"Valmis",tags:"Tunnisteet",addTag:"+ Tunniste",save:"Tallenna",saveAdd:"Tallenna ja lisää uusi",whatIsIt:"Mikä tämä on?",model:"Malli",whose:"Omistaja ja tila",season:"Kausi",lastUsed:"Viimeksi käytetty",share:"Jaa missä se on",scanBarcode:"Skannaa viivakoodi"}
+  };
+  dict.en.typeItem = "Item";
+  dict.sv.typeItem = "Sak";
+  dict.da.typeItem = "Ting";
+  dict.nb.typeItem = "Ting";
+  dict.fi.typeItem = "Tavara";
+  dict.en.typeBox = "Box";
+  dict.sv.typeBox = "Låda";
+  dict.da.typeBox = "Kasse";
+  dict.nb.typeBox = "Eske";
+  dict.fi.typeBox = "Laatikko";
+  dict.en.newThing = "New";
+  dict.sv.newThing = "Ny";
+  dict.da.newThing = "Ny";
+  dict.nb.newThing = "Ny";
+  dict.fi.newThing = "Uusi";
+  dict.en.saveAdd = "Save and add another";
+  dict.sv.saveAdd = "Spara och lägg till ny";
+  dict.da.saveAdd = "Gem og tilføj ny";
+  dict.nb.saveAdd = "Lagre og legg til ny";
+  dict.fi.saveAdd = "Tallenna ja lisää uusi";
+  dict.en.addBoxItem = "Add box + item";
+  dict.sv.addBoxItem = "Låda + sak";
+  dict.da.addBoxItem = "Kasse + ting";
+  dict.nb.addBoxItem = "Eske + ting";
+  dict.fi.addBoxItem = "Laatikko + tavara";
+  dict.en.addAnother = "Add box + another";
+  dict.sv.addAnother = "Låda + en till";
+  dict.da.addAnother = "Kasse + en mere";
+  dict.nb.addAnother = "Eske + en til";
+  dict.fi.addAnother = "Laatikko + uusi";
+  dict.en.addBox = "Add box";
+  dict.sv.addBox = "Lägg till låda";
+  dict.da.addBox = "Tilføj kasse";
+  dict.nb.addBox = "Legg til eske";
+  dict.fi.addBox = "Lisää laatikko";
+  dict.en.sizeDefault = "Default";
+  dict.sv.sizeDefault = "Standard";
+  dict.da.sizeDefault = "Standard";
+  dict.nb.sizeDefault = "Standard";
+  dict.fi.sizeDefault = "Oletus";
+  dict.en.newItemIn = "New item in";
+  dict.sv.newItemIn = "Ny sak i";
+  dict.da.newItemIn = "Ny ting i";
+  dict.nb.newItemIn = "Ny ting i";
+  dict.fi.newItemIn = "Uusi tavara paikassa";
+  dict.en.newBoxIn = "New box in";
+  dict.sv.newBoxIn = "Ny låda i";
+  dict.da.newBoxIn = "Ny kasse i";
+  dict.nb.newBoxIn = "Ny eske i";
+  dict.fi.newBoxIn = "Uusi laatikko paikassa";
+  dict.en.boxNameHint = "Leave empty for box number only";
+  dict.sv.boxNameHint = "Lämna tomt för bara lådnummer";
+  dict.da.boxNameHint = "Lad være tom for kun kassenummer";
+  dict.nb.boxNameHint = "La stå tomt for kun eskenummer";
+  dict.fi.boxNameHint = "Jätä tyhjäksi, jos haluat vain laatikon numeron";
+  dict.en.addItem = "Add item";
+  dict.sv.addItem = "Lägg till sak";
+  dict.da.addItem = "Tilføj ting";
+  dict.nb.addItem = "Legg til ting";
+  dict.fi.addItem = "Lisää tavara";
+  dict.en.addItemBox = "Add item + box";
+  dict.sv.addItemBox = "Sak + låda";
+  dict.da.addItemBox = "Ting + kasse";
+  dict.nb.addItemBox = "Ting + eske";
+  dict.fi.addItemBox = "Tavara + laatikko";
+  dict.en.addItemAnother = "Add item + another";
+  dict.sv.addItemAnother = "Sak + en till";
+  dict.da.addItemAnother = "Ting + en mere";
+  dict.nb.addItemAnother = "Ting + en til";
+  dict.fi.addItemAnother = "Tavara + uusi";
+  dict.en.adding = "Adding to:";
+  dict.sv.adding = "Lägger till i:";
+  dict.da.adding = "Tilføjer til:";
+  dict.nb.adding = "Legges til i:";
+  dict.fi.adding = "Lisätään paikkaan:";
+  dict.en.tbd = "To be decided";
+  dict.sv.tbd = "Ej bestämd än";
+  dict.da.tbd = "Ikke besluttet endnu";
+  dict.nb.tbd = "Ikke bestemt ennå";
+  dict.fi.tbd = "Vielä päättämättä";
+  dict.en.m3 = "3 months";
+  dict.sv.m3 = "3 månader";
+  dict.da.m3 = "3 måneder";
+  dict.nb.m3 = "3 måneder";
+  dict.fi.m3 = "3 kuukautta";
+  dict.en.m6 = "6 months";
+  dict.sv.m6 = "6 månader";
+  dict.da.m6 = "6 måneder";
+  dict.nb.m6 = "6 måneder";
+  dict.fi.m6 = "6 kuukautta";
+  dict.en.y1 = "1 year";
+  dict.sv.y1 = "1 år";
+  dict.da.y1 = "1 år";
+  dict.nb.y1 = "1 år";
+  dict.fi.y1 = "1 vuosi";
+  dict.en.y2 = "2 years";
+  dict.sv.y2 = "2 år";
+  dict.da.y2 = "2 år";
+  dict.nb.y2 = "2 år";
+  dict.fi.y2 = "2 vuotta";
+  dict.en.inside = "Inside";
+  dict.sv.inside = "I";
+  dict.da.inside = "I";
+  dict.nb.inside = "I";
+  dict.fi.inside = "Sisällä";
+  dict.en.alone = "on its own";
+  dict.sv.alone = "fristående";
+  dict.da.alone = "alene";
+  dict.nb.alone = "alene";
+  dict.fi.alone = "itsekseen";
+  dict.en.moveTo = "Move box";
+  dict.sv.moveTo = "Flytta låda";
+  dict.da.moveTo = "Flyt kasse";
+  dict.nb.moveTo = "Flytt eske";
+  dict.fi.moveTo = "Siirrä laatikko";
+  dict.en.place = "Place";
+  dict.sv.place = "Plats";
+  dict.da.place = "Plads";
+  dict.nb.place = "Plass";
+  dict.fi.place = "Paikka";
+  dict.en.status = "Status";
+  dict.sv.status = "Status";
+  dict.da.status = "Status";
+  dict.nb.status = "Status";
+  dict.fi.status = "Tila";
+  dict.en.weight = "Max weight (kg)";
+  dict.sv.weight = "Max vikt (kg)";
+  dict.da.weight = "Maks. vægt (kg)";
+  dict.nb.weight = "Maks vekt (kg)";
+  dict.fi.weight = "Enimmäispaino (kg)";
+  dict.en.material = "Material";
+  dict.sv.material = "Material";
+  dict.da.material = "Materiale";
+  dict.nb.material = "Materiale";
+  dict.fi.material = "Materiaali";
+  dict.en.boxName = "What is the box called?";
+  dict.sv.boxName = "Vad heter lådan?";
+  dict.da.boxName = "Hvad hedder kassen?";
+  dict.nb.boxName = "Hva heter esken?";
+  dict.fi.boxName = "Mikä laatikon nimi on?";
+  dict.en.cancel = "Cancel";
+  dict.sv.cancel = "Avbryt";
+  dict.da.cancel = "Annuller";
+  dict.nb.cancel = "Avbryt";
+  dict.fi.cancel = "Peruuta";
+  dict.en.scanQr = "Scan QR code";
+  dict.sv.scanQr = "Skanna QR-kod";
+  dict.da.scanQr = "Scan QR-kode";
+  dict.nb.scanQr = "Skann QR-kode";
+  dict.fi.scanQr = "Skannaa QR-koodi";
+  dict.en.newBox = "New box";
+  dict.sv.newBox = "Ny låda";
+  dict.da.newBox = "Ny kasse";
+  dict.nb.newBox = "Ny eske";
+  dict.fi.newBox = "Uusi laatikko";
+  dict.en.sizeDefault = "Default";
+  dict.sv.sizeDefault = "Standard";
+  dict.da.sizeDefault = "Standard";
+  dict.nb.sizeDefault = "Standard";
+  dict.fi.sizeDefault = "Oletus";
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  let lang = 'en';
+  const t = k => (dict[lang] && dict[lang][k] !== undefined ? dict[lang][k] : dict.en[k]);
+  function applyI18n(){
+    document.documentElement.lang = lang;
+    $$('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+    $$('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
+    $$('#langSeg button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
+  }
+  $$('#langSeg button').forEach(b => b.addEventListener('click', () => { lang = b.dataset.lang; applyI18n(); if (window.rerender) rerender(); }));
+  function openSheet(id){ document.getElementById(id).hidden = false; }
+  function closeSheet(id){ document.getElementById(id).hidden = true; }
+  $$('.scrim').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.hidden = true; }));
+  $$('[data-open-sheet]').forEach(b => b.addEventListener('click', () => openSheet(b.dataset.openSheet)));
+  $$('[data-close-sheet]').forEach(b => b.addEventListener('click', () => closeSheet(b.closest('.scrim').id)));
+  function togglePressed(b){ const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); return on; }
+  $$('[data-toggle]').forEach(b => b.addEventListener('click', () => { togglePressed(b); if (window.rerender) rerender(); }));
+  $$('[data-single] button').forEach(b => b.addEventListener('click', () => {
+    const group = b.parentElement;
+    group.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+  }));
+  applyI18n();
+
+
+  const lastUsedType = 'item';
+  let type = lastUsedType;
+  let mode = 'new';
+  let place = 'Vinden', inside = 'alone', size = 'M';
+  const PLACES = ['Vinden','Garage','Källare','TBD'];
+  const PHOTO_ITEM_SMALL = `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#6747c4" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>`;
+  const phone = $('#phone');
+  function setType(tp){ type = tp; rerender(); }
+  function rerender(){
+    phone.className = 'phone mode-' + mode + ' type-' + type;
+    $$('#typeSeg button, #typeSeg2 button').forEach(b => b.classList.toggle('on', b.dataset.type === type));
+    $$('#typeSeg button, #typeSeg2 button').forEach(b => b.setAttribute('aria-pressed', b.dataset.type === type));
+    const placeTxt = place === 'TBD' ? t('tbd') : place;
+    if (mode === 'new') {
+      $('#ttl').textContent = (type === 'box' ? t('newBoxIn') : t('newItemIn')) + ' ' + placeTxt;
+      $('#hdrIc').innerHTML = type === 'box' ? '<span class="badge">B-014</span>' : PHOTO_ITEM_SMALL;
+    } else {
+      $('#ttl').textContent = type === 'box' ? 'B-014 · Julpynt' : 'Vinterdäck 205/55 R16';
+      $('#hdrIc').innerHTML = type === 'box' ? '<span class="badge">B-014</span>' : PHOTO_ITEM_SMALL;
+    }
+    $('#primaryBtn').textContent = t(type === 'box' ? 'addBox' : 'addItem');
+    $('#smallA').textContent = t(type === 'box' ? 'addBoxItem' : 'addItemBox');
+    $('#smallB').textContent = t(type === 'box' ? 'addAnother' : 'addItemAnother');
+    $('#primaryBtn').style.display = mode === 'edit' ? 'none' : '';
+    $('#smallA').parentElement.style.display = mode === 'edit' ? 'none' : '';
+    $('#nameInp').placeholder = type === 'box' ? t('boxNameHint') : t('whatIsIt');
+    $('#iconArt').innerHTML = type === 'box' ? `<svg class="boxart" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"/><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#C99A62"/><rect x="10" y="27" width="44" height="2.6" fill="#8C5E2E"/><rect x="28.5" y="16" width="7" height="11" fill="#E6C894"/><rect x="16" y="34" width="32" height="15" rx="2" fill="#FFF7EA"/><text x="32" y="45.4" text-anchor="middle" font-family="Montserrat,Poppins,Arial,sans-serif" font-weight="800" font-size="11" fill="#5A3FB8">14</text></svg>` : `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6747c4" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>`;
+    $('#nameInp').value = type === 'box' ? '' : 'Vinterdäck 205/55 R16';
+    $('#takeoutLabel').textContent = t($('#takeout').getAttribute('aria-pressed') === 'true' ? 'takenOut' : 'takeOut');
+    $('#favLabel').textContent = t($('#fav').getAttribute('aria-pressed') === 'true' ? 'favorited' : 'favorite');
+    $('#moreLabel').textContent = t('more') + ' (' + (type === 'box' ? 2 : 7) + ')';
+    $('#moreBtn').classList.toggle('is-hidden', $('#moreFold').classList.contains('open'));
+    const where = type === 'box' ? (inside === 'alone' ? t('alone') : inside) : t('where').split('·')[1]?.trim() || '';
+    $('#whereText').textContent = (place === 'TBD' ? t('tbd') : place) + ' · ' + where;
+    $('#placeOpts').innerHTML = PLACES.map(p => `<button class="opt" aria-pressed="${p===place}" data-place="${p}">${p==='TBD'?t('tbd'):p}</button>`).join('');
+    $$('#placeOpts [data-place]').forEach(b => b.addEventListener('click', () => { place = b.dataset.place; closeSheet('sheetPlace'); rerender(); }));
+    $$('#boxList .opt').forEach(b => b.setAttribute('aria-pressed', b.dataset.box === inside));
+    $('#sizeVal').innerHTML = size + (size === 'M' ? ' <span class="dev">' + t('sizeDefault') + '</span>' : '');
+    $('#remRow').classList.toggle('open', $('#sw').getAttribute('aria-checked') === 'true');
+    $('#remFold').classList.toggle('open', $('#sw').getAttribute('aria-checked') === 'true');
+  }
+  $$('#typeSeg button, #typeSeg2 button').forEach(b => b.addEventListener('click', () => setType(b.dataset.type)));
+  $$('#boxList .opt').forEach(b => b.addEventListener('click', () => { inside = b.dataset.box; rerender(); }));
+  $$('#sizeList .opt').forEach(b => b.addEventListener('click', () => { $$('#sizeList .opt').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+  $('#sizeDone').addEventListener('click', () => { size = $('#sizeList .opt[aria-pressed="true"]').dataset.size; closeSheet('sheetSize'); rerender(); });
+  $('#moreBtn').addEventListener('click', () => { $('#moreFold').classList.add('open'); rerender(); });
+  $('#fewerBtn').addEventListener('click', () => { $('#moreFold').classList.remove('open'); rerender(); });
+  $('#remRow').addEventListener('click', () => { const sw = $('#sw'); sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true'); rerender(); });
+  $$('#remFold .periods button').forEach(b => b.addEventListener('click', () => { $$('#remFold .periods button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+  $('#photo').addEventListener('click', () => { $('#photo').className = 'photo state-photo'; closeSheet('sheetPhoto'); });
+  $('#pickIcon').addEventListener('click', () => { $('#photo').className = 'photo state-icon'; });
+  let attCount = 0;
+  $$('#sheetAtt .sheet-opt[id]').forEach(b => b.addEventListener('click', () => {
+    $('#attList .att-empty')?.remove(); attCount++;
+    $('#attList').insertAdjacentHTML('beforeend', '<div class="att-item">' + (b.id === 'takePhotoOpt' ? 'Photo.jpg' : 'Receipt.pdf') + '</div>');
+    $('#attCount').textContent = attCount;
+  }));
+  $$('#sheetTag .tag.sugg').forEach(b => b.addEventListener('click', () => { addTag(b.textContent); closeSheet('sheetTag'); }));
+  function addTag(name){
+    const chip = document.createElement('span'); chip.className = 'tag'; chip.textContent = name + ' ';
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '×';
+    x.addEventListener('click', () => chip.remove()); chip.appendChild(x);
+    $('#tags').insertBefore(chip, $('#tags .tag.add'));
+  }
+  $$('.row[data-field]').forEach(row => row.addEventListener('click', () => {
+    if (row.querySelector('input')) return;
+    const val = row.querySelector('.val'); if (!val) return;
+    const input = document.createElement('input'); input.placeholder = '…'; input.value = val.classList.contains('set') ? val.textContent : '';
+    val.replaceWith(input); row.classList.add('active'); input.focus();
+    const commit = () => { const v = input.value.trim(); const span = document.createElement('div'); span.className = v ? 'val set' : 'val add'; span.textContent = v || t('add'); input.replaceWith(span); row.classList.remove('active'); };
+    input.addEventListener('blur', commit); input.addEventListener('keydown', ev => { if (ev.key === 'Enter') input.blur(); });
+  }));
+  // preview controls outside the phone: new / edit item / edit box
+  $$('#previewSeg button').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode; if (mode === 'edit-box') { type = 'box'; mode = 'edit'; } else if (mode === 'edit-item') { type = 'item'; mode = 'edit'; } else { type = lastUsedType; mode = 'new'; }
+    $$('#previewSeg button').forEach(x => x.classList.toggle('on', x === b));
+    rerender();
+  }));
+  window.rerender = rerender;
+  rerender();
+
+</script>
+</body>
+</html>

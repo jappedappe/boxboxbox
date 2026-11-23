@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-10.6';
+const APP_VERSION = '2026-11-18.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2345,7 +2345,7 @@ function renderItem(){
     ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     <div class="whereline">${locationCardHTML(b, it)}<button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
     ${OPT.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="optional-field">${html}<button class="btn quiet small optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('')}
-    ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="chips">${addable.map(k => `<button class="chipbtn" data-addopt="${k}">+ ${esc(tr('f_' + k))}</button>`).join('')}</div></div>` : ''}
+    ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="detrows">${addable.map(k => `<button class="detrow" data-addopt="${k}"><span>${esc(tr('f_' + k))}</span><span class="detplus" aria-hidden="true">+</span></button>`).join('')}</div></div>` : ''}
     <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
     ${remindFields(it)}
     ${n ? `<p class="notifyrow"><span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span><button class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
@@ -3849,14 +3849,18 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   let saved = false;
   openSheet(`<h3>${existing ? tr('editBoxH') : tr('newBox')} <span class="chip" id="bCode">${esc(b.code)}</span></h3>
     <label class="field compact"><span>${tr('name')}</span><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}"></label>
+    <div class="boxgrp"><div class="boxgrp-lab">${tr('boxGrpWhere')}</div>
     <div class="row2">
       <label class="field"><span>${tr('storagePlace')}</span><select id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
       <label class="field"><span>${tr('inside')}</span><select id="bParent">${parentOpts(b.placeId)}</select></label>
     </div>
     <label class="field"><span>${tr('zone')}</span><input id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
+    </div>
+    <div class="boxgrp"><div class="boxgrp-lab">${tr('boxGrpWhat')}</div>
     <label class="field"><span>${tr('status')}</span><select id="bStatus">${statusOptions(b.status || '')}</select><input id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}></label>
     <label class="field"><span>${tr('rk_boxType')}</span><select id="bType">${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select></label>
     <div class="rkdims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="field"><span>${tr('rk_' + k)} (cm)</span><input id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
+    </div>
     <label class="field"><span>${tr('notes')}</span><textarea id="bNotes">${esc(b.notes)}</textarea></label>
     <div class="field"><span>${tr('boxPhoto')}</span><div id="phwrap"></div></div>
     <div class="sheet-foot">
@@ -6227,6 +6231,8 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
   kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
 
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
+Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What'});
+Object.assign(STR.sv, {boxGrpWhere: 'Var', boxGrpWhat: 'Vad'});
 Object.assign(STR.sv, {newThing: 'Ny sak', askAI: 'Fråga · beta', searchWord: 'Sök', newBox: 'Ny låda'});
 
 Object.assign(STR.en, {searchOrAsk: 'Search, or ask Storrrage…', askAbout: q => `Ask Storrrage: “${q}”`});

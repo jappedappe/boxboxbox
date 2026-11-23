@@ -1450,6 +1450,19 @@ textarea.title{display:block;resize:none;overflow:hidden;line-height:1.3;min-hei
 .lgh-fold{min-width:34px}
 .vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
+/* ---------- 2026-11-18.1: item details as expandable rows ---------- */
+.detrows{display:flex;flex-direction:column;border:1.5px solid var(--line);border-radius:var(--r-3);background:var(--surface);overflow:hidden}
+.detrow{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:10px 14px;border:none;border-top:1px solid var(--line);background:none;font-size:var(--fs-3);font-weight:500;color:var(--text);text-align:left;cursor:pointer}
+.detrow:first-child{border-top:none}
+.detrow:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.detplus{color:var(--primary);font-size:var(--fs-4);font-weight:600;line-height:1}
+
+/* ---------- 2026-11-18.2: box form grouped into Where / What cards ---------- */
+.boxgrp{border:1.5px solid var(--line);border-radius:var(--r-3);background:var(--surface);padding:10px 12px 2px;margin:0 0 14px}
+.boxgrp-lab{font-size:var(--fs-1);color:var(--muted);font-weight:600;margin-bottom:8px}
+.boxgrp .field{margin-bottom:12px}
+
+
 /* ---- the style guide page itself (not part of the app) ---- */
 .sg{max-width:880px;margin:0 auto;padding:24px 16px 80px}
 .sg h1{font-family:var(--caps);color:var(--ink);font-size:var(--fs-6);margin:0}
@@ -1485,7 +1498,7 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
 <body>
 <div class="sg">
   <div class="sgbar">
-    <h1>Designsystem</h1><span class="hint">Storrrage 2026-11-10.6</span>
+    <h1>Designsystem</h1><span class="hint">Storrrage 2026-11-18.2</span>
     <div class="seg small" id="themeSeg"><button class="on" data-t="">Auto</button><button data-t="light">Ljust</button><button data-t="dark">Mörkt</button></div>
     <nav><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#hyllor">Hyllor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
   </div>
