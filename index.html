@@ -1460,31 +1460,96 @@ textarea.title{display:block;resize:none;overflow:hidden;line-height:1.3;min-hei
 .detrow:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
 .detplus{color:var(--primary);font-size:var(--fs-4);font-weight:600;line-height:1}
 
-/* ---------- 2026-11-18.2: box form in the look of the New box mock ---------- */
+/* ---------- 2026-11-23.4: box editor ---------- */
+dialog.bx-editor-open{width:min(390px,calc(100vw - 20px));height:min(844px,calc(100dvh - 20px));max-height:calc(100dvh - 20px);border-radius:var(--r-4);background:var(--bg)}
+dialog.bx-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidden;display:flex}
+.bx-sheet{position:relative;width:100%;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .bx-sheet [hidden]{display:none!important}
-.bx-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.bx-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:12px;margin:0 0 12px}
-.bx-hero{display:flex;align-items:center;gap:12px}
-.bx-art{width:56px;height:56px;border-radius:16px;background:var(--primary);opacity:.9;display:grid;place-items:center;flex:none}
-.bx-name{flex:1;min-width:0;display:flex;border-bottom:2px solid var(--primary);padding-bottom:4px}
-.bx-name input{flex:1;min-width:0;border:none;outline:none;background:transparent;font-weight:600;font-size:var(--fs-3);color:var(--text)}
-.bx-section{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 4px;margin:14px 0 6px}
-.bx-rows{padding:0 14px}
-.bx-row{display:flex;align-items:center;gap:12px;min-height:52px;border-top:1px solid var(--line);cursor:pointer}
-.bx-rows > .bx-row:first-child,.bx-dims > .bx-row:first-child{border-top:none}
-.bx-ic{width:30px;height:30px;border-radius:10px;background:var(--bg);display:grid;place-items:center;color:var(--muted);flex:none}
-.bx-lab{flex:0 0 auto;max-width:42%;font-size:14px;color:var(--text)}
-.bx-in{flex:1;min-width:0;width:100%;border:none;outline:none;background:transparent;text-align:right;font-size:14px;font-weight:500;color:var(--text);padding:10px 0;appearance:auto}
+.bx-head{display:flex;align-items:center;gap:8px;min-height:58px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.bx-head-btn{width:36px;height:36px;border:0;border-radius:var(--r-3);background:transparent;color:var(--text);display:grid;place-items:center;font-size:24px;line-height:1;flex:none}
+.bx-head-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
+.bx-head-title{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.bx-code{min-width:50px;height:34px;padding:0 4px;display:grid;place-items:center;border-radius:var(--r-2);background:var(--lav-3);font-family:var(--caps);font-weight:700;color:var(--ink);font-size:var(--fs-0);flex:none}
+.bx-head-sub{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:var(--fs-3);font-weight:600}
+.bx-main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 16px 16px;display:flex;flex-direction:column;gap:8px}
+.bx-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-4);padding:12px;margin:0}
+.bx-hero{display:grid;grid-template-columns:64px minmax(0,1fr);column-gap:12px;row-gap:8px;align-items:center}
+.bx-photo{position:relative;width:64px;height:64px;flex:none}
+.bx-photo-pick{width:64px;height:64px;position:relative;overflow:hidden;display:grid;place-items:center;padding:0;border:1.5px dashed var(--lav);border-radius:var(--r-4);background:var(--surface);color:var(--primary)}
+.bx-photo-pick>svg{width:50px;height:50px}
+.bx-photo-pick img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bx-photo-camera{position:absolute;right:3px;bottom:3px;width:22px;height:22px;display:grid;place-items:center;border-radius:var(--r-round);background:var(--primary);color:#fff}
+.bx-photo-camera svg{width:13px;height:13px}
+.bx-photo-remove{position:absolute;right:-5px;top:-5px;width:24px;height:24px;border:0;border-radius:var(--r-round);background:var(--text);color:var(--surface);font-size:16px;line-height:1}
+.bx-photo-busy{position:absolute;left:0;right:0;bottom:-18px;font-size:var(--fs-0);color:var(--muted);white-space:nowrap}
+.bx-hero-fields{min-width:0;display:flex;flex-direction:column;gap:10px}
+.bx-name{min-width:0;display:flex;align-items:center;border-bottom:2px solid var(--primary);padding:0 4px 4px}
+.bx-name input{width:100%;min-width:0;border:0;border-radius:0;outline:0;background:transparent;text-align:center;font-size:var(--fs-4);font-weight:600;color:var(--text);padding:2px}
+.bx-name input::placeholder{color:var(--muted);font-weight:500}
+.bx-pills{display:flex;gap:8px;min-width:0}
+.bx-type-seg{width:100%;min-height:36px;padding:3px;display:flex;gap:3px;border-radius:var(--r-round);background:var(--lav-3)}
+.bx-type-seg button{flex:1;min-width:0;min-height:30px;padding:4px 8px;border:0;border-radius:var(--r-round);background:transparent;color:var(--muted);font-size:var(--fs-1);font-weight:600}
+.bx-type-seg button.on{background:var(--surface);color:var(--primary);box-shadow:var(--sh-1)}
+.bx-pill{flex:1;min-width:0;min-height:36px;padding:4px 8px;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid var(--line);border-radius:var(--r-round);background:var(--surface);color:var(--muted);font-size:var(--fs-0);font-weight:600}
+.bx-pill svg{width:15px;height:15px;flex:none}
+.bx-pill.on{border-color:var(--primary);background:var(--lav-3);color:var(--primary)}
+.bx-pill.bx-out.on{border-color:var(--dot);background:var(--lav-3);color:var(--dot)}
+.bx-where-wrap{display:flex;flex-direction:column;gap:8px}
+.bx-where{width:100%;min-height:38px;display:flex;align-items:center;gap:8px;padding:2px 4px;border:0;background:transparent;color:var(--muted);text-align:left;font-size:var(--fs-2);font-weight:500}
+.bx-where>.bx-ic{width:20px;height:20px;background:transparent;color:var(--muted)}
+.bx-where-text{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bx-change{flex:none;padding:4px 10px;border-radius:var(--r-round);background:var(--lav-3);color:var(--primary);font-weight:600}
+.bx-location{padding:0 12px}
+.bx-section{font-family:var(--caps);font-size:var(--fs-1);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:0 4px;margin:8px 0 0}
+.bx-rows{padding:0 12px}
+.bx-row{width:100%;min-height:56px;display:flex;align-items:center;gap:10px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);text-align:left;font:inherit}
+.bx-choice-row{cursor:pointer}
+.bx-row-value{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;color:var(--muted);font-size:var(--fs-2)}
+.bx-rows>.bx-row:first-child,.bx-location>.bx-row:first-child{border-top:0}
+.bx-ic{width:30px;height:30px;border-radius:var(--r-3);background:var(--lav-3);display:grid;place-items:center;color:var(--muted);flex:none}
+.bx-ic svg{width:16px;height:16px}
+.bx-lab{flex:0 0 auto;max-width:40%;font-size:var(--fs-3);color:var(--text)}
+.bx-in{flex:1;min-width:0;width:100%;min-height:44px;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--field);color:var(--text);font-size:var(--fs-2);font-weight:500;text-align:right}
+.bx-in:focus{border-color:var(--primary);outline:2px solid var(--primary);outline-offset:1px}
 .bx-in::placeholder{color:var(--muted);font-weight:400}
-.bx-dims{display:block}
-.bx-dims .bx-row{padding-left:42px}
-.bx-notes{padding:8px}
-.bx-notes textarea{width:100%;min-height:70px;border:none;outline:none;background:transparent;resize:vertical;font-size:14px;color:var(--text)}
-#phwrap{padding:10px}
-.bx-foot{margin-top:18px;display:flex;flex-direction:column;gap:8px}
-.bx-save{width:100%;padding:15px;font-size:var(--fs-3)}
-.bx-foot-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.bx-foot-row .btn{width:100%;padding:11px 8px}
+.bx-dims{padding-left:40px}
+.bx-dims .bx-row:first-child{border-top:0}
+.bx-custom-row{padding-left:40px}
+.bx-notes-fold{border-top:1px solid var(--line)}
+.bx-notes-fold>summary{list-style:none;cursor:pointer}
+.bx-notes-fold>summary::-webkit-details-marker{display:none}
+.bx-note-preview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;color:var(--muted);font-size:var(--fs-2)}
+.bx-chev{width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:2.2;flex:none;transition:transform .2s}
+.bx-notes-fold[open] .bx-chev{transform:rotate(90deg);color:var(--primary)}
+.bx-notes-fold textarea{display:block;width:calc(100% - 40px);min-height:76px;margin:0 0 12px 40px;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--field);color:var(--text);font-size:var(--fs-2);resize:vertical}
+.bx-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 2px}
+.bx-tag,.bx-tag-add{min-height:34px;display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-round);font-size:var(--fs-2)}
+.bx-tag{background:var(--lav-2);color:var(--text)}
+.bx-tag button{width:20px;height:20px;padding:0;border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1}
+.bx-tag-add{border:1.5px dashed var(--lav);background:transparent;color:var(--muted)}
+.bx-tag-entry{display:flex;align-items:center;gap:8px;flex-basis:100%}
+.bx-tag-entry input{min-width:0;flex:1;min-height:44px;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--field);color:var(--text)}
+.bx-footer{display:flex;flex-direction:column;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface);flex:none}
+.bx-save{width:100%;min-height:52px;padding:12px;font-size:var(--fs-3)}
+.bx-footer-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.bx-footer-actions.editing{grid-template-columns:1fr}
+.bx-footer-actions .btn{width:100%;min-height:44px;padding:9px 6px;font-size:var(--fs-1)}
+.bx-cancel{align-self:center;min-height:36px;padding:4px 12px;border:0;background:transparent;color:var(--muted);font-size:var(--fs-2)}
+.bx-photo-chooser{position:absolute;inset:0;z-index:10;display:flex;align-items:flex-end;background:rgba(20,8,40,.45)}
+.bx-photo-sheet{width:100%;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));border-radius:var(--r-4) var(--r-4) 0 0;background:var(--surface);display:flex;flex-direction:column;gap:10px}
+.bx-photo-sheet{max-height:85dvh;overflow-y:auto}
+.bx-photo-sheet h3{margin:0;color:var(--ink);font-size:var(--fs-4)}
+.bx-photo-sheet .choice{margin:0}
+.bx-size-options{display:flex;flex-direction:column}
+.bx-size-option{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);text-align:left;font:inherit}
+.bx-size-option:first-child{border-top:0}
+.bx-size-option>span{flex:1}
+.bx-size-option.on{color:var(--primary);font-weight:600}
+.bx-custom-status{display:flex;flex-direction:column;gap:8px;padding:8px 0}
+.bx-grab{width:40px;height:4px;border-radius:var(--r-round);background:var(--lav);align-self:center}
+@media(max-width:420px){
+  dialog.bx-editor-open{position:fixed;inset:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0}
+}
 </style>
 </head>
 <body>
@@ -13918,7 +13983,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-18.3';
+const APP_VERSION = '2026-11-23.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -17679,6 +17744,7 @@ const sheet = $('#sheet');
 let onSheetClose = null;
 function openSheet(html, onClose){
   if (sheet.open){ const f = onSheetClose; onSheetClose = null; sheet.close(); if (f) f(); }
+  sheet.classList.toggle('bx-editor-open', html.includes('class="bx-sheet"'));
   sheet.innerHTML = `<div class="sheet">${html}</div>`;
   onSheetClose = onClose || null;
   sheet.showModal();
@@ -17703,31 +17769,45 @@ function pickPhotos(onFiles, {multiple = true} = {}){
 sheet.addEventListener('close', () => { if (sheet.open) return; const f = onSheetClose; onSheetClose = null; if (f) f(); });
 sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
 
-function photoState(initial, multiple){
+function photoState(initial, multiple, boxCode = ''){
   let accepting = true;
+  let fallbackCode = boxCode;
   const st = {photos: clone(initial), added: [], removed: [], busy: false};
   const draw = () => {
     const w = $('#phwrap');
-    w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="${tr('rmPhoto')}">×</button></div>`).join('')}
-      ${multiple || !st.photos.length ? `<label class="addph">${tr('photoTake')}<input type="file" accept="image/*" capture="environment"></label><label class="addph">${tr('photoLibrary')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
+    const photo = st.photos[0];
+    w.innerHTML = `<button class="bx-photo-pick" type="button" data-photo-pick aria-label="${esc(tr('photoAdd'))}">${photo ? imgTag(photo.ref, '') : boxArt(fallbackCode)}<span class="bx-photo-camera">${ICON.camera}</span></button>
+      ${photo ? `<button class="bx-photo-remove" type="button" data-rm="0" aria-label="${esc(tr('rmPhoto'))}">×</button>` : ''}`;
     hydrate(w);
+  };
+  const acceptFiles = async files => {
+    if (!files.length) return;
+    st.busy = true;
+    $('#phwrap').insertAdjacentHTML('beforeend', `<span class="bx-photo-busy">${tr('savingPhoto')}</span>`);
+    const added = [];
+    for (const f of files.slice(0, multiple ? files.length : 1)){
+      try {
+        const p = await storePhoto(f);
+        if (!accepting){ dropPhoto(p.ref); continue; }
+        added.push(p);
+      } catch (err) { toast(saveErr(err)); }
+    }
+    if (accepting && added.length){
+      if (!multiple){
+        st.photos.forEach(p => {
+          if (st.added.includes(p.ref)){ st.added = st.added.filter(r => r !== p.ref); dropPhoto(p.ref); }
+          else st.removed.push(p.ref);
+        });
+        st.photos = [];
+      }
+      st.photos.push(...added);
+      st.added.push(...added.map(p => p.ref));
+    }
+    st.busy = false;
+    if (accepting) draw();
   };
   st.mount = () => {
     draw();
-    $('#phwrap').addEventListener('change', async e => {
-      if (!e.target.files) return;
-      const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; st.busy = true;
-      $('#phwrap').insertAdjacentHTML('beforeend', `<p class="hint">${tr('savingPhoto')}</p>`);
-      for (const f of files){
-        try {
-          const p = await storePhoto(f);
-          if (!accepting){ dropPhoto(p.ref); continue; }
-          st.photos.push(p); st.added.push(p.ref);
-        }
-        catch (err) { toast(saveErr(err)); }
-      }
-      st.busy = false; if (accepting) draw();
-    });
     $('#phwrap').addEventListener('click', e => {
       const im = e.target.closest('img[data-ph]'); if (im) return openViewer(im.dataset.ph);
       const rm = e.target.closest('[data-rm]'); if (!rm) return;
@@ -17735,13 +17815,26 @@ function photoState(initial, multiple){
       if (st.added.includes(p.ref)){ st.added = st.added.filter(r => r !== p.ref); dropPhoto(p.ref); } else st.removed.push(p.ref);
       draw();
     });
+    $('#phwrap').addEventListener('click', e => {
+      if (e.target.closest('[data-photo-pick]')) $('#bxPhotoChooser').hidden = false;
+    });
+    const chooser = $('#bxPhotoChooser');
+    chooser.addEventListener('click', e => {
+      if (e.target === chooser || e.target.closest('[data-photo-close]')) chooser.hidden = true;
+    });
+    chooser.querySelectorAll('[data-bx-pick]').forEach(input => input.addEventListener('change', e => {
+      const files = [...e.target.files]; e.target.value = ''; chooser.hidden = true;
+      acceptFiles(files);
+    }));
   };
   st.commit = () => { accepting = false; st.removed.forEach(dropPhoto); st.added = []; st.removed = []; };
   st.discard = () => { accepting = false; st.added.forEach(dropPhoto); st.added = []; };
+  st.updateCode = code => { fallbackCode = code; if (!st.photos.length) draw(); };
   return st;
 }
 
 function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
+  const fieldIcon = name => `<span class="bx-ic">${ICON[name]}</span>`;
   const existing = id ? findBox(id) : null;
   const b = existing ? clone(existing) : {id: newId(), code: '', name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: presetPid || scopePlace() || places[0].id, parentId: presetParent || null, autoName: true};
   if (presetParent && findBox(presetParent)) b.placeId = findBox(presetParent).placeId;
@@ -17749,53 +17842,226 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   if (!existing && presetZone) b.location = presetZone;
   if (!existing && presetShelf) b.shelf = presetShelf;
   const bt = b.boxType || 'moving', bd = b.boxDims || RK_TYPES.moving;
-  const ps = photoState(b.photo ? [b.photo] : [], false);
+  const ps = photoState(b.photo ? [b.photo] : [], false, b.code);
   const banned = existing ? new Set([existing.id, ...descendants(existing.id).map(x => x.id)]) : new Set();
   const parentOpts = pid => `<option value="">${esc(tr('topLevel', placeName(pid)))}</option>` + boxesIn(pid).filter(x => !banned.has(x.id)).sort(byCode).map(x => `<option value="${esc(x.id)}" ${x.id === b.parentId ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)}</option>`).join('');
+  const tags = [...(b.tags || [])];
+  let draftOut = !!b.out, draftFav = !!b.fav;
   let saved = false;
+  let typeSet = !!b.boxTypeSet;
   openSheet(`<div class="bx-sheet">
-    <h3 class="bx-title">${existing ? tr('editBoxH') : tr('newBox')} <span class="chip" id="bCode">${esc(b.code)}</span></h3>
-    <section class="bx-card bx-hero">
-      <span class="bx-art"><svg width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"/><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#D9A56A"/></svg></span>
-      <label class="bx-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}" aria-label="${esc(tr('name'))}"></label>
-    </section>
-    <div class="bx-section">${tr('boxGrpWhere')}</div>
-    <section class="bx-card bx-rows">
-      <label class="bx-row">${ic('place')}<span class="bx-lab">${tr('storagePlace')}</span><select class="bx-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-      <label class="bx-row">${ic('inside')}<span class="bx-lab">${tr('inside')}</span><select class="bx-in" id="bParent">${parentOpts(b.placeId)}</select></label>
-      <label class="bx-row">${ic('zone')}<span class="bx-lab">${tr('zone')}</span><input class="bx-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
-    </section>
-    <div class="bx-section">${tr('boxGrpWhat')}</div>
-    <section class="bx-card bx-rows">
-      <label class="bx-row">${ic('status')}<span class="bx-lab">${tr('status')}</span><select class="bx-in" id="bStatus">${statusOptions(b.status || '')}</select></label>
-      <label class="bx-row" id="bCustomRow" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}><span class="bx-lab">${tr('status')}</span><input class="bx-in" id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}"></label>
-      <label class="bx-row">${ic('type')}<span class="bx-lab">${tr('rk_boxType')}</span><select class="bx-in" id="bType">${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select></label>
-      <div class="bx-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="bx-row"><span class="bx-lab">${tr('rk_' + k)} (cm)</span><input class="bx-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
-    </section>
-    <div class="bx-section">${tr('notes')}</div>
-    <section class="bx-card bx-notes"><textarea id="bNotes" aria-label="${esc(tr('notes'))}">${esc(b.notes)}</textarea></section>
-    <div class="bx-section">${tr('boxPhoto')}</div>
-    <div class="bx-card" id="phwrap"></div>
-    <div class="bx-foot">
+    <header class="bx-head">
+      <span class="bx-code" id="bCode">${esc(b.code)}</span>
+      <div class="bx-head-title"><span class="bx-head-sub" id="bxTitle">${existing ? esc(b.name || tr('editBoxH')) : `${tr('boxNewIn')} ${esc(placeName(b.placeId))}`}</span></div>
+      <button class="bx-head-btn" id="bClose" type="button" aria-label="${esc(tr('close'))}">×</button>
+    </header>
+    <main class="bx-main">
+      <section class="bx-card bx-hero">
+        <div class="bx-photo" id="phwrap"></div>
+        <div class="bx-hero-fields">
+          <label class="bx-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('boxNameHint'))}" aria-label="${esc(tr('name'))}"></label>
+          <div class="bx-pills">
+            ${existing
+              ? `<button class="bx-pill bx-out${draftOut ? ' on' : ''}" id="bxOut" type="button" aria-pressed="${draftOut}">${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span></button>
+                <button class="bx-pill${draftFav ? ' on' : ''}" id="bxFav" type="button" aria-pressed="${draftFav}">${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span></button>`
+              : `<div class="bx-type-seg" role="group" aria-label="${esc(tr('addWhat'))}">
+                  <button type="button" id="bxAddItem">${tr('boxTypeItem')}</button>
+                  <button type="button" class="on" aria-pressed="true">${tr('boxTypeBox')}</button>
+                </div>`}
+          </div>
+        </div>
+      </section>
+      <div class="bx-where-wrap">
+        <button class="bx-where" id="bWhereToggle" type="button" aria-expanded="false">
+          ${fieldIcon('pin')}<span class="bx-where-text" id="bWhereText"></span><span class="bx-change">${tr('boxWhereChange')}</span>
+        </button>
+      </div>
+      <div class="bx-section">${tr('boxDetails')}</div>
+      <section class="bx-card bx-rows">
+        <button class="bx-row bx-choice-row" type="button" id="bTypeOpen" aria-haspopup="dialog">
+          ${fieldIcon('box')}<span class="bx-lab">${tr('boxSize')}</span><span class="bx-row-value" id="bTypeLabel">${tr('rk_bt_' + bt)}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button class="bx-row bx-choice-row" type="button" id="bStatusOpen" aria-haspopup="dialog">
+          ${fieldIcon('user')}<span class="bx-lab">${tr('status')}</span><span class="bx-row-value" id="bStatusLabel">${esc(showStatus(b.status) || tr('add'))}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <input id="bStatus" type="hidden" value="${esc(b.status || '')}">
+        <details class="bx-notes-fold" ${b.notes ? 'open' : ''}>
+          <summary class="bx-row">${fieldIcon('chat')}<span class="bx-lab">${tr('notes')}</span><span class="bx-note-preview">${b.notes ? esc(b.notes) : tr('add')}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
+          <textarea id="bNotes" aria-label="${esc(tr('notes'))}">${esc(b.notes)}</textarea>
+        </details>
+      </section>
+      <div class="bx-section">${tr('tags')}</div>
+      <div class="bx-tags" id="bxTags"></div>
+    </main>
+    <footer class="bx-footer">
+      <div class="bx-footer-actions${existing ? ' editing' : ''}">
+        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn quiet" id="bSaveItem">${tr('addBoxItem')}</button><button class="btn quiet" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
+      </div>
       <button class="btn primary bx-save" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
-      <div class="bx-foot-row">
-        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
-        <button class="btn" id="bCancel">${tr('cancel')}</button>
+      <button class="bx-cancel" id="bCancel">${tr('cancel')}</button>
+    </footer>
+    <div class="bx-photo-chooser" id="bxPlaceChooser" hidden>
+      <section class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('storagePlace')}</h3>
+        <label class="bx-row">${fieldIcon('pin')}<span class="bx-lab">${tr('storagePlace')}</span><select class="bx-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="bx-row">${fieldIcon('stack')}<span class="bx-lab">${tr('inside')}</span><select class="bx-in" id="bParent">${parentOpts(b.placeId)}</select></label>
+        <label class="bx-row">${fieldIcon('mapView')}<span class="bx-lab">${tr('zone')}</span><input class="bx-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
+        <button class="btn primary" type="button" id="bLocDone">${tr('done')}</button>
+      </section>
+    </div>
+    <div class="bx-photo-chooser" id="bxSizeChooser" hidden>
+      <section class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('boxSize')}</h3>
+        <div class="bx-size-options">${['moving', 'banana', 'small', 'custom'].map(k => `<button type="button" class="bx-size-option${bt === k ? ' on' : ''}" data-bx-type="${k}" aria-pressed="${bt === k}"><span>${tr('rk_bt_' + k)}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join('')}</div>
+        <div class="bx-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="bx-row"><span class="bx-lab">${tr('rk_' + k)} (cm)</span><input class="bx-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
+        <button class="btn primary" type="button" id="bSizeDone">${tr('done')}</button>
+      </section>
+    </div>
+    <div class="bx-photo-chooser" id="bxStatusChooser" hidden>
+      <section class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('status')}</h3>
+        <div class="bx-size-options">
+          <button type="button" class="bx-size-option${b.status ? '' : ' on'}" data-bx-status="" aria-pressed="${!b.status}"><span>${tr('status')}…</span></button>
+          ${Object.keys(STATUS_KEYS).map(s => `<button type="button" class="bx-size-option${b.status === s ? ' on' : ''}" data-bx-status="${esc(s)}" aria-pressed="${b.status === s}"><span>${tr(STATUS_KEYS[s])}</span></button>`).join('')}
+          <button type="button" class="bx-size-option${b.status && !STATUS_KEYS[b.status] ? ' on' : ''}" data-bx-status="__custom__" aria-pressed="${!!b.status && !STATUS_KEYS[b.status]}"><span>${tr('st_custom')}</span></button>
+        </div>
+        <div class="bx-custom-status" id="bxCustomStatusEntry" hidden>
+          <input class="bx-in" id="bxCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}">
+          <button class="btn primary" type="button" id="bCustomStatusSave">${tr('save')}</button>
+        </div>
+        <button class="btn quiet" type="button" id="bStatusDone">${tr('done')}</button>
+      </section>
+    </div>
+    <select id="bType" hidden>${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select>
+    <div class="bx-photo-chooser" id="bxPhotoChooser" hidden>
+      <div class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('photoAdd')}</h3>
+        <div class="choice col">
+          <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('photoTake')}</span></span><input type="file" accept="image/*" capture="environment" hidden data-bx-pick></label>
+          <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('photoLibrary')}</span></span><input type="file" accept="image/*" hidden data-bx-pick></label>
+        </div>
+        <button class="btn quiet" type="button" data-photo-close>${tr('cancel')}</button>
       </div>
     </div>
   </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
-  $('#bPlace').onchange = e => { const pid = e.target.value; $('#bParent').innerHTML = parentOpts(pid); if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; } };
-  $('#bStatus').onchange = e => {
-    const custom = $('#bCustomStatus');
-    custom.hidden = e.target.value !== '__custom__' && (!e.target.value || !!STATUS_KEYS[e.target.value]);
-    $('#bCustomRow').hidden = custom.hidden;
-    if (e.target.value === '__custom__'){ custom.hidden = false; custom.focus(); }
+  const updateWhere = () => {
+    const pid = $('#bPlace').value, parent = findBox($('#bParent').value);
+    const parts = [placeName(pid), parent ? parent.code : tr('topLevel', placeName(pid)), $('#bLoc').value.trim()].filter(Boolean);
+    $('#bWhereText').textContent = parts.join(' · ');
   };
-  $('#bCancel').onclick = closeSheet;
-  let typeSet = !!b.boxTypeSet;
-  $('#bType').onchange = e => { typeSet = true; $('#bDims').hidden = e.target.value !== 'custom'; };
-  const saveBox = addAnother => {
+  const setBoxType = type => {
+    $('#bType').value = type;
+    typeSet = true;
+    $('#bDims').hidden = type !== 'custom';
+    $('#bTypeLabel').textContent = tr('rk_bt_' + type);
+    document.querySelectorAll('#bxSizeChooser [data-bx-type]').forEach(button => {
+      const selected = button.dataset.bxType === type;
+      button.classList.toggle('on', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  };
+  const setBoxStatus = status => {
+    $('#bStatus').value = status;
+    $('#bStatusLabel').textContent = showStatus(status) || tr('add');
+    document.querySelectorAll('#bxStatusChooser [data-bx-status]').forEach(button => {
+      const selected = STATUS_KEYS[status] ? button.dataset.bxStatus === status
+        : status ? button.dataset.bxStatus === '__custom__' : button.dataset.bxStatus === '';
+      button.classList.toggle('on', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  };
+  const renderTags = () => {
+    $('#bxTags').innerHTML = `${tags.map((tag, i) => `<span class="bx-tag">${esc(tag)}<button type="button" data-bx-tag-remove="${i}" aria-label="${esc(tr('remove'))} ${esc(tag)}">×</button></span>`).join('')}<button class="bx-tag-add" id="bxTagOpen" type="button">+ ${tr('newTag')}</button><div class="bx-tag-entry" id="bxTagEntry" hidden><input id="bxTagInput" placeholder="${esc(tr('tagHint'))}"><button class="btn primary small" id="bxTagSave" type="button">${tr('add')}</button></div>`;
+  };
+  renderTags();
+  $('#bxTags').addEventListener('click', e => {
+    const remove = e.target.closest('[data-bx-tag-remove]');
+    if (remove){ tags.splice(+remove.dataset.bxTagRemove, 1); renderTags(); return; }
+    if (e.target.closest('#bxTagOpen')){ $('#bxTagEntry').hidden = false; $('#bxTagInput').focus(); return; }
+    if (e.target.closest('#bxTagSave')) addTag();
+  });
+  $('#bxTags').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'bxTagInput'){ e.preventDefault(); addTag(); } });
+  function addTag(){
+    const input = $('#bxTagInput'), tag = input.value.trim().toLowerCase();
+    if (!tag) return;
+    if (!tags.includes(tag)) tags.push(tag);
+    renderTags();
+  }
+  updateWhere();
+  $('#bClose').onclick = $('#bCancel').onclick = closeSheet;
+  $('#bWhereToggle').onclick = () => {
+    $('#bxPlaceChooser').hidden = false;
+    $('#bWhereToggle').setAttribute('aria-expanded', 'true');
+  };
+  $('#bLocDone').onclick = () => {
+    $('#bxPlaceChooser').hidden = true;
+    $('#bWhereToggle').setAttribute('aria-expanded', 'false');
+  };
+  $('#bxPlaceChooser').onclick = e => {
+    if (e.target === $('#bxPlaceChooser')) $('#bLocDone').click();
+  };
+  $('#bTypeOpen').onclick = () => { $('#bxSizeChooser').hidden = false; };
+  $('#bxSizeChooser').onclick = e => {
+    const option = e.target.closest('[data-bx-type]');
+    if (option) setBoxType(option.dataset.bxType);
+    else if (e.target === $('#bxSizeChooser')) $('#bSizeDone').click();
+  };
+  $('#bSizeDone').onclick = () => { $('#bxSizeChooser').hidden = true; };
+  $('#bStatusOpen').onclick = () => { $('#bxStatusChooser').hidden = false; };
+  $('#bxStatusChooser').onclick = e => {
+    const option = e.target.closest('[data-bx-status]');
+    if (option) {
+      if (option.dataset.bxStatus === '__custom__') {
+        $('#bxCustomStatusEntry').hidden = false;
+        $('#bxCustomStatus').focus();
+      } else {
+        setBoxStatus(option.dataset.bxStatus);
+        $('#bStatusDone').click();
+      }
+    } else if (e.target === $('#bxStatusChooser')) $('#bStatusDone').click();
+  };
+  $('#bCustomStatusSave').onclick = () => {
+    const status = $('#bxCustomStatus').value.trim();
+    if (!status) return toast(tr('statusFirst'));
+    setBoxStatus(status);
+    $('#bStatusDone').click();
+  };
+  $('#bStatusDone').onclick = () => { $('#bxStatusChooser').hidden = true; };
+  if ($('#bxAddItem')) $('#bxAddItem').onclick = () => {
+    const target = $('#bParent').value || ensureLoose($('#bPlace').value).id;
+    closeSheet();
+    newItem(target);
+  };
+  $('#bPlace').onchange = e => {
+    const pid = e.target.value;
+    $('#bParent').innerHTML = parentOpts(pid);
+    $('#bzones').innerHTML = zonesOf(pid).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('');
+    if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; $('#bxTitle').textContent = `${tr('boxNewIn')} ${placeName(pid)}`; ps.updateCode(b.code); }
+    updateWhere();
+  };
+  $('#bParent').onchange = updateWhere;
+  $('#bLoc').oninput = updateWhere;
+  $('#bName').oninput = e => { if (existing) $('#bxTitle').textContent = e.target.value.trim() || tr('editBoxH'); };
+  if (existing) {
+    $('#bxOut').onclick = () => {
+      draftOut = !draftOut;
+      $('#bxOut').classList.toggle('on', draftOut);
+      $('#bxOut').setAttribute('aria-pressed', String(draftOut));
+      $('#bxOut').innerHTML = `${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span>`;
+    };
+    $('#bxFav').onclick = () => {
+      draftFav = !draftFav;
+      $('#bxFav').classList.toggle('on', draftFav);
+      $('#bxFav').setAttribute('aria-pressed', String(draftFav));
+      $('#bxFav').innerHTML = `${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span>`;
+    };
+  }
+  const saveBox = (addAnother, addItemAfter) => {
     if (ps.busy) return toast(tr('waitPhoto'));
     b.boxType = $('#bType').value; if (typeSet) b.boxTypeSet = true;
     if (b.boxType === 'custom'){ const v = k => parseInt($('#bD' + k).value, 10); const dm = {w: v('w'), h: v('h'), d: v('d')}; if (!(dm.w > 0 && dm.h > 0 && dm.d > 0 && dm.w < 400 && dm.h < 400 && dm.d < 400)) return toast(tr('rk_badSize')); b.boxDims = dm; }
@@ -17806,8 +18072,11 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     b.autoName = !name; b.name = name || autoBoxName(b);
     const zoneWas = (b.location || '').trim();
     b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim(); b.placeId = newPlace; b.parentId = parent;
-    b.status = $('#bStatus').value === '__custom__' ? $('#bCustomStatus').value.trim() : $('#bStatus').value;
+    b.status = $('#bStatus').value.trim();
     if (!b.status) delete b.status;
+    b.tags = tags;
+    b.fav = draftFav;
+    if (draftOut !== !!(existing && existing.out)) markOut(b, draftOut);
     if (parent) delete b.shelf;
     if (!existing || zoneWas !== b.location){ const others = mapEntities(newPlace).filter(e => e.k !== 'b:' + b.id && e.zone === b.location); b.stack = Math.max(0, ...others.map(e => e.stack)) + 1; b.level = 1; }
     b.photo = ps.photos[0] || null;
@@ -17817,10 +18086,12 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     if (parent){ const pb = findBox(parent); if (pb && pb.autoName) putBox(clone(pb), true); }
     closeSheet();
     if (!existing && addAnother){ toast(`${b.code} ✓`); boxSheet(null, newPlace, parent, b.location); }
+    else if (!existing && addItemAfter){ openBox(b.id); newItem(b.id); toast(`${b.code} ✓`); }
     else if (!existing){ openBox(b.id); toast(`${b.code} ✓`); } else render();
   };
   $('#bSave').onclick = () => saveBox(false);
-  if ($('#bSaveAnother')) $('#bSaveAnother').onclick = () => saveBox(true);
+  if ($('#bSaveAnother')) $('#bSaveAnother').onclick = () => saveBox(true, false);
+  if ($('#bSaveItem')) $('#bSaveItem').onclick = () => saveBox(false, true);
   if (existing) $('#bDel').onclick = async () => {
     if (!(await confirmDeleteBox(existing))) return boxSheet(existing.id);
     saved = true; ps.discard();
@@ -20147,8 +20418,10 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
   kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
 
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
-Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What'});
-Object.assign(STR.sv, {boxGrpWhere: 'Var', boxGrpWhat: 'Vad'});
+Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What', boxSize: 'Size', boxDetails: 'Details', boxWhereChange: 'Change', addBoxItem: 'Add box + item',
+  boxNewIn: 'New box in', boxTypeItem: 'Item', boxTypeBox: 'Box', boxNameHint: 'Optional box name', statusFirst: 'Enter a status first.'});
+Object.assign(STR.sv, {boxGrpWhere: 'Var', boxGrpWhat: 'Vad', boxSize: 'Storlek', boxDetails: 'Detaljer', boxWhereChange: 'Ändra', addBoxItem: 'Låda + sak',
+  boxNewIn: 'Ny låda i', boxTypeItem: 'Sak', boxTypeBox: 'Låda', boxNameHint: 'Valfritt lådnamn', statusFirst: 'Skriv in en status först.'});
 Object.assign(STR.sv, {newThing: 'Ny sak', askAI: 'Fråga · beta', searchWord: 'Sök', newBox: 'Ny låda'});
 
 Object.assign(STR.en, {searchOrAsk: 'Search, or ask Storrrage…', askAbout: q => `Ask Storrrage: “${q}”`});
@@ -21159,6 +21432,12 @@ Object.assign(STR.sv, {saveAnother: 'Spara + lägg till ny'});
 Object.assign(STR.da, {saveAnother: 'Gem + tilføj ny'});
 Object.assign(STR.nb, {saveAnother: 'Lagre + legg til ny'});
 Object.assign(STR.fi, {saveAnother: 'Tallenna + lisää uusi'});
+Object.assign(STR.da, {boxGrpWhere: 'Hvor', boxGrpWhat: 'Hvad', boxSize: 'Størrelse', boxDetails: 'Detaljer', boxWhereChange: 'Ændr', addBoxItem: 'Kasse + ting',
+  boxNewIn: 'Ny kasse i', boxTypeItem: 'Ting', boxTypeBox: 'Kasse', boxNameHint: 'Valgfrit kassenavn', statusFirst: 'Skriv en status først.'});
+Object.assign(STR.nb, {boxGrpWhere: 'Hvor', boxGrpWhat: 'Hva', boxSize: 'Størrelse', boxDetails: 'Detaljer', boxWhereChange: 'Endre', addBoxItem: 'Eske + ting',
+  boxNewIn: 'Ny eske i', boxTypeItem: 'Ting', boxTypeBox: 'Eske', boxNameHint: 'Valgfritt eskenavn', statusFirst: 'Skriv inn en status først.'});
+Object.assign(STR.fi, {boxGrpWhere: 'Missä', boxGrpWhat: 'Mitä', boxSize: 'Koko', boxDetails: 'Tiedot', boxWhereChange: 'Muuta', addBoxItem: 'Laatikko + tavara',
+  boxNewIn: 'Uusi laatikko paikassa', boxTypeItem: 'Tavara', boxTypeBox: 'Laatikko', boxNameHint: 'Valinnainen laatikon nimi', statusFirst: 'Anna tila ensin.'});
 
 /* ---------- start ---------- */
 async function init(){

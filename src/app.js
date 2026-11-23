@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-18.3';
+const APP_VERSION = '2026-11-23.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -3773,6 +3773,7 @@ const sheet = $('#sheet');
 let onSheetClose = null;
 function openSheet(html, onClose){
   if (sheet.open){ const f = onSheetClose; onSheetClose = null; sheet.close(); if (f) f(); }
+  sheet.classList.toggle('bx-editor-open', html.includes('class="bx-sheet"'));
   sheet.innerHTML = `<div class="sheet">${html}</div>`;
   onSheetClose = onClose || null;
   sheet.showModal();
@@ -3797,31 +3798,45 @@ function pickPhotos(onFiles, {multiple = true} = {}){
 sheet.addEventListener('close', () => { if (sheet.open) return; const f = onSheetClose; onSheetClose = null; if (f) f(); });
 sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
 
-function photoState(initial, multiple){
+function photoState(initial, multiple, boxCode = ''){
   let accepting = true;
+  let fallbackCode = boxCode;
   const st = {photos: clone(initial), added: [], removed: [], busy: false};
   const draw = () => {
     const w = $('#phwrap');
-    w.innerHTML = `<div class="photos">${st.photos.map((p, i) => `<div class="ph">${imgTag(p.ref, '')}<button data-rm="${i}" aria-label="${tr('rmPhoto')}">×</button></div>`).join('')}
-      ${multiple || !st.photos.length ? `<label class="addph">${tr('photoTake')}<input type="file" accept="image/*" capture="environment"></label><label class="addph">${tr('photoLibrary')}<input type="file" accept="image/*" ${multiple ? 'multiple' : ''}></label>` : ''}</div>`;
+    const photo = st.photos[0];
+    w.innerHTML = `<button class="bx-photo-pick" type="button" data-photo-pick aria-label="${esc(tr('photoAdd'))}">${photo ? imgTag(photo.ref, '') : boxArt(fallbackCode)}<span class="bx-photo-camera">${ICON.camera}</span></button>
+      ${photo ? `<button class="bx-photo-remove" type="button" data-rm="0" aria-label="${esc(tr('rmPhoto'))}">×</button>` : ''}`;
     hydrate(w);
+  };
+  const acceptFiles = async files => {
+    if (!files.length) return;
+    st.busy = true;
+    $('#phwrap').insertAdjacentHTML('beforeend', `<span class="bx-photo-busy">${tr('savingPhoto')}</span>`);
+    const added = [];
+    for (const f of files.slice(0, multiple ? files.length : 1)){
+      try {
+        const p = await storePhoto(f);
+        if (!accepting){ dropPhoto(p.ref); continue; }
+        added.push(p);
+      } catch (err) { toast(saveErr(err)); }
+    }
+    if (accepting && added.length){
+      if (!multiple){
+        st.photos.forEach(p => {
+          if (st.added.includes(p.ref)){ st.added = st.added.filter(r => r !== p.ref); dropPhoto(p.ref); }
+          else st.removed.push(p.ref);
+        });
+        st.photos = [];
+      }
+      st.photos.push(...added);
+      st.added.push(...added.map(p => p.ref));
+    }
+    st.busy = false;
+    if (accepting) draw();
   };
   st.mount = () => {
     draw();
-    $('#phwrap').addEventListener('change', async e => {
-      if (!e.target.files) return;
-      const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; st.busy = true;
-      $('#phwrap').insertAdjacentHTML('beforeend', `<p class="hint">${tr('savingPhoto')}</p>`);
-      for (const f of files){
-        try {
-          const p = await storePhoto(f);
-          if (!accepting){ dropPhoto(p.ref); continue; }
-          st.photos.push(p); st.added.push(p.ref);
-        }
-        catch (err) { toast(saveErr(err)); }
-      }
-      st.busy = false; if (accepting) draw();
-    });
     $('#phwrap').addEventListener('click', e => {
       const im = e.target.closest('img[data-ph]'); if (im) return openViewer(im.dataset.ph);
       const rm = e.target.closest('[data-rm]'); if (!rm) return;
@@ -3829,13 +3844,26 @@ function photoState(initial, multiple){
       if (st.added.includes(p.ref)){ st.added = st.added.filter(r => r !== p.ref); dropPhoto(p.ref); } else st.removed.push(p.ref);
       draw();
     });
+    $('#phwrap').addEventListener('click', e => {
+      if (e.target.closest('[data-photo-pick]')) $('#bxPhotoChooser').hidden = false;
+    });
+    const chooser = $('#bxPhotoChooser');
+    chooser.addEventListener('click', e => {
+      if (e.target === chooser || e.target.closest('[data-photo-close]')) chooser.hidden = true;
+    });
+    chooser.querySelectorAll('[data-bx-pick]').forEach(input => input.addEventListener('change', e => {
+      const files = [...e.target.files]; e.target.value = ''; chooser.hidden = true;
+      acceptFiles(files);
+    }));
   };
   st.commit = () => { accepting = false; st.removed.forEach(dropPhoto); st.added = []; st.removed = []; };
   st.discard = () => { accepting = false; st.added.forEach(dropPhoto); st.added = []; };
+  st.updateCode = code => { fallbackCode = code; if (!st.photos.length) draw(); };
   return st;
 }
 
 function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
+  const fieldIcon = name => `<span class="bx-ic">${ICON[name]}</span>`;
   const existing = id ? findBox(id) : null;
   const b = existing ? clone(existing) : {id: newId(), code: '', name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: presetPid || scopePlace() || places[0].id, parentId: presetParent || null, autoName: true};
   if (presetParent && findBox(presetParent)) b.placeId = findBox(presetParent).placeId;
@@ -3843,53 +3871,226 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   if (!existing && presetZone) b.location = presetZone;
   if (!existing && presetShelf) b.shelf = presetShelf;
   const bt = b.boxType || 'moving', bd = b.boxDims || RK_TYPES.moving;
-  const ps = photoState(b.photo ? [b.photo] : [], false);
+  const ps = photoState(b.photo ? [b.photo] : [], false, b.code);
   const banned = existing ? new Set([existing.id, ...descendants(existing.id).map(x => x.id)]) : new Set();
   const parentOpts = pid => `<option value="">${esc(tr('topLevel', placeName(pid)))}</option>` + boxesIn(pid).filter(x => !banned.has(x.id)).sort(byCode).map(x => `<option value="${esc(x.id)}" ${x.id === b.parentId ? 'selected' : ''}>${esc(x.code)} ${esc(x.name)}</option>`).join('');
+  const tags = [...(b.tags || [])];
+  let draftOut = !!b.out, draftFav = !!b.fav;
   let saved = false;
+  let typeSet = !!b.boxTypeSet;
   openSheet(`<div class="bx-sheet">
-    <h3 class="bx-title">${existing ? tr('editBoxH') : tr('newBox')} <span class="chip" id="bCode">${esc(b.code)}</span></h3>
-    <section class="bx-card bx-hero">
-      <span class="bx-art"><svg width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"/><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#D9A56A"/></svg></span>
-      <label class="bx-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('nameOptional'))}" aria-label="${esc(tr('name'))}"></label>
-    </section>
-    <div class="bx-section">${tr('boxGrpWhere')}</div>
-    <section class="bx-card bx-rows">
-      <label class="bx-row">${ic('place')}<span class="bx-lab">${tr('storagePlace')}</span><select class="bx-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-      <label class="bx-row">${ic('inside')}<span class="bx-lab">${tr('inside')}</span><select class="bx-in" id="bParent">${parentOpts(b.placeId)}</select></label>
-      <label class="bx-row">${ic('zone')}<span class="bx-lab">${tr('zone')}</span><input class="bx-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
-    </section>
-    <div class="bx-section">${tr('boxGrpWhat')}</div>
-    <section class="bx-card bx-rows">
-      <label class="bx-row">${ic('status')}<span class="bx-lab">${tr('status')}</span><select class="bx-in" id="bStatus">${statusOptions(b.status || '')}</select></label>
-      <label class="bx-row" id="bCustomRow" ${b.status && !STATUS_KEYS[b.status] ? '' : 'hidden'}><span class="bx-lab">${tr('status')}</span><input class="bx-in" id="bCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}"></label>
-      <label class="bx-row">${ic('type')}<span class="bx-lab">${tr('rk_boxType')}</span><select class="bx-in" id="bType">${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select></label>
-      <div class="bx-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="bx-row"><span class="bx-lab">${tr('rk_' + k)} (cm)</span><input class="bx-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
-    </section>
-    <div class="bx-section">${tr('notes')}</div>
-    <section class="bx-card bx-notes"><textarea id="bNotes" aria-label="${esc(tr('notes'))}">${esc(b.notes)}</textarea></section>
-    <div class="bx-section">${tr('boxPhoto')}</div>
-    <div class="bx-card" id="phwrap"></div>
-    <div class="bx-foot">
+    <header class="bx-head">
+      <span class="bx-code" id="bCode">${esc(b.code)}</span>
+      <div class="bx-head-title"><span class="bx-head-sub" id="bxTitle">${existing ? esc(b.name || tr('editBoxH')) : `${tr('boxNewIn')} ${esc(placeName(b.placeId))}`}</span></div>
+      <button class="bx-head-btn" id="bClose" type="button" aria-label="${esc(tr('close'))}">×</button>
+    </header>
+    <main class="bx-main">
+      <section class="bx-card bx-hero">
+        <div class="bx-photo" id="phwrap"></div>
+        <div class="bx-hero-fields">
+          <label class="bx-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('boxNameHint'))}" aria-label="${esc(tr('name'))}"></label>
+          <div class="bx-pills">
+            ${existing
+              ? `<button class="bx-pill bx-out${draftOut ? ' on' : ''}" id="bxOut" type="button" aria-pressed="${draftOut}">${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span></button>
+                <button class="bx-pill${draftFav ? ' on' : ''}" id="bxFav" type="button" aria-pressed="${draftFav}">${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span></button>`
+              : `<div class="bx-type-seg" role="group" aria-label="${esc(tr('addWhat'))}">
+                  <button type="button" id="bxAddItem">${tr('boxTypeItem')}</button>
+                  <button type="button" class="on" aria-pressed="true">${tr('boxTypeBox')}</button>
+                </div>`}
+          </div>
+        </div>
+      </section>
+      <div class="bx-where-wrap">
+        <button class="bx-where" id="bWhereToggle" type="button" aria-expanded="false">
+          ${fieldIcon('pin')}<span class="bx-where-text" id="bWhereText"></span><span class="bx-change">${tr('boxWhereChange')}</span>
+        </button>
+      </div>
+      <div class="bx-section">${tr('boxDetails')}</div>
+      <section class="bx-card bx-rows">
+        <button class="bx-row bx-choice-row" type="button" id="bTypeOpen" aria-haspopup="dialog">
+          ${fieldIcon('box')}<span class="bx-lab">${tr('boxSize')}</span><span class="bx-row-value" id="bTypeLabel">${tr('rk_bt_' + bt)}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button class="bx-row bx-choice-row" type="button" id="bStatusOpen" aria-haspopup="dialog">
+          ${fieldIcon('user')}<span class="bx-lab">${tr('status')}</span><span class="bx-row-value" id="bStatusLabel">${esc(showStatus(b.status) || tr('add'))}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <input id="bStatus" type="hidden" value="${esc(b.status || '')}">
+        <details class="bx-notes-fold" ${b.notes ? 'open' : ''}>
+          <summary class="bx-row">${fieldIcon('chat')}<span class="bx-lab">${tr('notes')}</span><span class="bx-note-preview">${b.notes ? esc(b.notes) : tr('add')}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
+          <textarea id="bNotes" aria-label="${esc(tr('notes'))}">${esc(b.notes)}</textarea>
+        </details>
+      </section>
+      <div class="bx-section">${tr('tags')}</div>
+      <div class="bx-tags" id="bxTags"></div>
+    </main>
+    <footer class="bx-footer">
+      <div class="bx-footer-actions${existing ? ' editing' : ''}">
+        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn quiet" id="bSaveItem">${tr('addBoxItem')}</button><button class="btn quiet" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
+      </div>
       <button class="btn primary bx-save" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
-      <div class="bx-foot-row">
-        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
-        <button class="btn" id="bCancel">${tr('cancel')}</button>
+      <button class="bx-cancel" id="bCancel">${tr('cancel')}</button>
+    </footer>
+    <div class="bx-photo-chooser" id="bxPlaceChooser" hidden>
+      <section class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('storagePlace')}</h3>
+        <label class="bx-row">${fieldIcon('pin')}<span class="bx-lab">${tr('storagePlace')}</span><select class="bx-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="bx-row">${fieldIcon('stack')}<span class="bx-lab">${tr('inside')}</span><select class="bx-in" id="bParent">${parentOpts(b.placeId)}</select></label>
+        <label class="bx-row">${fieldIcon('mapView')}<span class="bx-lab">${tr('zone')}</span><input class="bx-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
+        <button class="btn primary" type="button" id="bLocDone">${tr('done')}</button>
+      </section>
+    </div>
+    <div class="bx-photo-chooser" id="bxSizeChooser" hidden>
+      <section class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('boxSize')}</h3>
+        <div class="bx-size-options">${['moving', 'banana', 'small', 'custom'].map(k => `<button type="button" class="bx-size-option${bt === k ? ' on' : ''}" data-bx-type="${k}" aria-pressed="${bt === k}"><span>${tr('rk_bt_' + k)}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join('')}</div>
+        <div class="bx-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="bx-row"><span class="bx-lab">${tr('rk_' + k)} (cm)</span><input class="bx-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
+        <button class="btn primary" type="button" id="bSizeDone">${tr('done')}</button>
+      </section>
+    </div>
+    <div class="bx-photo-chooser" id="bxStatusChooser" hidden>
+      <section class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('status')}</h3>
+        <div class="bx-size-options">
+          <button type="button" class="bx-size-option${b.status ? '' : ' on'}" data-bx-status="" aria-pressed="${!b.status}"><span>${tr('status')}…</span></button>
+          ${Object.keys(STATUS_KEYS).map(s => `<button type="button" class="bx-size-option${b.status === s ? ' on' : ''}" data-bx-status="${esc(s)}" aria-pressed="${b.status === s}"><span>${tr(STATUS_KEYS[s])}</span></button>`).join('')}
+          <button type="button" class="bx-size-option${b.status && !STATUS_KEYS[b.status] ? ' on' : ''}" data-bx-status="__custom__" aria-pressed="${!!b.status && !STATUS_KEYS[b.status]}"><span>${tr('st_custom')}</span></button>
+        </div>
+        <div class="bx-custom-status" id="bxCustomStatusEntry" hidden>
+          <input class="bx-in" id="bxCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}">
+          <button class="btn primary" type="button" id="bCustomStatusSave">${tr('save')}</button>
+        </div>
+        <button class="btn quiet" type="button" id="bStatusDone">${tr('done')}</button>
+      </section>
+    </div>
+    <select id="bType" hidden>${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select>
+    <div class="bx-photo-chooser" id="bxPhotoChooser" hidden>
+      <div class="bx-photo-sheet">
+        <span class="bx-grab" aria-hidden="true"></span>
+        <h3>${tr('photoAdd')}</h3>
+        <div class="choice col">
+          <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('photoTake')}</span></span><input type="file" accept="image/*" capture="environment" hidden data-bx-pick></label>
+          <label class="btn big addopt wide"><span class="aoi">${ICON.photos}</span><span class="aot"><span>${tr('photoLibrary')}</span></span><input type="file" accept="image/*" hidden data-bx-pick></label>
+        </div>
+        <button class="btn quiet" type="button" data-photo-close>${tr('cancel')}</button>
       </div>
     </div>
   </div>`, () => { if (!saved) ps.discard(); });
   ps.mount();
-  $('#bPlace').onchange = e => { const pid = e.target.value; $('#bParent').innerHTML = parentOpts(pid); if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; } };
-  $('#bStatus').onchange = e => {
-    const custom = $('#bCustomStatus');
-    custom.hidden = e.target.value !== '__custom__' && (!e.target.value || !!STATUS_KEYS[e.target.value]);
-    $('#bCustomRow').hidden = custom.hidden;
-    if (e.target.value === '__custom__'){ custom.hidden = false; custom.focus(); }
+  const updateWhere = () => {
+    const pid = $('#bPlace').value, parent = findBox($('#bParent').value);
+    const parts = [placeName(pid), parent ? parent.code : tr('topLevel', placeName(pid)), $('#bLoc').value.trim()].filter(Boolean);
+    $('#bWhereText').textContent = parts.join(' · ');
   };
-  $('#bCancel').onclick = closeSheet;
-  let typeSet = !!b.boxTypeSet;
-  $('#bType').onchange = e => { typeSet = true; $('#bDims').hidden = e.target.value !== 'custom'; };
-  const saveBox = addAnother => {
+  const setBoxType = type => {
+    $('#bType').value = type;
+    typeSet = true;
+    $('#bDims').hidden = type !== 'custom';
+    $('#bTypeLabel').textContent = tr('rk_bt_' + type);
+    document.querySelectorAll('#bxSizeChooser [data-bx-type]').forEach(button => {
+      const selected = button.dataset.bxType === type;
+      button.classList.toggle('on', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  };
+  const setBoxStatus = status => {
+    $('#bStatus').value = status;
+    $('#bStatusLabel').textContent = showStatus(status) || tr('add');
+    document.querySelectorAll('#bxStatusChooser [data-bx-status]').forEach(button => {
+      const selected = STATUS_KEYS[status] ? button.dataset.bxStatus === status
+        : status ? button.dataset.bxStatus === '__custom__' : button.dataset.bxStatus === '';
+      button.classList.toggle('on', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  };
+  const renderTags = () => {
+    $('#bxTags').innerHTML = `${tags.map((tag, i) => `<span class="bx-tag">${esc(tag)}<button type="button" data-bx-tag-remove="${i}" aria-label="${esc(tr('remove'))} ${esc(tag)}">×</button></span>`).join('')}<button class="bx-tag-add" id="bxTagOpen" type="button">+ ${tr('newTag')}</button><div class="bx-tag-entry" id="bxTagEntry" hidden><input id="bxTagInput" placeholder="${esc(tr('tagHint'))}"><button class="btn primary small" id="bxTagSave" type="button">${tr('add')}</button></div>`;
+  };
+  renderTags();
+  $('#bxTags').addEventListener('click', e => {
+    const remove = e.target.closest('[data-bx-tag-remove]');
+    if (remove){ tags.splice(+remove.dataset.bxTagRemove, 1); renderTags(); return; }
+    if (e.target.closest('#bxTagOpen')){ $('#bxTagEntry').hidden = false; $('#bxTagInput').focus(); return; }
+    if (e.target.closest('#bxTagSave')) addTag();
+  });
+  $('#bxTags').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'bxTagInput'){ e.preventDefault(); addTag(); } });
+  function addTag(){
+    const input = $('#bxTagInput'), tag = input.value.trim().toLowerCase();
+    if (!tag) return;
+    if (!tags.includes(tag)) tags.push(tag);
+    renderTags();
+  }
+  updateWhere();
+  $('#bClose').onclick = $('#bCancel').onclick = closeSheet;
+  $('#bWhereToggle').onclick = () => {
+    $('#bxPlaceChooser').hidden = false;
+    $('#bWhereToggle').setAttribute('aria-expanded', 'true');
+  };
+  $('#bLocDone').onclick = () => {
+    $('#bxPlaceChooser').hidden = true;
+    $('#bWhereToggle').setAttribute('aria-expanded', 'false');
+  };
+  $('#bxPlaceChooser').onclick = e => {
+    if (e.target === $('#bxPlaceChooser')) $('#bLocDone').click();
+  };
+  $('#bTypeOpen').onclick = () => { $('#bxSizeChooser').hidden = false; };
+  $('#bxSizeChooser').onclick = e => {
+    const option = e.target.closest('[data-bx-type]');
+    if (option) setBoxType(option.dataset.bxType);
+    else if (e.target === $('#bxSizeChooser')) $('#bSizeDone').click();
+  };
+  $('#bSizeDone').onclick = () => { $('#bxSizeChooser').hidden = true; };
+  $('#bStatusOpen').onclick = () => { $('#bxStatusChooser').hidden = false; };
+  $('#bxStatusChooser').onclick = e => {
+    const option = e.target.closest('[data-bx-status]');
+    if (option) {
+      if (option.dataset.bxStatus === '__custom__') {
+        $('#bxCustomStatusEntry').hidden = false;
+        $('#bxCustomStatus').focus();
+      } else {
+        setBoxStatus(option.dataset.bxStatus);
+        $('#bStatusDone').click();
+      }
+    } else if (e.target === $('#bxStatusChooser')) $('#bStatusDone').click();
+  };
+  $('#bCustomStatusSave').onclick = () => {
+    const status = $('#bxCustomStatus').value.trim();
+    if (!status) return toast(tr('statusFirst'));
+    setBoxStatus(status);
+    $('#bStatusDone').click();
+  };
+  $('#bStatusDone').onclick = () => { $('#bxStatusChooser').hidden = true; };
+  if ($('#bxAddItem')) $('#bxAddItem').onclick = () => {
+    const target = $('#bParent').value || ensureLoose($('#bPlace').value).id;
+    closeSheet();
+    newItem(target);
+  };
+  $('#bPlace').onchange = e => {
+    const pid = e.target.value;
+    $('#bParent').innerHTML = parentOpts(pid);
+    $('#bzones').innerHTML = zonesOf(pid).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('');
+    if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; $('#bxTitle').textContent = `${tr('boxNewIn')} ${placeName(pid)}`; ps.updateCode(b.code); }
+    updateWhere();
+  };
+  $('#bParent').onchange = updateWhere;
+  $('#bLoc').oninput = updateWhere;
+  $('#bName').oninput = e => { if (existing) $('#bxTitle').textContent = e.target.value.trim() || tr('editBoxH'); };
+  if (existing) {
+    $('#bxOut').onclick = () => {
+      draftOut = !draftOut;
+      $('#bxOut').classList.toggle('on', draftOut);
+      $('#bxOut').setAttribute('aria-pressed', String(draftOut));
+      $('#bxOut').innerHTML = `${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span>`;
+    };
+    $('#bxFav').onclick = () => {
+      draftFav = !draftFav;
+      $('#bxFav').classList.toggle('on', draftFav);
+      $('#bxFav').setAttribute('aria-pressed', String(draftFav));
+      $('#bxFav').innerHTML = `${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span>`;
+    };
+  }
+  const saveBox = (addAnother, addItemAfter) => {
     if (ps.busy) return toast(tr('waitPhoto'));
     b.boxType = $('#bType').value; if (typeSet) b.boxTypeSet = true;
     if (b.boxType === 'custom'){ const v = k => parseInt($('#bD' + k).value, 10); const dm = {w: v('w'), h: v('h'), d: v('d')}; if (!(dm.w > 0 && dm.h > 0 && dm.d > 0 && dm.w < 400 && dm.h < 400 && dm.d < 400)) return toast(tr('rk_badSize')); b.boxDims = dm; }
@@ -3900,8 +4101,11 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     b.autoName = !name; b.name = name || autoBoxName(b);
     const zoneWas = (b.location || '').trim();
     b.location = $('#bLoc').value.trim(); b.notes = $('#bNotes').value.trim(); b.placeId = newPlace; b.parentId = parent;
-    b.status = $('#bStatus').value === '__custom__' ? $('#bCustomStatus').value.trim() : $('#bStatus').value;
+    b.status = $('#bStatus').value.trim();
     if (!b.status) delete b.status;
+    b.tags = tags;
+    b.fav = draftFav;
+    if (draftOut !== !!(existing && existing.out)) markOut(b, draftOut);
     if (parent) delete b.shelf;
     if (!existing || zoneWas !== b.location){ const others = mapEntities(newPlace).filter(e => e.k !== 'b:' + b.id && e.zone === b.location); b.stack = Math.max(0, ...others.map(e => e.stack)) + 1; b.level = 1; }
     b.photo = ps.photos[0] || null;
@@ -3911,10 +4115,12 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     if (parent){ const pb = findBox(parent); if (pb && pb.autoName) putBox(clone(pb), true); }
     closeSheet();
     if (!existing && addAnother){ toast(`${b.code} ✓`); boxSheet(null, newPlace, parent, b.location); }
+    else if (!existing && addItemAfter){ openBox(b.id); newItem(b.id); toast(`${b.code} ✓`); }
     else if (!existing){ openBox(b.id); toast(`${b.code} ✓`); } else render();
   };
   $('#bSave').onclick = () => saveBox(false);
-  if ($('#bSaveAnother')) $('#bSaveAnother').onclick = () => saveBox(true);
+  if ($('#bSaveAnother')) $('#bSaveAnother').onclick = () => saveBox(true, false);
+  if ($('#bSaveItem')) $('#bSaveItem').onclick = () => saveBox(false, true);
   if (existing) $('#bDel').onclick = async () => {
     if (!(await confirmDeleteBox(existing))) return boxSheet(existing.id);
     saved = true; ps.discard();
@@ -6241,8 +6447,10 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
   kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
 
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
-Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What'});
-Object.assign(STR.sv, {boxGrpWhere: 'Var', boxGrpWhat: 'Vad'});
+Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What', boxSize: 'Size', boxDetails: 'Details', boxWhereChange: 'Change', addBoxItem: 'Add box + item',
+  boxNewIn: 'New box in', boxTypeItem: 'Item', boxTypeBox: 'Box', boxNameHint: 'Optional box name', statusFirst: 'Enter a status first.'});
+Object.assign(STR.sv, {boxGrpWhere: 'Var', boxGrpWhat: 'Vad', boxSize: 'Storlek', boxDetails: 'Detaljer', boxWhereChange: 'Ändra', addBoxItem: 'Låda + sak',
+  boxNewIn: 'Ny låda i', boxTypeItem: 'Sak', boxTypeBox: 'Låda', boxNameHint: 'Valfritt lådnamn', statusFirst: 'Skriv in en status först.'});
 Object.assign(STR.sv, {newThing: 'Ny sak', askAI: 'Fråga · beta', searchWord: 'Sök', newBox: 'Ny låda'});
 
 Object.assign(STR.en, {searchOrAsk: 'Search, or ask Storrrage…', askAbout: q => `Ask Storrrage: “${q}”`});
@@ -7253,6 +7461,12 @@ Object.assign(STR.sv, {saveAnother: 'Spara + lägg till ny'});
 Object.assign(STR.da, {saveAnother: 'Gem + tilføj ny'});
 Object.assign(STR.nb, {saveAnother: 'Lagre + legg til ny'});
 Object.assign(STR.fi, {saveAnother: 'Tallenna + lisää uusi'});
+Object.assign(STR.da, {boxGrpWhere: 'Hvor', boxGrpWhat: 'Hvad', boxSize: 'Størrelse', boxDetails: 'Detaljer', boxWhereChange: 'Ændr', addBoxItem: 'Kasse + ting',
+  boxNewIn: 'Ny kasse i', boxTypeItem: 'Ting', boxTypeBox: 'Kasse', boxNameHint: 'Valgfrit kassenavn', statusFirst: 'Skriv en status først.'});
+Object.assign(STR.nb, {boxGrpWhere: 'Hvor', boxGrpWhat: 'Hva', boxSize: 'Størrelse', boxDetails: 'Detaljer', boxWhereChange: 'Endre', addBoxItem: 'Eske + ting',
+  boxNewIn: 'Ny eske i', boxTypeItem: 'Ting', boxTypeBox: 'Eske', boxNameHint: 'Valgfritt eskenavn', statusFirst: 'Skriv inn en status først.'});
+Object.assign(STR.fi, {boxGrpWhere: 'Missä', boxGrpWhat: 'Mitä', boxSize: 'Koko', boxDetails: 'Tiedot', boxWhereChange: 'Muuta', addBoxItem: 'Laatikko + tavara',
+  boxNewIn: 'Uusi laatikko paikassa', boxTypeItem: 'Tavara', boxTypeBox: 'Laatikko', boxNameHint: 'Valinnainen laatikon nimi', statusFirst: 'Anna tila ensin.'});
 
 /* ---------- start ---------- */
 async function init(){
