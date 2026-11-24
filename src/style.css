@@ -1619,3 +1619,6 @@ dialog.ad-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidd
 .ad-proof{margin:4px 0 0;text-align:center;font-size:var(--fs-0);color:var(--muted)}
 /* item page: the location card sits in the same card style as the other rows */
 .ad-where-line .loccard{padding:8px 10px;border-radius:var(--r-4);border-color:var(--line);box-shadow:none}
+/* the action bar stays visible: the box editor footer never scrolls away, the item page save bar sticks to the bottom */
+.ad-editor>.ad-foot{flex:none}
+.ad-foot.ad-savebar{position:sticky;bottom:0;z-index:5;margin-top:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}

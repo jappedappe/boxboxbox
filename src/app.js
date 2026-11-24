@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-24.3';
+const APP_VERSION = '2026-11-24.4';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2374,7 +2374,7 @@ function renderItem(){
     ${adSlot('card')}
     <p class="ad-proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
     ${isNew ? '' : `<button type="button" class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
-    <div class="ad-foot">
+    <div class="ad-foot ad-savebar">
       <div class="ad-foot-row${isNew ? '' : ' editing'}"><button type="button" class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button type="button" class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}</div>
       <button type="button" class="btn primary block" data-act="done">${tr('save')}</button>
     </div>
