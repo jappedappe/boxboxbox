@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-24.2';
+const APP_VERSION = '2026-11-24.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -3799,7 +3799,7 @@ const sheet = $('#sheet');
 let onSheetClose = null;
 function openSheet(html, onClose){
   if (sheet.open){ const f = onSheetClose; onSheetClose = null; sheet.close(); if (f) f(); }
-  sheet.classList.toggle('bx-editor-open', html.includes('class="bx-sheet"'));
+  sheet.classList.toggle('ad-editor-open', html.includes('class="ad-editor"'));
   sheet.innerHTML = `<div class="sheet">${html}</div>`;
   onSheetClose = onClose || null;
   sheet.showModal();
@@ -3831,14 +3831,14 @@ function photoState(initial, multiple, boxCode = ''){
   const draw = () => {
     const w = $('#phwrap');
     const photo = st.photos[0];
-    w.innerHTML = `<button class="bx-photo-pick" type="button" data-photo-pick aria-label="${esc(tr('photoAdd'))}">${photo ? imgTag(photo.ref, '') : boxArt(fallbackCode)}<span class="bx-photo-camera">${ICON.camera}</span></button>
-      ${photo ? `<button class="bx-photo-remove" type="button" data-rm="0" aria-label="${esc(tr('rmPhoto'))}">×</button>` : ''}`;
+    w.innerHTML = `<button class="ad-photo-pick" type="button" data-photo-pick aria-label="${esc(tr('photoAdd'))}">${photo ? imgTag(photo.ref, '') : boxArt(fallbackCode)}<span class="ad-camera">${ICON.camera}</span></button>
+      ${photo ? `<button class="ad-photo-remove" type="button" data-rm="0" aria-label="${esc(tr('rmPhoto'))}">×</button>` : ''}`;
     hydrate(w);
   };
   const acceptFiles = async files => {
     if (!files.length) return;
     st.busy = true;
-    $('#phwrap').insertAdjacentHTML('beforeend', `<span class="bx-photo-busy">${tr('savingPhoto')}</span>`);
+    $('#phwrap').insertAdjacentHTML('beforeend', `<span class="ad-photo-busy">${tr('savingPhoto')}</span>`);
     const added = [];
     for (const f of files.slice(0, multiple ? files.length : 1)){
       try {
@@ -3889,7 +3889,7 @@ function photoState(initial, multiple, boxCode = ''){
 }
 
 function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
-  const fieldIcon = name => `<span class="bx-ic">${ICON[name]}</span>`;
+  const fieldIcon = name => `<span class="ad-ic">${ICON[name]}</span>`;
   const existing = id ? findBox(id) : null;
   const b = existing ? clone(existing) : {id: newId(), code: '', name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: presetPid || scopePlace() || places[0].id, parentId: presetParent || null, autoName: true};
   if (presetParent && findBox(presetParent)) b.placeId = findBox(presetParent).placeId;
@@ -3904,96 +3904,96 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   let draftOut = !!b.out, draftFav = !!b.fav;
   let saved = false;
   let typeSet = !!b.boxTypeSet;
-  openSheet(`<div class="bx-sheet">
-    <header class="bx-head">
-      <span class="bx-code" id="bCode">${esc(b.code)}</span>
-      <div class="bx-head-title"><span class="bx-head-sub" id="bxTitle">${existing ? esc(b.name || tr('editBoxH')) : `${tr('boxNewIn')} ${esc(placeName(b.placeId))}`}</span></div>
-      <button class="bx-head-btn" id="bClose" type="button" aria-label="${esc(tr('close'))}">×</button>
+  openSheet(`<div class="ad-editor">
+    <header class="ad-head">
+      <span class="ad-code" id="bCode">${esc(b.code)}</span>
+      <div class="ad-ttl"><span class="ad-head-sub" id="bxTitle">${existing ? esc(b.name || tr('editBoxH')) : `${tr('boxNewIn')} ${esc(placeName(b.placeId))}`}</span></div>
+      <button class="ad-x" id="bClose" type="button" aria-label="${esc(tr('close'))}">×</button>
     </header>
-    <main class="bx-main">
-      <section class="bx-card bx-hero">
-        <div class="bx-photo" id="phwrap"></div>
-        <div class="bx-hero-fields">
-          <label class="bx-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('boxNameHint'))}" aria-label="${esc(tr('name'))}"></label>
-          <div class="bx-pills">
+    <main class="ad-main">
+      <section class="ad-card ad-hero">
+        <div class="ad-photo-wrap" id="phwrap"></div>
+        <div class="ad-right">
+          <label class="ad-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('boxNameHint'))}" aria-label="${esc(tr('name'))}"></label>
+          <div class="ad-status">
             ${existing
-              ? `<button class="bx-pill bx-out${draftOut ? ' on' : ''}" id="bxOut" type="button" aria-pressed="${draftOut}">${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span></button>
-                <button class="bx-pill${draftFav ? ' on' : ''}" id="bxFav" type="button" aria-pressed="${draftFav}">${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span></button>`
-              : `<div class="bx-type-seg" role="group" aria-label="${esc(tr('addWhat'))}">
+              ? `<button class="ad-pill ad-out${draftOut ? ' on' : ''}" id="bxOut" type="button" aria-pressed="${draftOut}">${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span></button>
+                <button class="ad-pill ad-fav${draftFav ? ' on' : ''}" id="bxFav" type="button" aria-pressed="${draftFav}">${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span></button>`
+              : `<div class="ad-seg" role="group" aria-label="${esc(tr('addWhat'))}">
                   <button type="button" id="bxAddItem">${tr('boxTypeItem')}</button>
                   <button type="button" class="on" aria-pressed="true">${tr('boxTypeBox')}</button>
                 </div>`}
           </div>
         </div>
       </section>
-      <div class="bx-where-wrap">
-        <button class="bx-where" id="bWhereToggle" type="button" aria-expanded="false">
-          ${fieldIcon('pin')}<span class="bx-where-text" id="bWhereText"></span><span class="bx-change">${tr('boxWhereChange')}</span>
+      <div class="ad-where-wrap">
+        <button class="ad-where" id="bWhereToggle" type="button" aria-expanded="false">
+          ${fieldIcon('pin')}<span class="ad-where-text" id="bWhereText"></span><span class="ad-chg">${tr('boxWhereChange')}</span>
         </button>
       </div>
-      <div class="bx-section">${tr('boxDetails')}</div>
-      <section class="bx-card bx-rows">
-        <button class="bx-row bx-choice-row" type="button" id="bTypeOpen" aria-haspopup="dialog">
-          ${fieldIcon('box')}<span class="bx-lab">${tr('boxSize')}</span><span class="bx-row-value" id="bTypeLabel">${tr('rk_bt_' + bt)}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      <div class="ad-label">${tr('boxDetails')}</div>
+      <section class="ad-card ad-rows">
+        <button class="ad-row ad-choice" type="button" id="bTypeOpen" aria-haspopup="dialog">
+          ${fieldIcon('box')}<span class="ad-lbl">${tr('boxSize')}</span><span class="ad-val set" id="bTypeLabel">${tr('rk_bt_' + bt)}</span><svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
         </button>
-        <button class="bx-row bx-choice-row" type="button" id="bStatusOpen" aria-haspopup="dialog">
-          ${fieldIcon('user')}<span class="bx-lab">${tr('status')}</span><span class="bx-row-value" id="bStatusLabel">${esc(showStatus(b.status) || tr('add'))}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <button class="ad-row ad-choice" type="button" id="bStatusOpen" aria-haspopup="dialog">
+          ${fieldIcon('user')}<span class="ad-lbl">${tr('status')}</span><span class="ad-val set" id="bStatusLabel">${esc(showStatus(b.status) || tr('add'))}</span><svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
         </button>
         <input id="bStatus" type="hidden" value="${esc(b.status || '')}">
-        <details class="bx-notes-fold" ${b.notes ? 'open' : ''}>
-          <summary class="bx-row">${fieldIcon('chat')}<span class="bx-lab">${tr('notes')}</span><span class="bx-note-preview">${b.notes ? esc(b.notes) : tr('add')}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
+        <details class="ad-notes-fold" ${b.notes ? 'open' : ''}>
+          <summary class="ad-row">${fieldIcon('chat')}<span class="ad-lbl">${tr('notes')}</span><span class="ad-val">${b.notes ? esc(b.notes) : tr('add')}</span><svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
           <textarea id="bNotes" aria-label="${esc(tr('notes'))}">${esc(b.notes)}</textarea>
         </details>
       </section>
-      <div class="bx-section">${tr('tags')}</div>
-      <div class="bx-tags" id="bxTags"></div>
+      <div class="ad-label">${tr('tags')}</div>
+      <div class="ad-tags" id="bxTags"></div>
     </main>
-    <footer class="bx-footer">
-      <div class="bx-footer-actions${existing ? ' editing' : ''}">
+    <footer class="ad-foot">
+      <div class="ad-foot-row${existing ? ' editing' : ''}">
         ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn quiet" id="bSaveItem">${tr('addBoxItem')}</button><button class="btn quiet" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
       </div>
-      <button class="btn primary bx-save" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
-      <button class="bx-cancel" id="bCancel">${tr('cancel')}</button>
+      <button class="btn primary block" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
+      <button class="ad-cancel" id="bCancel">${tr('cancel')}</button>
     </footer>
-    <div class="bx-photo-chooser" id="bxPlaceChooser" hidden>
-      <section class="bx-photo-sheet">
-        <span class="bx-grab" aria-hidden="true"></span>
+    <div class="ad-choose" id="bxPlaceChooser" hidden>
+      <section class="ad-choose-sheet">
+        <span class="ad-grab" aria-hidden="true"></span>
         <h3>${tr('storagePlace')}</h3>
-        <label class="bx-row">${fieldIcon('pin')}<span class="bx-lab">${tr('storagePlace')}</span><select class="bx-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-        <label class="bx-row">${fieldIcon('stack')}<span class="bx-lab">${tr('inside')}</span><select class="bx-in" id="bParent">${parentOpts(b.placeId)}</select></label>
-        <label class="bx-row">${fieldIcon('mapView')}<span class="bx-lab">${tr('zone')}</span><input class="bx-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
+        <label class="ad-row">${fieldIcon('pin')}<span class="ad-lbl">${tr('storagePlace')}</span><select class="ad-in" id="bPlace">${places.map(p => `<option value="${esc(p.id)}" ${p.id === b.placeId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="ad-row">${fieldIcon('stack')}<span class="ad-lbl">${tr('inside')}</span><select class="ad-in" id="bParent">${parentOpts(b.placeId)}</select></label>
+        <label class="ad-row">${fieldIcon('mapView')}<span class="ad-lbl">${tr('zone')}</span><input class="ad-in" id="bLoc" list="bzones" value="${esc(b.location)}" placeholder="${esc(tr('zoneHint'))}"><datalist id="bzones">${zonesOf(b.placeId).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('')}</datalist></label>
         <button class="btn primary" type="button" id="bLocDone">${tr('done')}</button>
       </section>
     </div>
-    <div class="bx-photo-chooser" id="bxSizeChooser" hidden>
-      <section class="bx-photo-sheet">
-        <span class="bx-grab" aria-hidden="true"></span>
+    <div class="ad-choose" id="bxSizeChooser" hidden>
+      <section class="ad-choose-sheet">
+        <span class="ad-grab" aria-hidden="true"></span>
         <h3>${tr('boxSize')}</h3>
-        <div class="bx-size-options">${['moving', 'banana', 'small', 'custom'].map(k => `<button type="button" class="bx-size-option${bt === k ? ' on' : ''}" data-bx-type="${k}" aria-pressed="${bt === k}"><span>${tr('rk_bt_' + k)}</span><svg class="bx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join('')}</div>
-        <div class="bx-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="bx-row"><span class="bx-lab">${tr('rk_' + k)} (cm)</span><input class="bx-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
+        <div class="ad-options">${['moving', 'banana', 'small', 'custom'].map(k => `<button type="button" class="ad-option${bt === k ? ' on' : ''}" data-bx-type="${k}" aria-pressed="${bt === k}"><span>${tr('rk_bt_' + k)}</span><svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join('')}</div>
+        <div class="ad-dims" id="bDims" ${bt === 'custom' ? '' : 'hidden'}>${['w', 'h', 'd'].map(k => `<label class="ad-row"><span class="ad-lbl">${tr('rk_' + k)} (cm)</span><input class="ad-in" id="bD${k}" type="number" inputmode="numeric" value="${esc(bd[k])}"></label>`).join('')}</div>
         <button class="btn primary" type="button" id="bSizeDone">${tr('done')}</button>
       </section>
     </div>
-    <div class="bx-photo-chooser" id="bxStatusChooser" hidden>
-      <section class="bx-photo-sheet">
-        <span class="bx-grab" aria-hidden="true"></span>
+    <div class="ad-choose" id="bxStatusChooser" hidden>
+      <section class="ad-choose-sheet">
+        <span class="ad-grab" aria-hidden="true"></span>
         <h3>${tr('status')}</h3>
-        <div class="bx-size-options">
-          <button type="button" class="bx-size-option${b.status ? '' : ' on'}" data-bx-status="" aria-pressed="${!b.status}"><span>${tr('status')}…</span></button>
-          ${Object.keys(STATUS_KEYS).map(s => `<button type="button" class="bx-size-option${b.status === s ? ' on' : ''}" data-bx-status="${esc(s)}" aria-pressed="${b.status === s}"><span>${tr(STATUS_KEYS[s])}</span></button>`).join('')}
-          <button type="button" class="bx-size-option${b.status && !STATUS_KEYS[b.status] ? ' on' : ''}" data-bx-status="__custom__" aria-pressed="${!!b.status && !STATUS_KEYS[b.status]}"><span>${tr('st_custom')}</span></button>
+        <div class="ad-options">
+          <button type="button" class="ad-option${b.status ? '' : ' on'}" data-bx-status="" aria-pressed="${!b.status}"><span>${tr('status')}…</span></button>
+          ${Object.keys(STATUS_KEYS).map(s => `<button type="button" class="ad-option${b.status === s ? ' on' : ''}" data-bx-status="${esc(s)}" aria-pressed="${b.status === s}"><span>${tr(STATUS_KEYS[s])}</span></button>`).join('')}
+          <button type="button" class="ad-option${b.status && !STATUS_KEYS[b.status] ? ' on' : ''}" data-bx-status="__custom__" aria-pressed="${!!b.status && !STATUS_KEYS[b.status]}"><span>${tr('st_custom')}</span></button>
         </div>
-        <div class="bx-custom-status" id="bxCustomStatusEntry" hidden>
-          <input class="bx-in" id="bxCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}">
+        <div class="ad-custom-status" id="bxCustomStatusEntry" hidden>
+          <input class="ad-in" id="bxCustomStatus" value="${esc(b.status && !STATUS_KEYS[b.status] ? b.status : '')}" placeholder="${esc(tr('customStatus'))}">
           <button class="btn primary" type="button" id="bCustomStatusSave">${tr('save')}</button>
         </div>
         <button class="btn quiet" type="button" id="bStatusDone">${tr('done')}</button>
       </section>
     </div>
     <select id="bType" hidden>${['moving', 'banana', 'small', 'custom'].map(k => `<option value="${k}" ${bt === k ? 'selected' : ''}>${tr('rk_bt_' + k)}</option>`).join('')}</select>
-    <div class="bx-photo-chooser" id="bxPhotoChooser" hidden>
-      <div class="bx-photo-sheet">
-        <span class="bx-grab" aria-hidden="true"></span>
+    <div class="ad-choose" id="bxPhotoChooser" hidden>
+      <div class="ad-choose-sheet">
+        <span class="ad-grab" aria-hidden="true"></span>
         <h3>${tr('photoAdd')}</h3>
         <div class="choice col">
           <label class="btn big addopt wide"><span class="aoi">${ICON.camera}</span><span class="aot"><span>${tr('photoTake')}</span></span><input type="file" accept="image/*" capture="environment" hidden data-bx-pick></label>
@@ -4031,7 +4031,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     });
   };
   const renderTags = () => {
-    $('#bxTags').innerHTML = `${tags.map((tag, i) => `<span class="bx-tag">${esc(tag)}<button type="button" data-bx-tag-remove="${i}" aria-label="${esc(tr('remove'))} ${esc(tag)}">×</button></span>`).join('')}<button class="bx-tag-add" id="bxTagOpen" type="button">+ ${tr('newTag')}</button><div class="bx-tag-entry" id="bxTagEntry" hidden><input id="bxTagInput" placeholder="${esc(tr('tagHint'))}"><button class="btn primary small" id="bxTagSave" type="button">${tr('add')}</button></div>`;
+    $('#bxTags').innerHTML = `${tags.map((tag, i) => `<span class="ad-tag">${esc(tag)}<button type="button" data-bx-tag-remove="${i}" aria-label="${esc(tr('remove'))} ${esc(tag)}">×</button></span>`).join('')}<button class="ad-tag add" id="bxTagOpen" type="button">+ ${tr('newTag')}</button><div class="ad-tag-entry" id="bxTagEntry" hidden><input id="bxTagInput" placeholder="${esc(tr('tagHint'))}"><button class="btn primary small" id="bxTagSave" type="button">${tr('add')}</button></div>`;
   };
   renderTags();
   $('#bxTags').addEventListener('click', e => {
