@@ -1525,14 +1525,15 @@ textarea.title{display:block;resize:none;overflow:hidden;line-height:1.3;min-hei
 .icocell small{color:var(--muted);font-size:var(--fs-1)}
 table.words{border-collapse:collapse;width:100%;font-size:var(--fs-2)}
 table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;color:var(--text)}
+.ad-item-demo{max-width:390px;margin:0 auto;border:1.5px solid var(--line);border-radius:var(--r-4);background:var(--bg);padding:12px;display:flex;flex-direction:column;gap:10px}
 </style>
 </head>
 <body>
 <div class="sg">
   <div class="sgbar">
-    <h1>Designsystem</h1><span class="hint">Storrrage 2026-11-24.2</span>
+    <h1>Designsystem</h1><span class="hint">Storrrage 2026-11-24.3</span>
     <div class="seg small" id="themeSeg"><button class="on" data-t="">Auto</button><button data-t="light">Ljust</button><button data-t="dark">Mörkt</button></div>
-    <nav><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#hyllor">Hyllor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
+    <nav><a href="#ny-lada">Ny låda</a><a href="#ny-sak">Ny sak</a><a href="#farger">Färger</a><a href="#typo">Typografi</a><a href="#former">Former</a><a href="#ikoner">Ikoner</a><a href="#knappar">Knappar</a><a href="#kort">Valkort</a><a href="#val">Val</a><a href="#falt">Fält</a><a href="#lador">Lådor</a><a href="#hyllor">Hyllor</a><a href="#ovrigt">Övrigt</a><a href="#regler">Regler</a></nav>
   </div>
   <p class="lead">Den här sidan använder exakt samma CSS som appen och byggs om med <code>python3 build.py</code>. Ändrar du en token eller en komponent i <code>src/style.css</code> syns det här direkt. Byt tema uppe till höger.</p>
 
@@ -1682,6 +1683,77 @@ table.words td,table.words th{border-bottom:1px solid var(--line);padding:6px 8p
       </div>
     </div><span class="lbl">Rumsmarkörer + namngiven lista + stabil detaljvy för en golvstapel</span>
   </div>
+
+  <h2 class="sgh" id="ny-lada">Ny låda</h2>
+  <p class="lead">Lådformuläret som öppnas från + på en plats. Växlaren Sak / Låda högst upp byter till formuläret för sak.</p>
+  <div class="ad-editor-demo"><div class="ad-editor">
+    <header class="ad-head"><span class="ad-code">B-011</span><div class="ad-ttl"><span class="ad-head-sub">Ny låda i Källaren</span></div><button type="button" class="ad-x" aria-label="Stäng"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+    <main class="ad-main">
+      <section class="ad-card ad-hero">
+        <div class="ad-photo-wrap"><div class="ad-photo-pick"><svg class="boxart" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 25h44v28.5a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#B5824A"/><rect x="7" y="16" width="50" height="11" rx="2.2" fill="#C99A62"/><rect x="10" y="27" width="44" height="2.6" fill="#8C5E2E"/><rect x="28.5" y="16" width="7" height="11" fill="#E6C894"/><rect x="16" y="34" width="32" height="15" rx="2" fill="#FFF7EA"/><text x="32" y="45.4" text-anchor="middle" font-family="Montserrat,Poppins,Arial,sans-serif" font-weight="800" font-size="11" fill="#5A3FB8">14</text></svg></div></div>
+        <div class="ad-right">
+          <label class="ad-name"><input placeholder="Valfritt lådnamn" aria-label="Namn"></label>
+          <div class="ad-seg" role="group" aria-label="Typ"><button type="button" aria-pressed="false">Sak</button><button type="button" class="on" aria-pressed="true">Låda</button></div>
+        </div>
+      </section>
+      <button type="button" class="ad-where"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="8.5" r="2.2"/></svg><span class="ad-where-text">Källaren · fristående</span><span class="ad-chg">Ändra</span></button>
+      <div class="ad-label">Detaljer</div>
+      <section class="ad-rows">
+        <button type="button" class="ad-row ad-choice"><span class="ad-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></span><span class="ad-lbl">Storlek</span><span class="ad-val set">Moving box 60×40×40 cm</span><svg class="ad-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button type="button" class="ad-row ad-choice"><span class="ad-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><span class="ad-lbl">Status</span><span class="ad-val">Lägg till</span><svg class="ad-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <details class="ad-notes-fold"><summary class="ad-row"><span class="ad-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v12H9l-4 4z"/></svg></span><span class="ad-lbl">Anteckningar</span><span class="ad-val">Lägg till</span><svg class="ad-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></summary><textarea aria-label="Anteckningar">Övre hyllan</textarea></details>
+      </section>
+      <div class="ad-label">Taggar</div>
+      <div class="ad-tags"><span class="ad-tag">jul<button type="button" aria-label="Ta bort jul">×</button></span><button type="button" class="ad-tag add">+ Ny tagg</button></div>
+    </main>
+    <footer class="ad-foot">
+      <div class="ad-foot-row"><button type="button" class="btn quiet">Lägg till sak</button><button type="button" class="btn quiet">Lägg till en till låda</button></div>
+      <button type="button" class="btn primary block">Spara låda</button>
+      <button type="button" class="ad-cancel">Avbryt</button>
+    </footer>
+  </div></div>
+  <span class="lbl">Samma klasser som lådformuläret i appen (ad-editor).</span>
+
+  <h2 class="sgh" id="ny-sak">Ny sak</h2>
+  <p class="lead">Itemsidan när man lägger till en sak. Den har samma kort, rader och knappar som lådformuläret. Växlaren Sak / Låda högst upp visas bara för nya saker.</p>
+  <div class="ad-item-demo">
+    <section class="ad-card ad-hero">
+      <div class="ad-photo-wrap">
+        <button type="button" class="ad-photo-btn empty"><span class="ad-photo-art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span></button>
+        <button type="button" class="ad-cam" aria-label="Foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+      </div>
+      <div class="ad-right">
+        <label class="ad-titlerow"><textarea class="ad-title" rows="1" placeholder="Vad är det?">Vinterdäck 205/55 R16</textarea></label>
+        <div class="ad-acts">
+          <button type="button" class="ad-pill ad-out" aria-pressed="false"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>Ta ut</button>
+          <button type="button" class="ad-pill ad-fav" aria-pressed="true"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorit</button>
+        </div>
+        <div class="ad-seg ad-type" role="group" aria-label="Typ"><button type="button" class="on" aria-pressed="true">Sak</button><button type="button" aria-pressed="false">Låda</button></div>
+      </div>
+    </section>
+    <button type="button" class="ad-where"><svg class="stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="8.5" r="2.2"/></svg><span class="ad-where-text">Källaren · inte i en låda</span><span class="ad-chg">Ändra</span></button>
+    <div class="ad-label">Detaljer</div>
+    <section class="ad-rows">
+      <label class="ad-field"><span class="ad-lbl">Märke</span><input class="ad-val-in" value="Continental"></label>
+      <label class="ad-field"><span class="ad-lbl">Värde (kr)</span><input class="ad-val-in" value="1 200"></label>
+      <div class="ad-group"><span class="ad-lbl">Påminn om oanvänd</span><div class="ad-chips"><button type="button" class="ad-chip on">Ingen</button><button type="button" class="ad-chip">Efter 3 mån</button><button type="button" class="ad-chip">Efter 1 år</button><button type="button" class="ad-chip">Välj datum</button></div></div>
+    </section>
+    <div class="ad-label">Lägg till detaljer</div>
+    <section class="ad-rows">
+      <button type="button" class="ad-row"><span class="ad-lbl">Storlek</span><span class="ad-detplus" aria-hidden="true">+</span></button>
+      <button type="button" class="ad-row"><span class="ad-lbl">Antal</span><span class="ad-detplus" aria-hidden="true">+</span></button>
+    </section>
+    <div class="ad-label">Bilagor</div>
+    <section class="ad-rows"><label class="ad-row"><span class="ad-lbl">Lägg till kvitto, garanti eller manual</span><span class="ad-detplus" aria-hidden="true">+</span></label></section>
+    <div class="ad-label">Taggar</div>
+    <div class="ad-tags"><span class="ad-tag">vinter<button type="button" aria-label="Ta bort vinter">×</button></span><button type="button" class="ad-tag add">+ Ny tagg</button></div>
+    <button type="button" class="btn quiet block">Dela var den finns</button>
+    <div class="ad-foot">
+      <div class="ad-foot-row"><button type="button" class="btn quiet">Avbryt</button><button type="button" class="btn quiet">Spara + lägg till nästa</button></div>
+      <button type="button" class="btn primary block">Spara</button>
+    </div>
+  </div>
+  <span class="lbl">Samma klasser som itemsidan i appen. Byt till Låda för att gå till lådformuläret.</span>
 
   <h2 class="sgh" id="regler">Regler</h2>
   <ol class="rules">
