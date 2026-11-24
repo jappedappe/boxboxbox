@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-24.1';
+const APP_VERSION = '2026-11-24.2';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2345,10 +2345,11 @@ function renderItem(){
       <div class="ad-right">
         <label class="ad-titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="ad-title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
         <div class="ad-acts">
-          <button type="button" class="ad-pill ad-out" data-act="${isOutNow ? 'itemback' : 'itemout'}" aria-pressed="${isOutNow}">${isOutNow ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOutItem')}</button>
+          <button type="button" class="ad-pill ad-out" data-act="${isOutNow ? 'itemback' : 'itemout'}" aria-pressed="${isOutNow}">${isOutNow ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOut')}</button>
           <button type="button" class="ad-pill ad-fav" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button>
           <button type="button" class="ad-pill" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button>
         </div>
+        ${isNew ? `<div class="ad-seg ad-type" role="group" aria-label="${esc(tr('addWhat'))}"><button type="button" class="on" aria-pressed="true">${esc(tr('boxTypeItem'))}</button><button type="button" data-switch-box aria-pressed="false">${esc(tr('boxTypeBox'))}</button></div>` : ''}
       </div>
     </section>
     ${photos.length ? `<div class="ad-thumbs">${photos.map((p, i) => `<span class="ad-thumb"><button type="button" data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button type="button" class="ad-thumb-x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
@@ -2368,7 +2369,7 @@ function renderItem(){
     </section>
     ${linkedDocs.length ? `<div class="ad-label">${tr('linkedDocuments')}</div><section class="ad-rows">${linkedDocs.map(({doc, owner}) => `<div class="ad-field"><span class="ad-lbl">${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button type="button" class="ad-icobtn" data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</section>` : ''}
     <div class="ad-label">${tr('tags')}</div>
-    <div class="ad-tags">${(it.tags || []).map((t, i) => `<span class="ad-tag"><button type="button" class="ad-tag-open" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button type="button" class="ad-tag-x" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button type="button" class="ad-tag add" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
+    <div class="ad-tags">${(it.tags || []).map((t, i) => `<span class="ad-tag"><button type="button" class="ad-tag-open" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button type="button" class="ad-tag-x" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button type="button" class="ad-tag add" data-act="addtag" aria-label="${esc(tr('newTag'))}">+ ${esc(tr('newTag'))}</button></div>
     <button type="button" class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
     ${adSlot('card')}
     <p class="ad-proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
@@ -2381,6 +2382,13 @@ function renderItem(){
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
     <datalist id="seasons">${seasonSuggestions(it).map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
     <datalist id="brands">${recentValues('brand').map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
+  const switchBox = app.querySelector('[data-switch-box]');
+  if (switchBox) switchBox.addEventListener('click', async () => {
+    const [draft] = curItem(); if (!draft) return;
+    await cancelNewItem();
+    if (itemDraft === draft.id) return; // user kept the draft
+    boxSheet(null, b.placeId, b.loose ? null : b.id);
+  });
   const timers = {};
   const conv = (k, v) => {
     v = typeof v === 'string' ? v.trim() : v;

@@ -1707,3 +1707,5 @@ dialog.ad-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidd
 .ad-icobtn svg{width:18px;height:18px}
 .ad-tag .ad-tag-open{width:auto;height:36px;padding:0;border:0;background:none;color:inherit;font:inherit}
 .ad-proof{margin:4px 0 0;text-align:center;font-size:var(--fs-0);color:var(--muted)}
+/* item page: the location card sits in the same card style as the other rows */
+.ad-where-line .loccard{padding:8px 10px;border-radius:var(--r-4);border-color:var(--line);box-shadow:none}
