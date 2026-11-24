@@ -24,7 +24,7 @@
   --fs-0:.625rem; --fs-1:.75rem; --fs-2:.8125rem; --fs-3:.9375rem; --fs-4:1.0625rem; --fs-5:1.3125rem; --fs-6:1.75rem;
   --r-1:4px; --r-2:8px; --r-3:12px; --r-4:16px; --r-round:999px;
   --sh-1:0 4px 14px rgba(20,8,40,.16); --sh-2:0 -8px 30px rgba(20,8,40,.25);
-  --ok:#2FBF71; --ok-2:#9BCB5A; --warn:#E2B93B;
+  --ok:#2FBF71; --ok-2:#9BCB5A; --warn:#E2B93B; --amber:#9A5A06; --amber-soft:#FDF0DE;
   --box:#B5824A; --box-lid:#C99A62; --box-tape:#E6C894; --box-edge:#8C5E2E; --box-label:#FFF7EA; --box-ink:#5A3FB8; --box-text:#3B2512;
   box-sizing:border-box; color-scheme:light;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
@@ -32,9 +32,9 @@
 html{scrollbar-gutter:stable}
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
   --bg:#17151F; --surface:#221F2D; --ink:#E7E2F8; --text:#ECEAF2; --muted:#A9A3BD; --line:#3A3550; --lav-2:#2D2842; --lav-3:#1F1C2A; --accent:#B6A1FF;
-  --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; color-scheme:dark; } }
+  --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; --amber:#F2B45C; --amber-soft:#3A2C18; color-scheme:dark; } }
 :root[data-theme="dark"]{ --bg:#17151F; --surface:#221F2D; --ink:#E7E2F8; --text:#ECEAF2; --muted:#A9A3BD; --line:#3A3550; --lav-2:#2D2842; --lav-3:#1F1C2A; --accent:#B6A1FF;
-  --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; color-scheme:dark; }
+  --tile:#7A63D3; --current:#000000; --field:#17151F; --primary:#7A63D3; --primary-2:#9583DE; --amber:#F2B45C; --amber-soft:#3A2C18; color-scheme:dark; }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
 html,body{max-width:100%;overflow-x:clip}
@@ -1550,6 +1550,173 @@ dialog.bx-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidd
 @media(max-width:420px){
   dialog.bx-editor-open{position:fixed;inset:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0}
 }
+/* lägg till: sak eller låda (ad-) */
+.ad-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
+.ad-phone{background:var(--bg);border:1.5px solid var(--line);border-radius:var(--r-4);overflow:hidden;display:flex;flex-direction:column;max-width:420px;width:100%;margin:0 auto}
+.ad-head{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 8px 6px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.ad-hdric{width:36px;height:36px;border-radius:var(--r-2);background:var(--lav-2);color:var(--primary);display:grid;place-items:center;flex:none}
+.ad-badge{font-family:var(--caps);font-weight:700;font-size:var(--fs-1);color:var(--primary);letter-spacing:.02em}
+.ad-ttl{flex:1;min-width:0;font-weight:600;font-size:var(--fs-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ad-x{width:44px;height:44px;flex:none;border:none;background:none;color:var(--ink);display:grid;place-items:center;padding:0}
+.ad-body{display:flex;flex-direction:column;gap:10px;padding:12px;min-width:0}
+.ad-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-4);padding:12px}
+.ad-hero{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:start}
+.ad-left{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ad-photo{width:72px;height:72px;padding:0;border:none;border-radius:var(--r-3);background:var(--lav-2);color:var(--primary);display:grid;place-items:center;overflow:hidden;cursor:pointer}
+.ad-photo svg{width:44px;height:44px}
+.ad-pick{width:100%;min-height:44px;padding:0 6px;border:none;border-radius:var(--r-round);background:var(--lav-2);color:var(--primary);font-size:var(--fs-1);font-weight:600}
+.ad-right{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ad-name{display:flex;align-items:center;min-width:0;border-bottom:2px solid var(--primary);padding-bottom:2px}
+.ad-name input{flex:1;min-width:0;border:none;outline:none;background:transparent;font:600 var(--fs-4)/1.3 var(--ui);color:var(--text);text-align:left;padding:8px 0}
+.ad-name input::placeholder{color:var(--muted);font-weight:500;font-style:italic}
+.ad-seg{display:flex;gap:4px;padding:4px;border-radius:var(--r-round);background:var(--lav-3)}
+.ad-seg button{flex:1;min-height:44px;padding:0 10px;border:none;border-radius:var(--r-round);background:none;color:var(--muted);font-size:var(--fs-2);font-weight:600}
+.ad-seg button[aria-pressed="true"]{background:var(--primary);color:#fff}
+.ad-status{display:flex;flex-wrap:wrap;gap:8px}
+.ad-pill{flex:1 1 140px;min-width:0;min-height:44px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:var(--r-round);border:1.5px solid var(--line);background:var(--surface);color:var(--muted);font-size:var(--fs-2);font-weight:600}
+.ad-pill span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-pill svg{width:16px;height:16px;flex:none}
+.ad-pill[aria-pressed="true"]{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
+.ad-where{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 4px;border:none;background:none;color:var(--muted);font-size:var(--fs-2);text-align:left}
+.ad-where svg{width:16px;height:16px;flex:none}
+.ad-where .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ad-chg{flex:none;display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:var(--r-round);background:var(--lav-2);color:var(--primary);font-weight:600}
+.ad-label{font-family:var(--caps);font-weight:700;font-size:var(--fs-1);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:4px 4px 0}
+.ad-rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-4);overflow:hidden}
+.ad-row{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:10px 14px;border:none;border-top:1px solid var(--line);background:none;color:var(--text);font-size:var(--fs-3);text-align:left}
+.ad-rows > :first-child{border-top:none}
+.ad-ic{width:32px;height:32px;border-radius:var(--r-2);background:var(--bg);color:var(--muted);display:grid;place-items:center;flex:none}
+.ad-ic svg{width:16px;height:16px}
+.ad-lbl{flex:1;min-width:0}
+.ad-val{flex:0 1 auto;max-width:50%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:var(--fs-2)}
+.ad-val.set{color:var(--text);font-weight:500}
+.ad-chev{width:14px;height:14px;flex:none;color:var(--muted);transition:transform .25s ease}
+.ad-row.open .ad-chev{transform:rotate(90deg);color:var(--primary)}
+.ad-row.more .ad-lbl{color:var(--primary);font-weight:600}
+.ad-fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.ad-fold.open{grid-template-rows:1fr}
+.ad-fold > div{overflow:hidden;min-height:0}
+.ad-switch{width:46px;height:28px;flex:none;border-radius:var(--r-round);background:var(--line);position:relative;transition:background .2s}
+.ad-switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.ad-row[aria-checked="true"] .ad-switch{background:var(--primary)}
+.ad-row[aria-checked="true"] .ad-switch::after{transform:translateX(18px)}
+.ad-chips{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px 14px;border-top:1px solid var(--line)}
+.ad-chip{min-height:44px;padding:0 14px;border-radius:var(--r-round);border:1.5px solid var(--line);background:var(--surface);color:var(--text);font-size:var(--fs-2);font-weight:500}
+.ad-chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+.ad-tags{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ad-tag{min-height:36px;display:inline-flex;align-items:center;gap:4px;padding:0 4px 0 12px;border-radius:var(--r-round);background:var(--lav-3);color:var(--text);font-size:var(--fs-2)}
+.ad-tag .x{width:36px;height:36px;border:none;background:none;color:var(--muted);font-size:var(--fs-4);padding:0}
+.ad-tag.add{min-height:44px;padding:0 14px;background:none;border:1.5px dashed var(--line);color:var(--muted);font-weight:500}
+.ad-share{margin-top:0}
+.ad-foot{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.ad-foot-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ad-foot .btn{white-space:normal;text-align:center;min-height:44px;padding:10px 8px;font-size:var(--fs-2)}
+.ad-foot .btn.primary{min-height:48px;font-size:var(--fs-3)}
+.ad-foot .btn.block{margin-top:0}
+.ad-phone.type-item .only-box{display:none}
+.ad-phone.type-box .only-item{display:none}
+.ad-sheet{display:flex;flex-direction:column;gap:8px;max-width:360px;padding:10px 16px 16px;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-4)}
+.ad-grab{width:40px;height:4px;border-radius:2px;background:var(--line);align-self:center}
+.ad-sheet-title{margin:0;text-align:center;font-weight:600;font-size:var(--fs-4)}
+.ad-sheet-opt{min-height:52px;padding:0 14px;display:flex;align-items:center;gap:10px;border-radius:var(--r-3);border:1.5px solid var(--line);background:var(--surface);color:var(--text);font-size:var(--fs-3);font-weight:600;text-align:left}
+.ad-sheet-opt svg{width:20px;height:20px;color:var(--primary);flex:none}
+
+/* box editor (ad-editor): the sheet that adds or edits a box */
+dialog.ad-editor-open{width:min(390px,calc(100vw - 20px));height:min(844px,calc(100dvh - 20px));max-height:calc(100dvh - 20px);border-radius:var(--r-4);background:var(--bg)}
+dialog.ad-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidden;display:flex}
+.ad-editor{position:relative;width:100%;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.ad-editor [hidden]{display:none!important}
+.ad-code{min-width:50px;height:34px;padding:0 6px;display:grid;place-items:center;border-radius:var(--r-2);background:var(--lav-3);font-family:var(--caps);font-weight:700;color:var(--ink);font-size:var(--fs-1)}
+.ad-head-sub{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 16px 16px;display:flex;flex-direction:column;gap:8px}
+.ad-photo-wrap{position:relative;width:72px;height:72px;flex:none}
+.ad-photo-pick{width:72px;height:72px;position:relative;overflow:hidden;display:grid;place-items:center;padding:0;border:1.5px dashed var(--line);border-radius:var(--r-3);background:var(--lav-2);color:var(--primary);cursor:pointer}
+.ad-photo-pick>svg{width:48px;height:48px}
+.ad-photo-pick img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ad-camera{position:absolute;right:4px;bottom:4px;width:24px;height:24px;display:grid;place-items:center;border-radius:var(--r-round);background:var(--primary);color:#fff}
+.ad-camera svg{width:13px;height:13px}
+.ad-photo-remove{position:absolute;right:-6px;top:-6px;width:24px;height:24px;border:0;border-radius:var(--r-round);background:var(--text);color:var(--surface);font-size:var(--fs-3);line-height:1;padding:0}
+.ad-photo-busy{position:absolute;left:0;right:0;bottom:-18px;font-size:var(--fs-0);color:var(--muted);white-space:nowrap}
+.ad-pill.ad-out.on{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
+.ad-pill.ad-fav.on{border-color:var(--primary);background:var(--lav-3);color:var(--primary)}
+.ad-seg button.on{background:var(--primary);color:#fff}
+.ad-where-text{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-choice{cursor:pointer}
+.ad-notes-fold{border-top:1px solid var(--line)}
+.ad-notes-fold>summary{list-style:none;cursor:pointer}
+.ad-notes-fold>summary::-webkit-details-marker{display:none}
+.ad-notes-fold[open] .ad-chev{transform:rotate(90deg);color:var(--primary)}
+.ad-notes-fold textarea{display:block;width:calc(100% - 28px);min-height:76px;margin:0 14px 12px;padding:10px;border:1.5px solid var(--line);border-radius:var(--r-2);background:var(--field);color:var(--text);font:inherit;resize:vertical}
+.ad-tag button{width:36px;height:36px;border:0;background:transparent;color:var(--muted);font-size:var(--fs-4);padding:0}
+.ad-tag-entry{display:flex;align-items:center;gap:8px;flex-basis:100%}
+.ad-tag-entry input{min-width:0;flex:1;min-height:44px;padding:8px 10px;border:1.5px solid var(--line);border-radius:var(--r-2);background:var(--field);color:var(--text)}
+.ad-foot-row.editing{grid-template-columns:1fr}
+.ad-cancel{align-self:center;min-height:44px;padding:4px 12px;border:0;background:transparent;color:var(--muted);font-size:var(--fs-2);font-weight:500}
+.ad-choose{position:absolute;inset:0;z-index:10;display:flex;align-items:flex-end;background:rgba(20,8,40,.45)}
+.ad-choose[hidden]{display:none}
+.ad-choose-sheet{width:100%;max-height:85dvh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));border-radius:var(--r-4) var(--r-4) 0 0;background:var(--surface)}
+.ad-choose-sheet h3{margin:0;color:var(--ink);font-size:var(--fs-4)}
+.ad-choose-sheet .choice{margin:0}
+.ad-choose-sheet .ad-row{border:1px solid var(--line);border-radius:var(--r-3)}
+.ad-choose-sheet .ad-row .ad-in{flex:1 1 55%;width:auto}
+.ad-options{display:flex;flex-direction:column;gap:6px}
+.ad-option{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--r-3);background:var(--surface);color:var(--text);font-size:var(--fs-3);text-align:left}
+.ad-option>span{flex:1}
+.ad-option .ad-chev{color:var(--muted)}
+.ad-option.on{border-color:var(--primary);background:var(--lav-3);color:var(--primary);font-weight:600}
+.ad-dims{display:flex;flex-direction:column;gap:6px}
+.ad-custom-status{display:flex;flex-direction:column;gap:8px;padding:8px 0}
+.ad-in{flex:1;min-width:0;width:100%;min-height:44px;padding:8px 10px;border:1.5px solid var(--line);border-radius:var(--r-2);background:var(--field);color:var(--text);font-size:var(--fs-2)}
+.ad-in:focus{border-color:var(--primary);outline:2px solid var(--primary);outline-offset:1px}
+.ad-in::placeholder{color:var(--muted);font-weight:400}
+.ad-editor-demo{height:640px;max-width:390px;margin:0 auto;border:1.5px solid var(--line);border-radius:var(--r-4);overflow:hidden}
+@media(max-width:420px){dialog.ad-editor-open{position:fixed;inset:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0}}
+/* item page (ad-item): the view and editor for one item */
+.ad-photo-btn{width:72px;height:72px;padding:0;border:0;border-radius:var(--r-3);overflow:hidden;background:var(--lav-2);color:var(--primary);display:grid;place-items:center;cursor:pointer}
+.ad-photo-btn img{width:100%;height:100%;object-fit:cover;display:block}
+.ad-photo-btn.empty{border:1.5px dashed var(--line)}
+.ad-photo-art svg{width:44px;height:44px}
+.ad-cam{position:absolute;right:-6px;bottom:-6px;width:36px;height:36px;padding:0;display:grid;place-items:center;border-radius:var(--r-round);border:2px solid var(--surface);background:var(--primary);color:#fff}
+.ad-cam svg{width:16px;height:16px}
+.ad-titlerow{display:block;min-width:0}
+.ad-title{display:block;width:100%;min-width:0;border:0;border-bottom:2px solid var(--primary);outline:0;background:transparent;resize:none;overflow:hidden;font:600 var(--fs-4)/1.3 var(--ui);color:var(--text);padding:6px 0}
+.ad-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.ad-acts .ad-pill{flex:1 1 130px}
+.ad-pill.ad-fav[aria-pressed="true"]{border-color:var(--primary);background:var(--lav-3);color:var(--primary)}
+.ad-thumbs{display:flex;gap:8px;overflow-x:auto;padding:2px}
+.ad-thumb{position:relative;flex:none;width:56px;height:56px;border-radius:var(--r-2);overflow:hidden;background:var(--lav-2)}
+.ad-thumb>button:first-child{display:block;width:100%;height:100%;padding:0;border:0;background:none}
+.ad-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ad-thumb-x{position:absolute;right:2px;top:2px;width:24px;height:24px;padding:0;border:0;border-radius:var(--r-round);background:var(--text);color:var(--surface);font-size:var(--fs-2);line-height:1}
+.ad-aisug{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ad-where-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ad-where-line>*:first-child{flex:1;min-width:0}
+.ad-field{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 14px;border-top:1px solid var(--line);color:var(--text);cursor:text}
+.ad-field-area{align-items:flex-start}
+.ad-rows>:first-child{border-top:0}
+.ad-val-in{flex:1 1 50%;min-width:0;width:auto;min-height:36px;padding:6px 0;border:0;outline:0;background:transparent;text-align:right;color:var(--text);font:inherit;font-size:var(--fs-3)}
+.ad-val-in:focus{color:var(--primary)}
+.ad-field-area .ad-val-in{flex:1;text-align:left;min-height:72px;resize:vertical}
+.ad-group{display:flex;flex-direction:column;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.ad-group>.ad-lbl{flex:none;color:var(--muted);font-size:var(--fs-2)}
+.ad-group .ad-val-in{flex:none;width:100%;min-height:44px;padding:8px 10px;border:1.5px solid var(--line);border-radius:var(--r-2);background:var(--field);text-align:left}
+.ad-group .ad-val-in:focus{border-color:var(--primary);outline:2px solid var(--primary);outline-offset:1px}
+.ad-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.ad-group .ad-chips{padding:0;border:0}
+.ad-chips.ad-season{padding:0 14px 12px;border:0}
+.ad-chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.ad-wnote{margin:0;font-size:var(--fs-1);color:var(--muted)}
+.ad-wnote.soon{color:var(--amber)}
+.ad-optional{position:relative}
+.ad-optional>.ad-field,.ad-optional>.ad-group{padding-right:52px}
+.ad-optcancel{position:absolute;right:4px;top:4px;width:44px;height:44px;padding:0;border:0;background:transparent;color:var(--muted);font-size:var(--fs-4)}
+.ad-detplus{color:var(--primary);font-size:var(--fs-4);font-weight:600;line-height:1}
+.ad-notify{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;padding:0 4px;color:var(--muted);font-size:var(--fs-2)}
+.ad-notify.due{color:var(--amber)}
+.ad-icobtn{width:44px;height:44px;flex:none;padding:0;border:0;background:transparent;color:var(--muted);display:grid;place-items:center}
+.ad-icobtn svg{width:18px;height:18px}
+.ad-tag .ad-tag-open{width:auto;height:36px;padding:0;border:0;background:none;color:inherit;font:inherit}
+.ad-proof{margin:4px 0 0;text-align:center;font-size:var(--fs-0);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -13983,7 +14150,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-23.4';
+const APP_VERSION = '2026-11-24.1';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -16276,7 +16443,7 @@ function renderItem(){
   const show = k => hasVal(it, k) || shownOpt.has(k);
   const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
   const linkedDocs = boxes.flatMap(owner => (owner.documents || []).filter(doc => doc.itemId === it.id).map(doc => ({doc, owner})));
-  const input = (k, opts = {}) => `<div class="fl"><input data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}><label>${esc(tr('f_' + k))}</label></div>`;
+  const input = (k, opts = {}) => `<label class="ad-field"><span class="ad-lbl">${esc(tr('f_' + k))}</span><input class="ad-val-in" data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}></label>`;
   let status = normalizeStatus(it.status), loanTo = it.loanTo || '';
   const legacy = /^On loan \((.+)\)$/.exec(it.status || ''); if (legacy) loanTo = loanTo || legacy[1];
   const field = k => {
@@ -16285,51 +16452,69 @@ function renderItem(){
     if (k === 'qty') return input(k, {attrs: 'type="number" inputmode="numeric" min="1"'});
     if (k === 'brand') return input(k, {attrs: 'list="brands"'});
     if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
-    if (k === 'season') return `${input(k, {value: showSeason(it.season), attrs: 'list="seasons"'})}<div class="chips season-suggestions">${seasonSuggestions(it).slice(0, 5).map(s => `<button class="chipbtn small${it.season === s ? ' on' : ''}" data-season-value="${esc(s)}">${esc(showSeason(s))}</button>`).join('')}</div>`;
+    if (k === 'season') return `${input(k, {value: showSeason(it.season), attrs: 'list="seasons"'})}<div class="ad-chips ad-season">${seasonSuggestions(it).slice(0, 5).map(s => `<button class="ad-chip${it.season === s ? ' on' : ''}" data-season-value="${esc(s)}">${esc(showSeason(s))}</button>`).join('')}</div>`;
     if (k === 'serial') return input(k, {attrs: 'autocapitalize="characters"'});
-    if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
+    if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="ad-wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
     if (k === 'spot') return b.loose ? input(k) : '';
-    if (k === 'notes') return `<div class="fl"><textarea data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea><label>${tr('f_notes')}</label></div>`;
+    if (k === 'notes') return `<label class="ad-field ad-field-area"><span class="ad-lbl">${tr('f_notes')}</span><textarea class="ad-val-in" data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea></label>`;
     if (k === 'owner'){
       const ownerField = status === 'Sold' || status === 'Throw away' ? '' :
-        status === 'Loaned out' ? `<input data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">` :
-        status === 'Given away' ? `<input data-f="givenTo" value="${esc(it.givenTo || '')}" placeholder="${esc(tr('givenAwayTo'))}" list="people" autocapitalize="words">` :
-        `<input data-f="owners" value="${esc(itemOwner(it))}" placeholder="${esc(tr('belongsTo'))}" list="people" autocapitalize="words">`;
-      return `<div class="fl group"><label class="always">${tr('f_owner')}</label>
-        <div class="pair">${ownerField}<select data-f="status" aria-label="${esc(tr('status'))}">${statusOptions(status)}</select></div>
+        status === 'Loaned out' ? `<input class="ad-val-in" data-f="loanTo" value="${esc(loanTo)}" placeholder="${esc(tr('loanTo'))}" list="people" autocapitalize="words">` :
+        status === 'Given away' ? `<input class="ad-val-in" data-f="givenTo" value="${esc(it.givenTo || '')}" placeholder="${esc(tr('givenAwayTo'))}" list="people" autocapitalize="words">` :
+        `<input class="ad-val-in" data-f="owners" value="${esc(itemOwner(it))}" placeholder="${esc(tr('belongsTo'))}" list="people" autocapitalize="words">`;
+      return `<div class="ad-group"><span class="ad-lbl">${tr('f_owner')}</span>
+        <div class="ad-pair">${ownerField}<select class="ad-val-in" data-f="status" aria-label="${esc(tr('status'))}">${statusOptions(status)}</select></div>
         ${status === 'Loaned out' ? loanFields(it) : ''}</div>`;
     }
     return input(k);
   };
   const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
+  const fieldRows = OPT.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="ad-optional">${html}<button type="button" class="ad-optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('');
+  const detailOpts = addable.length ? `<div class="ad-label">${tr('addDetail')}</div><section class="ad-rows">${addable.map(k => `<button type="button" class="ad-row" data-addopt="${k}"><span class="ad-lbl">${esc(tr('f_' + k))}</span><span class="ad-detplus" aria-hidden="true">+</span></button>`).join('')}</section>` : '';
+  const isOutNow = isOut(it);
   app.innerHTML = `${crumbs(crumbParts)}
     ${presenceNote(b.id, it.id)}
-    <div class="hero">
-      ${photos.length ? `<button class="heroimg" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button class="heroimg empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ticon">${guessIcon(it)}</span><span class="iconedit">${tr('pickIcon')}</span></button>`}
-      <button type="button" class="cam" id="fPhoto" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}</button>
-    </div>
-    ${photos.length ? `<div class="thumbs">${photos.map((p, i) => `<span class="th"><button data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button class="x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
-    <label class="titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
+    <section class="ad-card ad-hero">
+      <div class="ad-photo-wrap">
+        ${photos.length ? `<button type="button" class="ad-photo-btn" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button type="button" class="ad-photo-btn empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ad-photo-art">${guessIcon(it)}</span></button>`}
+        <button type="button" class="ad-cam" id="fPhoto" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}</button>
+      </div>
+      <div class="ad-right">
+        <label class="ad-titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="ad-title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
+        <div class="ad-acts">
+          <button type="button" class="ad-pill ad-out" data-act="${isOutNow ? 'itemback' : 'itemout'}" aria-pressed="${isOutNow}">${isOutNow ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOutItem')}</button>
+          <button type="button" class="ad-pill ad-fav" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button>
+          <button type="button" class="ad-pill" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button>
+        </div>
+      </div>
+    </section>
+    ${photos.length ? `<div class="ad-thumbs">${photos.map((p, i) => `<span class="ad-thumb"><button type="button" data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button type="button" class="ad-thumb-x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
+    ${ai.provider !== 'off' && photos.length ? `<div class="ad-aisug"><button type="button" class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     ${entityInfo(it, b)}
-    <div class="itemacts"><button class="btn quiet small icontext" data-act="${isOut(it) ? 'itemback' : 'itemout'}">${isOut(it) ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOutItem')}</button><button class="btn quiet small icontext favbtn" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button><button class="btn quiet small icontext" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button></div>
-    ${ai.provider !== 'off' && photos.length ? `<div class="aisug"><button class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
-    <div class="whereline">${locationCardHTML(b, it)}<button class="linkbtn" data-act="moveitem2">${tr('move')}</button></div>
-    ${OPT.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="optional-field">${html}<button class="btn quiet small optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('')}
-    ${addable.length ? `<div class="adddet"><span class="lab">${tr('addDetail')}</span><div class="detrows">${addable.map(k => `<button class="detrow" data-addopt="${k}"><span>${esc(tr('f_' + k))}</span><span class="detplus" aria-hidden="true">+</span></button>`).join('')}</div></div>` : ''}
-    <div class="fl"><input data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><label class="always">${tr('lastUsed')}</label></div>
-    ${remindFields(it)}
-    ${n ? `<p class="notifyrow"><span class="notify${due ? ' due' : ''}">${esc(tr('notify', n))}${dot(due)}</span><button class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
-    <div class="fl att"><label class="always">${tr('attachments')}</label>
-      ${(it.files || []).map((f, i) => `<div class="attrow"><span>${esc(f.name)}</span><button data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button class="x" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
-      <div><label class="addfile">${tr('addAttach')}<input type="file" accept="image/*,application/pdf" id="fFile" hidden></label></div></div>
-    ${linkedDocs.length ? `<div class="fl att"><label class="always">${tr('linkedDocuments')}</label>${linkedDocs.map(({doc, owner}) => `<div class="attrow"><span>${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</div>` : ''}
-    <div class="tags"><span class="lab">${tr('tags')}</span>${(it.tags || []).map((t, i) => `<span class="tag"><button class="tagopen" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button class="tagx" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button class="tag plus" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
-    <button class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
+    <div class="ad-where-line">${locationCardHTML(b, it)}<button type="button" class="ad-chg" data-act="moveitem2">${tr('move')}</button></div>
+    <section class="ad-rows">${fieldRows}
+      <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"></label>
+      ${remindFields(it)}
+    </section>
+    ${n ? `<p class="ad-notify${due ? ' due' : ''}"><span>${esc(tr('notify', n))}</span>${dot(due)}<button type="button" class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
+    ${detailOpts}
+    <div class="ad-label">${tr('attachments')}</div>
+    <section class="ad-rows">
+      ${(it.files || []).map((f, i) => `<div class="ad-field"><span class="ad-lbl">${esc(f.name)}</span><button type="button" class="ad-icobtn" data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button type="button" class="ad-icobtn" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
+      <label class="ad-row"><span class="ad-lbl">${tr('addAttach')}</span><span class="ad-detplus" aria-hidden="true">+</span><input type="file" accept="image/*,application/pdf" id="fFile" hidden></label>
+    </section>
+    ${linkedDocs.length ? `<div class="ad-label">${tr('linkedDocuments')}</div><section class="ad-rows">${linkedDocs.map(({doc, owner}) => `<div class="ad-field"><span class="ad-lbl">${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button type="button" class="ad-icobtn" data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</section>` : ''}
+    <div class="ad-label">${tr('tags')}</div>
+    <div class="ad-tags">${(it.tags || []).map((t, i) => `<span class="ad-tag"><button type="button" class="ad-tag-open" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button type="button" class="ad-tag-x" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button type="button" class="ad-tag add" data-act="addtag" aria-label="${esc(tr('newTag'))}">+</button></div>
+    <button type="button" class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
     ${adSlot('card')}
-    <p class="proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
-    ${isNew ? '' : `<button class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
-    <div class="donebar${isNew ? ' newitembar' : ' edititembar'}"><button class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}<button class="btn primary" data-act="done">${tr('save')}</button></div>
+    <p class="ad-proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
+    ${isNew ? '' : `<button type="button" class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
+    <div class="ad-foot">
+      <div class="ad-foot-row${isNew ? '' : ' editing'}"><button type="button" class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button type="button" class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}</div>
+      <button type="button" class="btn primary block" data-act="done">${tr('save')}</button>
+    </div>
     <datalist id="people">${ownerSuggestions(b.placeId, it).map(p => `<option value="${esc(p === 'Shared' ? tr('shared') : p)}">`).join('')}</datalist>
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
     <datalist id="seasons">${seasonSuggestions(it).map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
@@ -20903,16 +21088,17 @@ function loanFields(it){
   const since = it.loanSince || today(), due = it.loanDue || '';
   const opts = [[7, tr('w1')], [14, tr('w2')], [30, tr('m1')], [90, tr('m3')]];
   const cur = due ? Math.round((new Date(due) - new Date(since)) / 864e5) : null;
-  return `<div class="fl"><input data-f="loanSince" type="date" value="${esc(since)}"><label class="always">${tr('loanSinceL')}</label></div>
-    <div class="fl group"><label class="always">${tr('remindBack')}</label><div class="chips tight">${opts.map(([n, l]) => `<button class="chipbtn small${cur === n ? ' on' : ''}" data-loandue="${n}">${l}</button>`).join('')}<button class="chipbtn small${due && !opts.some(o => o[0] === cur) ? ' on' : ''}" data-loandue="pick">${tr('pickDate')}</button></div>
-    ${due && !opts.some(o => o[0] === cur) || showLoanPick ? `<input data-f="loanDue" type="date" value="${esc(due)}" style="margin-top:8px">` : ''}${due ? `<p class="wnote">${esc(tr('remindOn', due))}</p>` : ''}</div>`;
+  return `<label class="ad-field"><span class="ad-lbl">${tr('loanSinceL')}</span><input class="ad-val-in" data-f="loanSince" type="date" value="${esc(since)}"></label>
+    <div class="ad-group"><span class="ad-lbl">${tr('remindBack')}</span><div class="ad-chips">${opts.map(([n, l]) => `<button class="ad-chip${cur === n ? ' on' : ''}" data-loandue="${n}">${l}</button>`).join('')}<button class="ad-chip${due && !opts.some(o => o[0] === cur) ? ' on' : ''}" data-loandue="pick">${tr('pickDate')}</button></div>
+    ${due && !opts.some(o => o[0] === cur) || showLoanPick ? `<input class="ad-val-in" data-f="loanDue" type="date" value="${esc(due)}">` : ''}${due ? `<p class="ad-wnote">${esc(tr('remindOn', due))}</p>` : ''}</div>`;
 }
 let showLoanPick = false, showRemindPick = false;
 function remindFields(it){
   const m = +(it.remindMonths || 0), at = it.remindAt || '';
   const opts = [[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]];
-  return `<div class="fl group"><label class="always">${tr('remind')}</label><div class="chips tight"><button class="chipbtn small${!m && !at ? ' on' : ''}" data-remind="0">${tr('noRemind')}</button>${opts.map(([v, l]) => `<button class="chipbtn small${m === v && !at ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="chipbtn small${at ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button></div>
-    ${at || showRemindPick ? `<input data-f="remindAt" type="date" value="${esc(at)}" style="margin-top:8px">` : ''}</div>`;
+  return `<div class="ad-group"><span class="ad-lbl">${tr('remind')}</span><div class="ad-chips">
+    <button class="ad-chip${!m && !at ? ' on' : ''}" data-remind="0">${tr('noRemind')}</button>${opts.map(([v, l]) => `<button class="ad-chip${m === v && !at ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="ad-chip${at ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button></div>
+    ${at || showRemindPick ? `<input class="ad-val-in" data-f="remindAt" type="date" value="${esc(at)}">` : ''}</div>`;
 }
 function openDatePicker(el){
   if (!el) return;
