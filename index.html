@@ -1639,6 +1639,11 @@ dialog.ad-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidd
 .ad-details>summary::-webkit-details-marker{display:none}
 .ad-details>summary .ad-chev{transition:transform .25s ease}
 .ad-details[open]>summary .ad-chev{transform:rotate(90deg);color:var(--primary)}
+/* one add page for items and boxes: a page, not an overlay */
+.ad-page-add{height:auto;overflow:visible;position:relative;display:flex;flex-direction:column}
+.ad-page-add .ad-main{overflow:visible;flex:none}
+.ad-where-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px;font-size:var(--fs-2);color:var(--muted)}
+.ad-where-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -14072,7 +14077,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-25.1';
+const APP_VERSION = '2026-11-25.3';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -14420,6 +14425,7 @@ function deleteBoxContents(existing){
   toTrash((existing.items || []).map(i => [i, existing]));
   if (existing.parentId){ const pb = findBox(existing.parentId); if (pb && pb.autoName) putBox(clone(pb), true); }
   toast(`${existing.code} ✕`);
+  if (view.name === 'boxadd') view = existing.parentId ? {name: 'box', boxId: existing.parentId} : {name: 'home', place: existing.placeId};
   if (view.name === 'box' && view.boxId === existing.id) view = existing.parentId ? {name: 'box', boxId: existing.parentId} : {name: 'home', place: existing.placeId};
   render();
 }
@@ -15175,8 +15181,10 @@ function render(){
   if (!ready){ app.innerHTML = '<p class="status">…</p>'; return; }
   document.documentElement.lang = lang;
   document.body.classList.toggle('onboarding', view.name === 'welcome');
-  document.body.classList.toggle('itemview', view.name === 'item' || view.name === 'batch');
+  document.body.classList.toggle('itemview', view.name === 'item' || view.name === 'batch' || view.name === 'boxadd');
   if (view.name === 'welcome') return renderWelcome();
+  if (boxAddLeave && view.name !== 'boxadd'){ const leave = boxAddLeave; boxAddLeave = null; leave(); }
+  if (view.name === 'boxadd'){ if (!app.querySelector('#bSave')) renderBoxAdd(); return; }
   if ((view.name === 'box' || view.name === 'batch') && !findBox(view.boxId)) view = {name: 'home'};
   if (view.name === 'item' && !(findBox(view.boxId) && (findBox(view.boxId).items || []).some(i => i.id === view.itemId))) view = {name: 'home'};
   if (view.name === 'box') renderBox(findBox(view.boxId));
@@ -16416,7 +16424,6 @@ function renderItem(){
         <div class="ad-acts">
           <button type="button" class="ad-pill ad-out" data-act="${isOutNow ? 'itemback' : 'itemout'}" aria-pressed="${isOutNow}">${isOutNow ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOut')}</button>
           <button type="button" class="ad-pill ad-fav" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button>
-          <button type="button" class="ad-pill" data-act="scanbarcode">${ICON.barcode}${tr('scanBarcode')}${it.ean ? ` <small>${esc(it.ean)}</small>` : ''}</button>
         </div>
         ${isNew ? `<div class="ad-seg ad-type" role="group" aria-label="${esc(tr('addWhat'))}"><button type="button" class="on" aria-pressed="true">${esc(tr('boxTypeItem'))}</button><button type="button" data-switch-box aria-pressed="false">${esc(tr('boxTypeBox'))}</button></div>` : ''}
       </div>
@@ -16424,7 +16431,7 @@ function renderItem(){
     ${photos.length ? `<div class="ad-thumbs">${photos.map((p, i) => `<span class="ad-thumb"><button type="button" data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button type="button" class="ad-thumb-x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     ${ai.provider !== 'off' && photos.length ? `<div class="ad-aisug"><button type="button" class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     ${entityInfo(it, b)}
-    <div class="ad-where-line">${locationCardHTML(b, it)}<button type="button" class="ad-chg" data-act="moveitem2">${tr('move')}</button></div>
+    <div class="ad-where-line"><span class="ad-where-text">${esc(placeName(b.placeId))} · ${esc(b.loose ? tr('notInBoxShort') : `${b.code} ${b.name}`)}</span><button type="button" class="ad-chg" data-act="moveitem2">${tr('boxWhereChange')}</button></div>
     <section class="ad-rows">${fieldRows}</section>${addable.length ? `<details class="ad-details"${itemDetailsOpen ? ' open' : ''}><summary class="ad-label">${tr('boxDetails')}<svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>${detailOpts}</details>` : ''}
     <section class="ad-rows">
       <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"></label>
@@ -17466,48 +17473,18 @@ function doNudge(key, yes, pid){
 }
 
 /* ---------- sheets: add, move, long press ---------- */
-function addHereSheet(pid, boxId, includeBatch = true){
+function openAdd(pid, boxId){
+  const v = view, cur = (v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId);
+  if (pid === undefined && boxId === undefined && cur){ pid = cur.placeId; boxId = cur.loose ? null : cur.id; }
   const b = boxId && findBox(boxId);
-  const intoBox = b && !b.loose;
-  openSheet(`<h3>${esc(intoBox ? tr('addInto', `${b.code} ${b.name}`) : tr('addTo', placeName(pid)))}</h3>
-    <div class="choice addchoices">${intoBox ? `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('addThingChoice')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.stack}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`
-      : `<button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button>${includeBatch ? `<button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.stack}</span><span>${tr('addMultipleChoice')}</span></button>` : ''}`}</div>
-    <div class="sheet-foot" style="margin-top:12px"><button class="btn quiet" id="adX">${tr('cancel')}</button></div>`);
-  $('#adBox').onclick = () => { closeSheet(); boxSheet(null, pid, intoBox ? b.id : null); };
-  $('#adItem').onclick = () => { closeSheet(); newItem(b ? b.id : ensureLoose(pid).id); };
-  if (includeBatch) $('#adBatch').onclick = () => { closeSheet(); openBatch(b ? b.id : ensureLoose(pid).id); };
-  $('#adX').onclick = closeSheet;
+  if (b && !b.loose) return newItem(b.id);
+  const place = pid || scopePlace() || (places.find(p => !p.inbox) || places[0]).id;
+  return newItem(ensureLoose(place).id);
 }
 function ensureInbox(){
   let p = places.find(x => x.inbox);
   if (!p){ p = {id: newId(), name: tr('unsorted'), icon: '📥', inbox: true, createdAt: new Date().toISOString()}; places.push(p); metaPut('places', places).catch(() => {}); }
   return p;
-}
-function addNavSheet(initialPid){
-  const v = view;
-  if ((v.name === 'box' || v.name === 'item' || v.name === 'batch') && findBox(v.boxId)){ const b = findBox(v.boxId); if (!b.loose) return addHereSheet(b.placeId, b.id); }
-  const storagePlaces = places.filter(p => !p.inbox);
-  const currentBox = (v.name === 'box' || v.name === 'item') && findBox(v.boxId);
-  const recentPlace = recents.map(r => findPlace((r.k === 'box' ? findBox(r.id) : findBox(r.boxId))?.placeId)).find(p => p && !p.inbox);
-  let pid = currentBox ? currentBox.placeId : initialPid || scopePlace() || recentPlace?.id || storagePlaces[0]?.id || 'inbox';
-  const isInbox = id => id === 'inbox' || !!findPlace(id)?.inbox;
-  if (!storagePlaces.some(p => p.id === pid) && !isInbox(pid)) pid = recentPlace?.id || storagePlaces[0]?.id || 'inbox';
-  const chips = () => storagePlaces.length > 6
-    ? `<select class="add-place-select" aria-label="${esc(tr('where'))}">${storagePlaces.map(p => `<option value="${esc(p.id)}"${pid === p.id ? ' selected' : ''}>${esc(placeIcon(p) + ' ' + p.name)}</option>`).join('')}<option value="inbox"${isInbox(pid) ? ' selected' : ''}>📥 ${tr('noPlaceYet')}</option></select>`
-    : `${storagePlaces.map(p => `<button class="chipbtn${pid === p.id ? ' on' : ''}" data-ap="${esc(p.id)}">${placeIcon(p)} ${esc(p.name)}</button>`).join('')}<button class="chipbtn${isInbox(pid) ? ' on' : ''}" data-ap="inbox">📥 ${tr('noPlaceYet')}</button>`;
-  openSheet(`<div class="addnav-sheet"><h3>${tr('addWhat')}</h3>
-    <div class="choice addchoices"><button class="btn primary big addopt" id="adBox"><span class="aoi">${boxArt('')}</span><span>${tr('addBoxChoice')}</span></button><button class="btn primary big addopt" id="adItem"><span class="aoi">${DEFAULT_ITEM_ICON}</span><span>${tr('itemNoBox')}</span></button><button class="btn primary big addopt" id="adBatch"><span class="aoi">${ICON.stack}</span><span>${tr('addMultipleChoice')}</span></button></div>
-    <span class="lab" style="display:block;margin-top:14px">${tr('where')}</span><div class="chips addplaces" id="adPlaces">${chips()}</div>
-    <div class="sheet-foot" style="margin-top:12px"><button class="btn" id="adX">${tr('cancel')}</button></div></div>`);
-  $('#adPlaces').innerHTML = chips();
-  $('#adPlaces').onclick = e => { const c = e.target.closest('[data-ap]'); if (!c) return; pid = c.dataset.ap; $('#adPlaces').innerHTML = chips(); };
-  const placeSelect = $('#adPlaces select');
-  if (placeSelect) placeSelect.onchange = () => { pid = placeSelect.value; };
-  const target = () => pid === 'inbox' ? ensureInbox().id : pid;
-  $('#adBox').onclick = () => { const p = target(); closeSheet(); boxSheet(null, p, null); };
-  $('#adItem').onclick = () => { const p = target(); closeSheet(); newItem(ensureLoose(p).id); };
-  $('#adBatch').onclick = () => { const p = target(); closeSheet(); openBatch(ensureLoose(p).id); };
-  $('#adX').onclick = closeSheet;
 }
 function moveItemSheet(boxId, itemId){
   const b = findBox(boxId), it = b && (b.items || []).find(i => i.id === itemId); if (!it) return;
@@ -17797,7 +17774,7 @@ app.addEventListener('click', e => {
   const b = findBox(view.boxId);
   switch (d.act){
     case 'addplace': askText(tr('newPlace'), {placeholder: tr('newPlaceHint'), ok: tr('add')}).then(n => { const p = n && addPlace(n); if (p) goHome(p.id); }); break;
-    case 'addhere': addNavSheet(d.pid || scopePlace() || places[0].id); break;
+    case 'addhere': openAdd(d.pid || scopePlace() || places[0].id, null); break;
     case 'additem': newItem(b.id); break;
     case 'batch': openBatch(b.id); break;
     case 'batchcancel': finishBatch(false); break;
@@ -17831,14 +17808,14 @@ app.addEventListener('click', e => {
     case 'movestart': case 'movenew': case 'moveadd': case 'movelabels': case 'moverooms': case 'moveend': moveAction(d.act); break;
     case 'gomove': navigate({name: 'move'}); break;
     case 'scanbarcode': scanItemBarcode(); break;
-    case 'newboxin': addNavSheet(d.pid || scopePlace()); break;
+    case 'newboxin': boxSheet(null, d.pid || scopePlace()); break;
     case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
     case 'itemout': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, true); break;
     case 'itemback': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, false); break;
     case 'qadone': { const i = $('#qaIn'); if (i && i.value.trim()) quickAdd(i.dataset.qa, i.value); quickAddFor = null; render(); break; }
-    case 'addinbox': addHereSheet(b.placeId, b.id); break;
+    case 'addinbox': openAdd(b.placeId, b.id); break;
     case 'placement': placementSheet(b.id); break;
     case 'doorside': doorSheet(currentPlace); break;
     case 'newzone': addZone(currentPlace); break;
@@ -17853,7 +17830,7 @@ app.addEventListener('click', e => {
 });
 document.querySelector('.tabbar').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
-  if (b.dataset.tab === 'add') return addNavSheet();
+  if (b.dataset.tab === 'add') return openAdd();
   if (b.dataset.tab === 'home') return goHome(currentPlace !== 'all' ? currentPlace : null);
   if (b.dataset.tab === 'search'){ navigate({name: 'search'}); return; }
   navigate({name: 'profile'});
@@ -17960,7 +17937,10 @@ function photoState(initial, multiple, boxCode = ''){
   return st;
 }
 
+let boxAddLeave = null;
+function renderBoxAdd(){ const a = view.args || []; boxSheet(view.boxId || null, a[0], a[1], a[2], a[3]); }
 function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
+  if (!(view.name === 'boxadd' && (view.boxId || null) === (id || null))){ navigate({name: 'boxadd', boxId: id || null, args: [presetPid, presetParent, presetZone, presetShelf]}); return; }
   const fieldIcon = name => `<span class="ad-ic">${ICON[name]}</span>`;
   const existing = id ? findBox(id) : null;
   const b = existing ? clone(existing) : {id: newId(), code: '', name: '', location: '', notes: '', items: [], createdAt: new Date().toISOString(), placeId: presetPid || scopePlace() || places[0].id, parentId: presetParent || null, autoName: true};
@@ -17976,33 +17956,21 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
   let draftOut = !!b.out, draftFav = !!b.fav;
   let saved = false;
   let typeSet = !!b.boxTypeSet;
-  openSheet(`<div class="ad-editor">
-    <header class="ad-head">
-      <span class="ad-code" id="bCode">${esc(b.code)}</span>
-      <div class="ad-ttl"><span class="ad-head-sub" id="bxTitle">${existing ? esc(b.name || tr('editBoxH')) : `${tr('boxNewIn')} ${esc(placeName(b.placeId))}`}</span></div>
-      <button class="ad-x" id="bClose" type="button" aria-label="${esc(tr('close'))}">×</button>
-    </header>
+  const boxHtml = `<div class="ad-editor${existing ? '' : ' ad-page-add'}">
+    ${crumbs([crumbSpace(), crumbPlace(b.placeId)].concat(existing ? [{label: b.code, nav: {name: 'box', boxId: b.id}}] : []))}
     <main class="ad-main">
       <section class="ad-card ad-hero">
         <div class="ad-photo-wrap" id="phwrap"></div>
         <div class="ad-right">
-          <label class="ad-name"><input id="bName" value="${esc(b.autoName ? '' : b.name)}" placeholder="${esc(tr('boxNameHint'))}" aria-label="${esc(tr('name'))}"></label>
-          <div class="ad-status">
-            ${existing
-              ? `<button class="ad-pill ad-out${draftOut ? ' on' : ''}" id="bxOut" type="button" aria-pressed="${draftOut}">${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span></button>
-                <button class="ad-pill ad-fav${draftFav ? ' on' : ''}" id="bxFav" type="button" aria-pressed="${draftFav}">${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span></button>`
-              : `<div class="ad-seg" role="group" aria-label="${esc(tr('addWhat'))}">
-                  <button type="button" id="bxAddItem">${tr('boxTypeItem')}</button>
-                  <button type="button" class="on" aria-pressed="true">${tr('boxTypeBox')}</button>
-                </div>`}
+          <label class="ad-titlerow"><span class="vh">${esc(tr('name'))}</span><textarea class="ad-title" id="bName" rows="1" placeholder="${esc(tr('boxNameHint'))}" autocomplete="off" aria-label="${esc(tr('name'))}">${esc(b.autoName ? '' : b.name)}</textarea></label>
+          <div class="ad-acts">
+            <button type="button" class="ad-pill ad-out${draftOut ? ' on' : ''}" id="bxOut" aria-pressed="${draftOut}">${draftOut ? ICON.putback : ICON.takeout}<span>${draftOut ? tr('putBackBox') : tr('takeOutBox')}</span></button>
+            <button type="button" class="ad-pill ad-fav${draftFav ? ' on' : ''}" id="bxFav" aria-pressed="${draftFav}">${ICON.starO}<span>${draftFav ? tr('unfav') : tr('fav')}</span></button>
           </div>
+          ${existing ? '' : `<div class="ad-seg ad-type" role="group" aria-label="${esc(tr('addWhat'))}"><button type="button" id="bxAddItem">${tr('boxTypeItem')}</button><button type="button" class="on" aria-pressed="true">${tr('boxTypeBox')}</button></div>`}
         </div>
       </section>
-      <div class="ad-where-wrap">
-        <button class="ad-where" id="bWhereToggle" type="button" aria-expanded="false">
-          ${fieldIcon('pin')}<span class="ad-where-text" id="bWhereText"></span><span class="ad-chg">${tr('boxWhereChange')}</span>
-        </button>
-      </div>
+      <div class="ad-where-line"><span class="ad-where-text" id="bWhereText"></span><button type="button" class="ad-chg" id="bWhereToggle" aria-expanded="false">${tr('boxWhereChange')}</button></div>
       <div class="ad-label">${tr('boxDetails')}</div>
       <section class="ad-card ad-rows">
         <button class="ad-row ad-choice" type="button" id="bTypeOpen" aria-haspopup="dialog">
@@ -18020,7 +17988,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
       <div class="ad-label">${tr('tags')}</div>
       <div class="ad-tags" id="bxTags"></div>
     </main>
-    <footer class="ad-foot">
+    <footer class="ad-foot${existing ? '' : ' ad-savebar'}">
       <div class="ad-foot-row${existing ? ' editing' : ''}">
         ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn quiet ad-minor" id="bSaveItem">${tr('addBoxItem')}</button><button class="btn quiet ad-minor" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
       </div>
@@ -18074,7 +18042,8 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
         <button class="btn quiet" type="button" data-photo-close>${tr('cancel')}</button>
       </div>
     </div>
-  </div>`, () => { if (!saved) ps.discard(); });
+  </div>`;
+  app.innerHTML = boxHtml; boxAddLeave = () => { if (!saved) ps.discard(); };
   ps.mount();
   const updateWhere = () => {
     const pid = $('#bPlace').value, parent = findBox($('#bParent').value);
@@ -18120,7 +18089,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     renderTags();
   }
   updateWhere();
-  $('#bClose').onclick = $('#bCancel').onclick = closeSheet;
+  $('#bCancel').onclick = () => goBack();
   $('#bWhereToggle').onclick = () => {
     $('#bxPlaceChooser').hidden = false;
     $('#bWhereToggle').setAttribute('aria-expanded', 'true');
@@ -18168,13 +18137,13 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     const pid = e.target.value;
     $('#bParent').innerHTML = parentOpts(pid);
     $('#bzones').innerHTML = zonesOf(pid).filter(Boolean).map(z => `<option value="${esc(z)}">`).join('');
-    if (!existing){ b.code = nextCode(pid); $('#bCode').textContent = b.code; $('#bxTitle').textContent = `${tr('boxNewIn')} ${placeName(pid)}`; ps.updateCode(b.code); }
+    if (!existing){ b.code = nextCode(pid);  ps.updateCode(b.code); }
     updateWhere();
   };
   $('#bParent').onchange = updateWhere;
   $('#bLoc').oninput = updateWhere;
-  $('#bName').oninput = e => { if (existing) $('#bxTitle').textContent = e.target.value.trim() || tr('editBoxH'); };
-  if (existing) {
+
+  {
     $('#bxOut').onclick = () => {
       draftOut = !draftOut;
       $('#bxOut').classList.toggle('on', draftOut);
@@ -18211,7 +18180,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     if (existing && existing.placeId !== newPlace) descendants(existing.id).forEach(d => { const nd = clone(d); nd.placeId = newPlace; putBox(nd, true); });
     putBox(b);
     if (parent){ const pb = findBox(parent); if (pb && pb.autoName) putBox(clone(pb), true); }
-    closeSheet();
+    if (sheet.open) closeSheet(); else if (!addAnother) goBack();
     if (!existing && addAnother){ toast(`${b.code} ✓`); boxSheet(null, newPlace, parent, b.location); }
     else if (!existing && addItemAfter){ openBox(b.id); newItem(b.id); toast(`${b.code} ✓`); }
     else if (!existing){ openBox(b.id); toast(`${b.code} ✓`); } else render();
