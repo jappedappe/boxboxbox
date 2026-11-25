@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-25.3';
+const APP_VERSION = '2026-11-25.5';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2308,20 +2308,24 @@ function moveTargetsHTML(cur){
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
 const PINNED_ITEM = ['qty', 'owner', 'notes'];
+const ITEM_ORDER = ['category', 'brand', 'model', 'size', 'color', 'season', 'serial', 'qty', 'value', 'warranty', 'owner', 'spot', 'notes'];
+const ALWAYS_ITEM = ['qty', 'owner', 'notes'];
 let itemDetailsOpen = false;
 function renderItem(){
   { const [it0, b0] = curItem(); if (it0 && it0.isNew) setTimeout(() => { const nb = clone(findBox(b0.id)), x = nb && (nb.items || []).find(i => i.id === it0.id); if (x && x.isNew){ delete x.isNew; putBox(nb, true); } }, 1500); }
   const [it, b] = curItem();
   if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; itemDetailsOpen = false; }
   const isNew = itemDraft === it.id;
-  const show = k => hasVal(it, k) || shownOpt.has(k);
+  const kindNow = it.category || kindOf(it);
+  const show = k => ALWAYS_ITEM.includes(k) || (KIND_FIELDS[kindNow] || []).includes(k) || hasVal(it, k) || shownOpt.has(k);
   const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
   const linkedDocs = boxes.flatMap(owner => (owner.documents || []).filter(doc => doc.itemId === it.id).map(doc => ({doc, owner})));
   const input = (k, opts = {}) => `<label class="ad-field"><span class="ad-lbl">${esc(tr('f_' + k))}</span><input class="ad-val-in" data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}></label>`;
   let status = normalizeStatus(it.status), loanTo = it.loanTo || '';
   const legacy = /^On loan \((.+)\)$/.exec(it.status || ''); if (legacy) loanTo = loanTo || legacy[1];
   const field = k => {
-    if (!show(k) && !PINNED_ITEM.includes(k)) return '';
+    if (!show(k)) return '';
+    if (k === 'category') return `<label class="ad-field"><span class="ad-lbl">${esc(tr('f_category'))}</span><select class="ad-val-in" data-f="category">${['', ...Object.keys(KIND_FIELDS)].map(c => `<option value="${c}"${(it.category || '') === c ? ' selected' : ''}>${esc(c ? tr('cat_' + c) : tr('cat_none'))}</option>`).join('')}</select></label>`;
     if (k === 'value') return input(k, {attrs: 'type="text" inputmode="decimal"'});
     if (k === 'qty') return input(k, {attrs: 'type="number" inputmode="numeric" min="1"'});
     if (k === 'brand') return input(k, {attrs: 'list="brands"'});
@@ -2342,9 +2346,9 @@ function renderItem(){
     }
     return input(k);
   };
-  const addable = OPT.filter(k => !show(k) && !PINNED_ITEM.includes(k) && (k !== 'spot' || b.loose));
+  const addable = ITEM_ORDER.filter(k => !show(k) && (k !== 'spot' || b.loose));
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
-  const fieldRows = OPT.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="ad-optional">${html}<button type="button" class="ad-optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('');
+  const fieldRows = ITEM_ORDER.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="ad-optional">${html}<button type="button" class="ad-optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('');
   const detailOpts = addable.length ? `<section class="ad-rows">${addable.map(k => `<button type="button" class="ad-row" data-addopt="${k}"><span class="ad-lbl">${esc(tr('f_' + k))}</span><span class="ad-detplus" aria-hidden="true">+</span></button>`).join('')}</section>` : '';
   const isOutNow = isOut(it);
   app.innerHTML = `${crumbs(crumbParts)}
@@ -2381,7 +2385,6 @@ function renderItem(){
     ${linkedDocs.length ? `<div class="ad-label">${tr('linkedDocuments')}</div><section class="ad-rows">${linkedDocs.map(({doc, owner}) => `<div class="ad-field"><span class="ad-lbl">${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button type="button" class="ad-icobtn" data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</section>` : ''}
     <div class="ad-label">${tr('tags')}</div>
     <div class="ad-tags">${(it.tags || []).map((t, i) => `<span class="ad-tag"><button type="button" class="ad-tag-open" data-coll="${esc(String(t).toLowerCase())}">${esc(t)}</button><button type="button" class="ad-tag-x" data-rmtag="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}<button type="button" class="ad-tag add" data-act="addtag" aria-label="${esc(tr('newTag'))}">+ ${esc(tr('newTag'))}</button></div>
-    <button type="button" class="btn quiet block" data-act="sharewhere">${tr('share')}</button>
     ${adSlot('card')}
     <p class="ad-proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
     ${isNew ? '' : `<button type="button" class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
@@ -2433,7 +2436,7 @@ function renderItem(){
     if (k === 'status' && v !== 'Given away') delete x.givenTo;
     if (v === '' || v == null) delete x[k]; else x[k] = v;
   }, false);
-  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty', 'loanSince', 'loanDue'];
+  const RERENDER = ['remindMonths', 'remindAt', 'lastUsed', 'status', 'warranty', 'loanSince', 'loanDue', 'category'];
   flushItem = () => {
     Object.keys(timers).forEach(k => clearTimeout(timers[k]));
     const [x] = curItem(); if (!x) return;
@@ -6449,6 +6452,8 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
   kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
 
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
+Object.assign(STR.en, {cat_none: 'No category', cat_clothes: 'Clothes', cat_shoes: 'Shoes', cat_kids: 'Kids', cat_sports: 'Sports', cat_tech: 'Tech', cat_tools: 'Tools', cat_music: 'Music', cat_other: 'Other'});
+Object.assign(STR.sv, {cat_none: 'Ingen kategori', cat_clothes: 'Kläder', cat_shoes: 'Skor', cat_kids: 'Barn', cat_sports: 'Sport', cat_tech: 'Teknik', cat_tools: 'Verktyg', cat_music: 'Musik', cat_other: 'Annat'});
 Object.assign(STR.en, {addItemBox: 'Add item + box', addItemAnother: 'Add item + another'});
 Object.assign(STR.sv, {addItemBox: 'Lägg till sak + låda', addItemAnother: 'Lägg till sak + en till'});
 Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What', boxSize: 'Size', boxDetails: 'Details', boxWhereChange: 'Change', addBoxItem: 'Add box + item',

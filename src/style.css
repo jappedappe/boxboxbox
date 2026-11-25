@@ -1634,3 +1634,8 @@ dialog.ad-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidd
 .ad-page-add .ad-main{overflow:visible;flex:none}
 .ad-where-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px;font-size:var(--fs-2);color:var(--muted)}
 .ad-where-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* add and edit pages: full-screen form, no tab bar, footer stays at the bottom */
+body.itemview .tabbar{display:none}
+body.itemview .wrap{padding-bottom:16px}
+.ad-page-add .ad-photo-wrap,.ad-hero .ad-photo-wrap{width:72px;height:72px;flex:none}
+.ad-page-add .ad-photo-wrap>*,.ad-hero .ad-photo-wrap>*{width:100%;height:100%}
