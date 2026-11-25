@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-25.5';
+const APP_VERSION = '2026-11-25.6';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2308,31 +2308,67 @@ function moveTargetsHTML(cur){
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
 const PINNED_ITEM = ['qty', 'owner', 'notes'];
-const ITEM_ORDER = ['category', 'brand', 'model', 'size', 'color', 'season', 'serial', 'qty', 'value', 'warranty', 'owner', 'spot', 'notes'];
-const ALWAYS_ITEM = ['qty', 'owner', 'notes'];
+const ITEM_ORDER = ['category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner', 'spot', 'qty', 'notes'];
+const ALWAYS_ITEM = ['qty', 'notes'];
 let itemDetailsOpen = false;
+const DETAIL_ROWS = ['category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner'];
+const CUR = { sv: 'SEK', en: 'SEK', da: 'DKK', nb: 'NOK', fi: 'EUR' };
+const curCode = () => CUR[lang] || 'SEK';
+const DETLABEL = k => k === 'value' ? `${tr('f_value')} (${curCode()})` : k === 'warranty' ? tr('warrantyUntilLbl') : k === 'owner' ? tr('f_owner') : tr('f_' + k);
+const DETICON = {
+  category: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg>',
+  size: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>',
+  brand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h12M4 17h8"/></svg>',
+  value: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v8"/></svg>',
+  warranty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>',
+  model: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/></svg>',
+  season: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  serial: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>',
+  owner: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+};
+const CHEV = '<svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+function detailSummary(it, k){
+  if (k === 'owner') return ownerNames(it).join(', ') || (it.status || '');
+  if (k === 'value') return it.value !== undefined && it.value !== '' ? `${it.value} ${curCode()}` : '';
+  if (k === 'warranty') return it.warranty || '';
+  if (k === 'season') return showSeason(it.season || '');
+  if (k === 'category') return it.category ? tr('cat_' + it.category) : '';
+  return String(it[k] ?? '');
+}
+function boxChain(b){ const out = []; let cur = b; while (cur && out.length < 5){ out.unshift(cur); cur = cur.parentId ? findBox(cur.parentId) : null; } return out; }
+function todayStr(){ const d = new Date(); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); }
+function attachSheet(){
+  openSheet(`<div class="ad-sheet"><h3 class="ad-sheet-h">${esc(tr('attachReceiptLbl'))}</h3>
+    <button type="button" class="ad-sheet-btn" id="atCam">${ICON.camera}<span>${esc(tr('takePhotoItem'))}</span></button>
+    <button type="button" class="ad-sheet-btn" id="atFile"><span>${esc(tr('chooseFileLbl'))}</span></button>
+    <button type="button" class="ad-sheet-btn quiet" id="atCancel">${esc(tr('cancel'))}</button></div>`);
+  $('#atCam').onclick = () => { const f = $('#fFile'); f.setAttribute('capture', 'environment'); closeSheet(); f.click(); };
+  $('#atFile').onclick = () => { const f = $('#fFile'); f.removeAttribute('capture'); closeSheet(); f.click(); };
+  $('#atCancel').onclick = () => closeSheet();
+}
+
 function renderItem(){
   { const [it0, b0] = curItem(); if (it0 && it0.isNew) setTimeout(() => { const nb = clone(findBox(b0.id)), x = nb && (nb.items || []).find(i => i.id === it0.id); if (x && x.isNew){ delete x.isNew; putBox(nb, true); } }, 1500); }
   const [it, b] = curItem();
   if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; itemDetailsOpen = false; }
   const isNew = itemDraft === it.id;
   const kindNow = it.category || kindOf(it);
-  const show = k => ALWAYS_ITEM.includes(k) || (KIND_FIELDS[kindNow] || []).includes(k) || hasVal(it, k) || shownOpt.has(k);
+  const show = k => ALWAYS_ITEM.includes(k) || hasVal(it, k) || shownOpt.has(k);
   const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
   const linkedDocs = boxes.flatMap(owner => (owner.documents || []).filter(doc => doc.itemId === it.id).map(doc => ({doc, owner})));
-  const input = (k, opts = {}) => `<label class="ad-field"><span class="ad-lbl">${esc(tr('f_' + k))}</span><input class="ad-val-in" data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}></label>`;
+  const input = (k, opts = {}) => `<label class="ad-field"><span class="ad-lbl">${esc(opts.label || tr('f_' + k))}</span><input class="ad-val-in" data-f="${k}" value="${esc(opts.value !== undefined ? opts.value : (it[k] ?? ''))}" placeholder="${esc(tr('f_' + k))}" ${opts.attrs || ''}></label>`;
   let status = normalizeStatus(it.status), loanTo = it.loanTo || '';
   const legacy = /^On loan \((.+)\)$/.exec(it.status || ''); if (legacy) loanTo = loanTo || legacy[1];
   const field = k => {
     if (!show(k)) return '';
     if (k === 'category') return `<label class="ad-field"><span class="ad-lbl">${esc(tr('f_category'))}</span><select class="ad-val-in" data-f="category">${['', ...Object.keys(KIND_FIELDS)].map(c => `<option value="${c}"${(it.category || '') === c ? ' selected' : ''}>${esc(c ? tr('cat_' + c) : tr('cat_none'))}</option>`).join('')}</select></label>`;
-    if (k === 'value') return input(k, {attrs: 'type="text" inputmode="decimal"'});
+    if (k === 'value') return input(k, {label: DETLABEL('value'), attrs: 'type="text" inputmode="decimal"'});
     if (k === 'qty') return input(k, {attrs: 'type="number" inputmode="numeric" min="1"'});
     if (k === 'brand') return input(k, {attrs: 'list="brands"'});
     if (k === 'color') return input(k, {value: showColor(it.color), attrs: 'list="colours"'});
     if (k === 'season') return `${input(k, {value: showSeason(it.season), attrs: 'list="seasons"'})}<div class="ad-chips ad-season">${seasonSuggestions(it).slice(0, 5).map(s => `<button class="ad-chip${it.season === s ? ' on' : ''}" data-season-value="${esc(s)}">${esc(showSeason(s))}</button>`).join('')}</div>`;
     if (k === 'serial') return input(k, {attrs: 'autocapitalize="characters"'});
-    if (k === 'warranty') return input(k, {attrs: 'type="date"'}) + (it.warranty ? `<p class="ad-wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
+    if (k === 'warranty') return input(k, {label: DETLABEL('warranty'), attrs: 'type="date"'}) + (it.warranty ? `<p class="ad-wnote${daysTo(it.warranty) <= 30 ? ' soon' : ''}">${esc(tr('warrantyLeft', daysTo(it.warranty)))}</p>` : '');
     if (k === 'spot') return b.loose ? input(k) : '';
     if (k === 'notes') return `<label class="ad-field ad-field-area"><span class="ad-lbl">${tr('f_notes')}</span><textarea class="ad-val-in" data-f="notes" placeholder="${esc(tr('f_notes'))}">${esc(it.notes || '')}</textarea></label>`;
     if (k === 'owner'){
@@ -2346,35 +2382,53 @@ function renderItem(){
     }
     return input(k);
   };
-  const addable = ITEM_ORDER.filter(k => !show(k) && (k !== 'spot' || b.loose));
-  const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
+  const addable = DETAIL_ROWS.filter(k => !show(k));
   const fieldRows = ITEM_ORDER.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="ad-optional">${html}<button type="button" class="ad-optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('');
-  const detailOpts = addable.length ? `<section class="ad-rows">${addable.map(k => `<button type="button" class="ad-row" data-addopt="${k}"><span class="ad-lbl">${esc(tr('f_' + k))}</span><span class="ad-detplus" aria-hidden="true">+</span></button>`).join('')}</section>` : '';
   const isOutNow = isOut(it);
-  app.innerHTML = `${crumbs(crumbParts)}
+  const detailList = DETAIL_ROWS.map(k => {
+    const on = show(k);
+    return `<button type="button" class="ad-row ad-detrow"${on ? ' disabled' : ` data-addopt="${k}"`}><span class="ad-detic">${DETICON[k]}</span><span class="ad-lbl">${esc(DETLABEL(k))}</span><span class="ad-detval">${on ? esc(detailSummary(it, k)) : `<em>${esc(tr('addVerbLbl'))}</em>`}</span></button>`;
+  }).join('');
+  const remindOn = !!(it.remindMonths || it.remindAt);
+  const locPath = b.loose ? `${placeName(b.placeId)} · ${tr('notInBoxShort')}` : `${placeName(b.placeId)} · ${boxChain(b).map(x => x.code + (x.name ? ' ' + x.name : '')).join(' › ')}`;
+  const outNow = isOut(it);
+  app.innerHTML = `<header class="ad-itemhead">
+      <span class="ad-headicon">${ICON.box}</span>
+      <span class="ad-head-title">${esc(it.name || (isNew ? tr('itemNewTitle') : ''))}</span>
+      <button type="button" class="ad-x" data-act="cancelitem" aria-label="${esc(tr('cancel'))}">×</button>
+    </header>
     ${presenceNote(b.id, it.id)}
     <section class="ad-card ad-hero">
-      <div class="ad-photo-wrap">
-        ${photos.length ? `<button type="button" class="ad-photo-btn" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button>` : `<button type="button" class="ad-photo-btn empty" data-act="pickicon" aria-label="${esc(tr('pickIcon'))}"><span class="ad-photo-art">${guessIcon(it)}</span></button>`}
-        <button type="button" class="ad-cam" id="fPhoto" aria-label="${esc(tr('photoAdd'))}" title="${esc(tr('photoAdd'))}">${ICON.camera}</button>
-      </div>
-      <div class="ad-right">
-        <label class="ad-titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="ad-title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
-        <div class="ad-acts">
-          <button type="button" class="ad-pill ad-out" data-act="${isOutNow ? 'itemback' : 'itemout'}" aria-pressed="${isOutNow}">${isOutNow ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOut')}</button>
-          <button type="button" class="ad-pill ad-fav" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button>
+      <div class="ad-hero-top">
+        ${photos.length
+          ? `<div class="ad-photo-wrap"><button type="button" class="ad-photo-btn" data-viewph="${esc(photos[0].ref)}">${imgTag(photos[0].ref, '')}</button><button type="button" class="ad-cam" id="fPhoto" aria-label="${esc(tr('photoAdd'))}">${ICON.camera}</button></div>`
+          : isNew
+            ? `<button type="button" class="ad-photo-wrap ad-photo-take" id="fPhoto" aria-label="${esc(tr('takePhotoItem'))}"><span class="ad-photo-art">${ICON.camera}<span>${esc(tr('takePhotoItem'))}</span></span></button>`
+            : `<button type="button" class="ad-photo-wrap ad-photo-take" id="fPhoto" aria-label="${esc(tr('photoAdd'))}"><span class="ad-photo-art">${guessIcon(it)}</span></button>`}
+        <div class="ad-right">
+          <label class="ad-titlerow"><span class="vh">${esc(tr('whatIsIt'))}</span><textarea class="ad-title" id="fName" rows="1" placeholder="${esc(tr('whatIsIt'))}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" required>${esc(it.name)}</textarea></label>
+          ${isNew ? '' : `<div class="ad-acts">
+            <button type="button" class="ad-pill ad-out" data-act="${outNow ? 'itemback' : 'itemout'}" aria-pressed="${outNow}">${outNow ? ICON.putback + tr('putBack') : ICON.takeout + tr('takeOut')}</button>
+            <button type="button" class="ad-pill ad-fav" data-act="favitem" aria-pressed="${it.fav ? 'true' : 'false'}">${it.fav ? ICON.star : ICON.starO}${tr('fav')}</button>
+          </div>`}
         </div>
+      </div>
+      <div class="ad-hero-bot">
+        <button type="button" class="ad-pill ad-pickicon" data-act="pickicon">${esc(tr('pickIcon'))}</button>
         ${isNew ? `<div class="ad-seg ad-type" role="group" aria-label="${esc(tr('addWhat'))}"><button type="button" class="on" aria-pressed="true">${esc(tr('boxTypeItem'))}</button><button type="button" data-switch-box aria-pressed="false">${esc(tr('boxTypeBox'))}</button></div>` : ''}
       </div>
     </section>
     ${photos.length ? `<div class="ad-thumbs">${photos.map((p, i) => `<span class="ad-thumb"><button type="button" data-viewph="${esc(p.ref)}">${imgTag(p.ref, '')}</button><button type="button" class="ad-thumb-x" data-rmph="${i}" aria-label="${esc(tr('remove'))}">×</button></span>`).join('')}</div>` : ''}
     ${ai.provider !== 'off' && photos.length ? `<div class="ad-aisug"><button type="button" class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     ${entityInfo(it, b)}
-    <div class="ad-where-line"><span class="ad-where-text">${esc(placeName(b.placeId))} · ${esc(b.loose ? tr('notInBoxShort') : `${b.code} ${b.name}`)}</span><button type="button" class="ad-chg" data-act="moveitem2">${tr('boxWhereChange')}</button></div>
-    <section class="ad-rows">${fieldRows}</section>${addable.length ? `<details class="ad-details"${itemDetailsOpen ? ' open' : ''}><summary class="ad-label">${tr('boxDetails')}<svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>${detailOpts}</details>` : ''}
+    <div class="ad-locrow"><span class="ad-gps" aria-hidden="true">${ICON.pin}</span><span class="ad-loc-text">${esc(locPath)}</span><button type="button" class="ad-chg" data-act="moveitem2">${tr('boxWhereChange')}</button></div>
+    <section class="ad-rows ad-visible">${fieldRows}</section>
+    <details class="ad-details"${itemDetailsOpen ? ' open' : ''}><summary class="ad-caps">${esc(tr('boxDetails'))}${CHEV}</summary><section class="ad-rows">${detailList}</section></details>
+    <div class="ad-label">${esc(tr('remindUnused'))}</div>
     <section class="ad-rows">
-      <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"></label>
-      ${remindFields(it)}
+      <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><button type="button" class="ad-chip ad-today" data-act="lasttoday">${esc(tr('todayBtn'))}</button></label>
+      <div class="ad-row ad-toggle"><span class="ad-lbl">${esc(tr('remindUnused'))}</span><button type="button" class="ad-switch${remindOn ? ' on' : ''}" data-act="remindtoggle" role="switch" aria-checked="${remindOn}" aria-label="${esc(tr('remindUnused'))}"></button></div>
+      ${remindOn ? `<div class="ad-chips ad-remindchips">${[[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]].map(([v, l]) => `<button class="ad-chip${(it.remindMonths || 0) === v && !it.remindAt ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="ad-chip${it.remindAt ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button>${it.remindAt ? `<input class="ad-val-in" data-f="remindAt" type="date" value="${esc(it.remindAt)}">` : ''}</div>` : ''}
     </section>
     ${n ? `<p class="ad-notify${due ? ' due' : ''}"><span>${esc(tr('notify', n))}</span>${dot(due)}<button type="button" class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="ad-label">${tr('attachments')}</div>
@@ -3749,6 +3803,9 @@ app.addEventListener('click', e => {
     case 'newboxin': boxSheet(null, d.pid || scopePlace()); break;
     case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
+    case 'attachsheet': attachSheet(); break;
+    case 'lasttoday': saveItem(x => { x.lastUsed = todayStr(); }, true); break;
+    case 'remindtoggle': saveItem(x => { if (x.remindMonths || x.remindAt){ x.remindMonths = 0; delete x.remindAt; } else { x.remindMonths = 3; } }, true); break;
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
     case 'itemout': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, true); break;
     case 'itemback': if (flushItem) flushItem(); setOut(view.boxId, view.itemId, false); break;
@@ -6454,6 +6511,8 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
 Object.assign(STR.en, {cat_none: 'No category', cat_clothes: 'Clothes', cat_shoes: 'Shoes', cat_kids: 'Kids', cat_sports: 'Sports', cat_tech: 'Tech', cat_tools: 'Tools', cat_music: 'Music', cat_other: 'Other'});
 Object.assign(STR.sv, {cat_none: 'Ingen kategori', cat_clothes: 'Kläder', cat_shoes: 'Skor', cat_kids: 'Barn', cat_sports: 'Sport', cat_tech: 'Teknik', cat_tools: 'Verktyg', cat_music: 'Musik', cat_other: 'Annat'});
+Object.assign(STR.en, {itemNewTitle: 'New item', takePhotoItem: 'Take photo', todayBtn: 'Today', remindUnused: 'Remind if unused', attachReceiptLbl: 'Receipt, warranty or manual', chooseFileLbl: 'Choose file', warrantyUntilLbl: 'Warranty until', addVerbLbl: 'Add'});
+Object.assign(STR.sv, {itemNewTitle: 'Ny sak', takePhotoItem: 'Ta foto', todayBtn: 'Idag', remindUnused: 'Påminn om oanvänd', attachReceiptLbl: 'Kvitto, garanti eller manual', chooseFileLbl: 'Välj fil', warrantyUntilLbl: 'Garanti till', addVerbLbl: 'Lägg till'});
 Object.assign(STR.en, {addItemBox: 'Add item + box', addItemAnother: 'Add item + another'});
 Object.assign(STR.sv, {addItemBox: 'Lägg till sak + låda', addItemAnother: 'Lägg till sak + en till'});
 Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What', boxSize: 'Size', boxDetails: 'Details', boxWhereChange: 'Change', addBoxItem: 'Add box + item',
