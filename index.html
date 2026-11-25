@@ -1632,6 +1632,13 @@ dialog.ad-editor-open .sheet{height:100%;max-height:100%;padding:0;overflow:hidd
 /* the action bar stays visible: the box editor footer never scrolls away, the item page save bar sticks to the bottom */
 .ad-editor>.ad-foot{flex:none}
 .ad-foot.ad-savebar{position:sticky;bottom:0;z-index:5;margin-top:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+/* footer: secondary actions are quiet text; details is one open/close section */
+.ad-foot .btn.ad-minor{background:none;border:0;box-shadow:none;color:var(--muted);font-weight:500;min-height:36px;font-size:var(--fs-2)}
+.ad-details{margin-top:4px}
+.ad-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 4px}
+.ad-details>summary::-webkit-details-marker{display:none}
+.ad-details>summary .ad-chev{transition:transform .25s ease}
+.ad-details[open]>summary .ad-chev{transform:rotate(90deg);color:var(--primary)}
 </style>
 </head>
 <body>
@@ -14065,7 +14072,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-24.4';
+const APP_VERSION = '2026-11-25.1';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -16298,6 +16305,13 @@ function finishItem(again){
   const destination = itemCreationReturn; itemCreationReturn = null;
   if (destination) go(destination, {navigation: true}); else goBack();
 }
+function saveItemAndBox(){
+  const [it, b] = curItem(); if (!it) return;
+  if (!(it.name || '').trim()) return finishItem(false);
+  const pid = b.placeId, parent = b.loose ? null : b.id;
+  finishItem(false);
+  boxSheet(null, pid, parent);
+}
 async function cancelNewItem(){
   if (flushItem) flushItem();
   const [it, b] = curItem(); if (!it || itemDraft !== it.id) return;
@@ -16350,10 +16364,12 @@ function moveTargetsHTML(cur){
   return places.map(p => `<optgroup label="${esc(p.name)}"><option value="loose:${esc(p.id)}" ${cur.loose && cur.placeId === p.id ? 'selected' : ''}>${esc(p.name)}, ${tr('notInBoxShort')}</option>
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
+const PINNED_ITEM = ['qty', 'owner', 'notes'];
+let itemDetailsOpen = false;
 function renderItem(){
   { const [it0, b0] = curItem(); if (it0 && it0.isNew) setTimeout(() => { const nb = clone(findBox(b0.id)), x = nb && (nb.items || []).find(i => i.id === it0.id); if (x && x.isNew){ delete x.isNew; putBox(nb, true); } }, 1500); }
   const [it, b] = curItem();
-  if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; }
+  if (shownFor !== it.id){ shownOpt = new Set(); shownFor = it.id; itemDetailsOpen = false; }
   const isNew = itemDraft === it.id;
   const show = k => hasVal(it, k) || shownOpt.has(k);
   const n = notifyAt(it), due = isDue(it), photos = it.photos || [];
@@ -16362,7 +16378,7 @@ function renderItem(){
   let status = normalizeStatus(it.status), loanTo = it.loanTo || '';
   const legacy = /^On loan \((.+)\)$/.exec(it.status || ''); if (legacy) loanTo = loanTo || legacy[1];
   const field = k => {
-    if (!show(k)) return '';
+    if (!show(k) && !PINNED_ITEM.includes(k)) return '';
     if (k === 'value') return input(k, {attrs: 'type="text" inputmode="decimal"'});
     if (k === 'qty') return input(k, {attrs: 'type="number" inputmode="numeric" min="1"'});
     if (k === 'brand') return input(k, {attrs: 'list="brands"'});
@@ -16383,10 +16399,10 @@ function renderItem(){
     }
     return input(k);
   };
-  const addable = OPT.filter(k => !show(k) && (k !== 'spot' || b.loose));
+  const addable = OPT.filter(k => !show(k) && !PINNED_ITEM.includes(k) && (k !== 'spot' || b.loose));
   const crumbParts = [crumbSpace(), crumbPlace(b.placeId)].concat(b.loose ? [] : [{label: b.code, nav: {name: 'box', boxId: b.id}}]);
   const fieldRows = OPT.map(k => { const html = field(k); return html && shownOpt.has(k) ? `<div class="ad-optional">${html}<button type="button" class="ad-optcancel" data-cancel-opt="${k}" aria-label="${esc(tr('cancel'))} ${esc(tr('f_' + k))}">×</button></div>` : html; }).join('');
-  const detailOpts = addable.length ? `<div class="ad-label">${tr('addDetail')}</div><section class="ad-rows">${addable.map(k => `<button type="button" class="ad-row" data-addopt="${k}"><span class="ad-lbl">${esc(tr('f_' + k))}</span><span class="ad-detplus" aria-hidden="true">+</span></button>`).join('')}</section>` : '';
+  const detailOpts = addable.length ? `<section class="ad-rows">${addable.map(k => `<button type="button" class="ad-row" data-addopt="${k}"><span class="ad-lbl">${esc(tr('f_' + k))}</span><span class="ad-detplus" aria-hidden="true">+</span></button>`).join('')}</section>` : '';
   const isOutNow = isOut(it);
   app.innerHTML = `${crumbs(crumbParts)}
     ${presenceNote(b.id, it.id)}
@@ -16409,12 +16425,12 @@ function renderItem(){
     ${ai.provider !== 'off' && photos.length ? `<div class="ad-aisug"><button type="button" class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     ${entityInfo(it, b)}
     <div class="ad-where-line">${locationCardHTML(b, it)}<button type="button" class="ad-chg" data-act="moveitem2">${tr('move')}</button></div>
-    <section class="ad-rows">${fieldRows}
+    <section class="ad-rows">${fieldRows}</section>${addable.length ? `<details class="ad-details"${itemDetailsOpen ? ' open' : ''}><summary class="ad-label">${tr('boxDetails')}<svg class="ad-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>${detailOpts}</details>` : ''}
+    <section class="ad-rows">
       <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"></label>
       ${remindFields(it)}
     </section>
     ${n ? `<p class="ad-notify${due ? ' due' : ''}"><span>${esc(tr('notify', n))}</span>${dot(due)}<button type="button" class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
-    ${detailOpts}
     <div class="ad-label">${tr('attachments')}</div>
     <section class="ad-rows">
       ${(it.files || []).map((f, i) => `<div class="ad-field"><span class="ad-lbl">${esc(f.name)}</span><button type="button" class="ad-icobtn" data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button type="button" class="ad-icobtn" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
@@ -16428,13 +16444,15 @@ function renderItem(){
     <p class="ad-proof">${[it.addedAt ? tr('registered', fmtStamp(it.addedAt), it.addedBy) : '', (it.storedOn || it.addedAt) ? tr('storedSince', it.storedOn || fmtDate(it.addedAt)) : '', it.updatedAt ? tr('changed', fmtStamp(it.updatedAt)) : ''].filter(Boolean).map(esc).join(' ')}</p>
     ${isNew ? '' : `<button type="button" class="btn danger block" data-act="delitem">${tr('delItem')}</button>`}
     <div class="ad-foot ad-savebar">
-      <div class="ad-foot-row${isNew ? '' : ' editing'}"><button type="button" class="btn quiet" data-act="cancelitem">${tr('cancel')}</button>${isNew ? `<button type="button" class="btn quiet" data-act="saveagain">${tr('saveAnother')}</button>` : ''}</div>
-      <button type="button" class="btn primary block" data-act="done">${tr('save')}</button>
+      ${isNew ? `<div class="ad-foot-row"><button type="button" class="btn quiet ad-minor" data-act="saveandbox">${tr('addItemBox')}</button><button type="button" class="btn quiet ad-minor" data-act="saveagain">${tr('addItemAnother')}</button></div>` : ''}
+      <button type="button" class="btn primary block" data-act="done">${isNew ? tr('addItem') : tr('save')}</button>
+      <button type="button" class="ad-cancel" data-act="cancelitem">${tr('cancel')}</button>
     </div>
     <datalist id="people">${ownerSuggestions(b.placeId, it).map(p => `<option value="${esc(p === 'Shared' ? tr('shared') : p)}">`).join('')}</datalist>
     <datalist id="colours">${COLORS.map(c => `<option value="${esc(showColor(c))}">`).join('')}</datalist>
     <datalist id="seasons">${seasonSuggestions(it).map(c => `<option value="${esc(showSeason(c))}">`).join('')}</datalist>
     <datalist id="brands">${recentValues('brand').map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
+  const detEl = app.querySelector('.ad-details'); if (detEl) detEl.addEventListener('toggle', () => { itemDetailsOpen = detEl.open; });
   const switchBox = app.querySelector('[data-switch-box]');
   if (switchBox) switchBox.addEventListener('click', async () => {
     const [draft] = curItem(); if (!draft) return;
@@ -17827,6 +17845,7 @@ app.addEventListener('click', e => {
     case 'addloose': newItem(ensureLoose(d.pid || currentPlace).id); break;
     case 'addzone': boxSheet(null, currentPlace !== 'all' ? currentPlace : places[0].id, null, d.zone); break;
     case 'saveagain': finishItem(true); break;
+    case 'saveandbox': saveItemAndBox(); break;
     case 'cancelitem': cancelItem(); break;
     case 'addtag': if (flushItem) flushItem(); askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { const tag = (tg || '').trim().toLowerCase(); if (tag) saveItem(x => { x.tags = [...new Set([...(x.tags || []), tag])]; }, true); }); break;
     case 'addboxtag': askText(tr('newTag'), {placeholder: tr('tagHint'), ok: tr('add')}).then(tg => { const tag = (tg || '').trim().toLowerCase(); if (!tag) return; const nb = clone(findBox(view.boxId)); nb.tags = [...new Set([...(nb.tags || []), tag])]; putBox(nb); }); break;
@@ -18003,7 +18022,7 @@ function boxSheet(id, presetPid, presetParent, presetZone, presetShelf){
     </main>
     <footer class="ad-foot">
       <div class="ad-foot-row${existing ? ' editing' : ''}">
-        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn quiet" id="bSaveItem">${tr('addBoxItem')}</button><button class="btn quiet" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
+        ${existing ? `<button class="btn danger" id="bDel">${tr('delBox')}</button>` : `<button class="btn quiet ad-minor" id="bSaveItem">${tr('addBoxItem')}</button><button class="btn quiet ad-minor" id="bSaveAnother">${tr('addBoxAnother')}</button>`}
       </div>
       <button class="btn primary block" id="bSave">${existing ? tr('saveBox') : tr('addBox')}</button>
       <button class="ad-cancel" id="bCancel">${tr('cancel')}</button>
@@ -20526,6 +20545,8 @@ Object.assign(STR.sv, {pasteCode: 'Klistra in koden', noCodeCopied: 'Ingen kod k
   kitXmas: 'Julpynt', kitEaster: 'Påsk & högtider', kitTools: 'Verktyg', kitCamping: 'Camping', kitSport: 'Sport', kitKidsClothes: 'Barnkläder', kitBooks: 'Böcker', kitCables: 'Sladdar & elektronik', kitKitchen: 'Kök & porslin', kitMisc: 'Diverse'});
 
 Object.assign(STR.en, {newThing: 'New thing', askAI: 'Ask · beta', searchWord: 'Search', newBox: 'New box'});
+Object.assign(STR.en, {addItemBox: 'Add item + box', addItemAnother: 'Add item + another'});
+Object.assign(STR.sv, {addItemBox: 'Lägg till sak + låda', addItemAnother: 'Lägg till sak + en till'});
 Object.assign(STR.en, {boxGrpWhere: 'Where', boxGrpWhat: 'What', boxSize: 'Size', boxDetails: 'Details', boxWhereChange: 'Change', addBoxItem: 'Add box + item',
   boxNewIn: 'New box in', boxTypeItem: 'Item', boxTypeBox: 'Box', boxNameHint: 'Optional box name', statusFirst: 'Enter a status first.'});
 Object.assign(STR.sv, {boxGrpWhere: 'Var', boxGrpWhat: 'Vad', boxSize: 'Storlek', boxDetails: 'Detaljer', boxWhereChange: 'Ändra', addBoxItem: 'Låda + sak',
