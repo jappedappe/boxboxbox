@@ -1641,7 +1641,7 @@ body.itemview .wrap{padding-bottom:16px}
 .ad-page-add .ad-photo-wrap>*,.ad-hero .ad-photo-wrap>*{width:100%;height:100%}
 
 /* item add and edit page: white header, hero card, collapsible details */
-.ad-itemhead{display:flex;align-items:center;gap:10px;background:var(--surface);padding:12px 14px;border-bottom:1px solid var(--line)}
+.ad-itemhead{display:flex;align-items:center;gap:10px;background:var(--surface);padding:10px 14px;border-bottom:0}
 .ad-headicon{width:34px;height:34px;border-radius:var(--r-2);background:var(--lav-2);color:var(--primary);display:grid;place-items:center;flex:none}
 .ad-headicon svg{width:20px;height:20px}
 .ad-head-title{flex:1;min-width:0;font-weight:600;font-size:var(--fs-4);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1686,3 +1686,22 @@ body.itemview .wrap{padding-bottom:16px}
 .ad-sheet-btn{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:0 16px;border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);color:var(--text);font:500 var(--fs-3) var(--ui);text-align:left}
 .ad-sheet-btn svg{width:20px;height:20px;color:var(--primary)}
 .ad-sheet-btn.quiet{justify-content:center;border:0;background:none;color:var(--muted)}
+
+/* item page layout fixes */
+.ad-hero{display:block;height:auto;min-height:0}
+.ad-hero-top{display:flex;gap:12px;align-items:center}
+.ad-hero .ad-titlerow{display:block;width:100%;margin:0}
+.ad-hero .ad-title{width:100%;min-height:0;height:auto;font-size:var(--fs-4);font-weight:600;padding:4px 0}
+.ad-hero-bot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.ad-hero-bot .ad-pickicon{flex:none;font-size:var(--fs-1);padding:6px 10px;border:0;height:auto;min-height:0}
+.ad-hero-bot .ad-seg{flex:none;width:200px;height:34px;padding:3px;display:flex}
+.ad-hero-bot .ad-seg button{height:28px;padding:0 12px;font-size:var(--fs-2);flex:1}
+.ad-detgroup{margin-top:6px}
+.ad-dethead{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:40px;padding:0 4px;border:0;background:none;cursor:pointer;font-family:var(--caps);font-size:var(--fs-1);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ad-dethead .ad-chev{width:14px;height:14px;transition:transform .25s ease}
+.ad-dethead[aria-expanded="true"] .ad-chev{transform:rotate(90deg)}
+.ad-field-area textarea{min-height:56px}
+.ad-detrow{display:flex !important;align-items:center;gap:10px;width:100%;justify-content:flex-start}
+.ad-detrow .ad-lbl{flex:1}
+.ad-detrow .ad-detval{margin-left:auto;flex:none;min-width:48px;text-align:right;color:var(--primary)}
+body.itemview .wrap{padding-top:0}

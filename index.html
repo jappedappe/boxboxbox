@@ -1651,7 +1651,7 @@ body.itemview .wrap{padding-bottom:16px}
 .ad-page-add .ad-photo-wrap>*,.ad-hero .ad-photo-wrap>*{width:100%;height:100%}
 
 /* item add and edit page: white header, hero card, collapsible details */
-.ad-itemhead{display:flex;align-items:center;gap:10px;background:var(--surface);padding:12px 14px;border-bottom:1px solid var(--line)}
+.ad-itemhead{display:flex;align-items:center;gap:10px;background:var(--surface);padding:10px 14px;border-bottom:0}
 .ad-headicon{width:34px;height:34px;border-radius:var(--r-2);background:var(--lav-2);color:var(--primary);display:grid;place-items:center;flex:none}
 .ad-headicon svg{width:20px;height:20px}
 .ad-head-title{flex:1;min-width:0;font-weight:600;font-size:var(--fs-4);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1696,6 +1696,25 @@ body.itemview .wrap{padding-bottom:16px}
 .ad-sheet-btn{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:0 16px;border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);color:var(--text);font:500 var(--fs-3) var(--ui);text-align:left}
 .ad-sheet-btn svg{width:20px;height:20px;color:var(--primary)}
 .ad-sheet-btn.quiet{justify-content:center;border:0;background:none;color:var(--muted)}
+
+/* item page layout fixes */
+.ad-hero{display:block;height:auto;min-height:0}
+.ad-hero-top{display:flex;gap:12px;align-items:center}
+.ad-hero .ad-titlerow{display:block;width:100%;margin:0}
+.ad-hero .ad-title{width:100%;min-height:0;height:auto;font-size:var(--fs-4);font-weight:600;padding:4px 0}
+.ad-hero-bot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.ad-hero-bot .ad-pickicon{flex:none;font-size:var(--fs-1);padding:6px 10px;border:0;height:auto;min-height:0}
+.ad-hero-bot .ad-seg{flex:none;width:200px;height:34px;padding:3px;display:flex}
+.ad-hero-bot .ad-seg button{height:28px;padding:0 12px;font-size:var(--fs-2);flex:1}
+.ad-detgroup{margin-top:6px}
+.ad-dethead{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:40px;padding:0 4px;border:0;background:none;cursor:pointer;font-family:var(--caps);font-size:var(--fs-1);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ad-dethead .ad-chev{width:14px;height:14px;transition:transform .25s ease}
+.ad-dethead[aria-expanded="true"] .ad-chev{transform:rotate(90deg)}
+.ad-field-area textarea{min-height:56px}
+.ad-detrow{display:flex !important;align-items:center;gap:10px;width:100%;justify-content:flex-start}
+.ad-detrow .ad-lbl{flex:1}
+.ad-detrow .ad-detval{margin-left:auto;flex:none;min-width:48px;text-align:right;color:var(--primary)}
+body.itemview .wrap{padding-top:0}
 </style>
 </head>
 <body>
@@ -14129,7 +14148,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-25.6';
+const APP_VERSION = '2026-11-25.8';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -16425,7 +16444,7 @@ function moveTargetsHTML(cur){
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
 const PINNED_ITEM = ['qty', 'owner', 'notes'];
-const ITEM_ORDER = ['category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner', 'spot', 'qty', 'notes'];
+const ITEM_ORDER = ['qty', 'notes', 'category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner', 'spot'];
 const ALWAYS_ITEM = ['qty', 'notes'];
 let itemDetailsOpen = false;
 const DETAIL_ROWS = ['category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner'];
@@ -16512,7 +16531,6 @@ function renderItem(){
   app.innerHTML = `<header class="ad-itemhead">
       <span class="ad-headicon">${ICON.box}</span>
       <span class="ad-head-title">${esc(it.name || (isNew ? tr('itemNewTitle') : ''))}</span>
-      <button type="button" class="ad-x" data-act="cancelitem" aria-label="${esc(tr('cancel'))}">×</button>
     </header>
     ${presenceNote(b.id, it.id)}
     <section class="ad-card ad-hero">
@@ -16539,19 +16557,22 @@ function renderItem(){
     ${ai.provider !== 'off' && photos.length ? `<div class="ad-aisug"><button type="button" class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     ${entityInfo(it, b)}
     <div class="ad-locrow"><span class="ad-gps" aria-hidden="true">${ICON.pin}</span><span class="ad-loc-text">${esc(locPath)}</span><button type="button" class="ad-chg" data-act="moveitem2">${tr('boxWhereChange')}</button></div>
-    <section class="ad-rows ad-visible">${fieldRows}</section>
-    <details class="ad-details"${itemDetailsOpen ? ' open' : ''}><summary class="ad-caps">${esc(tr('boxDetails'))}${CHEV}</summary><section class="ad-rows">${detailList}</section></details>
+    <section class="ad-detgroup">
+      <button type="button" class="ad-dethead" data-act="togdetails" aria-expanded="${itemDetailsOpen ? 'true' : 'false'}"><span>${esc(tr('boxDetails'))}</span>${CHEV}</button>
+      <section class="ad-rows ad-visible">${fieldRows}</section>
+      ${itemDetailsOpen ? `<section class="ad-rows ad-addlist">${detailList}</section>` : ''}
+    </section>
     <div class="ad-label">${esc(tr('remindUnused'))}</div>
     <section class="ad-rows">
       <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><button type="button" class="ad-chip ad-today" data-act="lasttoday">${esc(tr('todayBtn'))}</button></label>
       <div class="ad-row ad-toggle"><span class="ad-lbl">${esc(tr('remindUnused'))}</span><button type="button" class="ad-switch${remindOn ? ' on' : ''}" data-act="remindtoggle" role="switch" aria-checked="${remindOn}" aria-label="${esc(tr('remindUnused'))}"></button></div>
-      ${remindOn ? `<div class="ad-chips ad-remindchips">${[[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]].map(([v, l]) => `<button class="ad-chip${(it.remindMonths || 0) === v && !it.remindAt ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="ad-chip${it.remindAt ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button>${it.remindAt ? `<input class="ad-val-in" data-f="remindAt" type="date" value="${esc(it.remindAt)}">` : ''}</div>` : ''}
+      ${remindOn ? `<div class="ad-chips ad-remindchips">${[[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]].map(([v, l]) => `<button class="ad-chip${(it.remindMonths || 0) === v && !it.remindAt ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="ad-chip${it.remindAt ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button>${(it.remindAt || showRemindPick) ? `<input class="ad-val-in" data-f="remindAt" type="date" value="${esc(it.remindAt)}">` : ''}</div>` : ''}
     </section>
     ${n ? `<p class="ad-notify${due ? ' due' : ''}"><span>${esc(tr('notify', n))}</span>${dot(due)}<button type="button" class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="ad-label">${tr('attachments')}</div>
     <section class="ad-rows">
       ${(it.files || []).map((f, i) => `<div class="ad-field"><span class="ad-lbl">${esc(f.name)}</span><button type="button" class="ad-icobtn" data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button type="button" class="ad-icobtn" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
-      <label class="ad-row"><span class="ad-lbl">${tr('addAttach')}</span><span class="ad-detplus" aria-hidden="true">+</span><input type="file" accept="image/*,application/pdf" id="fFile" hidden></label>
+      <button type="button" class="ad-row ad-attachrow" data-act="attachsheet"><span class="ad-lbl">${esc(tr('attachReceiptLbl'))}</span><span class="ad-count">${(it.files || []).length}</span>${CHEV}</button><input type="file" accept="image/*,application/pdf" id="fFile" hidden>
     </section>
     ${linkedDocs.length ? `<div class="ad-label">${tr('linkedDocuments')}</div><section class="ad-rows">${linkedDocs.map(({doc, owner}) => `<div class="ad-field"><span class="ad-lbl">${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button type="button" class="ad-icobtn" data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</section>` : ''}
     <div class="ad-label">${tr('tags')}</div>
@@ -17921,6 +17942,7 @@ app.addEventListener('click', e => {
     case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'attachsheet': attachSheet(); break;
+    case 'togdetails': itemDetailsOpen = !itemDetailsOpen; render(); break;
     case 'lasttoday': saveItem(x => { x.lastUsed = todayStr(); }, true); break;
     case 'remindtoggle': saveItem(x => { if (x.remindMonths || x.remindAt){ x.remindMonths = 0; delete x.remindAt; } else { x.remindMonths = 3; } }, true); break;
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;

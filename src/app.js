@@ -12,7 +12,7 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('sv-SE') : '';
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('sv-SE', {dateStyle:'short', timeStyle:'short'}) : '';
 const clone = o => JSON.parse(JSON.stringify(o));
 
-const APP_VERSION = '2026-11-25.6';
+const APP_VERSION = '2026-11-25.8';
 let boxes = [], ready = false, lastBackup = null;
 let household = [], me = '', notes = [], recentOwners = [];
 let places = [], currentPlace = 'all';
@@ -2308,7 +2308,7 @@ function moveTargetsHTML(cur){
     ${topBoxesIn(p.id).sort(byCode).map(x => opt(x, 0)).join('')}</optgroup>`).join('');
 }
 const PINNED_ITEM = ['qty', 'owner', 'notes'];
-const ITEM_ORDER = ['category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner', 'spot', 'qty', 'notes'];
+const ITEM_ORDER = ['qty', 'notes', 'category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner', 'spot'];
 const ALWAYS_ITEM = ['qty', 'notes'];
 let itemDetailsOpen = false;
 const DETAIL_ROWS = ['category', 'size', 'brand', 'value', 'warranty', 'model', 'season', 'serial', 'owner'];
@@ -2395,7 +2395,6 @@ function renderItem(){
   app.innerHTML = `<header class="ad-itemhead">
       <span class="ad-headicon">${ICON.box}</span>
       <span class="ad-head-title">${esc(it.name || (isNew ? tr('itemNewTitle') : ''))}</span>
-      <button type="button" class="ad-x" data-act="cancelitem" aria-label="${esc(tr('cancel'))}">×</button>
     </header>
     ${presenceNote(b.id, it.id)}
     <section class="ad-card ad-hero">
@@ -2422,19 +2421,22 @@ function renderItem(){
     ${ai.provider !== 'off' && photos.length ? `<div class="ad-aisug"><button type="button" class="btn quiet small" data-act="aisuggest" ${navigator.onLine ? '' : 'disabled'}>✨ ${tr('aiSuggest')}</button><span class="testtag">${tr('testTag')}</span></div>` : ''}
     ${entityInfo(it, b)}
     <div class="ad-locrow"><span class="ad-gps" aria-hidden="true">${ICON.pin}</span><span class="ad-loc-text">${esc(locPath)}</span><button type="button" class="ad-chg" data-act="moveitem2">${tr('boxWhereChange')}</button></div>
-    <section class="ad-rows ad-visible">${fieldRows}</section>
-    <details class="ad-details"${itemDetailsOpen ? ' open' : ''}><summary class="ad-caps">${esc(tr('boxDetails'))}${CHEV}</summary><section class="ad-rows">${detailList}</section></details>
+    <section class="ad-detgroup">
+      <button type="button" class="ad-dethead" data-act="togdetails" aria-expanded="${itemDetailsOpen ? 'true' : 'false'}"><span>${esc(tr('boxDetails'))}</span>${CHEV}</button>
+      <section class="ad-rows ad-visible">${fieldRows}</section>
+      ${itemDetailsOpen ? `<section class="ad-rows ad-addlist">${detailList}</section>` : ''}
+    </section>
     <div class="ad-label">${esc(tr('remindUnused'))}</div>
     <section class="ad-rows">
       <label class="ad-field"><span class="ad-lbl">${tr('lastUsed')}</span><input class="ad-val-in" data-f="lastUsed" type="date" value="${esc(it.lastUsed || '')}"><button type="button" class="ad-chip ad-today" data-act="lasttoday">${esc(tr('todayBtn'))}</button></label>
       <div class="ad-row ad-toggle"><span class="ad-lbl">${esc(tr('remindUnused'))}</span><button type="button" class="ad-switch${remindOn ? ' on' : ''}" data-act="remindtoggle" role="switch" aria-checked="${remindOn}" aria-label="${esc(tr('remindUnused'))}"></button></div>
-      ${remindOn ? `<div class="ad-chips ad-remindchips">${[[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]].map(([v, l]) => `<button class="ad-chip${(it.remindMonths || 0) === v && !it.remindAt ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="ad-chip${it.remindAt ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button>${it.remindAt ? `<input class="ad-val-in" data-f="remindAt" type="date" value="${esc(it.remindAt)}">` : ''}</div>` : ''}
+      ${remindOn ? `<div class="ad-chips ad-remindchips">${[[3, tr('remindM', 3)], [6, tr('remindM', 6)], [12, tr('remindM', 12)], [24, tr('remindM', 24)]].map(([v, l]) => `<button class="ad-chip${(it.remindMonths || 0) === v && !it.remindAt ? ' on' : ''}" data-remind="${v}">${l}</button>`).join('')}<button class="ad-chip${it.remindAt ? ' on' : ''}" data-remind="pick">${tr('pickDate')}</button>${(it.remindAt || showRemindPick) ? `<input class="ad-val-in" data-f="remindAt" type="date" value="${esc(it.remindAt)}">` : ''}</div>` : ''}
     </section>
     ${n ? `<p class="ad-notify${due ? ' due' : ''}"><span>${esc(tr('notify', n))}</span>${dot(due)}<button type="button" class="linkbtn" data-act="ics">${tr('toCalendar')}</button></p>` : ''}
     <div class="ad-label">${tr('attachments')}</div>
     <section class="ad-rows">
       ${(it.files || []).map((f, i) => `<div class="ad-field"><span class="ad-lbl">${esc(f.name)}</span><button type="button" class="ad-icobtn" data-viewfile="${i}" aria-label="${esc(f.name)}">${ICON.eye}</button><button type="button" class="ad-icobtn" data-rmfile="${i}" aria-label="${esc(tr('remove'))}">×</button></div>`).join('')}
-      <label class="ad-row"><span class="ad-lbl">${tr('addAttach')}</span><span class="ad-detplus" aria-hidden="true">+</span><input type="file" accept="image/*,application/pdf" id="fFile" hidden></label>
+      <button type="button" class="ad-row ad-attachrow" data-act="attachsheet"><span class="ad-lbl">${esc(tr('attachReceiptLbl'))}</span><span class="ad-count">${(it.files || []).length}</span>${CHEV}</button><input type="file" accept="image/*,application/pdf" id="fFile" hidden>
     </section>
     ${linkedDocs.length ? `<div class="ad-label">${tr('linkedDocuments')}</div><section class="ad-rows">${linkedDocs.map(({doc, owner}) => `<div class="ad-field"><span class="ad-lbl">${esc(doc.name)} · ${esc(owner.loose ? placeName(owner.placeId) : `${owner.code} ${owner.name}`)}</span><button type="button" class="ad-icobtn" data-doc-open="${esc(doc.id)}" data-doc-box="${esc(owner.id)}" aria-label="${esc(doc.name)}">${ICON.eye}</button></div>`).join('')}</section>` : ''}
     <div class="ad-label">${tr('tags')}</div>
@@ -3804,6 +3806,7 @@ app.addEventListener('click', e => {
     case 'noinstall': try { sessionStorage.setItem('noInstall', '1'); } catch {} render(); break;
     case 'ics': { if (flushItem) flushItem(); const [it3, b3] = curItem(); if (it3) calendarFile(it3, b3); break; }
     case 'attachsheet': attachSheet(); break;
+    case 'togdetails': itemDetailsOpen = !itemDetailsOpen; render(); break;
     case 'lasttoday': saveItem(x => { x.lastUsed = todayStr(); }, true); break;
     case 'remindtoggle': saveItem(x => { if (x.remindMonths || x.remindAt){ x.remindMonths = 0; delete x.remindAt; } else { x.remindMonths = 3; } }, true); break;
     case 'moveitem2': if (flushItem) flushItem(); moveItemSheet(view.boxId, view.itemId); break;
